@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-start-indexing"
+description = "Enables the start_indexing command"
+commands.allow = ["start_indexing"]

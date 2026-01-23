@@ -1,0 +1,36 @@
+[package]
+name = "elleven-library"
+version = "0.1.0"
+description = "Elleven-Library: A professional image reference manager for artists."
+authors = ["marcusmaia"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "elleven_library_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+walkdir = "2.5"
+notify = "8.0"
+imagesize = "0.13"
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["full", "time"] }
+sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio", "chrono"] }
+image = { version = "0.25.9", features = ["webp"] }
+fast_image_resize = "6.0.0"
+mime_guess = "2.0"
+percent-encoding = "2.3"
+rayon = "1.8"
+
