@@ -1,13 +1,14 @@
 import { createSignal, onMount, onCleanup, For, createMemo } from "solid-js";
 import { AssetCard } from "./AssetCard";
 import { calculateMasonryLayout, type ImageItem } from "../../../utils/masonryLayout";
-import { appActions } from "../../../core/store/appStore";
+import { appActions, useAppStore } from "../../../core/store/appStore";
 
 interface VirtualMasonryProps {
   items: ImageItem[];
 }
 
 export function VirtualMasonry(props: VirtualMasonryProps) {
+  const { state } = useAppStore();
   let scrollContainer: HTMLDivElement | undefined;
   
   const [containerWidth, setContainerWidth] = createSignal(0);
@@ -135,6 +136,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
             return (
               <AssetCard
                 item={item}
+                selected={state.selection.includes(item.id)}
                 style={{
                   position: "absolute",
                   display: layout().positions.get(item.id) ? "block" : "none",

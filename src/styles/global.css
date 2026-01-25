@@ -139,17 +139,30 @@ textarea:focus {
 
 .nav-item {
   width: 100%;
-  padding: var(--space-3);
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
   cursor: pointer;
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.nav-item:hover {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
 }
 
 .nav-item.active {
-  color: var(--accent-color);
-  border-left: 2px solid var(--accent-color);
+  background-color: var(--surface-active);
+  color: var(--text-inverse);
+  /* Remove old border-left style */
+  border-left: none; 
 }
 
 .content {
@@ -260,6 +273,12 @@ textarea:focus {
 
 .virtual-masonry-item:hover .item-overlay {
   opacity: 1;
+}
+
+.virtual-masonry-item.selected {
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 2px var(--border-active);
+  z-index: 5;
 }
 
 /* Legacy/CSS-only Masonry (CSS Columns) */
@@ -391,4 +410,45 @@ textarea:focus {
   border-radius: 2px;
   z-index: 2;
   opacity: 0.6;
+}
+
+/* Icon Buttons */
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.icon-btn:hover:not(:disabled) {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Animations */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Utility */
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

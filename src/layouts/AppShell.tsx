@@ -25,7 +25,7 @@ export const AppShell: Component<AppShellProps> = (props) => {
         overflow: "hidden"
     }}>
       {/* Header Area */}
-      <header class="shell-header" style={{ "border-bottom": "1px solid var(--border-color)" }}>
+      <header class="shell-header" style={{ "border-bottom": "1px solid var(--border-subtle)", background: "var(--bg-header)" }}>
         {props.header}
       </header>
 
@@ -38,8 +38,8 @@ export const AppShell: Component<AppShellProps> = (props) => {
       }}>
         {/* Left Sidebar */}
         <aside class="shell-sidebar" style={{ 
-            "border-right": "1px solid var(--border-color)",
-            "background-color": "var(--surface-color)",
+            "border-right": "1px solid var(--border-subtle)",
+            "background-color": "var(--bg-sidebar)",
             "overflow-y": "auto"
         }}>
           {props.sidebar}
@@ -56,8 +56,8 @@ export const AppShell: Component<AppShellProps> = (props) => {
 
         {/* Right Inspector */}
         <aside class="shell-inspector" style={{
-            "border-left": "1px solid var(--border-color)",
-            "background-color": "var(--surface-color)",
+            "border-left": "1px solid var(--border-subtle)",
+            "background-color": "var(--bg-sidebar)",
              "overflow-y": "auto"
         }}>
           {props.inspector}
@@ -66,13 +66,13 @@ export const AppShell: Component<AppShellProps> = (props) => {
 
       {/* Footer / Statusbar */}
       <footer class="shell-footer" style={{ 
-          "border-top": "1px solid var(--border-color)", 
+          "border-top": "1px solid var(--border-subtle)", 
           "padding": "0 8px",
           "height": "28px",
           "display": "flex",
           "align-items": "center",
           "font-size": "11px",
-          "background-color": "var(--surface-color)"
+          "background-color": "var(--bg-sidebar)"
       }}>
         {props.statusbar}
       </footer>

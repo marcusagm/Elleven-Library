@@ -6,6 +6,7 @@ interface AssetCardProps {
   item: ImageItem;
   style: JSX.CSSProperties | undefined;
   className?: string;
+  selected?: boolean;
   onClick?: (e: MouseEvent) => void;
   onContextMenu?: (e: MouseEvent) => void;
 }
@@ -13,7 +14,7 @@ interface AssetCardProps {
 export const AssetCard: Component<AssetCardProps> = (props) => {
   return (
     <div
-      class={`virtual-item virtual-masonry-item ${props.className || ""}`}
+      class={`virtual-item virtual-masonry-item ${props.selected ? "selected" : ""} ${props.className || ""}`}
       style={props.style}
       onClick={props.onClick}
       onContextMenu={props.onContextMenu}
