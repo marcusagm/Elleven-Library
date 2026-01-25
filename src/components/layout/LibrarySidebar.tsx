@@ -1,6 +1,9 @@
 import { Component, For } from "solid-js";
 import { useAppStore } from "../../core/store/appStore";
-import { Library, Folder, Trash2, Tag, Layers } from "lucide-solid";
+import { Folder, Trash2, Tag, Layers, Plus } from "lucide-solid";
+import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
+import { Separator } from "../ui/Separator";
 
 export const LibrarySidebar: Component = () => {
   const { state } = useAppStore();
@@ -23,7 +26,7 @@ export const LibrarySidebar: Component = () => {
         <div class="nav-item active">
             <Layers size={16} />
             <span style={{ flex: 1 }}>All Items</span>
-            <span style={{ opacity: 0.5, "font-size": "10px" }}>{state.items.length}</span>
+            <Badge variant="secondary">{state.items.length}</Badge>
         </div>
         <div class="nav-item">
             <Tag size={16} />
@@ -34,9 +37,11 @@ export const LibrarySidebar: Component = () => {
             <span>Trash</span>
         </div>
 
+        <Separator class="my-3" style={{ margin: "12px 8px" }} />
+
         {/* Folders Section */}
         <div style={{ 
-            padding: "24px 8px 8px 8px", 
+            padding: "8px", 
             "font-size": "11px", 
             "font-weight": "600", 
             color: "var(--text-muted)", 
@@ -45,7 +50,9 @@ export const LibrarySidebar: Component = () => {
             display: "flex", "align-items": "center", "justify-content": "space-between"
         }}>
             <span>Folders</span>
-            <button style={{ background: "none", border: "none", color: "inherit", cursor: "pointer" }}>+</button>
+            <Button variant="ghost" size="icon-sm" title="Create Folder">
+                <Plus size={14} />
+            </Button>
         </div>
         
         {/* Folder List */}

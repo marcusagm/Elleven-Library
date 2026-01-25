@@ -1,6 +1,9 @@
 import { Component, Show, createMemo } from "solid-js";
 import { useAppStore } from "../../core/store/appStore";
 import { Info, Tag, Hash, Calendar, Maximize2 } from "lucide-solid";
+import { Input } from "../ui/Input";
+import { Badge } from "../ui/Badge";
+import { Separator } from "../ui/Separator";
 
 export const FileInspector: Component = () => {
   const { state } = useAppStore();
@@ -65,20 +68,7 @@ export const FileInspector: Component = () => {
                 {/* Fields */}
                 <div class="field-group" style={{ "margin-bottom": "16px" }}>
                     <label style={{ display: "block", "font-size": "11px", color: "var(--text-secondary)", "margin-bottom": "6px", "font-weight": "500" }}>Name</label>
-                    <input 
-                        type="text" 
-                        value={activeItem()?.filename} 
-                        disabled 
-                        style={{ 
-                            width: "100%", 
-                            background: "var(--bg-color)",
-                            border: "1px solid var(--border-color)",
-                            padding: "8px",
-                            "border-radius": "var(--radius-sm)",
-                            color: "var(--text-primary)",
-                            "font-size": "12px"
-                        }} 
-                    />
+                    <Input value={activeItem()?.filename} disabled />
                 </div>
 
                 <div class="field-group" style={{ "margin-bottom": "16px" }}>
@@ -102,12 +92,13 @@ export const FileInspector: Component = () => {
                 {/* Metadata Grid */}
                 <div style={{ 
                     "margin-top": "24px", 
-                    "border-top": "1px solid var(--border-subtle)", 
                     "padding-top": "16px",
                     display: "grid",
                     "grid-template-columns": "1fr 1fr",
                     gap: "12px"
                 }}>
+                    <Separator class="col-span-2" style={{ "grid-column": "span 2", "margin-bottom": "8px" }} />
+                    
                     <div>
                         <span style={{ display: "block", "font-size": "10px", color: "var(--text-muted)", "margin-bottom": "2px" }}>DIMENSIONS</span>
                         <div style={{ display: "flex", "align-items": "center", gap: "6px", "font-size": "12px", color: "var(--text-secondary)" }}>
@@ -118,9 +109,9 @@ export const FileInspector: Component = () => {
                     <div>
                         <span style={{ display: "block", "font-size": "10px", color: "var(--text-muted)", "margin-bottom": "2px" }}>TYPE</span>
                          <div style={{ display: "flex", "align-items": "center", gap: "6px", "font-size": "12px", color: "var(--text-secondary)" }}>
-                            <span style={{ "text-transform": "uppercase", background: "var(--bg-header)", padding: "2px 4px", "border-radius": "2px", "font-size": "10px" }}>
+                            <Badge variant="secondary" style={{ "border-radius": "2px", "padding": "0 4px", "font-size": "10px" }}>
                                 {activeItem()?.filename.split('.').pop()}
-                            </span>
+                            </Badge>
                         </div>
                     </div>
                      <div>

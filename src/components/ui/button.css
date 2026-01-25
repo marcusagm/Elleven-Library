@@ -1,0 +1,84 @@
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  border: 1px solid transparent;
+  outline: none;
+  gap: 8px;
+  font-family: var(--font-main);
+  white-space: nowrap;
+}
+
+.ui-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.ui-btn:focus-visible {
+  box-shadow: 0 0 0 var(--ring-offset) var(--ring-offset-color), 0 0 0 calc(var(--ring-offset) + 2px) var(--ring-color);
+}
+
+/* Variants */
+.ui-btn-primary {
+  background-color: var(--accent-color);
+  color: var(--accent-text);
+}
+.ui-btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.ui-btn-secondary {
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+.ui-btn-secondary:hover {
+  background-color: var(--surface-hover);
+}
+
+.ui-btn-ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+.ui-btn-ghost:hover {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.ui-btn-destructive {
+  background-color: transparent;
+  color: var(--danger-color);
+  border-color: var(--border-color);
+}
+.ui-btn-destructive:hover {
+  background-color: rgba(244, 135, 113, 0.1);
+  border-color: var(--danger-color);
+}
+
+/* Sizes */
+.ui-btn-sm {
+  height: 28px;
+  padding: 0 12px;
+  font-size: var(--font-size-xs);
+}
+
+.ui-btn-md {
+  height: 36px;
+  padding: 0 16px;
+  font-size: var(--font-size-sm);
+}
+
+.ui-btn-icon {
+  height: 32px;
+  width: 32px;
+  padding: 0;
+}
+.ui-btn-icon-sm {
+  height: 24px;
+  width: 24px;
+  padding: 0;
+}

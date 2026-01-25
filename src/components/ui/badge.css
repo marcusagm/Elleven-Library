@@ -1,0 +1,25 @@
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ui-badge-default {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.ui-badge-outline {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.ui-badge-secondary {
+  background-color: var(--bg-header);
+  color: var(--text-secondary);
+}

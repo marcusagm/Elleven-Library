@@ -58,6 +58,11 @@
   /* Transitions */
   --transition-fast: 100ms ease-out;
   --transition-normal: 200ms ease-out;
+
+  /* Focus Ring */
+  --ring-color: var(--border-active);
+  --ring-offset: 2px;
+  --ring-offset-color: var(--bg-color);
 }
 
 @media (prefers-reduced-motion: reduce) {

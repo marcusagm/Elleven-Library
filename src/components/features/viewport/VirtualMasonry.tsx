@@ -42,18 +42,19 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
     if (!scrollContainer) return;
 
     const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      
-      // Use contentBoxSize if available for better precision, fallback to contentRect
-      const width = entry.contentRect.width;
-      const height = entry.contentRect.height;
-      
-      // Batch updates
-      setContainerHeight(height);
-      if (width > 0 && Math.abs(width - containerWidth()) > 1) {
-        setContainerWidth(width);
-      }
+      // Use requestAnimationFrame to avoid "ResizeObserver loop completed with undelivered notifications"
+      requestAnimationFrame(() => {
+          const entry = entries[0];
+          if (!entry) return;
+          
+          const width = entry.contentRect.width;
+          const height = entry.contentRect.height;
+          
+          setContainerHeight(height);
+          if (width > 0 && Math.abs(width - containerWidth()) > 1) {
+            setContainerWidth(width);
+          }
+      });
     });
     
     observer.observe(scrollContainer);

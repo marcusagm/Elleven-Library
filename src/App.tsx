@@ -11,7 +11,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useKeyboardShortcuts } from "./core/hooks/useKeyboardShortcuts";
 
 function App() {
-  const { state, loading, rootPath, progress } = useAppStore();
+  const { state, loading, rootPath } = useAppStore();
   
   useKeyboardShortcuts();
 
