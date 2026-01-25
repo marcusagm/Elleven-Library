@@ -1,6 +1,5 @@
 import { For } from "solid-js";
 import { ReferenceImage } from "./ReferenceImage";
-import { convertFileSrc } from "@tauri-apps/api/core";
 
 interface ImageItem {
   id: number;
@@ -23,6 +22,7 @@ export function ImageGrid(props: ImageGridProps) {
         {(item) => (
           <div class="masonry-item">
             <ReferenceImage 
+              id={item.id}
               src={item.path} 
               thumbnail={item.thumbnail_path}
               alt={item.filename} 

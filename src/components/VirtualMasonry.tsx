@@ -1,14 +1,6 @@
-import { createSignal, createEffect, onMount, onCleanup, For } from "solid-js";
+import { createSignal, onMount, onCleanup, For, createMemo } from "solid-js";
 import { ReferenceImage } from "./ReferenceImage";
-
-interface ImageItem {
-  id: number;
-  path: string;
-  filename: string;
-  width: number | null;
-  height: number | null;
-  thumbnail_path: string | null;
-}
+import { calculateMasonryLayout, type ImageItem } from "../utils/masonryLayout";
 
 interface VirtualMasonryProps {
   items: ImageItem[];
@@ -17,39 +9,65 @@ interface VirtualMasonryProps {
 export function VirtualMasonry(props: VirtualMasonryProps) {
   let scrollContainer: HTMLDivElement | undefined;
   
-  const [columns, setColumns] = createSignal(4);
   const [containerWidth, setContainerWidth] = createSignal(0);
   const [scrollTop, setScrollTop] = createSignal(0);
   const [containerHeight, setContainerHeight] = createSignal(0);
   
-  // Layout state
-  const [layout, setLayout] = createSignal<{ height: number; positions: Map<number, { x: number; y: number; width: number; height: number }> }>({ height: 0, positions: new Map() });
-  
   // Configuration
   const minColWidth = 280;
-  const gap = 16; // var(--space-4)
+  const gap = 16;
   
-  // 1. Handle resize to update column count
+  // 1. Initial columns calculation based on width
+  const columns = createMemo(() => {
+    const width = containerWidth();
+    if (width <= 0) return 4; // Default
+    return Math.max(1, Math.floor((width + gap) / (minColWidth + gap)));
+  });
+
+  // 2. Synchronous layout calculation
+  // Using createMemo ensures layout is always in sync with width/items
+  const layout = createMemo(() => {
+    return calculateMasonryLayout({
+      items: props.items,
+      columns: columns(),
+      containerWidth: containerWidth(),
+      gap
+    });
+  });
+
+  // 3. Handle resize immediately (no debounce to prevent sync issues)
   onMount(() => {
     if (!scrollContainer) return;
-    
+
     const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = entry.contentRect.width;
+      const entry = entries[0];
+      if (!entry) return;
+      
+      // Use contentBoxSize if available for better precision, fallback to contentRect
+      const width = entry.contentRect.width;
+      const height = entry.contentRect.height;
+      
+      // Batch updates
+      setContainerHeight(height);
+      if (width > 0 && Math.abs(width - containerWidth()) > 1) {
         setContainerWidth(width);
-        
-        // Calculate columns
-        // width = cols * colWidth + (cols - 1) * gap
-        // Using minColWidth as a basis
-        const calculatedCols = Math.max(1, Math.floor((width + gap) / (minColWidth + gap)));
-        setColumns(calculatedCols);
-        setContainerHeight(entry.contentRect.height);
       }
     });
     
     observer.observe(scrollContainer);
     
-    // Handle scroll
+    // Initial measure
+    const rect = scrollContainer.getBoundingClientRect();
+    if (rect.width > 0) {
+      setContainerWidth(rect.width);
+      setContainerHeight(rect.height);
+    } else {
+        // Fallback: Estimate width if rect is 0 (e.g. hidden initially)
+        // Sidebar is 80px fixed.
+        const estimated = window.innerWidth - 80;
+        if (estimated > 0) setContainerWidth(estimated);
+    }
+    
     const handleScroll = () => {
       setScrollTop(scrollContainer?.scrollTop || 0);
     };
@@ -61,68 +79,27 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
       scrollContainer?.removeEventListener("scroll", handleScroll);
     });
   });
-
-  // 2. Calculate layout whenever items or cols change
-  createEffect(() => {
-    const items = props.items;
-    const cols = columns();
-    const width = containerWidth();
-    
-    // Only recalc if we have width and items
-    if (width === 0 || items.length === 0) return;
-    
-    // Defer calc to next microtask to avoid resize loop
-    requestAnimationFrame(() => {
-        const totalGapWidth = (cols - 1) * gap;
-        const colWidth = (width - totalGapWidth) / cols;
-        
-        const colHeights = new Array(cols).fill(0);
-        const newPositions = new Map();
-        
-        items.forEach((item) => {
-          let minH = colHeights[0];
-          let colIdx = 0;
-          for (let i = 1; i < cols; i++) {
-            if (colHeights[i] < minH) {
-              minH = colHeights[i];
-              colIdx = i;
-            }
-          }
-          
-          const x = colIdx * (colWidth + gap);
-          const y = minH;
-          
-          const aspectRatio = (item.width && item.height) ? item.width / item.height : 1;
-          const h = colWidth / aspectRatio;
-          
-          newPositions.set(item.id, { x, y, width: colWidth, height: h });
-          
-          colHeights[colIdx] += h + gap;
-        });
-        
-        const maxHeight = Math.max(...colHeights);
-        setLayout({ height: maxHeight, positions: newPositions });
-    });
-  });
   
-  // 3. Determine visible items
-  // Memoize this calculation based on scroll, layout, and items
-  const visibleItems = () => {
+  // 4. Determine visible items
+  // Optimized to only depend on layout and scroll
+  const visibleItems = createMemo(() => {
     const sTop = scrollTop();
     const vHeight = containerHeight();
-    const buffer = 1000; // Render buffer
     const currentLayout = layout();
+    const items = props.items;
     
-    // Safety check: if layout is stale (no positions), return empty to avoid glitch
-    if (currentLayout.positions.size === 0 && props.items.length > 0) return [];
+    if (currentLayout.positions.size === 0 || items.length === 0) return [];
 
-    return props.items.filter(item => {
+    const buffer = 1000; // Pixel buffer
+    const rangeStart = sTop - buffer;
+    const rangeEnd = sTop + vHeight + buffer;
+
+    return items.filter(item => {
       const pos = currentLayout.positions.get(item.id);
       if (!pos) return false;
-      
-      return (pos.y + pos.height > sTop - buffer) && (pos.y < sTop + vHeight + buffer);
+      return (pos.y + pos.height > rangeStart) && (pos.y < rangeEnd);
     });
-  };
+  });
 
   return (
     <div 
@@ -133,7 +110,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
         height: "100%", 
         "overflow-y": "auto", 
         position: "relative",
-        "will-change": "transform" // Promote to layer
+        "will-change": "transform"
       }}
     >
       <div 
@@ -146,16 +123,24 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
       >
         <For each={visibleItems()}>
           {(item) => {
-            const pos = layout().positions.get(item.id)!;
+            // Access position derived from the SAME layout version as visibleItems
+            // This prevents "tearing" where visibleItems updates but layout() hasn't
+            const currentLayout = layout();
+            const pos = currentLayout.positions.get(item.id);
+            
+            // Fallback for safety, though mapped correctly above
+            if (!pos) return null;
+
             return (
               <div
-                class="virtual-item masonry-item" // Re-use masonry-item for styling but override positioning
+                class="virtual-item virtual-masonry-item"
                 style={{
                   position: "absolute",
-                  transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-                  width: `${pos.width}px`,
-                  height: `${pos.height}px`,
-                  "margin-bottom": "0" // Override CSS
+                  display: layout().positions.get(item.id) ? "block" : "none",
+                  transform: `translate3d(${layout().positions.get(item.id)?.x ?? 0}px, ${layout().positions.get(item.id)?.y ?? 0}px, 0)`,
+                  width: `${layout().positions.get(item.id)?.width ?? 0}px`,
+                  height: `${layout().positions.get(item.id)?.height ?? 0}px`,
+                  "margin-bottom": "0"
                 }}
               >
                 <ReferenceImage
