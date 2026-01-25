@@ -37,9 +37,15 @@ const [loading, setLoading] = createSignal(true);
 const [progress, setProgress] = createSignal<ProgressPayload | null>(null);
 const [searchQuery, setSearchQuery] = createSignal("");
 
+// Pagination State (Module Level or inside Store if reactive needed)
+let currentOffset = 0;
+let isFetching = false;
+const BATCH_SIZE = 100;
+
 // Actions
 export const appActions = {
   initialize: async () => {
+    // ... (keep logic) ...
     try {
       setLoading(true);
       await initDb();
@@ -49,13 +55,13 @@ export const appActions = {
       if (locations.length > 0) {
         const path = locations[0].path;
         setRootPath(path);
-        console.log("Auto-starting index for:", path);
         
         // Start indexing in background
         tauriService.startIndexing({ path }).catch(console.error);
       }
 
-      await appActions.refreshImages();
+      // Initial Load
+      await appActions.refreshImages(true);
       
       // Setup listeners
       appActions.setupListeners();
@@ -66,40 +72,38 @@ export const appActions = {
     }
   },
 
-  refreshImages: async () => {
-    const rawImages = await getImages();
-    // Use reconcile to update store efficiently by ID
-    setState("items", reconcile(rawImages, { key: "id" }));
-  },
-
-  setRootLocation: async (path: string, name: string) => {
-    await addLocation(path, name);
-    setState("locations", (locs) => [...locs, { path, name }]);
-    setRootPath(path);
-    await tauriService.startIndexing({ path });
-  },
-
-  setSelection: (ids: number[]) => {
-    setState("selection", ids);
-  },
-
-  toggleSelection: (id: number, multi: boolean) => {
-    if (multi) {
-      const current = state.selection;
-      if (current.includes(id)) {
-        setState("selection", current.filter(i => i !== id));
-      } else {
-        setState("selection", [...current, id]);
-      }
+  // Reset=true implies a full reload (e.g. after indexing finishes or strict refresh)
+  refreshImages: async (reset = false) => {
+    if (reset) {
+        currentOffset = 0;
+        const firstBatch = await getImages(BATCH_SIZE, 0);
+        setState("items", reconcile(firstBatch, { key: "id" }));
+        currentOffset = BATCH_SIZE;
     } else {
-      setState("selection", [id]);
+        // Just reload current view? Usually we use loadMore for pagination.
+        // For compatibility with listeners, we might want to just reload the visible range
+        // But for simplicity, let's reset on full refresh calls.
+        currentOffset = 0;
+        const fresh = await getImages(BATCH_SIZE, 0);
+        setState("items", reconcile(fresh, { key: "id" }));
+        currentOffset = BATCH_SIZE;
     }
   },
 
-  setSearch: (query: string) => {
-    setSearchQuery(query);
-  },
+  loadMore: async () => {
+    if (isFetching) return;
+    isFetching = true;
 
+    try {
+        const nextBatch = await getImages(BATCH_SIZE, currentOffset);
+        if (nextBatch.length > 0) {
+            setState("items", (prev) => [...prev, ...nextBatch]);
+            currentOffset += BATCH_SIZE;
+        }
+    } finally {
+        isFetching = false;
+    }
+  },
   setupListeners: async () => {
     // Indexer Progress
     await listen<ProgressPayload>("indexer:progress", (event) => {
@@ -114,7 +118,8 @@ export const appActions = {
     await listen<number>("indexer:complete", (event) => {
       console.log("Indexer complete. Total:", event.payload);
       setProgress(null);
-      appActions.refreshImages();
+      // reset=true to ensure we see everything properly sorted
+      appActions.refreshImages(true);
     });
 
     // Thumbnail Generation Updates
@@ -128,6 +133,9 @@ export const appActions = {
     });
   }
 };
+
+
+
 
 // Exports for consumption
 export const useAppStore = () => {

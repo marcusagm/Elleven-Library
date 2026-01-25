@@ -72,7 +72,14 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
     }
     
     const handleScroll = () => {
-      setScrollTop(scrollContainer?.scrollTop || 0);
+      if (!scrollContainer) return;
+      setScrollTop(scrollContainer.scrollTop);
+      
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+      // Load more when user scrolls to within 500px of bottom
+      if (scrollTop + clientHeight >= scrollHeight - 500) {
+        appActions.loadMore();
+      }
     };
     
     scrollContainer.addEventListener("scroll", handleScroll, { passive: true });

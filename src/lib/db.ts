@@ -84,9 +84,10 @@ export async function getLocations() {
   );
 }
 
-export async function getImages() {
+export async function getImages(limit: number = 1000, offset: number = 0) {
   const database = await getDb();
   return await database.select<{ id: number; path: string; filename: string; width: number | null; height: number | null; thumbnail_path: string | null }[]>(
-    "SELECT id, path, filename, width, height, thumbnail_path FROM images ORDER BY id ASC"
+    "SELECT id, path, filename, width, height, thumbnail_path FROM images ORDER BY id ASC LIMIT $1 OFFSET $2",
+    [limit, offset]
   );
 }
