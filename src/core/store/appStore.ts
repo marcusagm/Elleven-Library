@@ -104,6 +104,30 @@ export const appActions = {
         isFetching = false;
     }
   },
+
+  setRootLocation: async (path: string, name: string) => {
+    await addLocation(path, name);
+    setState("locations", (locs) => [...locs, { path, name }]);
+    setRootPath(path);
+    await tauriService.startIndexing({ path });
+  },
+
+  toggleSelection: (id: number, multi: boolean) => {
+    if (multi) {
+      const current = state.selection;
+      if (current.includes(id)) {
+        setState("selection", current.filter(i => i !== id));
+      } else {
+        setState("selection", [...current, id]);
+      }
+    } else {
+      setState("selection", [id]);
+    }
+  },
+
+  setSearch: (query: string) => {
+    setSearchQuery(query);
+  },
   setupListeners: async () => {
     // Indexer Progress
     await listen<ProgressPayload>("indexer:progress", (event) => {
