@@ -163,14 +163,21 @@ export const appActions = {
     }
   },
   
-  toggleTagSelection: (tagId: number) => {
+  toggleTagSelection: (tagId: number, multi = false) => {
       const current = state.selectedTags;
-      if (current.includes(tagId)) {
-          setState("selectedTags", current.filter(i => i !== tagId));
+      if (multi) {
+          if (current.includes(tagId)) {
+              setState("selectedTags", current.filter(i => i !== tagId));
+          } else {
+              setState("selectedTags", [...current, tagId]);
+          }
       } else {
-          // For now single select filtering might be safer until OR/AND logic UI is ready?
-          // But user asked for multi.
-          setState("selectedTags", [...current, tagId]);
+          // Single Select Behavior
+          if (current.length === 1 && current[0] === tagId) {
+              setState("selectedTags", []);
+          } else {
+              setState("selectedTags", [tagId]);
+          }
       }
       appActions.refreshImages(true);
   },
