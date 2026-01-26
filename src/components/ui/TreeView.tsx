@@ -1,6 +1,7 @@
 import { Component, For, createSignal, Show, createEffect } from "solid-js";
 import { ChevronRight, ChevronDown } from "lucide-solid";
 import { Dynamic } from "solid-js/web";
+import { DragDropProvider, DragDropSensors, createDraggable, createDroppable } from "@thisbeyond/solid-dnd";
 import "./tree-view.css";
 
 export interface TreeNode {
@@ -24,6 +25,8 @@ interface TreeViewProps {
   // Expansion State
   expandedIds?: Set<string | number>;
   onToggle?: (id: string | number) => void;
+  // DnD
+  onMove?: (draggedId: string | number, targetId: string | number) => void;
 }
 
 const TreeViewItem: Component<{ 
@@ -37,15 +40,23 @@ const TreeViewItem: Component<{
   onEditCancel?: () => void,
   defaultIcon?: Component<{ size?: number | string; color?: string; fill?: string; stroke?: string }>,
   expandedIds?: Set<string | number>,
-  onToggle?: (id: string | number) => void
+  onToggle?: (id: string | number) => void,
+  onMove?: (draggedId: string | number, targetId: string | number) => void
 }> = (props) => {
-  // Fallback to local state if no external state provided (though we will provide it)
+  // Fallback to local state if no external state provided
   const [localExpanded, setLocalExpanded] = createSignal(false);
   const isExpanded = () => props.expandedIds ? props.expandedIds.has(props.node.id) : localExpanded();
   
   const isEditing = () => props.editingId === props.node.id;
   
   let inputRef: HTMLInputElement | undefined;
+
+  // Solid DnD Hooks
+  // We only enable DnD if onMove is provided and NOT editing
+  const dndEnabled = () => !!props.onMove && !isEditing();
+  
+  const draggable = createDraggable(props.node.id);
+  const droppable = createDroppable(props.node.id);
 
   createEffect(() => {
       if (isEditing() && inputRef) {
@@ -68,7 +79,7 @@ const TreeViewItem: Component<{
   
   const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Enter") {
-          e.currentTarget.blur(); // Trigger blur to save
+          (e.currentTarget as HTMLInputElement).blur(); 
       } else if (e.key === "Escape") {
           props.onEditCancel?.();
       }
@@ -76,22 +87,29 @@ const TreeViewItem: Component<{
 
   const handleBlur = () => {
        if (inputRef) {
-            // Trim whitespace?
             const val = inputRef.value.trim();
             if (val) {
                 props.onRename?.(props.node, val);
             } else {
-                // If empty, maybe cancel or keep old name?
-                // Let's keep old name to be safe
                  props.onEditCancel?.();
             }
        }
   };
 
+  // Combine refs and props
+  // We use a function ref to compose draggable/droppable
+  const composeRefs = (el: HTMLElement) => {
+      if (dndEnabled()) {
+         draggable(el);
+         droppable(el);
+      }
+  };
+
   return (
     <div class="tree-item-container">
         <div 
-            class={`tree-item-content ${props.selectedId === props.node.id ? 'selected' : ''}`}
+            ref={composeRefs}
+            class={`tree-item-content ${props.selectedId === props.node.id ? 'selected' : ''} ${droppable.isActiveDroppable ? 'drop-target' : ''}`}
             style={{ "padding-left": `${props.depth * 16}px` }}
             onClick={() => !isEditing() && props.onSelect?.(props.node)}
             onContextMenu={(e) => {
@@ -132,9 +150,7 @@ const TreeViewItem: Component<{
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={handleKeyDown}
                     onBlur={handleBlur}
-                    onInput={(e) => {
-                        // Optional: update local model if needed, but we rely on ref
-                    }}
+                    onInput={() => {}}
                 />
             </Show>
         </div>
@@ -154,6 +170,7 @@ const TreeViewItem: Component<{
                         defaultIcon={props.defaultIcon}
                         expandedIds={props.expandedIds}
                         onToggle={props.onToggle}
+                        onMove={props.onMove}
                     />
                 )}
             </For>
@@ -163,25 +180,35 @@ const TreeViewItem: Component<{
 };
 
 export const TreeView: Component<TreeViewProps> = (props) => {
+    const handleDragEnd = ({ draggable, droppable }: any) => {
+        if (draggable && droppable) {
+            props.onMove?.(draggable.id, droppable.id);
+        }
+    };
+
     return (
-        <div class="tree-view">
-            <For each={props.items}>
-                {(node) => (
-                    <TreeViewItem 
-                        node={node} 
-                        depth={0} 
-                        onSelect={props.onSelect} 
-                        onContextMenu={props.onContextMenu}
-                        selectedId={props.selectedId}
-                        editingId={props.editingId}
-                        onRename={props.onRename}
-                        onEditCancel={props.onEditCancel}
-                        defaultIcon={props.defaultIcon}
-                        expandedIds={props.expandedIds}
-                        onToggle={props.onToggle}
-                    />
-                )}
-            </For>
-        </div>
+        <DragDropProvider onDragEnd={handleDragEnd}>
+            <DragDropSensors />
+            <div class="tree-view">
+                <For each={props.items}>
+                    {(node) => (
+                        <TreeViewItem 
+                            node={node} 
+                            depth={0} 
+                            onSelect={props.onSelect} 
+                            onContextMenu={props.onContextMenu}
+                            selectedId={props.selectedId}
+                            editingId={props.editingId}
+                            onRename={props.onRename}
+                            onEditCancel={props.onEditCancel}
+                            defaultIcon={props.defaultIcon}
+                            expandedIds={props.expandedIds}
+                            onToggle={props.onToggle}
+                            onMove={props.onMove}
+                        />
+                    )}
+                </For>
+            </div>
+        </DragDropProvider>
     );
 };

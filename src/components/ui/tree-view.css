@@ -59,6 +59,12 @@
     line-height: 1;
 }
 
+.tree-item-content.drop-target {
+    background-color: var(--bg-surface-active, rgba(255, 255, 255, 0.1));
+    outline: 2px dashed var(--border-active);
+    outline-offset: -2px;
+}
+
 .tree-edit-input {
     flex: 1;
     font-size: var(--font-size-sm);

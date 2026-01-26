@@ -240,6 +240,46 @@ export const LibrarySidebar: Component = () => {
     setContextMenuOpen(true);
   };
 
+  // Helper to find a node in the tree
+  const findNode = (nodes: TreeNode[], id: number): TreeNode | null => {
+      for (const node of nodes) {
+          if (Number(node.id) === id) return node;
+          if (node.children) {
+              const found = findNode(node.children, id);
+              if (found) return found;
+          }
+      }
+      return null;
+  };
+
+  const handleMoveTag = async (draggedIdStr: string | number, targetIdStr: string | number) => {
+      const draggedId = Number(draggedIdStr);
+      const targetId = Number(targetIdStr);
+      
+      if (draggedId === targetId) return;
+
+      // Check Circular Dependency
+      // 1. Find dragged node in current tree
+      const draggedNode = findNode(tagTree(), draggedId);
+      if (draggedNode) {
+          const descendants = getAllDescendants(draggedNode);
+          if (descendants.includes(targetId)) {
+              console.warn("Cannot move parent into its own child");
+              return;
+          }
+      }
+      
+      // Update DB
+      try {
+          await tagService.updateTag(draggedId, undefined, undefined, targetId);
+          await appActions.loadTags();
+          // Expand target to show dropped item?
+          expandNode(targetId);
+      } catch (err) {
+          console.error("Failed to move tag:", err);
+      }
+  };
+
   return (
     <div style={{ padding: "8px", height: "100%", "overflow-y": "auto" }}>
         {/* Section Header */}
@@ -334,6 +374,7 @@ export const LibrarySidebar: Component = () => {
             onEditCancel={() => setEditingId(null)}
             expandedIds={expandedIds()}
             onToggle={toggleExpansion}
+            onMove={handleMoveTag}
         />
         
         <ContextMenu 
