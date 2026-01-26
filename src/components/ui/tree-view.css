@@ -18,6 +18,9 @@
     color: var(--text-primary);
     transition: background-color var(--transition-fast);
     height: 28px;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1; /* Ensure above standard backgrounds */
 }
 
 .tree-item-content:hover {

@@ -17,10 +17,10 @@ export const FileInspector: Component = () => {
     return state.items.find((i) => i.id === id);
   });
 
-  // Fetch tags for active item
+  // Fetch tags for active item (depends on item ID AND global tag update trigger)
   const [itemTags, { refetch: refetchTags }] = createResource(
-      () => activeItem()?.id,
-      async (id) => {
+      () => ({ id: activeItem()?.id, trigger: useAppStore().tagUpdateTrigger() }),
+      async ({ id }) => {
           if (!id) return [];
           return await tagService.getTagsForImage(id);
       }

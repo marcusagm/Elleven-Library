@@ -41,6 +41,7 @@ const [rootPath, setRootPath] = createSignal<string | null>(null);
 const [loading, setLoading] = createSignal(true);
 const [progress, setProgress] = createSignal<ProgressPayload | null>(null);
 const [searchQuery, setSearchQuery] = createSignal("");
+const [tagUpdateTrigger, setTagUpdateTrigger] = createSignal(0);
 
 // Pagination State (Module Level or inside Store if reactive needed)
 let currentOffset = 0;
@@ -49,6 +50,10 @@ const BATCH_SIZE = 100;
 
 // Actions
 export const appActions = {
+  notifyTagUpdate: () => {
+      setTagUpdateTrigger(n => n + 1);
+  },
+
   initialize: async () => {
     try {
       setLoading(true);
@@ -209,6 +214,7 @@ export const useAppStore = () => {
     rootPath,
     loading,
     progress,
-    searchQuery
+    searchQuery,
+    tagUpdateTrigger
   };
 };

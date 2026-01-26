@@ -9,9 +9,11 @@ import { ContextMenu, ContextMenuItem } from "../ui/ContextMenu";
 import { tagService } from "../../lib/tags";
 import { ConfirmModal } from "../ui/Modal";
 import { ColorPicker } from "../ui/ColorPicker";
+import { dndRegistry } from "../../core/dnd";
 
 export const LibrarySidebar: Component = () => {
   const { state } = useAppStore();
+  const [isTagHeaderDragOver, setIsTagHeaderDragOver] = createSignal(false);
   
   // Context Menu State
   const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
@@ -349,15 +351,42 @@ export const LibrarySidebar: Component = () => {
         <Separator class="my-3" style={{ margin: "12px 8px" }} />
         
         {/* Tags Section */}
-        <div style={{ 
-            padding: "8px", 
-            "font-size": "11px", 
-            "font-weight": "600", 
-            color: "var(--text-muted)", 
-            "text-transform": "uppercase",
-            "letter-spacing": "0.5px",
-            display: "flex", "align-items": "center", "justify-content": "space-between"
-        }}>
+        <div 
+            style={{ 
+                padding: "8px", 
+                "font-size": "11px", 
+                "font-weight": "600", 
+                color: "var(--text-muted)", 
+                "text-transform": "uppercase",
+                "letter-spacing": "0.5px",
+                display: "flex", "align-items": "center", "justify-content": "space-between",
+                "border": isTagHeaderDragOver() ? "1px solid var(--primary)" : "1px solid transparent"
+            }}
+            onDragOver={(e) => {
+                const strategy = dndRegistry.get("TAG");
+                if (strategy && strategy.onDragOver) {
+                    e.preventDefault();
+                    e.dataTransfer!.dropEffect = "move";
+                    setIsTagHeaderDragOver(true);
+                }
+            }}
+            onDragLeave={() => setIsTagHeaderDragOver(false)}
+            onDrop={async (e) => {
+                e.preventDefault();
+                setIsTagHeaderDragOver(false);
+                try {
+                    const json = e.dataTransfer?.getData("application/json");
+                    if (json) {
+                        const item = JSON.parse(json);
+                        const strategy = dndRegistry.get("TAG");
+                        // Only allow TAGS to root (images can't be assigned to 'root' tag usually)
+                        if (strategy && item.type === "TAG") {
+                            await strategy.onDrop(item, "root");
+                        }
+                    }
+                } catch(err) { console.error(err); }
+            }}
+        >
             <span>Tags</span>
             <Button variant="ghost" size="icon-sm" title="Create Tag" onClick={handleCreateTag}>
                 <Plus size={14} />

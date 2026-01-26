@@ -7,6 +7,8 @@ import { FileInspector } from "./components/layout/FileInspector";
 import { GlobalStatusbar } from "./components/layout/GlobalStatusbar";
 import { VirtualMasonry } from "./components/features/viewport/VirtualMasonry";
 import { open } from "@tauri-apps/plugin-dialog";
+// Native DnD
+import { dndRegistry, TagDropStrategy, ImageDropStrategy } from "./core/dnd";
 
 import { useKeyboardShortcuts } from "./core/hooks/useKeyboardShortcuts";
 
@@ -17,6 +19,18 @@ function App() {
 
   onMount(() => {
     appActions.initialize();
+    
+    // Register Strategies
+    dndRegistry.register("TAG", TagDropStrategy);
+    dndRegistry.register("IMAGE", ImageDropStrategy);
+    
+    // Global Drag Safety Net & Debug
+    window.addEventListener("dragover", (e: DragEvent) => {
+         // console.log("Global DragOver:", e.target); 
+         // Keep prevented default handling in specific components
+    });
+    
+    // Check if shift key held during start?
   });
 
   const handleSelectFolder = async () => {
@@ -59,7 +73,7 @@ function App() {
             inspector={<FileInspector />}
             statusbar={<GlobalStatusbar />}
         >
-             <VirtualMasonry items={state.items} />
+            <VirtualMasonry items={state.items} />
         </AppShell>
       </Show>
     </Show>
