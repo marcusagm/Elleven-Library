@@ -26,12 +26,9 @@ class DndStrategyRegistry {
     }
 }
 
+import { createSignal } from "solid-js";
+
 export const dndRegistry = new DndStrategyRegistry();
 
-// Global Drag State (for DragOver checks)
-export let currentDragItem: DragItem | null = null;
-
-export const setDragItem = (item: DragItem | null) => {
-    console.log("dnd-core:setDragItem", item);
-    currentDragItem = item;
-};
+// Global Drag State (Signal for Reactivity)
+export const [currentDragItem, setDragItem] = createSignal<DragItem | null>(null);

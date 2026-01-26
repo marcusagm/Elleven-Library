@@ -6,6 +6,8 @@ pub struct Tag {
     pub name: String,
     pub parent_id: Option<i64>,
     pub color: Option<String>,
+    #[sqlx(default)]
+    pub order_index: i64,
 }
 
 use crate::database::Db;
@@ -33,24 +35,11 @@ impl Db {
         name: Option<String>,
         color: Option<String>,
         parent_id: Option<i64>,
+        order_index: Option<i64>,
     ) -> Result<(), sqlx::Error> {
-        // Dynamic update is tricky in SQLx without a builder, but we can do individual updates
-        // or just assume we send all fields. For simplicity, let's assume specific update methods
-        // or a comprehensive one.
-        // Let's implement specific setters for now to be safe, or a full update if we expect full object.
-        // User story mentions renaming, color, moving (parent_id).
-
-        // We'll use a COALESCE approach or just dynamic query construction if needed.
-        // But cleaner to just update what's passed if we use Option in arguments.
-        // However, standard SQL update:
-
-        // Let's do separate methods for atomic operations or a big one.
-        // A big one is flexible.
-
         let mut query = "UPDATE tags SET ".to_string();
         let mut updates = Vec::new();
 
-        // This is a naive query builder, but sufficient.
         if name.is_some() {
             updates.push("name = ?");
         }
@@ -59,6 +48,9 @@ impl Db {
         }
         if parent_id.is_some() {
             updates.push("parent_id = ?");
+        }
+        if order_index.is_some() {
+            updates.push("order_index = ?");
         }
 
         if updates.is_empty() {
@@ -77,7 +69,14 @@ impl Db {
             q = q.bind(c);
         }
         if let Some(p) = parent_id {
-            q = q.bind(p);
+            if p == 0 {
+                q = q.bind(None::<i64>);
+            } else {
+                q = q.bind(p);
+            }
+        }
+        if let Some(o) = order_index {
+            q = q.bind(o);
         }
 
         q = q.bind(id);
@@ -98,7 +97,7 @@ impl Db {
 
     pub async fn get_all_tags(&self) -> Result<Vec<Tag>, sqlx::Error> {
         let tags = sqlx::query_as::<_, Tag>(
-            "SELECT id, name, parent_id, color FROM tags ORDER BY name ASC",
+            "SELECT id, name, parent_id, color, order_index FROM tags ORDER BY order_index ASC, name ASC",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -181,7 +180,7 @@ impl Db {
         let placeholders: Vec<String> = tag_ids.iter().map(|_| "?".to_string()).collect();
         let query_str = if match_all {
             format!(
-                "SELECT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.created_at, i.modified_at
+                "SELECT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.created_at, i.modified_at
                  FROM images i
                  JOIN image_tags it ON i.id = it.image_id
                  WHERE it.tag_id IN ({})
@@ -193,7 +192,7 @@ impl Db {
             )
         } else {
             format!(
-                "SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.created_at, i.modified_at
+                "SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.created_at, i.modified_at
                  FROM images i
                  JOIN image_tags it ON i.id = it.image_id
                  WHERE it.tag_id IN ({})

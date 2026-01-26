@@ -30,6 +30,7 @@ export async function initDb() {
         height INTEGER,
         size INTEGER,
         thumbnail_path TEXT,
+        format TEXT,
         hash TEXT,
         created_at DATETIME NOT NULL,
         modified_at DATETIME NOT NULL,
@@ -42,6 +43,7 @@ export async function initDb() {
         name TEXT NOT NULL UNIQUE,
         parent_id INTEGER,
         color TEXT,
+        order_index INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (parent_id) REFERENCES tags(id) ON DELETE SET NULL
     );
@@ -64,6 +66,11 @@ export async function initDb() {
   for (const statement of statements) {
     await database.execute(statement);
   }
+
+  // Schema patches for existing DBs
+  try { await database.execute("ALTER TABLE tags ADD COLUMN order_index INTEGER DEFAULT 0;"); } catch (e) {}
+  try { await database.execute("ALTER TABLE images ADD COLUMN thumbnail_path TEXT;"); } catch (e) {}
+  try { await database.execute("ALTER TABLE images ADD COLUMN format TEXT;"); } catch (e) {}
 
   console.log("Database initialized successfully.");
   return database;

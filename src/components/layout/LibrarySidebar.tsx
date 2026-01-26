@@ -91,13 +91,13 @@ export const LibrarySidebar: Component = () => {
       });
       
       const sortNodes = (nodes: TreeNode[]) => {
-            nodes.sort((a,b) => a.label.localeCompare(b.label));
+            // nodes.sort((a,b) => a.label.localeCompare(b.label)); // Disabled to allow manual/natural order
             nodes.forEach(n => {
                 if (n.children && n.children.length > 0) sortNodes(n.children);
             });
       };
       
-      sortNodes(roots);
+      // sortNodes(roots); // Disabled
       return roots;
   });
 
@@ -360,7 +360,7 @@ export const LibrarySidebar: Component = () => {
                 "text-transform": "uppercase",
                 "letter-spacing": "0.5px",
                 display: "flex", "align-items": "center", "justify-content": "space-between",
-                "border": isTagHeaderDragOver() ? "1px solid var(--primary)" : "1px solid transparent"
+                "border": isTagHeaderDragOver() ? "1px solid var(--accent-color)" : "1px solid transparent"
             }}
             onDragOver={(e) => {
                 const strategy = dndRegistry.get("TAG");

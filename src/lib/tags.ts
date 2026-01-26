@@ -5,6 +5,7 @@ export interface Tag {
   name: string;
   parent_id: number | null;
   color: string | null;
+  order_index: number;
 }
 
 export const tagService = {
@@ -12,8 +13,8 @@ export const tagService = {
     return await invoke("create_tag", { name, parentId: parent_id, color });
   },
 
-  updateTag: async (id: number, name?: string | null, color?: string | null, parent_id?: number | null): Promise<void> => {
-    return await invoke("update_tag", { id, name, color, parentId: parent_id });
+  updateTag: async (id: number, name?: string | null, color?: string | null, parent_id?: number | null, order_index?: number | null): Promise<void> => {
+    return await invoke("update_tag", { id, name, color, parentId: parent_id, orderIndex: order_index });
   },
 
   deleteTag: async (id: number): Promise<void> => {

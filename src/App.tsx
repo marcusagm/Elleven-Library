@@ -24,11 +24,6 @@ function App() {
     dndRegistry.register("TAG", TagDropStrategy);
     dndRegistry.register("IMAGE", ImageDropStrategy);
     
-    // Global Drag Safety Net & Debug
-    window.addEventListener("dragover", (e: DragEvent) => {
-         // console.log("Global DragOver:", e.target); 
-         // Keep prevented default handling in specific components
-    });
     
     // Check if shift key held during start?
   });

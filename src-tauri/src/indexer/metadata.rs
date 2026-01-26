@@ -5,12 +5,14 @@ use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, Clone, sqlx::FromRow)]
 pub struct ImageMetadata {
+    pub id: i64,
     pub path: String,
     pub filename: String,
     pub width: Option<i32>,
     pub height: Option<i32>,
     pub size: i64,
     pub format: String,
+    pub thumbnail_path: Option<String>,
     pub modified_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
 }
@@ -49,12 +51,14 @@ pub fn get_image_metadata(path: &Path) -> Option<ImageMetadata> {
     };
 
     Some(ImageMetadata {
+        id: 0, // Placeholder for new files
         path: path.to_string_lossy().to_string(),
         filename,
         width,
         height,
         size: file_size as i64,
         format,
+        thumbnail_path: None,
         modified_at,
         created_at,
     })

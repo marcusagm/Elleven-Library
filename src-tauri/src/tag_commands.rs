@@ -23,8 +23,9 @@ pub async fn update_tag(
     name: Option<String>,
     color: Option<String>,
     parent_id: Option<i64>,
+    order_index: Option<i64>,
 ) -> Result<(), String> {
-    db.update_tag(id, name, color, parent_id)
+    db.update_tag(id, name, color, parent_id, order_index)
         .await
         .map_err(|e| e.to_string())
 }
