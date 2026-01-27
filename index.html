@@ -23,14 +23,29 @@
       }
 
       #splash-spinner {
-        width: 48px;
-        height: 48px;
-        border: 2px solid transparent;
-        border-bottom-color: #007acc; /* accent-color */
-        border-radius: 50%;
-        box-sizing: border-box;
-        animation: splash-spin 1s linear infinite;
+        display: inline-flex;
+        gap: 5px;
         margin-bottom: 24px;
+      }
+
+      #splash-spinner:before,
+      #splash-spinner:after {
+        content: "";
+        width: 25px;
+        aspect-ratio: 1;
+        box-shadow: 0 0 0 3px inset #007acc; /* accent-color */
+        animation: l5 1.5s infinite;
+      }
+
+      #splash-spinner:after {
+        --s: -1;
+      }
+
+      @keyframes l5 {
+        0%   {transform:scaleX(var(--s,1)) translate(0) scale(1)}
+        33%  {transform:scaleX(var(--s,1)) translate(calc(50% + 2.5px)) scale(1)}
+        66%  {transform:scaleX(var(--s,1)) translate(calc(50% + 2.5px)) scale(2)}
+        100% {transform:scaleX(var(--s,1)) translate(0) scale(1)}
       }
 
       #splash-text {
@@ -64,10 +79,7 @@
         font-size: 12px;
       }
 
-      @keyframes splash-spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
+
     </style>
   </head>
 
