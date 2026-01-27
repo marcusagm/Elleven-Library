@@ -1,4 +1,5 @@
-import { Component } from "solid-js";
+import { Component, Show } from "solid-js";
+import "./tag-delete-modal.css";
 import { ConfirmModal } from "../../ui/Modal";
 import { TreeNode } from "../../ui/TreeView";
 import { tagService } from "../../../lib/tags";
@@ -48,11 +49,20 @@ export const TagDeleteModal: Component<TagDeleteModalProps> = (props) => {
             onClose={props.onClose}
             onConfirm={handleConfirm}
             title="Delete Tag"
-            message={count() > 0 
-                ? `Are you sure you want to delete tag "${props.node?.label}" and its ${count()} children? This action cannot be undone.`
-                : `Are you sure you want to delete tag "${props.node?.label}"?`}
             kind="danger"
             confirmText="Delete"
-        />
+            message="" // We pass children instead
+        >
+            <div class="tag-delete-modal-content">
+                <p>
+                    Are you sure you want to delete tag <strong>"{props.node?.label}"</strong>?
+                </p>
+                <Show when={count() > 0}>
+                    <p class="tag-delete-warning">
+                        This will also delete <strong>{count()}</strong> child tags. This action cannot be undone.
+                    </p>
+                </Show>
+            </div>
+        </ConfirmModal>
     );
 };
