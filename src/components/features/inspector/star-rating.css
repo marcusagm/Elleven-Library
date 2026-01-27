@@ -1,0 +1,30 @@
+.star-rating {
+    display: flex;
+    gap: 2px;
+}
+
+.star-btn {
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.star-btn:hover {
+    transform: scale(1.2);
+}
+
+.star-btn.active {
+    color: #ffd700; /* Gold */
+}
+
+.star-btn.hover-active {
+    color: #ffe066; /* Light Gold */
+}
+
+.star-btn:focus-visible {
+    outline: 2px solid var(--border-active);
+    border-radius: 50%;
+}
