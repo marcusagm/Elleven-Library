@@ -41,6 +41,13 @@ pub async fn get_all_tags(db: State<'_, Arc<Db>>) -> Result<Vec<Tag>, String> {
 }
 
 #[tauri::command]
+pub async fn get_library_stats(
+    db: State<'_, Arc<Db>>,
+) -> Result<crate::db_tags::LibraryStats, String> {
+    db.get_library_stats().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn add_tag_to_image(
     db: State<'_, Arc<Db>>,
     image_id: i64,
@@ -87,8 +94,16 @@ pub async fn get_images_filtered(
     offset: i32,
     tag_ids: Vec<i64>,
     match_all: bool,
+    untagged: Option<bool>,
+    location_id: Option<i64>,
 ) -> Result<Vec<ImageMetadata>, String> {
-    db.get_images_filtered(limit, offset, tag_ids, match_all)
+    // This is a simplification. For a real production app,
+    // we would extend get_images_filtered to handle multiple filter types.
+    // For now, let's keep it focused on the new requirements.
+
+    // logic to handle untagged and location_id would go here...
+    // I will implement a more robust version in db_tags.rs shortly.
+    db.get_images_filtered(limit, offset, tag_ids, match_all, untagged, location_id)
         .await
         .map_err(|e| e.to_string())
 }

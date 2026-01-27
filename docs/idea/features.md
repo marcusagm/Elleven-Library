@@ -77,9 +77,9 @@ Permite a separação lógica e física de grandes volumes de ativos.
 
 Um sistema flexível que permite múltiplas camadas de classificação.
 
-* **Estrutura Hierárquica de Tags:** Criação de relações "pai e filho" para organizar conceitos (ex: `Arquitetura > Moderna > Fachada`).
-* **Visualização em Árvore:** Interface dedicada para navegar pela taxonomia com estados de expansão e colapso.
-* **Grupos de Tags:** Organização de etiquetas em grupos coloridos para facilitar a seleção em massa e a gestão visual.
+* [x] **Estrutura Hierárquica de Tags:** Criação de relações "pai e filho" para organizar conceitos (ex: `Arquitetura > Moderna > Fachada`).
+* [x] **Visualização em Árvore:** Interface dedicada para navegar pela taxonomia com estados de expansão e colapso.
+* [x] **Grupos de Tags:** Organização de etiquetas em grupos coloridos para facilitar a seleção em massa e a gestão visual.
 * **Operações Avançadas de Taxonomia:**
 * **Mesclagem (Tag Merge):** Consolidação de etiquetas duplicadas ou similares em uma única categoria.
 * **Gestão Global:** Painel centralizado para renomear, mover entre ramos ou excluir etiquetas em toda a biblioteca.

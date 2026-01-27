@@ -10,6 +10,26 @@ pub struct Tag {
     pub order_index: i64,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagCount {
+    pub tag_id: i64,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FolderCount {
+    pub location_id: i64,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LibraryStats {
+    pub total_images: i64,
+    pub untagged_images: i64,
+    pub tag_counts: Vec<TagCount>,
+    pub folder_counts: Vec<FolderCount>,
+}
+
 use crate::database::Db;
 
 impl Db {
@@ -171,50 +191,86 @@ impl Db {
         limit: i32,
         offset: i32,
         tag_ids: Vec<i64>,
-        match_all: bool, // true=AND, false=OR
+        match_all: bool,
+        untagged: Option<bool>,
+        location_id: Option<i64>,
     ) -> Result<Vec<crate::indexer::metadata::ImageMetadata>, sqlx::Error> {
-        if tag_ids.is_empty() {
-            return Ok(vec![]);
+        let mut query_builder: sqlx::QueryBuilder<sqlx::Sqlite> = sqlx::QueryBuilder::new(
+            "SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.created_at, i.modified_at FROM images i "
+        );
+
+        if !tag_ids.is_empty() {
+            query_builder.push(" JOIN image_tags it ON i.id = it.image_id ");
         }
 
-        let placeholders: Vec<String> = tag_ids.iter().map(|_| "?".to_string()).collect();
-        let query_str = if match_all {
-            format!(
-                "SELECT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.created_at, i.modified_at
-                 FROM images i
-                 JOIN image_tags it ON i.id = it.image_id
-                 WHERE it.tag_id IN ({})
-                 GROUP BY i.id
-                 HAVING COUNT(DISTINCT it.tag_id) = ?
-                 ORDER BY i.id ASC
-                 LIMIT ? OFFSET ?",
-                placeholders.join(",")
-            )
-        } else {
-            format!(
-                "SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.created_at, i.modified_at
-                 FROM images i
-                 JOIN image_tags it ON i.id = it.image_id
-                 WHERE it.tag_id IN ({})
-                 ORDER BY i.id ASC
-                 LIMIT ? OFFSET ?",
-                placeholders.join(",")
-            )
-        };
+        query_builder.push(" WHERE 1=1 ");
 
-        let mut q = sqlx::query_as::<_, crate::indexer::metadata::ImageMetadata>(&query_str);
-
-        for id in &tag_ids {
-            q = q.bind(id);
+        if let Some(loc_id) = location_id {
+            query_builder.push(" AND i.location_id = ");
+            query_builder.push_bind(loc_id);
         }
 
-        if match_all {
-            q = q.bind(tag_ids.len() as i32);
+        if untagged == Some(true) {
+            query_builder.push(" AND i.id NOT IN (SELECT DISTINCT image_id FROM image_tags) ");
         }
 
-        q = q.bind(limit).bind(offset);
+        if !tag_ids.is_empty() {
+            query_builder.push(" AND it.tag_id IN (");
+            let mut separated = query_builder.separated(", ");
+            for id in &tag_ids {
+                separated.push_bind(id);
+            }
+            separated.push_unseparated(") ");
 
-        let images = q.fetch_all(&self.pool).await?;
+            if match_all {
+                query_builder.push(" GROUP BY i.id HAVING COUNT(DISTINCT it.tag_id) = ");
+                query_builder.push_bind(tag_ids.len() as i32);
+            }
+        }
+
+        query_builder.push(" ORDER BY i.id ASC LIMIT ");
+        query_builder.push_bind(limit);
+        query_builder.push(" OFFSET ");
+        query_builder.push_bind(offset);
+
+        let query = query_builder.build_query_as::<crate::indexer::metadata::ImageMetadata>();
+        let images = query.fetch_all(&self.pool).await?;
         Ok(images)
+    }
+    pub async fn get_library_stats(&self) -> Result<LibraryStats, sqlx::Error> {
+        let total_images: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM images")
+            .fetch_one(&self.pool)
+            .await?;
+
+        let untagged_images: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM images WHERE id NOT IN (SELECT DISTINCT image_id FROM image_tags)"
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let tag_counts = sqlx::query_as::<_, (i64, i64)>(
+            "SELECT tag_id, COUNT(*) FROM image_tags GROUP BY tag_id",
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(|(tag_id, count)| TagCount { tag_id, count })
+        .collect();
+
+        let folder_counts = sqlx::query_as::<_, (i64, i64)>(
+            "SELECT location_id, COUNT(*) FROM images GROUP BY location_id",
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(|(location_id, count)| FolderCount { location_id, count })
+        .collect();
+
+        Ok(LibraryStats {
+            total_images: total_images.0,
+            untagged_images: untagged_images.0,
+            tag_counts,
+            folder_counts,
+        })
     }
 }

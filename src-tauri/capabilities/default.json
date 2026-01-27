@@ -22,6 +22,7 @@
     "allow-remove-tag-from-image",
     "allow-get-tags-for-image",
     "allow-add-tags-to-images-batch",
-    "allow-get-images-filtered"
+    "allow-get-images-filtered",
+    "allow-get-library-stats"
   ]
 }

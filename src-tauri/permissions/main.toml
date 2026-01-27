@@ -47,3 +47,7 @@ commands.allow = ["add_tags_to_images_batch"]
 identifier = "allow-get-images-filtered"
 description = "Enables get_images_filtered"
 commands.allow = ["get_images_filtered"]
+[[permission]]
+identifier = "allow-get-library-stats"
+description = "Enables get_library_stats"
+commands.allow = ["get_library_stats"]

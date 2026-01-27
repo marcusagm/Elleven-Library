@@ -1,7 +1,6 @@
 import { Component, For, createMemo, createSignal, onMount } from "solid-js";
 import { useAppStore, appActions } from "../../core/store/appStore";
 import { Folder, Trash2, Tag, Layers, Plus, Pencil, Palette } from "lucide-solid";
-import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Separator } from "../ui/Separator";
 import { TreeView, TreeNode } from "../ui/TreeView";
@@ -10,6 +9,7 @@ import { tagService } from "../../lib/tags";
 import { ConfirmModal } from "../ui/Modal";
 import { ColorPicker } from "../ui/ColorPicker";
 import { dndRegistry } from "../../core/dnd";
+import { CountBadge } from "../ui/CountBadge";
 
 export const LibrarySidebar: Component = () => {
   const { state } = useAppStore();
@@ -78,7 +78,8 @@ export const LibrarySidebar: Component = () => {
               children: [], 
               data: t,
               icon: Tag,
-              iconColor: t.color || undefined
+              iconColor: t.color || undefined,
+              badge: <CountBadge count={state.libraryStats.tag_counts.get(t.id) || 0} />
           });
       });
       
@@ -90,14 +91,6 @@ export const LibrarySidebar: Component = () => {
           }
       });
       
-      const sortNodes = (nodes: TreeNode[]) => {
-            // nodes.sort((a,b) => a.label.localeCompare(b.label)); // Disabled to allow manual/natural order
-            nodes.forEach(n => {
-                if (n.children && n.children.length > 0) sortNodes(n.children);
-            });
-      };
-      
-      // sortNodes(roots); // Disabled
       return roots;
   });
 
@@ -152,12 +145,10 @@ export const LibrarySidebar: Component = () => {
           await appActions.loadTags();
       } catch (err) {
           console.error(err);
-          // Optional: Show toast error if unique constraint failed during rename
       }
       setEditingId(null);
   };
 
-  // Helper to get all descendant IDs
   const getAllDescendants = (node: TreeNode): number[] => {
       let ids: number[] = [];
       if (node.children) {
@@ -173,7 +164,6 @@ export const LibrarySidebar: Component = () => {
     e.preventDefault();
     setContextMenuPos({ x: e.clientX, y: e.clientY });
     
-    // Pre-calculate recursive delete info
     const descendantIds = getAllDescendants(node);
     const count = descendantIds.length;
 
@@ -223,11 +213,9 @@ export const LibrarySidebar: Component = () => {
                         : `Are you sure you want to delete tag "${node.label}"?`,
                     onConfirm: async () => {
                         try {
-                            // Recursively delete children first (manual cascade)
                             for (const childId of descendantIds) {
                                 await tagService.deleteTag(childId);
                             }
-                            // Delete the node itself
                             await tagService.deleteTag(Number(node.id));
                             await appActions.loadTags();
                         } catch (err) {
@@ -242,7 +230,6 @@ export const LibrarySidebar: Component = () => {
     setContextMenuOpen(true);
   };
 
-  // Helper to find a node in the tree
   const findNode = (nodes: TreeNode[], id: number): TreeNode | null => {
       for (const node of nodes) {
           if (Number(node.id) === id) return node;
@@ -260,22 +247,15 @@ export const LibrarySidebar: Component = () => {
       
       if (draggedId === targetId) return;
 
-      // Check Circular Dependency
-      // 1. Find dragged node in current tree
       const draggedNode = findNode(tagTree(), draggedId);
       if (draggedNode) {
           const descendants = getAllDescendants(draggedNode);
-          if (descendants.includes(targetId)) {
-              console.warn("Cannot move parent into its own child");
-              return;
-          }
+          if (descendants.includes(targetId)) return;
       }
       
-      // Update DB
       try {
           await tagService.updateTag(draggedId, undefined, undefined, targetId);
           await appActions.loadTags();
-          // Expand target to show dropped item?
           expandNode(targetId);
       } catch (err) {
           console.error("Failed to move tag:", err);
@@ -284,7 +264,6 @@ export const LibrarySidebar: Component = () => {
 
   return (
     <div style={{ padding: "8px", height: "100%", "overflow-y": "auto" }}>
-        {/* Section Header */}
         <div style={{ 
             padding: "16px 8px 8px 8px", 
             "font-size": "11px", 
@@ -296,24 +275,25 @@ export const LibrarySidebar: Component = () => {
             Library
         </div>
         
-        {/* Core Filters */}
-        <div class="nav-item active">
+        <div 
+            class={`nav-item ${(!state.selectedLocationId && !state.filterUntagged && state.selectedTags.length === 0) ? 'active' : ''}`}
+            onClick={() => appActions.clearAllFilters()}
+        >
             <Layers size={16} />
             <span style={{ flex: 1 }}>All Items</span>
-            <Badge variant="secondary">{state.items.length}</Badge>
+            <CountBadge count={state.libraryStats.total_images} variant="secondary" />
         </div>
-        <div class="nav-item">
+        <div 
+            class={`nav-item ${state.filterUntagged ? 'active' : ''}`}
+            onClick={() => appActions.toggleUntagged()}
+        >
             <Tag size={16} />
-            <span>Uncategorized</span>
-        </div>
-        <div class="nav-item">
-            <Trash2 size={16} />
-            <span>Trash</span>
+            <span style={{ flex: 1 }}>Untagged</span>
+            <CountBadge count={state.libraryStats.untagged_images} variant="secondary" />
         </div>
 
         <Separator class="my-3" style={{ margin: "12px 8px" }} />
 
-        {/* Folders Section */}
         <div style={{ 
             padding: "8px", 
             "font-size": "11px", 
@@ -332,11 +312,16 @@ export const LibrarySidebar: Component = () => {
         <div style={{ "display": "flex", "flex-direction": "column", gap: "1px" }}>
             <For each={state.locations}>
                 {(loc) => (
-                    <div class="nav-item" title={loc.path}>
+                    <div 
+                        class={`nav-item ${state.selectedLocationId === (loc as any).id ? 'active' : ''}`} 
+                        title={loc.path}
+                        onClick={() => appActions.selectLocation((loc as any).id)}
+                    >
                         <Folder size={16} fill="var(--text-muted)" stroke="none" /> 
-                        <span style={{ "white-space": "nowrap", "overflow": "hidden", "text-overflow": "ellipsis" }}>
+                        <span style={{ flex: 1, "white-space": "nowrap", "overflow": "hidden", "text-overflow": "ellipsis" }}>
                             {loc.name}
                         </span>
+                        <CountBadge count={state.libraryStats.folder_counts.get((loc as any).id) || 0} variant="outline" />
                     </div>
                 )}
             </For>
@@ -350,7 +335,6 @@ export const LibrarySidebar: Component = () => {
         
         <Separator class="my-3" style={{ margin: "12px 8px" }} />
         
-        {/* Tags Section */}
         <div 
             style={{ 
                 padding: "8px", 
@@ -379,7 +363,6 @@ export const LibrarySidebar: Component = () => {
                     if (json) {
                         const item = JSON.parse(json);
                         const strategy = dndRegistry.get("TAG");
-                        // Only allow TAGS to root (images can't be assigned to 'root' tag usually)
                         if (strategy && item.type === "TAG") {
                             await strategy.onDrop(item, "root");
                         }
@@ -396,7 +379,7 @@ export const LibrarySidebar: Component = () => {
         <TreeView 
             items={tagTree()} 
             onSelect={node => appActions.toggleTagSelection(Number(node.id))}
-            selectedId={state.selectedTags[0] ? String(state.selectedTags[0]) : undefined} 
+            selectedIds={state.selectedTags} 
             onContextMenu={handleContextMenu}
             editingId={editingId()}
             onRename={handleRename}
@@ -414,7 +397,6 @@ export const LibrarySidebar: Component = () => {
             onClose={() => setContextMenuOpen(false)}
         />
         
-
         <ConfirmModal 
             isOpen={confirmOpen()}
             onClose={() => setConfirmOpen(false)}

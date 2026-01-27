@@ -8,6 +8,13 @@ export interface Tag {
   order_index: number;
 }
 
+export interface LibraryStats {
+  total_images: number;
+  untagged_images: number;
+  tag_counts: { tag_id: number; count: number }[];
+  folder_counts: { location_id: number; count: number }[];
+}
+
 export const tagService = {
   createTag: async (name: string, parent_id?: number | null, color?: string | null): Promise<number> => {
     return await invoke("create_tag", { name, parentId: parent_id, color });
@@ -25,6 +32,10 @@ export const tagService = {
     return await invoke("get_all_tags");
   },
 
+  getLibraryStats: async (): Promise<LibraryStats> => {
+    return await invoke("get_library_stats");
+  },
+
   addTagsToImagesBatch: async (imageIds: number[], tagIds: number[]): Promise<void> => {
     return await invoke("add_tags_to_images_batch", { imageIds, tagIds });
   },
@@ -37,7 +48,21 @@ export const tagService = {
     return await invoke("remove_tag_from_image", { imageId, tagId });
   },
 
-  getImagesFiltered: async (limit: number, offset: number, tagIds: number[], matchAll: boolean = true): Promise<any[]> => {
-    return await invoke("get_images_filtered", { limit, offset, tagIds, matchAll });
+  getImagesFiltered: async (
+    limit: number, 
+    offset: number, 
+    tagIds: number[], 
+    matchAll: boolean = true,
+    untagged?: boolean,
+    locationId?: number
+  ): Promise<any[]> => {
+    return await invoke("get_images_filtered", { 
+      limit, 
+      offset, 
+      tagIds, 
+      matchAll,
+      untagged,
+      locationId
+    });
   }
 };

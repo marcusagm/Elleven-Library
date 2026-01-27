@@ -81,6 +81,7 @@ pub fn run() {
             tag_commands::update_tag,
             tag_commands::delete_tag,
             tag_commands::get_all_tags,
+            tag_commands::get_library_stats,
             tag_commands::add_tag_to_image,
             tag_commands::remove_tag_from_image,
             tag_commands::get_tags_for_image,

@@ -23,10 +23,18 @@ export interface ProgressPayload {
 // Global Store State
 interface AppState {
   items: ImageItem[];
-  locations: { path: string; name: string }[];
+  locations: { id: number; path: string; name: string }[];
   selection: number[]; // ID of selected images
   tags: Tag[]; 
   selectedTags: number[]; // ID of selected tags for filtering
+  selectedLocationId: number | null;
+  filterUntagged: boolean;
+  libraryStats: {
+      total_images: number;
+      untagged_images: number;
+      tag_counts: Map<number, number>;
+      folder_counts: Map<number, number>;
+  };
 }
 
 // Reactive primitives
@@ -35,7 +43,15 @@ const [state, setState] = createStore<AppState>({
   locations: [], 
   selection: [],
   tags: [],
-  selectedTags: []
+  selectedTags: [],
+  selectedLocationId: null,
+  filterUntagged: false,
+  libraryStats: {
+      total_images: 0,
+      untagged_images: 0,
+      tag_counts: new Map(),
+      folder_counts: new Map(),
+  }
 });
 const [rootPath, setRootPath] = createSignal<string | null>(null);
 const [loading, setLoading] = createSignal(true);
@@ -52,6 +68,33 @@ const BATCH_SIZE = 100;
 export const appActions = {
   notifyTagUpdate: () => {
       setTagUpdateTrigger(n => n + 1);
+      appActions.loadLibraryStats();
+      
+      // If any relevant filter is active, refresh the list immediately
+      const anyFilter = state.selectedTags.length > 0 || state.filterUntagged;
+      if (anyFilter) {
+          appActions.refreshImages(true);
+      }
+  },
+
+  loadLibraryStats: async () => {
+      try {
+          const stats = await tagService.getLibraryStats();
+          const tagMap = new Map();
+          stats.tag_counts.forEach(c => tagMap.set(c.tag_id, c.count));
+          
+          const folderMap = new Map();
+          stats.folder_counts.forEach(c => folderMap.set(c.location_id, c.count));
+
+          setState("libraryStats", {
+              total_images: stats.total_images,
+              untagged_images: stats.untagged_images,
+              tag_counts: tagMap,
+              folder_counts: folderMap
+          });
+      } catch (err) {
+          console.error("Failed to load library stats:", err);
+      }
   },
 
   initialize: async () => {
@@ -61,8 +104,11 @@ export const appActions = {
       const locations = await getLocations();
       setState("locations", locations);
       
-      // Load Tags
-      await appActions.loadTags();
+      // Load Tags & Stats
+      await Promise.all([
+          appActions.loadTags(),
+          appActions.loadLibraryStats()
+      ]);
       
       if (locations.length > 0) {
         const path = locations[0].path;
@@ -94,24 +140,30 @@ export const appActions = {
   },
 
   refreshImages: async (reset = false) => {
-    const hasFilter = state.selectedTags.length > 0;
+    const hasTagFilter = state.selectedTags.length > 0;
+    const isUntagged = state.filterUntagged;
+    const locationId = state.selectedLocationId;
+    const anyFilter = hasTagFilter || isUntagged || locationId !== null;
     
     if (reset) {
         currentOffset = 0;
         let firstBatch;
-        if (hasFilter) {
-            firstBatch = await tagService.getImagesFiltered(BATCH_SIZE, 0, state.selectedTags);
+        if (anyFilter) {
+            firstBatch = await tagService.getImagesFiltered(
+                BATCH_SIZE, 0, state.selectedTags, true, isUntagged, locationId || undefined
+            );
         } else {
             firstBatch = await getImages(BATCH_SIZE, 0);
         }
         setState("items", reconcile(firstBatch, { key: "id" }));
         currentOffset = BATCH_SIZE;
     } else {
-        currentOffset = 0; // "Partial refresh" usually resets offset? Or just reloads current viewport?
-        // Logic: For strict refresh, we usually reset.
+        // Partial re-fetch usually for progress or small updates
         let fresh;
-        if (hasFilter) {
-            fresh = await tagService.getImagesFiltered(BATCH_SIZE, 0, state.selectedTags);
+        if (anyFilter) {
+            fresh = await tagService.getImagesFiltered(
+                BATCH_SIZE, 0, state.selectedTags, true, isUntagged, locationId || undefined
+            );
         } else {
             fresh = await getImages(BATCH_SIZE, 0);
         }
@@ -125,11 +177,17 @@ export const appActions = {
     isFetching = true;
 
     try {
-        const hasFilter = state.selectedTags.length > 0;
+        const hasTagFilter = state.selectedTags.length > 0;
+        const isUntagged = state.filterUntagged;
+        const locationId = state.selectedLocationId;
+        const anyFilter = hasTagFilter || isUntagged || locationId !== null;
+        
         let nextBatch;
         
-        if (hasFilter) {
-            nextBatch = await tagService.getImagesFiltered(BATCH_SIZE, currentOffset, state.selectedTags);
+        if (anyFilter) {
+            nextBatch = await tagService.getImagesFiltered(
+                BATCH_SIZE, currentOffset, state.selectedTags, true, isUntagged, locationId || undefined
+            );
         } else {
             nextBatch = await getImages(BATCH_SIZE, currentOffset);
         }
@@ -163,22 +221,39 @@ export const appActions = {
     }
   },
   
-  toggleTagSelection: (tagId: number, multi = false) => {
+  toggleTagSelection: (tagId: number) => {
       const current = state.selectedTags;
-      if (multi) {
-          if (current.includes(tagId)) {
-              setState("selectedTags", current.filter(i => i !== tagId));
-          } else {
-              setState("selectedTags", [...current, tagId]);
-          }
+      if (current.includes(tagId)) {
+          setState("selectedTags", (tags) => tags.filter(id => id !== tagId));
       } else {
-          // Single Select Behavior
-          if (current.length === 1 && current[0] === tagId) {
-              setState("selectedTags", []);
-          } else {
-              setState("selectedTags", [tagId]);
-          }
+          setState({
+              selectedTags: [...current, tagId],
+              filterUntagged: false // Clear untagged when selecting tags
+          });
       }
+      appActions.refreshImages(true);
+  },
+
+  toggleUntagged: () => {
+      setState("filterUntagged", (v) => !v);
+      if (state.filterUntagged) {
+          // If we want untagged, tags filter doesn't make sense
+          setState("selectedTags", []);
+      }
+      appActions.refreshImages(true);
+  },
+
+  selectLocation: (id: number | null) => {
+      setState("selectedLocationId", id);
+      appActions.refreshImages(true);
+  },
+
+  clearAllFilters: () => {
+      setState({
+          selectedTags: [],
+          selectedLocationId: null,
+          filterUntagged: false
+      });
       appActions.refreshImages(true);
   },
 
@@ -196,10 +271,13 @@ export const appActions = {
     });
 
     // Indexer Complete
-    await listen<number>("indexer:complete", (event) => {
+    await listen<number>("indexer:complete", async (event) => {
       console.log("Indexer complete. Total:", event.payload);
       setProgress(null);
-      appActions.refreshImages(true);
+      await Promise.all([
+          appActions.loadLibraryStats(),
+          appActions.refreshImages(true)
+      ]);
     });
 
     // Thumbnail Generation Updates

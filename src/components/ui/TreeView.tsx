@@ -1,4 +1,4 @@
-import { Component, For, createSignal, Show, createEffect, createMemo } from "solid-js";
+import { Component, For, createMemo, createSignal, Show, createEffect, JSX } from "solid-js";
 import { ChevronRight, ChevronDown } from "lucide-solid";
 import { Dynamic } from "solid-js/web";
 import { dndRegistry, setDragItem, currentDragItem } from "../../core/dnd";
@@ -12,13 +12,14 @@ export interface TreeNode {
   data?: any;
   icon?: Component<{ size?: number | string; color?: string; fill?: string; stroke?: string }>;
   iconColor?: string;
+  badge?: JSX.Element;
 }
 
 interface TreeViewProps {
   items: TreeNode[];
   onSelect?: (node: TreeNode) => void;
   onContextMenu?: (e: MouseEvent, node: TreeNode) => void;
-  selectedId?: string | number;
+  selectedIds?: (string | number)[];
   editingId?: string | number | null;
   onRename?: (node: TreeNode, newName: string) => void;
   onEditCancel?: () => void;
@@ -33,7 +34,7 @@ interface TreeViewItemProps {
   depth: number;
   onSelect?: (node: TreeNode) => void;
   onContextMenu?: (e: MouseEvent, node: TreeNode) => void;
-  selectedId?: string | number;
+  selectedIds?: (string | number)[];
   editingId?: string | number | null;
   onRename?: (node: TreeNode, newName: string) => void;
   onEditCancel?: () => void;
@@ -208,7 +209,7 @@ export const TreeViewItem: Component<TreeViewItemProps> = (props) => {
   return (
     <div class="tree-item-container">
         <div 
-            class={`tree-item-content ${props.selectedId === props.node.id ? 'selected' : ''} ${dropPosition() === 'inside' ? 'drop-target' : ''} ${isInvalid() ? 'drop-disabled' : ''} ${isDraggingSource() ? 'dragging-source' : ''}`}
+            class={`tree-item-content ${props.selectedIds?.some(id => String(id) === String(props.node.id)) ? 'selected' : ''} ${dropPosition() === 'inside' ? 'drop-target' : ''} ${isInvalid() ? 'drop-disabled' : ''} ${isDraggingSource() ? 'dragging-source' : ''}`}
             style={{ 
                 "padding-left": `${props.depth * 16}px`
             }}
@@ -256,7 +257,16 @@ export const TreeViewItem: Component<TreeViewItemProps> = (props) => {
                 </div>
             </Show>
 
-            <Show when={isEditing()} fallback={<span class="tree-label">{props.node.label}</span>}>
+            <Show when={isEditing()} fallback={
+                <>
+                    <span class="tree-label">{props.node.label}</span>
+                    <Show when={props.node.badge}>
+                        <div style={{ "margin-left": "auto" }}>
+                            {props.node.badge}
+                        </div>
+                    </Show>
+                </>
+            }>
                 <input 
                     ref={inputRef}
                     type="text" 
@@ -278,7 +288,7 @@ export const TreeViewItem: Component<TreeViewItemProps> = (props) => {
                         depth={props.depth + 1} 
                         onSelect={props.onSelect}
                         onContextMenu={props.onContextMenu}
-                        selectedId={props.selectedId}
+                        selectedIds={props.selectedIds}
                         editingId={props.editingId}
                         onRename={props.onRename}
                         onEditCancel={props.onEditCancel}
@@ -336,7 +346,7 @@ export const TreeView: Component<TreeViewProps> = (props) => {
                         depth={0} 
                         onSelect={props.onSelect} 
                         onContextMenu={props.onContextMenu}
-                        selectedId={props.selectedId}
+                        selectedIds={props.selectedIds} 
                         editingId={props.editingId}
                         onRename={props.onRename}
                         onEditCancel={props.onEditCancel}

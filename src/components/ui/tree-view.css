@@ -1,7 +1,7 @@
 .tree-view {
     display: flex;
     flex-direction: column;
-    padding: 0 4px;
+    padding: 4px;
 }
 
 .tree-item-container {
