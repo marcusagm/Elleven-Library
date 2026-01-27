@@ -1,12 +1,13 @@
 import { Component, Show } from "solid-js";
-import { appActions, useAppStore } from "../../core/store/appStore";
+import { useFilters, useSystem } from "../../core/hooks";
 import { Search, ChevronLeft, ChevronRight, Plus, LoaderCircle } from "lucide-solid";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import "./primary-header.css";
 
 export const PrimaryHeader: Component = () => {
-  const { searchQuery, progress } = useAppStore();
+  const filters = useFilters();
+  const system = useSystem();
 
   return (
     <div class="primary-header">
@@ -25,8 +26,8 @@ export const PrimaryHeader: Component = () => {
            <div class="header-search-wrapper">
                <Input 
                  placeholder="Search references (Ctrl+K)" 
-                 value={searchQuery()}
-                 onInput={(e) => appActions.setSearch(e.currentTarget.value)}
+                 value={filters.searchQuery}
+                 onInput={(e) => filters.setSearch(e.currentTarget.value)}
                  leftIcon={<Search size={14} />}
                />
            </div>
@@ -34,10 +35,10 @@ export const PrimaryHeader: Component = () => {
 
        {/* Actions / Status */}
        <div class="header-actions">
-            <Show when={progress()}>
+            <Show when={system.progress()}>
                 <div class="indexing-status">
                     <LoaderCircle size={12} class="spin" />
-                    <span>Indexing {progress()?.processed} / {progress()?.total}</span>
+                    <span>Indexing {system.progress()?.processed} / {system.progress()?.total}</span>
                 </div>
             </Show>
             <Button variant="primary" size="sm">

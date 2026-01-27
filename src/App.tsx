@@ -1,5 +1,5 @@
 import { onMount, Show } from "solid-js";
-import { appActions, useAppStore } from "./core/store/appStore";
+import { useSystem, useLibrary } from "./core/hooks";
 import { AppShell } from "./layouts/AppShell";
 import { PrimaryHeader } from "./components/layout/PrimaryHeader";
 import { LibrarySidebar } from "./components/layout/LibrarySidebar";
@@ -13,12 +13,13 @@ import { dndRegistry, TagDropStrategy, ImageDropStrategy } from "./core/dnd";
 import { useKeyboardShortcuts } from "./core/hooks/useKeyboardShortcuts";
 
 function App() {
-  const { state, loading, rootPath } = useAppStore();
+  const system = useSystem();
+  const lib = useLibrary();
   
   useKeyboardShortcuts();
 
   onMount(() => {
-    appActions.initialize();
+    system.initialize();
     
     // Register Strategies
     dndRegistry.register("TAG", TagDropStrategy);
@@ -40,7 +41,7 @@ function App() {
         const path = typeof selected === 'string' ? selected : (selected as any).path;
         if (path) {
           const name = path.split(/[\/\\]/).pop() || path;
-          await appActions.setRootLocation(path, name);
+          await system.setRootLocation(path, name);
         }
       }
     } catch (err) {
@@ -49,9 +50,9 @@ function App() {
   };
 
   return (
-    <Show when={!loading()} fallback={<div class="grid-placeholder">Loading...</div>}>
+    <Show when={!system.loading()} fallback={<div class="grid-placeholder">Loading...</div>}>
       <Show 
-        when={rootPath()} 
+        when={system.rootPath()} 
         fallback={
           <div class="welcome-screen">
             <h1>Elleven Library</h1>
@@ -68,7 +69,7 @@ function App() {
             inspector={<FileInspector />}
             statusbar={<GlobalStatusbar />}
         >
-            <VirtualMasonry items={state.items} />
+            <VirtualMasonry items={lib.items} />
         </AppShell>
       </Show>
     </Show>

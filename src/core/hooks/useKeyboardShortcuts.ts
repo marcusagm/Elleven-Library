@@ -1,8 +1,10 @@
 import { onMount, onCleanup } from "solid-js";
-import { appActions, useAppStore } from "../store/appStore";
+import { onMount, onCleanup } from "solid-js";
+import { useSelection, useLibrary } from "./index";
 
 export function useKeyboardShortcuts() {
-  const { state } = useAppStore();
+  const selection = useSelection();
+  const lib = useLibrary();
 
   const handleKeyDown = (e: KeyboardEvent) => {
     // Ignore input fields
@@ -16,14 +18,14 @@ export function useKeyboardShortcuts() {
     // Ctrl/Cmd + A (Select All)
     if ((e.metaKey || e.ctrlKey) && e.key === "a") {
       e.preventDefault();
-      const allIds = state.items.map(i => i.id);
-      appActions.setSelection(allIds);
+      const allIds = lib.items.map(i => i.id);
+      selection.select(allIds);
       return;
     }
 
     // Escape (Deselect All)
     if (e.key === "Escape") {
-      appActions.setSelection([]);
+      selection.select([]);
       return;
     }
     

@@ -3,7 +3,7 @@ import "./tag-delete-modal.css";
 import { ConfirmModal } from "../../ui/Modal";
 import { TreeNode } from "../../ui/TreeView";
 import { tagService } from "../../../lib/tags";
-import { appActions } from "../../../core/store/appStore";
+import { useMetadata } from "../../../core/hooks";
 
 interface TagDeleteModalProps {
     isOpen: boolean;
@@ -12,6 +12,7 @@ interface TagDeleteModalProps {
 }
 
 export const TagDeleteModal: Component<TagDeleteModalProps> = (props) => {
+    const { loadTags } = useMetadata();
     const getAllDescendants = (node: TreeNode): number[] => {
         let ids: number[] = [];
         if (node.children) {
@@ -33,7 +34,7 @@ export const TagDeleteModal: Component<TagDeleteModalProps> = (props) => {
                 await tagService.deleteTag(childId);
             }
             await tagService.deleteTag(Number(node.id));
-            await appActions.loadTags();
+            await loadTags();
         } catch (err) {
             console.error("Delete failed:", err);
         } finally {

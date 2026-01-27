@@ -1,6 +1,6 @@
 import { Component, createMemo, createSignal, onMount } from "solid-js";
 import { Tag, Plus } from "lucide-solid";
-import { useAppStore, appActions } from "../../../core/store/appStore";
+import { useMetadata, useFilters } from "../../../core/hooks";
 import { TreeView, TreeNode } from "../../ui/TreeView";
 import { SidebarPanel } from "../../ui/SidebarPanel";
 import { Button } from "../../ui/Button";
@@ -11,7 +11,8 @@ import { TagContextMenu } from "./TagContextMenu";
 import { TagDeleteModal } from "./TagDeleteModal";
 
 export const TagTreeSidebarPanel: Component = () => {
-  const { state } = useAppStore();
+  const metadata = useMetadata();
+  const filters = useFilters();
   const [isTagHeaderDragOver, setIsTagHeaderDragOver] = createSignal(false);
   
   // Context Menu State
@@ -60,7 +61,7 @@ export const TagTreeSidebarPanel: Component = () => {
 
   // Tree building
   const tagTree = createMemo(() => {
-      const tags = state.tags || [];
+      const tags = metadata.tags || [];
       const map = new Map<number, TreeNode>();
       const roots: TreeNode[] = [];
       
@@ -72,7 +73,7 @@ export const TagTreeSidebarPanel: Component = () => {
               data: t,
               icon: Tag,
               iconColor: t.color || undefined,
-              badge: <CountBadge count={state.libraryStats.tag_counts.get(t.id) || 0} />
+              badge: <CountBadge count={metadata.stats.tag_counts.get(t.id) || 0} />
           });
       });
       
@@ -87,7 +88,7 @@ export const TagTreeSidebarPanel: Component = () => {
   });
 
   const getUniqueName = (baseStats: string) => {
-      const tags = state.tags || [];
+      const tags = metadata.tags || [];
       let name = baseStats;
       let counter = 1;
       while (tags.some(t => t.name === name)) {
@@ -102,7 +103,7 @@ export const TagTreeSidebarPanel: Component = () => {
       try {
           const name = getUniqueName("New Tag");
           const id = await tagService.createTag(name);
-          await appActions.loadTags();
+          await metadata.loadTags();
           setEditingId(id);
       } catch (err) { console.error(err); }
   };
@@ -112,7 +113,7 @@ export const TagTreeSidebarPanel: Component = () => {
           expandNode(parentId);
           const name = getUniqueName("New Tag");
           const id = await tagService.createTag(name, parentId);
-          await appActions.loadTags();
+          await metadata.loadTags();
           setEditingId(id);
       } catch (err) { console.error(err); }
   };
@@ -124,7 +125,7 @@ export const TagTreeSidebarPanel: Component = () => {
       }
       try {
           await tagService.updateTag(Number(node.id), newName);
-          await appActions.loadTags();
+          await metadata.loadTags();
       } catch (err) { console.error(err); }
       setEditingId(null);
   };
@@ -173,7 +174,7 @@ export const TagTreeSidebarPanel: Component = () => {
       
       try {
           await tagService.updateTag(draggedId, undefined, undefined, Number(targetId) || null);
-          await appActions.loadTags();
+          await metadata.loadTags();
           expandNode(targetId);
       } catch (err) { console.error("Failed to move tag:", err); }
   };
@@ -212,8 +213,8 @@ export const TagTreeSidebarPanel: Component = () => {
       >
           <TreeView 
               items={tagTree()} 
-              onSelect={node => appActions.toggleTagSelection(Number(node.id))}
-              selectedIds={state.selectedTags} 
+              onSelect={node => filters.toggleTag(Number(node.id))}
+              selectedIds={filters.selectedTags} 
               onContextMenu={handleContextMenu}
               editingId={editingId()}
               onRename={handleRename}

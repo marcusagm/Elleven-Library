@@ -2,7 +2,7 @@ import { Component, For, createMemo, createSignal, Show, createEffect, JSX } fro
 import { ChevronRight, ChevronDown } from "lucide-solid";
 import { Dynamic } from "solid-js/web";
 import { dndRegistry, setDragItem, currentDragItem } from "../../core/dnd";
-import { useAppStore } from "../../core/store/appStore";
+import { useMetadata } from "../../core/hooks";
 import "./tree-view.css";
 
 export interface TreeNode {
@@ -45,7 +45,7 @@ interface TreeViewItemProps {
 }
 
 export const TreeViewItem: Component<TreeViewItemProps> = (props) => {
-  const { state } = useAppStore();
+  const metadata = useMetadata();
   const [localExpanded, setLocalExpanded] = createSignal(false);
   const isExpanded = () => props.expandedIds ? props.expandedIds.has(props.node.id) : localExpanded();
   const isEditing = () => props.editingId === props.node.id;
@@ -67,11 +67,11 @@ export const TreeViewItem: Component<TreeViewItemProps> = (props) => {
       
       // Helper to check if child is descendant of parent
       const isDescendant = (parentId: number, childId: number): boolean => {
-          let current = state.tags.find(t => t.id === childId);
+          let current = metadata.tags.find(t => t.id === childId);
           while (current && current.parent_id) {
               if (current.parent_id === parentId) return true;
               const nextParentId = current.parent_id;
-              current = state.tags.find(t => t.id === nextParentId);
+              current = metadata.tags.find(t => t.id === nextParentId);
           }
           return false;
       };

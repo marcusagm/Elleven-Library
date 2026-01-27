@@ -4,7 +4,7 @@ import { ContextMenu, ContextMenuItem } from "../../ui/ContextMenu";
 import { TreeNode } from "../../ui/TreeView";
 import { ColorPicker } from "../../ui/ColorPicker";
 import { tagService } from "../../../lib/tags";
-import { appActions } from "../../../core/store/appStore";
+import { useMetadata } from "../../../core/hooks";
 
 interface TagContextMenuProps {
     x: number;
@@ -18,6 +18,7 @@ interface TagContextMenuProps {
 }
 
 export const TagContextMenu: Component<TagContextMenuProps> = (props) => {
+    const { loadTags } = useMetadata();
     const items = createMemo<ContextMenuItem[]>(() => {
         const node = props.node;
         if (!node) return [];
@@ -46,7 +47,7 @@ export const TagContextMenu: Component<TagContextMenuProps> = (props) => {
                             color={node.iconColor || "#cccccc"} 
                             onChange={async (newColor) => {
                                 await tagService.updateTag(Number(node.id), undefined, newColor);
-                                await appActions.loadTags();
+                                await loadTags();
                             }} 
                         />
                     )

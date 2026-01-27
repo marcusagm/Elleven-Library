@@ -3,7 +3,8 @@ import { Info, FileText, Calendar, HardDrive } from "lucide-solid";
 import { AccordionItem } from "../../ui/Accordion";
 import { Input } from "../../ui/Input";
 import { StarRating } from "./StarRating";
-import { ImageItem, appActions } from "../../../core/store/appStore"; 
+import { useLibrary } from "../../../core/hooks"; // Import hooks
+import { type ImageItem } from "../../../core/store/libraryStore"; 
 import "./inspector.css";
 
 interface CommonMetadataProps {
@@ -26,6 +27,7 @@ const formatDate = (dateStr: string) => {
 export const CommonMetadata: Component<CommonMetadataProps> = (props) => {
     // Local state for debounce
     const [notes, setNotes] = createSignal(props.item?.notes || "");
+    const lib = useLibrary();
 
     // Sync notes when item changes
     createEffect(() => {
@@ -35,13 +37,13 @@ export const CommonMetadata: Component<CommonMetadataProps> = (props) => {
     const handleNotesChange = (val: string) => {
         setNotes(val);
         if (props.item) {
-            appActions.updateItemNotes(props.item.id, val);
+            lib.updateItemNotes(props.item.id, val);
         }
     };
 
     const handleRatingChange = (rating: number) => {
         if (props.item) {
-            appActions.updateItemRating(props.item.id, rating);
+            lib.updateItemRating(props.item.id, rating);
         }
     };
 

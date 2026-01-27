@@ -1,5 +1,5 @@
 import { Component, createMemo, Switch, Match } from "solid-js";
-import { useAppStore } from "../../core/store/appStore";
+import { useLibrary, useSelection } from "../../core/hooks";
 import { Info } from "lucide-solid";
 import { ImageInspector } from "../features/inspector/ImageInspector";
 import { AudioInspector } from "../features/inspector/AudioInspector";
@@ -8,18 +8,20 @@ import { MultiInspector } from "../features/inspector/MultiInspector";
 import "../features/inspector/inspector.css";
 
 export const FileInspector: Component = () => {
-  const { state } = useAppStore();
+  const lib = useLibrary();
+  const selection = useSelection();
 
-  const selectionCount = createMemo(() => state.selection.length);
+  const selectionCount = createMemo(() => selection.selectedIds.length);
   
   const activeItem = createMemo(() => {
     if (selectionCount() === 0) return null;
-    const id = state.selection[state.selection.length - 1]; // Last selected
-    return state.items.find((i) => i.id === id) || null;
+    const ids = selection.selectedIds;
+    const id = ids[ids.length - 1]; // Last selected
+    return lib.items.find((i: { id: number; }) => i.id === id) || null;
   });
 
   const selectedItems = createMemo(() => {
-      return state.items.filter(i => state.selection.includes(i.id));
+      return lib.items.filter((i: { id: number; }) => selection.selectedIds.includes(i.id));
   });
 
   const fileType = createMemo(() => {

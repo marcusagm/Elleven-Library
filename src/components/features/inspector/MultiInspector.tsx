@@ -1,5 +1,5 @@
 import { Component, For } from "solid-js";
-import { ImageItem } from "../../../core/store/appStore";
+import { ImageItem } from "../../../core/store/libraryStore";
 import { InspectorTags } from "./InspectorTags";
 import { Accordion, AccordionItem } from "../../ui/Accordion";
 import { Layers } from "lucide-solid";

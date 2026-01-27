@@ -1,6 +1,6 @@
 import { DropStrategy, DragItem } from "../dnd-core";
 import { tagService } from "../../../lib/tags";
-import { appActions, useAppStore } from "../../store/appStore";
+import { metadataActions, metadataState } from "../../store/metadataStore";
 
 // Strategy: Dropping anything ONTO a Tag
 export const TagDropStrategy: DropStrategy = {
@@ -34,7 +34,7 @@ export const TagDropStrategy: DropStrategy = {
             console.log(`Assigning images [${imageIds}] to tag ${targetTagId}`);
             try {
                 await tagService.addTagsToImagesBatch(imageIds, [targetTagId]);
-                appActions.notifyTagUpdate();
+                metadataActions.notifyTagUpdate();
             } catch (err) {
                 console.error("Failed to assign tag:", err);
             }
@@ -54,9 +54,8 @@ export const TagDropStrategy: DropStrategy = {
                 if (position === "inside") {
                     newParentId = targetTagId; // Nesting
                 } else {
-                    const { state } = useAppStore();
                     if (targetTagId !== null) {
-                        const targetTag = state.tags.find((t: any) => t.id === targetTagId);
+                        const targetTag = metadataState.tags.find((t: any) => t.id === targetTagId);
                         newParentId = targetTag ? targetTag.parent_id : null;
                     } else {
                         // Root
@@ -72,8 +71,7 @@ export const TagDropStrategy: DropStrategy = {
                 // Using current state is risky if we don't account for the move.
                 // Better approach: Construct the desired order list in memory.
                 
-                const { state } = useAppStore();
-                const allTags = state.tags;
+                const allTags = metadataState.tags;
                 
                 // Filter siblings of the destination parent, excluding the dragged tag (it's coming here)
                 const siblings = allTags
@@ -115,7 +113,7 @@ export const TagDropStrategy: DropStrategy = {
                 });
                 
                 await Promise.all(updates);
-                await appActions.loadTags();
+                metadataActions.loadTags();
             } catch (err) {
                 console.error("Failed to move tag:", err);
             }

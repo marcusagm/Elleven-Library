@@ -1,5 +1,5 @@
 import { Component, createResource, Show, For } from "solid-js";
-import { ImageItem } from "../../../core/store/appStore";
+import { ImageItem } from "../../../core/store/libraryStore";
 import { AccordionItem } from "../../ui/Accordion";
 import { List, Loader2 } from "lucide-solid";
 import { tagService } from "../../../lib/tags";

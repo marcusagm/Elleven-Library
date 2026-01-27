@@ -1,6 +1,8 @@
 import { DropStrategy, DragItem } from "../dnd-core";
 import { tagService } from "../../../lib/tags";
-import { appActions } from "../../store/appStore";
+import { metadataActions } from "../../store/metadataStore";
+
+import { selectionState } from "../../store/selectionStore";
 
 // Strategy: Dropping anything ONTO an Image
 export const ImageDropStrategy: DropStrategy = {
@@ -15,18 +17,19 @@ export const ImageDropStrategy: DropStrategy = {
         
         if (item.type === "TAG") {
             const tagId = Number(item.payload.id);
-            console.log(`Assigning tag ${tagId} to image ${targetImageId}`);
             
             try {
-                // If multiple images are selected, user expects to apply to ALL selected?
-                // Logic: If the target image is part of selection, apply to all.
-                // If target image is NOT in selection, apply only to target.
-                // BUT: We don't have easy access to Store state here without importing store directly.
-                // We'll trust the payload or just apply to target for simplicity now, 
-                // typically we drag ONTO an image means that image gets the tag.
+                // If the target image is in the current selection, apply to ALL selected images
+                // Otherwise, just apply to the single target
+                let targetIds = [targetImageId];
+                if (selectionState.selectedIds.includes(targetImageId)) {
+                    targetIds = [...selectionState.selectedIds];
+                }
                 
-                await tagService.addTagsToImagesBatch([targetImageId], [tagId]);
-                appActions.notifyTagUpdate();
+                console.log(`Assigning tag ${tagId} to images [${targetIds.join(', ')}]`);
+
+                await tagService.addTagsToImagesBatch(targetIds, [tagId]);
+                metadataActions.notifyTagUpdate();
             } catch (err) {
                 console.error("Failed to assign tag to image:", err);
             }

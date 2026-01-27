@@ -1,5 +1,5 @@
 import { Component } from "solid-js";
-import { ImageItem } from "../../../core/store/appStore";
+import { ImageItem } from "../../../core/store/libraryStore";
 import { Accordion } from "../../ui/Accordion";
 import { InspectorTags } from "./InspectorTags";
 import { CommonMetadata } from "./CommonMetadata";

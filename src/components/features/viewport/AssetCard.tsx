@@ -2,7 +2,7 @@ import { Component, JSX, createSignal } from "solid-js";
 import { ReferenceImage } from "./ReferenceImage";
 import { type ImageItem } from "../../../utils/masonryLayout";
 import { dndRegistry, setDragItem, currentDragItem } from "../../../core/dnd";
-import { useAppStore } from "../../../core/store/appStore"; // Import store
+import { useLibrary, useSelection } from "../../../core/hooks";
 
 interface AssetCardProps {
   item: ImageItem;
@@ -14,7 +14,8 @@ interface AssetCardProps {
 }
 
 export const AssetCard: Component<AssetCardProps> = (props) => {
-  const { state } = useAppStore();
+  const lib = useLibrary();
+  const selection = useSelection();
   const [isDropTarget, setIsDropTarget] = createSignal(false);
   
   // Helper to create custom ghost
@@ -102,7 +103,7 @@ export const AssetCard: Component<AssetCardProps> = (props) => {
     
     // Determine selection
     let ids = [props.item.id];
-    const selectedIds = state.selection;
+    const selectedIds = selection.selectedIds;
     
     // Check if clicked item is part of selection
     if (props.selected && selectedIds.includes(props.item.id)) {
@@ -121,7 +122,7 @@ export const AssetCard: Component<AssetCardProps> = (props) => {
     const cleanPaths: string[] = [];
     
     ids.forEach(id => {
-        const item = state.items.find(i => i.id === id);
+        const item = lib.items.find(i => i.id === id);
         if (item) {
             draggedItems.push(item);
             if (item.path) {

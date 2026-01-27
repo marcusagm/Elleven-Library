@@ -1,13 +1,14 @@
 import { Component, createMemo, createResource } from "solid-js";
 import { Tag as TagIcon } from "lucide-solid";
-import { useAppStore, appActions } from "../../../core/store/appStore";
+import { useMetadata, useSelection } from "../../../core/hooks";
 import { tagService } from "../../../lib/tags";
 import { TagInput, TagOption } from "../../ui/TagInput";
 import { AccordionItem } from "../../ui/Accordion";
 import "./inspector.css";
 
 export const InspectorTags: Component = () => {
-    const { state } = useAppStore();
+    const metadata = useMetadata();
+    const selection = useSelection();
 
     // Active item logic (single or multi?)
     // For now, let's assume we handle the active selection logic inside here or pass it as props?
@@ -22,12 +23,12 @@ export const InspectorTags: Component = () => {
     // The previous implementation used `state.selection`.
     
     const activeId = createMemo(() => {
-        if (state.selection.length === 0) return null;
-        return state.selection[state.selection.length - 1]; // Last selected
+        if (selection.selectedIds.length === 0) return null;
+        return selection.selectedIds[selection.selectedIds.length - 1]; // Last selected
     });
 
     const [itemTags, { refetch: refetchTags }] = createResource(
-        () => ({ id: activeId(), trigger: useAppStore().tagUpdateTrigger() }),
+        () => ({ id: activeId(), trigger: metadata.tagUpdateVersion }),
         async ({ id }) => {
             if (!id) return [];
             return await tagService.getTagsForImage(id);
@@ -43,7 +44,7 @@ export const InspectorTags: Component = () => {
     });
 
     const allTagsOptions = createMemo<TagOption[]>(() => {
-        return state.tags.map(t => ({
+        return metadata.tags.map(t => ({
             id: t.id,
             label: t.name,
             color: t.color || undefined
@@ -55,36 +56,36 @@ export const InspectorTags: Component = () => {
         const currentIds = new Set(current.map(t => t.id));
         const newIds = new Set(newTags.map(t => Number(t.id)));
         
-        const selection = state.selection;
-        if (selection.length === 0) return;
+        const sel = selection.selectedIds;
+        if (sel.length === 0) return;
 
         // Added items
         const added = newTags.filter(t => !currentIds.has(Number(t.id)));
         if (added.length > 0) {
-            await tagService.addTagsToImagesBatch([...selection], added.map(t => Number(t.id)));
+            await tagService.addTagsToImagesBatch([...sel], added.map(t => Number(t.id)));
         }
 
         // Removed items
         const removed = current.filter(t => !newIds.has(t.id));
         for (const t of removed) {
-            for (const itemId of selection) {
+            for (const itemId of sel) {
                await tagService.removeTagFromImage(itemId, t.id);
             }
         }
         
-        appActions.notifyTagUpdate();
+        metadata.notifyTagUpdate();
         refetchTags();
     };
 
     const handleCreateTag = async (name: string) => {
-        const selection = state.selection;
-        if (selection.length === 0) return;
+        const sel = selection.selectedIds;
+        if (sel.length === 0) return;
         
         const newTagId = await tagService.createTag(name);
-        await appActions.loadTags(); 
+        await metadata.loadTags(); 
         
-        await tagService.addTagsToImagesBatch([...selection], [newTagId]);
-        appActions.notifyTagUpdate();
+        await tagService.addTagsToImagesBatch([...sel], [newTagId]);
+        metadata.notifyTagUpdate();
         refetchTags();
     };
 

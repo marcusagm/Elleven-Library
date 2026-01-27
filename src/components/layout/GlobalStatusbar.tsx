@@ -1,16 +1,17 @@
 import { Component, Show } from "solid-js";
-import { useAppStore } from "../../core/store/appStore";
+import { useLibrary, useSelection } from "../../core/hooks";
 import "./global-statusbar.css";
 
 export const GlobalStatusbar: Component = () => {
-    const { state } = useAppStore();
+    const lib = useLibrary();
+    const selection = useSelection();
 
   return (
     <div class="global-statusbar">
         <div class="statusbar-section">
-            <span>{state.items.length} Items</span>
-            <Show when={state.selection.length > 0}>
-                <span class="statusbar-selected">{state.selection.length} Selected</span>
+            <span>{lib.items.length} Items</span>
+            <Show when={selection.selectedIds.length > 0}>
+                <span class="statusbar-selected">{selection.selectedIds.length} Selected</span>
             </Show>
         </div>
         <div class="statusbar-section">

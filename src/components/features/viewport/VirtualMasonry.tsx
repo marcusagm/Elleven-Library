@@ -1,7 +1,7 @@
 import { createSignal, onMount, onCleanup, For, createMemo } from "solid-js";
 import { AssetCard } from "./AssetCard";
 import { calculateMasonryLayout, type ImageItem } from "../../../utils/masonryLayout";
-import { appActions, useAppStore } from "../../../core/store/appStore";
+import { useLibrary, useSelection } from "../../../core/hooks";
 import "./viewport.css";
 
 interface VirtualMasonryProps {
@@ -9,7 +9,8 @@ interface VirtualMasonryProps {
 }
 
 export function VirtualMasonry(props: VirtualMasonryProps) {
-  const { state } = useAppStore();
+  const lib = useLibrary();
+  const selection = useSelection();
   let scrollContainer: HTMLDivElement | undefined;
   
   const [containerWidth, setContainerWidth] = createSignal(0);
@@ -79,7 +80,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
       const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
       // Load more when user scrolls to within 500px of bottom
       if (scrollTop + clientHeight >= scrollHeight - 500) {
-        appActions.loadMore();
+        lib.loadMore();
       }
     };
     
@@ -136,7 +137,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
             return (
               <AssetCard
                 item={item}
-                selected={state.selection.includes(item.id)}
+                selected={selection.selectedIds.includes(item.id)}
                 style={{
                   position: "absolute",
                   display: layout().positions.get(item.id) ? "block" : "none",
@@ -147,7 +148,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
                 }}
                 onClick={(e) => {
                     e.stopPropagation();
-                    appActions.toggleSelection(item.id, e.metaKey || e.ctrlKey);
+                    selection.toggle(item.id, e.metaKey || e.ctrlKey);
                 }}
               />
             );

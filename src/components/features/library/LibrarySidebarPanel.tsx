@@ -1,29 +1,30 @@
 import { Component } from "solid-js";
 import { Layers, Tag } from "lucide-solid";
-import { useAppStore, appActions } from "../../../core/store/appStore";
+import { useMetadata, useFilters } from "../../../core/hooks";
 import { CountBadge } from "../../ui/CountBadge";
 import { SidebarPanel } from "../../ui/SidebarPanel";
 
 export const LibrarySidebarPanel: Component = () => {
-    const { state } = useAppStore();
+    const metadata = useMetadata();
+    const filters = useFilters();
 
     return (
         <SidebarPanel title="Library" class="panel-fixed">
             <div 
-                class={`nav-item ${(!state.selectedLocationId && !state.filterUntagged && state.selectedTags.length === 0) ? 'active' : ''}`}
-                onClick={() => appActions.clearAllFilters()}
+                class={`nav-item ${(!filters.selectedLocationId && !filters.filterUntagged && filters.selectedTags.length === 0) ? 'active' : ''}`}
+                onClick={() => filters.clearAll()}
             >
                 <Layers size={16} />
                 <span style={{ flex: 1 }}>All Items</span>
-                <CountBadge count={state.libraryStats.total_images} variant="secondary" />
+                <CountBadge count={metadata.stats.total_images} variant="secondary" />
             </div>
             <div 
-                class={`nav-item ${state.filterUntagged ? 'active' : ''}`}
-                onClick={() => appActions.toggleUntagged()}
+                class={`nav-item ${filters.filterUntagged ? 'active' : ''}`}
+                onClick={() => filters.toggleUntagged()}
             >
                 <Tag size={16} />
                 <span style={{ flex: 1 }}>Untagged</span>
-                <CountBadge count={state.libraryStats.untagged_images} variant="secondary" />
+                <CountBadge count={metadata.stats.untagged_images} variant="secondary" />
             </div>
         </SidebarPanel>
     );
