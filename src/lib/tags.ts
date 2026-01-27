@@ -64,5 +64,17 @@ export const tagService = {
       untagged,
       locationId
     });
+  },
+
+  updateImageRating: async (id: number, rating: number): Promise<void> => {
+    return await invoke("update_image_rating", { id, rating });
+  },
+
+  updateImageNotes: async (id: number, notes: string): Promise<void> => {
+    return await invoke("update_image_notes", { id, notes });
+  },
+
+  getImageExif: async (path: string): Promise<Record<string, string>> => {
+    return await invoke("get_image_exif", { path });
   }
 };

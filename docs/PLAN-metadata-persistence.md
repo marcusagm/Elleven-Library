@@ -10,40 +10,40 @@ Implementação de persistência para Rating/Notas e visualização de metadados
 ## 2. Breakdown de Tarefas
 
 ### Fase 1: Atualização do Schema e Banco de Dados (`src-tauri` + `db.ts`)
-- [ ] Verificar se `size`, `created_at`, `modified_at` estão sendo populados corretamente no indexador Rust.
-- [ ] Adicionar colunas `rating` (INTEGER 0-5) e `notes` (TEXT) à tabela `images` via migration ou atualização do schema inicial.
-- [ ] Atualizar tipos TypeScript (`ImageItem`) para incluir esses novos campos.
+- [x] Verificar se `size`, `created_at`, `modified_at` estão sendo populados corretamente no indexador Rust.
+- [x] Adicionar colunas `rating` (INTEGER 0-5) e `notes` (TEXT) à tabela `images` via migration ou atualização do schema inicial.
+- [x] Atualizar tipos TypeScript (`ImageItem`) para incluir esses novos campos.
 
 ### Fase 2: Backend (Rust Commands)
-- [ ] Criar comando `get_image_metadata(path: &str)` em Rust para extrair EXIF/Metadados em tempo real.
-    - Retorno: JSON estruturado com ISO, f-stop, Shutter Speed, Codec, Bitrate, etc.
-- [ ] Criar comandos de persistência:
-    - `update_image_rating(id: i32, rating: i32)`
-    - `update_image_notes(id: i32, notes: String)`
+- [x] Criar comando `get_image_metadata(path: &str)` em Rust para extrair EXIF/Metadados em tempo real. (Implementado como `get_image_exif`)
+    - [x] Retorno: JSON estruturado com ISO, f-stop, Shutter Speed, Codec, Bitrate, etc.
+- [x] Criar comandos de persistência:
+    - [x] `update_image_rating(id: i32, rating: i32)`
+    - [x] `update_image_notes(id: i32, notes: String)`
 
 ### Fase 3: Frontend - Integração (`CommonMetadata` & `AdvancedMetadata`)
-- [ ] **Data Fetching**: 
-    - No `FileInspector`, buscar os dados atualizados do DB (incluindo rating/notes).
-- [ ] **Rating/Notes**:
-    - Conectar `StarRating` e `Notes` do `CommonMetadata` às ações de update do DB.
-    - Implementar debounce para o campo de notas salvar automaticamente.
-- [ ] **AdvancedMetadata**:
-    - Criar componente que chama `get_image_metadata` ao carregar.
-    - Exibir Loading State enquanto extrai.
-    - Renderizar tabela de propriedades (EXIF) de forma limpa.
-- [ ] **Display Real**:
-    - Substituir os placeholders "-- MB", "--/--/--" pelos dados reais formatados.
-    - Implementar formatadores (`formatBytes`, `formatDate`).
+- [x] **Data Fetching**: 
+    - [x] No `FileInspector`, buscar os dados atualizados do DB (incluindo rating/notes).
+- [x] **Rating/Notes**:
+    - [x] Conectar `StarRating` e `Notes` do `CommonMetadata` às ações de update do DB.
+    - [x] Implementar debounce para o campo de notas salvar automaticamente.
+- [x] **AdvancedMetadata**:
+    - [x] Criar componente que chama `get_image_metadata` ao carregar.
+    - [x] Exibir Loading State enquanto extrai.
+    - [x] Renderizar tabela de propriedades (EXIF) de forma limpa.
+- [x] **Display Real**:
+    - [x] Substituir os placeholders "-- MB", "--/--/--" pelos dados reais formatados.
+    - [x] Implementar formatadores (`formatBytes`, `formatDate`).
 
 ## 3. Atribuição de Agentes
 - **Backend**: `backend-specialist` (Rust, SQLx, Metadata Extraction).
 - **Frontend**: `frontend-specialist` (Integração UI, State Management).
 
 ## 4. Critérios de Verificação
-- [ ] Alterar o rating de uma imagem persiste após reiniciar o app.
-- [ ] Notas adicionadas são salvas.
-- [ ] As datas de Criação/Modificação correspondem ao arquivo real (Sistema de Arquivos).
-- [ ] Ao expandir "Advanced Metadata", os dados EXIF reais da foto aparecem.
+- [x] Alterar o rating de uma imagem persiste após reiniciar o app.
+- [x] Notas adicionadas são salvas.
+- [x] As datas de Criação/Modificação correspondem ao arquivo real (Sistema de Arquivos).
+- [x] Ao expandir "Advanced Metadata", os dados EXIF reais da foto aparecem (via `get_image_exif`).
 
 ---
-**Status**: Pronto para Inicialização (`/create`)
+**Status**: Concluído ✅

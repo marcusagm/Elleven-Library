@@ -107,3 +107,25 @@ pub async fn get_images_filtered(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn update_image_rating(
+    db: State<'_, Arc<Db>>,
+    id: i64,
+    rating: i32,
+) -> Result<(), String> {
+    db.update_image_rating(id, rating)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_image_notes(
+    db: State<'_, Arc<Db>>,
+    id: i64,
+    notes: String,
+) -> Result<(), String> {
+    db.update_image_notes(id, notes)
+        .await
+        .map_err(|e| e.to_string())
+}

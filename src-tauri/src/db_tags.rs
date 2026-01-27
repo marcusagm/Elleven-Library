@@ -196,7 +196,7 @@ impl Db {
         location_id: Option<i64>,
     ) -> Result<Vec<crate::indexer::metadata::ImageMetadata>, sqlx::Error> {
         let mut query_builder: sqlx::QueryBuilder<sqlx::Sqlite> = sqlx::QueryBuilder::new(
-            "SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.created_at, i.modified_at FROM images i "
+            "SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.rating, i.notes, i.created_at, i.modified_at FROM images i "
         );
 
         if !tag_ids.is_empty() {

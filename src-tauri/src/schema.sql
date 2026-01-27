@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS images (
     hash TEXT,
     thumbnail_path TEXT,
     format TEXT,
+    rating INTEGER DEFAULT 0,
+    notes TEXT,
     created_at DATETIME NOT NULL,
     modified_at DATETIME NOT NULL,
     added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -44,3 +46,10 @@ CREATE TABLE IF NOT EXISTS image_tags (
 
 CREATE INDEX IF NOT EXISTS idx_images_path ON images(path);
 CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+
+-- Self-migrations for existing databases
+-- Note: SQLite does not support IF NOT EXISTS for ADD COLUMN in standard SQL, 
+-- but we can use a safe block if we were using a migration runner.
+-- Since this runs on app init, we rely on the app logic or simplistic error ignoring.
+-- However, standard practice without a migration tool is harder.
+-- For this setup, we will perform robust migrations in Rust `database.rs`.

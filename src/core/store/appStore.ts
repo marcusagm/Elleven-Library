@@ -12,6 +12,11 @@ export interface ImageItem {
   width: number | null;
   height: number | null;
   thumbnail_path: string | null;
+  rating: number;
+  notes: string | null;
+  size: number;
+  created_at: string;
+  modified_at: string;
 }
 
 export interface ProgressPayload {
@@ -289,6 +294,27 @@ export const appActions = {
             event.payload.path
         );
     });
+  },
+
+  updateItemRating: async (id: number, rating: number) => {
+      try {
+          // Optimistic update
+          setState("items", i => i.id === id, "rating", rating);
+          await tagService.updateImageRating(id, rating);
+      } catch (err) {
+          console.error(`Failed to update rating for ${id}:`, err);
+          // Revert could be implemented here if strictly needed
+      }
+  },
+
+  updateItemNotes: async (id: number, notes: string) => {
+      try {
+          // Optimistic update
+          setState("items", i => i.id === id, "notes", notes);
+          await tagService.updateImageNotes(id, notes);
+      } catch (err) {
+           console.error(`Failed to update notes for ${id}:`, err);
+      }
   }
 };
 

@@ -51,3 +51,18 @@ commands.allow = ["get_images_filtered"]
 identifier = "allow-get-library-stats"
 description = "Enables get_library_stats"
 commands.allow = ["get_library_stats"]
+
+[[permission]]
+identifier = "allow-update-image-rating"
+description = "Enables update_image_rating"
+commands.allow = ["update_image_rating"]
+
+[[permission]]
+identifier = "allow-update-image-notes"
+description = "Enables update_image_notes"
+commands.allow = ["update_image_notes"]
+
+[[permission]]
+identifier = "allow-get-image-exif"
+description = "Enables get_image_exif"
+commands.allow = ["get_image_exif"]

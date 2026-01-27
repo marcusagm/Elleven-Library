@@ -1,20 +1,50 @@
-import { Component } from "solid-js";
+import { Component, createSignal, createEffect } from "solid-js";
 import { Info, FileText, Calendar, HardDrive } from "lucide-solid";
 import { AccordionItem } from "../../ui/Accordion";
 import { Input } from "../../ui/Input";
 import { StarRating } from "./StarRating";
-import { ImageItem } from "../../../core/store/appStore"; // Importing interface
+import { ImageItem, appActions } from "../../../core/store/appStore"; 
 import "./inspector.css";
 
 interface CommonMetadataProps {
     item: ImageItem | null;
-    rating?: number;
-    onRatingChange?: (r: number) => void;
-    notes?: string;
-    onNotesChange?: (n: string) => void;
 }
 
+const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const formatDate = (dateStr: string) => {
+    if (!dateStr) return "-";
+    return new Date(dateStr).toLocaleDateString();
+};
+
 export const CommonMetadata: Component<CommonMetadataProps> = (props) => {
+    // Local state for debounce
+    const [notes, setNotes] = createSignal(props.item?.notes || "");
+
+    // Sync notes when item changes
+    createEffect(() => {
+        setNotes(props.item?.notes || "");
+    });
+
+    const handleNotesChange = (val: string) => {
+        setNotes(val);
+        if (props.item) {
+            appActions.updateItemNotes(props.item.id, val);
+        }
+    };
+
+    const handleRatingChange = (rating: number) => {
+        if (props.item) {
+            appActions.updateItemRating(props.item.id, rating);
+        }
+    };
+
     return (
         <AccordionItem 
             value="common" 
@@ -31,8 +61,8 @@ export const CommonMetadata: Component<CommonMetadataProps> = (props) => {
                <label class="inspector-label">Rating</label>
                <div class="inspector-rating-container">
                    <StarRating 
-                        rating={props.rating || 0} 
-                        onChange={props.onRatingChange} 
+                        rating={props.item?.rating || 0} 
+                        onChange={handleRatingChange} 
                    />
                </div>
             </div>
@@ -49,21 +79,21 @@ export const CommonMetadata: Component<CommonMetadataProps> = (props) => {
                      <span class="inspector-meta-label">Size</span>
                      <span class="inspector-meta-value">
                         <HardDrive size={10} />
-                        -- MB
+                        {props.item ? formatBytes(props.item.size) : "-"}
                      </span>
                 </div>
                  <div class="inspector-meta-item">
                      <span class="inspector-meta-label">Created</span>
                      <span class="inspector-meta-value">
                         <Calendar size={10} />
-                        --/--/--
+                        {props.item ? formatDate(props.item.created_at) : "-"}
                      </span>
                 </div>
                  <div class="inspector-meta-item">
                      <span class="inspector-meta-label">Modified</span>
                      <span class="inspector-meta-value">
                         <Calendar size={10} />
-                        --/--/--
+                        {props.item ? formatDate(props.item.modified_at) : "-" }
                      </span>
                 </div>
             </div>
@@ -72,8 +102,8 @@ export const CommonMetadata: Component<CommonMetadataProps> = (props) => {
                 <label class="inspector-label">Notes</label>
                 <textarea 
                     class="inspector-notes-input"
-                    value={props.notes || ""}
-                    onChange={(e) => props.onNotesChange?.(e.currentTarget.value)}
+                    value={notes()}
+                    onInput={(e) => handleNotesChange(e.currentTarget.value)}
                     placeholder="Add observations..."
                     rows={3}
                 />

@@ -3,6 +3,7 @@ import { ImageItem } from "../../../core/store/appStore";
 import { CommonMetadata } from "./CommonMetadata";
 import { ImageMetadata } from "./ImageMetadata";
 import { InspectorTags } from "./InspectorTags";
+import { AdvancedMetadata } from "./AdvancedMetadata";
 import { Accordion } from "../../ui/Accordion";
 import "./inspector.css";
 
@@ -27,6 +28,7 @@ export const ImageInspector: Component<ImageInspectorProps> = (props) => {
                 <CommonMetadata item={props.item} />
                 <ImageMetadata item={props.item} />
                 <InspectorTags />
+                <AdvancedMetadata item={props.item} />
             </Accordion>
         </div>
     );

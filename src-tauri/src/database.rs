@@ -22,7 +22,34 @@ impl Db {
         let schema = include_str!("schema.sql");
         pool.execute(schema).await?;
 
+        // Manual migration for existing databases (SQLite "ADD COLUMN IF NOT EXISTS" workaround)
+        // We attempt to add columns and ignore errors if they exist
+        let _ = sqlx::query("ALTER TABLE images ADD COLUMN rating INTEGER DEFAULT 0")
+            .execute(&pool)
+            .await;
+        let _ = sqlx::query("ALTER TABLE images ADD COLUMN notes TEXT")
+            .execute(&pool)
+            .await;
+
         Ok(Self { pool })
+    }
+
+    pub async fn update_image_rating(&self, id: i64, rating: i32) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE images SET rating = ? WHERE id = ?")
+            .bind(rating)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn update_image_notes(&self, id: i64, notes: String) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE images SET notes = ? WHERE id = ?")
+            .bind(notes)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 
     pub async fn save_images_batch(

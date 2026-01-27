@@ -34,4 +34,5 @@ fast_image_resize = "6.0.0"
 mime_guess = "2.0"
 percent-encoding = "2.3"
 rayon = "1.8"
+rexif = "0.7"
 

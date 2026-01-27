@@ -13,6 +13,10 @@ pub struct ImageMetadata {
     pub size: i64,
     pub format: String,
     pub thumbnail_path: Option<String>,
+    #[sqlx(default)]
+    pub rating: i32,
+    #[sqlx(default)]
+    pub notes: Option<String>,
     pub modified_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
 }
@@ -59,6 +63,8 @@ pub fn get_image_metadata(path: &Path) -> Option<ImageMetadata> {
         size: file_size as i64,
         format,
         thumbnail_path: None,
+        rating: 0,
+        notes: None,
         modified_at,
         created_at,
     })

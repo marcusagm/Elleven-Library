@@ -60,18 +60,14 @@
 }
 
 .tag-suggestions-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 4px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  z-index: 50;
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
   max-height: 200px;
   overflow-y: auto;
+  min-width: 200px;
 }
 
 .tag-suggestion-item {

@@ -71,6 +71,8 @@ export async function initDb() {
   try { await database.execute("ALTER TABLE tags ADD COLUMN order_index INTEGER DEFAULT 0;"); } catch (e) {}
   try { await database.execute("ALTER TABLE images ADD COLUMN thumbnail_path TEXT;"); } catch (e) {}
   try { await database.execute("ALTER TABLE images ADD COLUMN format TEXT;"); } catch (e) {}
+  try { await database.execute("ALTER TABLE images ADD COLUMN rating INTEGER DEFAULT 0;"); } catch (e) {}
+  try { await database.execute("ALTER TABLE images ADD COLUMN notes TEXT;"); } catch (e) {}
 
   console.log("Database initialized successfully.");
   return database;
@@ -93,8 +95,8 @@ export async function getLocations() {
 
 export async function getImages(limit: number = 1000, offset: number = 0) {
   const database = await getDb();
-  return await database.select<{ id: number; path: string; filename: string; width: number | null; height: number | null; thumbnail_path: string | null }[]>(
-    "SELECT id, path, filename, width, height, thumbnail_path FROM images ORDER BY id ASC LIMIT $1 OFFSET $2",
+  return await database.select<any[]>(
+    "SELECT id, path, filename, width, height, size, thumbnail_path, format, rating, notes, created_at, modified_at FROM images ORDER BY id ASC LIMIT $1 OFFSET $2",
     [limit, offset]
   );
 }
