@@ -40,7 +40,7 @@ export const AppShell: Component<AppShellProps> = (props) => {
         <aside class="shell-sidebar" style={{ 
             "border-right": "1px solid var(--border-subtle)",
             "background-color": "var(--bg-sidebar)",
-            "overflow-y": "auto"
+            "overflow": "hidden"
         }}>
           {props.sidebar}
         </aside>

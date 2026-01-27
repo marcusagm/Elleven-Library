@@ -1,0 +1,65 @@
+.sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebar-panel:last-child {
+  border-bottom: none;
+}
+
+.sidebar-panel-header {
+  padding: var(--space-4) var(--space-2) var(--space-2) var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+
+.sidebar-panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidebar-panel-content {
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--space-1) var(--space-2);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-panel-footer {
+  padding: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sidebar-panel-content.drag-over {
+  background-color: rgba(0, 122, 204, 0.05); /* Accent with opacity */
+  outline: 1px solid var(--accent-color);
+  outline-offset: -1px;
+}
+
+/* Scrollbar styling for panels */
+.sidebar-panel-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-panel-content::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.sidebar-panel-content:hover::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+}
