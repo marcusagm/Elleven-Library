@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS images (
     height INTEGER,
     size INTEGER,
     hash TEXT,
+    thumbnail_path TEXT,
+    format TEXT,
     created_at DATETIME NOT NULL,
     modified_at DATETIME NOT NULL,
     added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -27,6 +29,7 @@ CREATE TABLE IF NOT EXISTS tags (
     name TEXT NOT NULL UNIQUE,
     parent_id INTEGER,
     color TEXT,
+    order_index INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES tags(id) ON DELETE SET NULL
 );

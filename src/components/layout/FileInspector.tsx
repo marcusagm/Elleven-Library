@@ -49,33 +49,39 @@ export const FileInspector: Component = () => {
       const currentIds = new Set(current.map(t => t.id));
       const newIds = new Set(newTags.map(t => Number(t.id)));
       
-      const itemId = activeItem()?.id;
-      if (!itemId) return;
+      const selection = state.selection;
+      if (selection.length === 0) return;
 
       // Added items
       const added = newTags.filter(t => !currentIds.has(Number(t.id)));
       if (added.length > 0) {
-          await tagService.addTagsToImagesBatch([itemId], added.map(t => Number(t.id)));
+          await tagService.addTagsToImagesBatch([...selection], added.map(t => Number(t.id)));
       }
 
       // Removed items
       const removed = current.filter(t => !newIds.has(t.id));
       for (const t of removed) {
-          await tagService.removeTagFromImage(itemId, t.id);
+          // Note: for removal, we only remove FROM the active item or all?
+          // Consistency: All selected items should have this tag removed if we are "cleaning up"
+          for (const itemId of selection) {
+             await tagService.removeTagFromImage(itemId, t.id);
+          }
       }
       
-      refetchTags(); // Sync
+      appActions.notifyTagUpdate(); // Trigger global refresh if needed
+      refetchTags(); // Sync local
   };
 
   const handleCreateTag = async (name: string) => {
-      const itemId = activeItem()?.id;
-      if (!itemId) return;
+      const selection = state.selection;
+      if (selection.length === 0) return;
       
       const newTagId = await tagService.createTag(name);
       await appActions.loadTags(); // Refresh global list
       
-      // Add to image
-      await tagService.addTagsToImagesBatch([itemId], [newTagId]);
+      // Add to all selected images
+      await tagService.addTagsToImagesBatch([...selection], [newTagId]);
+      appActions.notifyTagUpdate();
       refetchTags();
   };
 
