@@ -7,9 +7,12 @@
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(2px);
   z-index: 9998;
   animation: ui-modal-overlay-in 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -moz-backdrop-filter: blur(8px);
+  -ms-backdrop-filter: blur(8px);
 }
 
 @keyframes ui-modal-overlay-in {

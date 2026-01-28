@@ -65,6 +65,11 @@
   width: 32px;
 }
 
+.ui-btn-icon-xs {
+  height: 24px;
+  width: 24px;
+}
+
 /* Variant styles */
 .ui-btn-primary {
   background-color: var(--accent-primary, #0ea5e9);
@@ -145,4 +150,8 @@
 .ui-btn-content {
   flex: 1;
   text-align: center;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

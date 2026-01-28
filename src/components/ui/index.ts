@@ -36,6 +36,7 @@ export type { CountBadgeProps, CountBadgeVariant } from "./CountBadge";
 export { Separator } from "./Separator";
 export type { SeparatorProps, SeparatorOrientation } from "./Separator";
 export { TreeView } from "./TreeView";
+export type { TreeViewProps, TreeNode } from "./TreeView";
 export { ProgressBar } from "./ProgressBar";
 export type { ProgressBarProps, ProgressBarSize } from "./ProgressBar";
 export { Loader } from "./Loader";

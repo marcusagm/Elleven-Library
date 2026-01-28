@@ -14,9 +14,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3, 12px);
+  padding: var(--space-1, 8px) var(--space-3, 12px);
   border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+  height: 32px;
 }
 
 .ui-sidebar-panel-title {

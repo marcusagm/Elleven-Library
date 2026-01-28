@@ -14,7 +14,7 @@ export const FoldersSidebarPanel: Component = () => {
             title="Folders" 
             class="panel-limited"
             actions={
-                <Button variant="ghost" size="icon-sm" title="Create Folder">
+                <Button variant="ghost" size="icon-xs" title="Create Folder">
                     <Plus size={14} />
                 </Button>
             }
@@ -31,7 +31,7 @@ export const FoldersSidebarPanel: Component = () => {
                             <span class="truncate" style={{ flex: 1 }}>
                                 {loc.name}
                             </span>
-                            <CountBadge count={metadata.stats.folder_counts.get((loc as any).id) || 0} variant="outline" />
+                            <CountBadge count={metadata.stats.folder_counts.get((loc as any).id) || 0} variant="secondary" />
                         </div>
                     )}
                 </For>
