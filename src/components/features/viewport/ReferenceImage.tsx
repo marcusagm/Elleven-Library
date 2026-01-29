@@ -8,6 +8,7 @@ import {
   clearCompleted,
   subscribeThumbnailReady,
 } from "../../../core/store/thumbnailStore";
+import "./reference-image.css";
 
 interface ReferenceImageProps {
   id: number;

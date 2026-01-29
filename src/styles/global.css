@@ -222,7 +222,7 @@ textarea:focus {
 
 .primary-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 25px rgba(204, 255, 0, 0.4);
+  box-shadow: 0 0 25px var(--accent-color);
 }
 
 /* Main App Layout */
@@ -349,104 +349,6 @@ textarea:focus {
   transition: width 0.3s ease-out;
 }
 
-.grid-placeholder {
-  flex: 1;
-  overflow: hidden; /* VirtualMasonry manages its own overflow */
-  padding: 0; /* Padding handled inside VirtualMasonry for correct calculation */
-  position: relative;
-}
-
-/* ... existing styles ... */
-
-/* Virtual Masonry Item (Absolute Positioned via JS) */
-.virtual-masonry-item {
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  position: absolute;
-  overflow: hidden;
-  /* Transition handled in inline style for transform/width, but we keep border/shadow here */
-  transition:
-    border-color 0.3s ease,
-    box-shadow 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-  display: block;
-  cursor: pointer;
-  will-change: transform, box-shadow, width, height;
-}
-
-.virtual-masonry-item:hover {
-  border-color: var(--accent-color);
-  /* Transform handled by JS layout OR simple Z-index boost. 
-     We CANNOT transform Y here because it conflicts with JS positioning. 
-     Instead, usage inner element or box-shadow popup. */
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
-  z-index: 10;
-}
-
-.virtual-masonry-item:hover .item-overlay {
-  opacity: 1;
-}
-
-.virtual-masonry-item.selected {
-  border-color: var(--border-active);
-  box-shadow: 0 0 0 2px var(--border-active);
-  z-index: 5;
-}
-
-/* Legacy/CSS-only Masonry (CSS Columns) */
-.masonry-grid {
-  columns: 4 280px;
-  column-gap: var(--space-4);
-  width: 100%;
-}
-
-.masonry-item {
-  break-inside: avoid;
-  margin-bottom: var(--space-4);
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  position: relative;
-  overflow: hidden;
-  transition:
-    border-color 0.3s ease,
-    transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1),
-    box-shadow 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-  display: block;
-  cursor: pointer;
-  will-change: transform, box-shadow;
-}
-
-.masonry-item:hover {
-  border-color: var(--accent-color);
-  transform: translateY(-6px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
-  z-index: 10;
-}
-
-.masonry-item:hover img {
-  transform: scale(1.04);
-}
-
-.virtual-masonry-item:hover img {
-  transform: scale(1.04);
-}
-
-.item-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: var(--space-3) var(--space-2);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.95), transparent);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.masonry-item:hover .item-overlay {
-  opacity: 1;
-}
-
 .item-name {
   font-size: 10px;
   color: #fff;
@@ -457,57 +359,6 @@ textarea:focus {
   font-weight: 500;
 }
 
-/* Ensure reference images fill their containers */
-.reference-image-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-}
-
-.reference-image-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  opacity: 0; 
-  /* Opacity transition for fade-in handled here */
-  transition:
-    opacity 0.5s cubic-bezier(0.165, 0.84, 0.44, 1),
-    transform 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
-  will-change: opacity, transform;
-}
-
-/* Loaded state */
-.reference-image-container img.loaded {
-  opacity: 1;
-}
-
-.image-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
-
-.placeholder-icon {
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--border-color);
-  border-bottom-color: var(--accent-color);
-  border-radius: 50%;
-  display: inline-block;
-  box-sizing: border-box;
-  animation: rotation 1s linear infinite;
-  opacity: 0.5;
-}
-
-@keyframes rotation {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
 
 .badge-thumbnail {
   position: absolute;

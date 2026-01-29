@@ -52,6 +52,7 @@ struct IndexedImage {
 #[derive(Default)]
 pub struct WatcherRegistry {
     pub watchers: HashMap<String, tokio::sync::oneshot::Sender<()>>,
+    pub pending_removals: std::collections::HashSet<String>,
 }
 
 pub struct Indexer {
@@ -64,9 +65,7 @@ impl Indexer {
     pub fn new(app_handle: AppHandle, db: &Db, registry: Arc<tokio::sync::Mutex<WatcherRegistry>>) -> Self {
         Self {
             app_handle,
-            db: Arc::new(Db {
-                pool: db.pool.clone(),
-            }),
+            db: Arc::new(Db { pool: db.pool.clone() }),
             registry,
         }
     }
@@ -463,21 +462,48 @@ impl Indexer {
 
                         // B. Process Removed
                         for path in buffer_removed.drain() {
-                            match db.delete_image_by_path_returning_context(&path).await {
-                                Ok(Some((img_id, fid, tags))) => {
-                                    let thumb = app_data_dir.join("thumbnails").join(format!("{}.webp", img_id));
-                                    let _ = std::fs::remove_file(thumb);
-                                    res_removed.push(RemovedItemContext { id: img_id, folder_id: fid, tag_ids: tags });
-                                },
-                                Ok(None) => {
-                                    if let Ok(Some(id)) = db.get_folder_by_path(&path).await {
-                                        println!("DEBUG: Watcher - Deleting folder: {}", path);
-                                        let _ = db.delete_folder(id).await;
-                                        refresh_needed = true;
-                                    }
-                                },
-                                Err(e) => eprintln!("Error removing: {}", e),
+                            let db = db.clone();
+                            let app = app.clone();
+                            let path_clone = path.clone();
+                            let app_data_dir = app_data_dir.clone();
+                            
+                            // Immediate UI feedback for images
+                            if let Ok(Some((img_id, fid, tags))) = db.get_image_context(&path_clone).await {
+                                res_removed.push(RemovedItemContext { id: img_id, folder_id: fid, tag_ids: tags });
                             }
+
+                            tokio::spawn(async move {
+                                tokio::time::sleep(Duration::from_secs(2)).await;
+                                
+                                // Before deleting, check if it's a folder or an image
+                                match db.get_image_context(&path_clone).await {
+                                    Ok(Some((_img_id, _fid, _tags))) => {
+                                        // Still in DB at this path? If so, it wasn't adopted.
+                                        if let Ok(Some((deleted_id, _, _))) = db.delete_image_by_path_returning_context(&path_clone).await {
+                                            println!("DEBUG: Watcher - Finalized removal for: {}", path_clone);
+                                            let thumb = app_data_dir.join("thumbnails").join(format!("{}.webp", deleted_id));
+                                            let _ = std::fs::remove_file(thumb);
+                                            
+                                            // No need to emit again if we already gave immediate feedback, 
+                                            // UNLESS it was a brand new detection (but it wouldn't be here).
+                                            // Actually, immediate feedback is better.
+                                        }
+                                    },
+                                    Ok(None) => {
+                                        // Check if it's a folder
+                                        if let Ok(Some(fid)) = db.get_folder_by_path(&path_clone).await {
+                                            if !std::path::Path::new(&path_clone).exists() {
+                                                 println!("DEBUG: Watcher - Deleting folder (delay expired): {}", path_clone);
+                                                 let _ = db.delete_folder(fid).await;
+                                                 let _ = app.emit("library:batch-change", BatchChangePayload {
+                                                     added: vec![], removed: vec![], updated: vec![], needs_refresh: true
+                                                 });
+                                            }
+                                        }
+                                    },
+                                    _ => {}
+                                }
+                            });
                         }
 
                         // C. Process Added Folders
@@ -493,9 +519,21 @@ impl Indexer {
                             let parent = normalize_path(&Path::new(&path).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default());
                             if let Ok(fid) = db.ensure_folder_hierarchy(&parent).await {
                                 match db.save_image(fid, &meta).await {
-                                    Ok(is_new) => {
-                                        let ctx = AddedItemContext { metadata: meta, folder_id: fid, old_folder_id: if is_new { None } else { Some(fid) } };
-                                        if is_new { res_added.push(ctx); } else { res_updated.push(ctx); }
+                                    Ok((id, old_fid, is_new)) => {
+                                        let mut meta_with_id = meta.clone();
+                                        meta_with_id.id = id;
+                                        
+                                        let ctx = AddedItemContext { 
+                                            metadata: meta_with_id, 
+                                            folder_id: fid, 
+                                            old_folder_id: old_fid 
+                                        };
+                                        
+                                        if is_new {
+                                            res_added.push(ctx);
+                                        } else {
+                                            res_updated.push(ctx);
+                                        }
                                     },
                                     Err(e) => eprintln!("Error saving: {}", e),
                                 }

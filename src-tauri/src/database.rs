@@ -318,36 +318,79 @@ impl Db {
         &self,
         folder_id: i64,
         img: &crate::indexer::metadata::ImageMetadata,
-    ) -> Result<bool, sqlx::Error> {
-        // Check if exists
-        let exists: Option<(i64,)> = sqlx::query_as("SELECT id FROM images WHERE path = ?")
+    ) -> Result<(i64, Option<i64>, bool), sqlx::Error> {
+        // 1. Check if path already exists
+        let existing: Option<(i64, i64)> = sqlx::query_as("SELECT id, folder_id FROM images WHERE path = ?")
             .bind(&img.path)
             .fetch_optional(&self.pool)
             .await?;
 
-        sqlx::query(
+        if let Some((id, old_fid)) = existing {
+            // Standard Update
+            sqlx::query(
+                "UPDATE images SET 
+                    folder_id = ?, filename = ?, width = ?, height = ?, size = ?, modified_at = ? 
+                 WHERE path = ?"
+            )
+            .bind(folder_id)
+            .bind(&img.filename)
+            .bind(img.width)
+            .bind(img.height)
+            .bind(img.size)
+            .bind(img.modified_at)
+            .bind(&img.path)
+            .execute(&self.pool)
+            .await?;
+            
+            let old_fid_if_changed = if old_fid != folder_id { Some(old_fid) } else { None };
+            return Ok((id, old_fid_if_changed, false));
+        }
+
+        // 2. Not in path. Could be a cross-root MOVE.
+        let candidates: Vec<(i64, i64, String)> = sqlx::query_as(
+            "SELECT id, folder_id, path FROM images WHERE size = ? AND created_at = ?"
+        )
+        .bind(img.size)
+        .bind(img.created_at)
+        .fetch_all(&self.pool)
+        .await?;
+
+        for (id, old_fid, old_path) in candidates {
+            if !std::path::Path::new(&old_path).exists() {
+                println!("DEBUG: DB - Adopting 'lost' image record {} for new path: {}", id, img.path);
+                sqlx::query(
+                    "UPDATE images SET 
+                        path = ?, folder_id = ?, filename = ?, modified_at = ? 
+                     WHERE id = ?"
+                )
+                .bind(&img.path)
+                .bind(folder_id)
+                .bind(&img.filename)
+                .bind(img.modified_at)
+                .bind(id)
+                .execute(&self.pool)
+                .await?;
+                return Ok((id, Some(old_fid), false));
+            }
+        }
+
+        // 3. True New File
+        let res = sqlx::query(
             "INSERT INTO images (folder_id, path, filename, width, height, size, created_at, modified_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT(path) DO UPDATE SET
-                folder_id=excluded.folder_id,
-                filename=excluded.filename,
-                width=excluded.width,
-                height=excluded.height,
-                size=excluded.size,
-                modified_at=excluded.modified_at"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(folder_id)
         .bind(&img.path)
         .bind(&img.filename)
-        .bind(img.width.map(|w| w as i32))
-        .bind(img.height.map(|h| h as i32))
-        .bind(img.size as i64)
+        .bind(img.width)
+        .bind(img.height)
+        .bind(img.size)
         .bind(img.created_at)
         .bind(img.modified_at)
         .execute(&self.pool)
         .await?;
         
-        Ok(exists.is_none())
+        Ok((res.last_insert_rowid(), None, true))
     }
 
     /// Retrieve context (folder, tags) for an image before deletion

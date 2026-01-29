@@ -1,6 +1,6 @@
 import { Component, Show } from "solid-js";
 import { useFilters, useSystem } from "../../core/hooks";
-import { Search, ChevronLeft, ChevronRight, Plus } from "lucide-solid";
+import { Search, Settings } from "lucide-solid";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Loader } from "../ui/Loader";
@@ -12,16 +12,6 @@ export const PrimaryHeader: Component = () => {
 
   return (
     <div class="primary-header">
-       {/* Navigation */}
-       <div class="header-nav">
-         <Button variant="ghost" size="icon" disabled>
-            <ChevronLeft size={16} />
-         </Button>
-         <Button variant="ghost" size="icon" disabled>
-            <ChevronRight size={16} />
-         </Button>
-       </div>
-
        {/* OmniSearch */}
        <div class="header-search">
            <div class="header-search-wrapper">
@@ -42,9 +32,8 @@ export const PrimaryHeader: Component = () => {
                     <span>Indexing {system.progress()?.processed} / {system.progress()?.total}</span>
                 </div>
             </Show>
-            <Button variant="primary" size="sm">
-                <Plus size={14} />
-                <span>Add</span>
+            <Button variant="ghost" size="icon">
+                <Settings />
             </Button>
        </div>
     </div>
