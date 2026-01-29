@@ -64,3 +64,5 @@ export { TagInput } from "./TagInput";
 export type { TagInputProps, TagOption } from "./TagInput";
 export { SidebarPanel } from "./SidebarPanel";
 export type { SidebarPanelProps } from "./SidebarPanel";
+export { Table } from "./Table";
+export type { TableProps, Column, SortOrder } from "./Table";

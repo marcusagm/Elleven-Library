@@ -1,0 +1,317 @@
+import { JSX, createSignal, createMemo, onMount, onCleanup, For, Show, splitProps } from "solid-js";
+import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-solid";
+import { cn } from "../../lib/utils";
+import "./table.css";
+
+export interface Column<T> {
+  /** The text or element to display in the header */
+  header: string | JSX.Element;
+  /** The key in the data object to access the value */
+  accessorKey: keyof T | string;
+  /** Optional width (e.g. '100px', '20%', or 150) */
+  width?: string | number;
+  /** Optional custom cell renderer */
+  cell?: (item: T) => JSX.Element;
+  /** Whether the column is sortable */
+  sortable?: boolean;
+  /** Whether the column is currently hidden */
+  hidden?: boolean;
+  /** Optional alignment */
+  align?: "left" | "center" | "right";
+  /** Is this a pinned column? (Future-proofing) */
+  pinned?: "left" | "right";
+}
+
+export type SortOrder = "asc" | "desc" | null;
+
+export interface TableProps<T> {
+  /** Array of data items to display */
+  data: T[];
+  /** Column definitions */
+  columns: Column<T>[];
+  /** Fixed height of each row in pixels */
+  rowHeight?: number;
+  /** Whether the header should stick to the top when scrolling */
+  stickyHeader?: boolean;
+  /** Currently active sort key */
+  sortKey?: string | null;
+  /** Currently active sort order */
+  sortOrder?: SortOrder;
+  /** Selected item IDs */
+  selectedIds?: (string | number)[];
+  /** Callback when sort changes */
+  onSort?: (key: string, order: SortOrder) => void;
+  /** Callback when a row is clicked */
+  onRowClick?: (item: T, multi: boolean, range: boolean) => void;
+  /** Callback for double click */
+  onRowDoubleClick?: (item: T) => void;
+  /** Key field to use for identifying rows (default: 'id') */
+  keyField?: keyof T;
+  /** Additional CSS class for the container */
+  class?: string;
+  /** Height of the table container (required for virtualization) */
+  height?: string | number;
+  /** ARIA label for the grid */
+  label?: string;
+}
+
+/**
+ * Table Component - Perfected ARIA Grid Pattern
+ * Optimized for high-performance DAM listing with virtualization and desktop-class UX.
+ */
+export function Table<T>(props: TableProps<T>) {
+  const [local] = splitProps(props, [
+    "data",
+    "columns",
+    "rowHeight",
+    "stickyHeader",
+    "sortKey",
+    "sortOrder",
+    "selectedIds",
+    "onSort",
+    "onRowClick",
+    "onRowDoubleClick",
+    "keyField",
+    "class",
+    "height",
+    "label"
+  ]);
+
+  let gridContainer: HTMLDivElement | undefined;
+  
+  const [scrollTop, setScrollTop] = createSignal(0);
+  const [containerHeight, setContainerHeight] = createSignal(0);
+  const [focusedIndex, setFocusedIndex] = createSignal(-1);
+
+  const rowHeight = () => local.rowHeight ?? 32; // Standard compact height for DAM
+  const stickyHeader = () => local.stickyHeader ?? true;
+  const keyField = () => local.keyField ?? ("id" as keyof T);
+  const selectedIds = () => local.selectedIds ?? [];
+  
+  // Filter visible columns
+  const visibleColumns = createMemo(() => 
+    local.columns.filter(col => !col.hidden)
+  );
+
+  // Measure container height
+  onMount(() => {
+    if (!gridContainer) return;
+    
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setContainerHeight(entry.contentRect.height);
+      }
+    });
+
+    observer.observe(gridContainer);
+    setContainerHeight(gridContainer.clientHeight);
+
+    onCleanup(() => observer.disconnect());
+  });
+
+  const handleScroll = (e: Event) => {
+    const target = e.currentTarget as HTMLDivElement;
+    setScrollTop(target.scrollTop);
+  };
+
+  const handleSort = (key: string) => {
+    if (!local.onSort) return;
+    
+    let nextOrder: SortOrder = "asc";
+    if (local.sortKey === key) {
+      if (local.sortOrder === "asc") nextOrder = "desc";
+      else if (local.sortOrder === "desc") nextOrder = null;
+    }
+    
+    local.onSort(key, nextOrder);
+  };
+
+  // Keyboard Navigation Manager
+  const handleKeyDown = (e: KeyboardEvent) => {
+    const dataLen = local.data.length;
+    if (dataLen === 0) return;
+
+    let nextIndex = focusedIndex();
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        nextIndex = Math.min(dataLen - 1, nextIndex + 1);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        nextIndex = Math.max(0, nextIndex - 1);
+        break;
+      case "Home":
+        e.preventDefault();
+        nextIndex = 0;
+        break;
+      case "End":
+        e.preventDefault();
+        nextIndex = dataLen - 1;
+        break;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        if (nextIndex >= 0) {
+          const item = local.data[nextIndex];
+          local.onRowClick?.(item, e.ctrlKey || e.metaKey, e.shiftKey);
+        }
+        return;
+      default:
+        return;
+    }
+
+    if (nextIndex !== focusedIndex()) {
+      setFocusedIndex(nextIndex);
+      // Ensure the focused row is visible (scroll management)
+      const rHeight = rowHeight();
+      const sTop = scrollTop();
+      const cHeight = containerHeight();
+      const hHeight = rHeight; // Header height
+
+      const itemTop = nextIndex * rHeight;
+      const itemBottom = itemTop + rHeight;
+
+      if (itemTop < sTop + hHeight) {
+        gridContainer?.scrollTo({ top: itemTop - hHeight });
+      } else if (itemBottom > sTop + cHeight) {
+        gridContainer?.scrollTo({ top: itemBottom - cHeight + hHeight });
+      }
+    }
+  };
+
+  // Virtualization logic
+  const visibleRange = createMemo(() => {
+    const sTop = scrollTop();
+    const cHeight = containerHeight();
+    const rHeight = rowHeight();
+    
+    const start = Math.max(0, Math.floor(sTop / rHeight) - 5);
+    const visibleCount = Math.ceil(cHeight / rHeight);
+    const end = Math.min(local.data.length, start + visibleCount + 10);
+    
+    return { start, end };
+  });
+
+  const visibleData = createMemo(() => {
+    const { start, end } = visibleRange();
+    return local.data.slice(start, end).map((item, index) => ({
+      item,
+      index: start + index
+    }));
+  });
+
+  const totalHeight = createMemo(() => local.data.length * rowHeight());
+
+  return (
+    <div 
+      ref={gridContainer}
+      class={cn("ui-table-grid-container", local.class)}
+      style={{ height: typeof local.height === 'number' ? `${local.height}px` : local.height }}
+      onScroll={handleScroll}
+      onKeyDown={handleKeyDown}
+      role="grid"
+      aria-label={local.label || "Data Table"}
+      aria-rowcount={local.data.length}
+      aria-colcount={visibleColumns().length}
+      aria-multiselectable="true"
+      tabindex="0"
+    >
+      <div 
+        class="ui-table-grid-track"
+        style={{ height: `${totalHeight() + rowHeight()}px` }}
+        role="presentation"
+      >
+        {/* Header Row */}
+        <div 
+          class={cn(
+            "ui-table-grid-header", 
+            stickyHeader() && "ui-table-grid-header-sticky"
+          )}
+          role="row"
+          aria-rowindex="1"
+        >
+          <For each={visibleColumns()}>
+            {(col) => (
+              <div 
+                class={cn(
+                  "ui-table-grid-th",
+                  col.sortable && "ui-table-grid-th-sortable",
+                  local.sortKey === col.accessorKey && "ui-table-grid-th-active"
+                )}
+                style={{ 
+                  width: typeof col.width === 'number' ? `${col.width}px` : col.width || '150px', 
+                  flex: col.width ? '0 0 auto' : '1 1 0',
+                  "justify-content": col.align === 'center' ? 'center' : col.align === 'right' ? 'flex-end' : 'flex-start'
+                }}
+                onClick={() => col.sortable && handleSort(col.accessorKey as string)}
+                role="columnheader"
+                aria-sort={local.sortKey === col.accessorKey ? (local.sortOrder === "asc" ? "ascending" : "descending") : "none"}
+              >
+                <span class="ui-table-grid-th-text">{col.header}</span>
+                <Show when={col.sortable}>
+                  <span class="ui-table-grid-sort-icon">
+                    {local.sortKey === col.accessorKey ? (
+                      local.sortOrder === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+                    ) : (
+                      <ChevronsUpDown size={12} />
+                    )}
+                  </span>
+                </Show>
+              </div>
+            )}
+          </For>
+        </div>
+
+        {/* Dynamic Rows */}
+        <For each={visibleData()}>
+          {({ item, index }) => {
+            const id = (item[keyField()] as any);
+            const isSelected = createMemo(() => selectedIds().includes(id));
+            const isFocused = createMemo(() => focusedIndex() === index);
+
+            return (
+              <div 
+                class={cn(
+                  "ui-table-grid-row",
+                  isSelected() && "ui-table-grid-row-selected",
+                  isFocused() && "ui-table-grid-row-focused"
+                )}
+                style={{ 
+                  height: `${rowHeight()}px`, 
+                  transform: `translate3d(0, ${(index + 1) * rowHeight()}px, 0)` 
+                }}
+                onClick={(e) => local.onRowClick?.(item, e.ctrlKey || e.metaKey, e.shiftKey)}
+                onDblClick={() => local.onRowDoubleClick?.(item)}
+                role="row"
+                aria-rowindex={index + 2} // +1 for index and +1 for header
+                aria-selected={isSelected()}
+              >
+                <For each={visibleColumns()}>
+                  {(col) => (
+                    <div 
+                      class="ui-table-grid-cell"
+                      style={{ 
+                        width: typeof col.width === 'number' ? `${col.width}px` : col.width || '150px', 
+                        flex: col.width ? '0 0 auto' : '1 1 0',
+                        "justify-content": col.align === 'center' ? 'center' : col.align === 'right' ? 'flex-end' : 'flex-start'
+                      }}
+                      role="gridcell"
+                      aria-colindex={visibleColumns().indexOf(col) + 1}
+                    >
+                      <div class="ui-table-grid-cell-content">
+                        {col.cell ? col.cell(item) : (item[col.accessorKey as keyof T] as any)}
+                      </div>
+                    </div>
+                  )}
+                </For>
+              </div>
+            );
+          }}
+        </For>
+      </div>
+    </div>
+  );
+}

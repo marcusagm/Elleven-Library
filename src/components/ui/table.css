@@ -1,0 +1,165 @@
+/**
+ * Table Grid Component Styles (Option C)
+ * Optimized for DAM performance and desktop-style interaction
+ */
+
+.ui-table-grid-container {
+  position: relative;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-color);
+  outline: none;
+  contain: strict; /* Critical for high-performance virtualization scrolling */
+}
+
+/* Focused state of the entire grid */
+.ui-table-grid-container:focus-visible {
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 1px var(--border-active);
+}
+
+.ui-table-grid-track {
+  position: relative;
+  width: 100%;
+}
+
+/* --- Header --- */
+.ui-table-grid-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-header);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 20;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.ui-table-grid-header-sticky {
+  position: sticky;
+  z-index: 30;
+}
+
+.ui-table-grid-th {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 var(--space-3);
+  overflow: hidden;
+  border-right: 1px solid var(--border-subtle);
+  transition: background-color var(--transition-fast);
+}
+
+.ui-table-grid-th:last-child {
+  border-right: none;
+}
+
+.ui-table-grid-th-sortable {
+  cursor: pointer;
+}
+
+.ui-table-grid-th-sortable:hover {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.ui-table-grid-th-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ui-table-grid-sort-icon {
+  margin-left: var(--space-2);
+  flex-shrink: 0;
+  opacity: 0.4;
+}
+
+.ui-table-grid-th-active .ui-table-grid-sort-icon {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
+/* --- Rows --- */
+.ui-table-grid-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: transparent;
+  transition: background-color var(--transition-fast);
+  cursor: default;
+  contain: layout style;
+}
+
+.ui-table-grid-row:hover {
+  background-color: var(--surface-hover);
+}
+
+/* Selected row */
+.ui-table-grid-row-selected {
+  background-color: var(--surface-active) !important;
+  color: var(--text-inverse);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Keyboard navigation focus row */
+.ui-table-grid-row-focused {
+  outline: 1px inset var(--border-active);
+  z-index: 10;
+}
+
+/* --- Cells --- */
+.ui-table-grid-cell {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 var(--space-3);
+  overflow: hidden;
+  border-right: 1px solid transparent; /* Prepared for visible grid lines if needed */
+}
+
+.ui-table-grid-cell-content {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-sm);
+  width: 100%;
+}
+
+.ui-table-grid-row-selected .ui-table-grid-cell-content {
+  color: var(--text-inverse);
+}
+
+/* --- Custom Scrollbar for DAM style --- */
+.ui-table-grid-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.ui-table-grid-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ui-table-grid-container::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 5px;
+}
+
+.ui-table-grid-container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}

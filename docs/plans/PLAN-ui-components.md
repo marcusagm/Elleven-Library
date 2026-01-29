@@ -23,6 +23,7 @@ Extract reusable UI patterns currently embedded in layouts and feature component
 | `Skeleton` | - | Loading states (Masonry, Sidebar) |
 | `ScrollArea` | - | Replace native overflow for styled scrollbars |
 | `Tooltip` | - | Sidebar icons (collapsed mode preparation) |
+| `Table` | Virtualized, ARIA Grid | ListView, Metadata management |
 
 ## Tech Stack Strategy
 - **Framework**: SolidJS
@@ -51,6 +52,11 @@ Extract reusable UI patterns currently embedded in layouts and feature component
 ### Phase 3: Advanced Components
 - [x] **Implement Tooltip** (Optional but recommended for accessible icon-only buttons).
 - [x] **Implement Dialog/Modal** (Base for future settings/confirmations).
+- [x] **Implement Table**:
+    - High-performance virtualization for thousands of items.
+    - ARIA Grid Pattern (roles, indices, absolute-semantic hybrid).
+    - Advanced Keyboard Navigation (Arrows, Home/End, Scroll-into-view).
+    - Support for custom cells, sorting, and hidden columns.
 
 ### Phase 4: Refactoring Integration
 - [x] **Refactor PrimaryHeader**: Replace raw `<button>` and `<input>` with `Button` and `Input`.
