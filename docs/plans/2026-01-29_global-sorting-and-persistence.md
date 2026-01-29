@@ -23,7 +23,7 @@ Uniformize the sorting system across all views (Grid, Masonry, List), implement 
 
 ### Frontend (SolidJS)
 - **Unified Store:** Standardized `SortField` keys in `filterStore.ts` to match database column names.
-- **Persistence Layer:** Implemented `localStorage` syncing for `layout`, `sortBy`, `sortOrder`, and `thumbSize`.
+- **Persistence Layer:** Implemented `localStorage` syncing for `layout`, `sortBy`, `sortOrder`, and `thumbSize`. Added persistence for `AppShell` and `LibrarySidebar` resizable panel sizes.
 - **Refined UI Components:** 
     - Updated `ListViewToolbar.tsx` with unified labels and the new "Rating" sort option.
     - Standardized `VirtualListView.tsx` headers to trigger sorting and toggle order.
@@ -37,6 +37,7 @@ Uniformize the sorting system across all views (Grid, Masonry, List), implement 
 - **Secondary ASC Sort:** When sorting by fields like "Rating" (DESC), we kept the secondary "Filename" sort as ASC, providing a more intuitive alphabetical sub-grouping.
 - **CSS Semantic Refactoring:** Removed all "Tailwind-like" utility classes and inline styles from `VirtualListView` and `CommonMetadata`, moving them to semantic classes in `.css` files.
 - **Safe UI Access:** Implemented optional chaining and fallback logic in UI components to handle null metadata gracefully during the transition period.
+- **Dynamic Layout Memory:** The application now remembers the exact width of the sidebar/inspector and the height of sidebar sections (Folders, Tags) between sessions.
 
 ---
 
@@ -63,3 +64,5 @@ Uniformize the sorting system across all views (Grid, Masonry, List), implement 
 - `src/components/features/viewport/list-view.css` (New semantic styles)
 - `src/components/features/inspector/CommonMetadata.tsx` (Inspector UI)
 - `src/components/features/inspector/inspector.css` (New semantic styles)
+- `src/layouts/AppShell.tsx` (Layout persistence)
+- `src/components/layout/LibrarySidebar.tsx` (Layout persistence)
