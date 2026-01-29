@@ -200,3 +200,11 @@
   max-height: 100%;
   object-fit: contain;
 }
+
+.inspector-notes-group {
+  margin-top: 12px;
+}
+
+.inspector-meta-value-type {
+  text-transform: uppercase;
+}

@@ -70,17 +70,28 @@ export const ListViewToolbar: Component = () => {
                 <DropdownMenu
                     trigger={
                         <Button variant="ghost" class="sort-dropdown-trigger">
-                            <span>Sort: {filters.sortBy || "Date"}</span>
+                            <span>Sort: {
+                                {
+                                    modified_at: "Modification",
+                                    added_at: "Addition",
+                                    created_at: "Creation",
+                                    filename: "Title",
+                                    format: "Type",
+                                    size: "Size",
+                                    rating: "Rating"
+                                }[filters.sortBy] || "Date"
+                            }</span>
                             <ChevronDown size={14} />
                         </Button>
                     }
                     items={[
-                        { type: "item", label: "Modification Date", action: () => filters.setSortBy("modification") },
-                        { type: "item", label: "Addition Date", action: () => filters.setSortBy("addition") },
-                        { type: "item", label: "Creation Date", action: () => filters.setSortBy("creation") },
-                        { type: "item", label: "Title", action: () => filters.setSortBy("title") },
-                        { type: "item", label: "File Type", action: () => filters.setSortBy("type") },
+                        { type: "item", label: "Modification Date", action: () => filters.setSortBy("modified_at") },
+                        { type: "item", label: "Addition Date", action: () => filters.setSortBy("added_at") },
+                        { type: "item", label: "Creation Date", action: () => filters.setSortBy("created_at") },
+                        { type: "item", label: "Title", action: () => filters.setSortBy("filename") },
+                        { type: "item", label: "File Type", action: () => filters.setSortBy("format") },
                         { type: "item", label: "File Size", action: () => filters.setSortBy("size") },
+                        { type: "item", label: "Rating", action: () => filters.setSortBy("rating") },
                     ]}
                 />
 

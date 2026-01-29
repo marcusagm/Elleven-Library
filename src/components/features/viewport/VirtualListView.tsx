@@ -28,22 +28,19 @@ export const VirtualListView: Component = () => {
             width: listThumbWidth() + 16,
             align: "center",
             cell: (item) => (
-                <div style={{ 
-                    width: `${listThumbWidth()}px`, 
-                    height: `${listThumbHeight()}px`, 
-                    background: "var(--surface-hover)", 
-                    "border-radius": "2px",
-                    "overflow": "hidden",
-                    display: "flex",
-                    "align-items": "center",
-                    "justify-content": "center"
-                }}>
+                <div 
+                    class="list-view-thumbnail-container"
+                    style={{ 
+                        width: `${listThumbWidth()}px`, 
+                        height: `${listThumbHeight()}px`
+                    }}
+                >
                     {item.thumbnail_path && (
                         <img 
                             src={getThumbUrl(item.thumbnail_path)} 
                             alt="" 
                             draggable={false}
-                            style={{ "max-width": "100%", "max-height": "100%", "object-fit": "cover" }}
+                            class="list-view-thumbnail"
                         />
                     )}
                 </div>
@@ -56,12 +53,20 @@ export const VirtualListView: Component = () => {
             width: 300
         },
         {
+            header: "Rating",
+            accessorKey: "rating",
+            sortable: true,
+            width: 100,
+            align: "center",
+            cell: (item) => <span class="list-view-rating-cell">{item.rating ? "★".repeat(item.rating) : "-"}</span>
+        },
+        {
             header: "Type",
             accessorKey: "format",
             sortable: true,
             width: 80,
             align: "center",
-            cell: (item) => <span class="uppercase opacity-70">{item.filename.split('.').pop()?.toUpperCase() || "N/A"}</span>
+            cell: (item) => <span class="list-view-type-cell">{item.format?.toUpperCase() || "N/A"}</span>
         },
         {
             header: "Size",
@@ -87,37 +92,32 @@ export const VirtualListView: Component = () => {
             accessorKey: "created_at",
             sortable: true,
             width: 160,
-            cell: (item) => <span>{formatDate(item.created_at)}</span>
+            cell: (item) => <span class="list-view-date-cell">{formatDate(item.created_at)}</span>
         },
         {
             header: "Modified",
             accessorKey: "modified_at",
             sortable: true,
             width: 160,
-            cell: (item) => <span>{formatDate(item.modified_at)}</span>
+            cell: (item) => <span class="list-view-date-cell">{formatDate(item.modified_at)}</span>
         },
         {
             header: "Added",
             accessorKey: "added_at",
             sortable: true,
             width: 160,
-            cell: (item) => <span>{formatDate(item.added_at)}</span>
+            cell: (item) => <span class="list-view-date-cell">{formatDate(item.added_at)}</span>
         }
     ]);
 
-    const handleSort = (key: string, order: "asc" | "desc" | null) => {
-        const fieldMap: Record<string, any> = {
-            filename: "title",
-            format: "type",
-            size: "size",
-            created_at: "creation",
-            modified_at: "modification",
-            added_at: "addition"
-        };
-        
-        if (order) {
-            filters.setSortBy(fieldMap[key] || key);
-            filters.setSortOrder(order);
+    const handleSort = (key: string) => {
+        if (filters.sortBy === key) {
+            // Cycle: asc -> desc -> asc
+            const nextOrder = filters.sortOrder === "asc" ? "desc" : "asc";
+            filters.setSortOrder(nextOrder);
+        } else {
+            filters.setSortBy(key as any);
+            filters.setSortOrder("desc"); // Default to desc for new columns (usually more useful for dates/size)
         }
     };
 
@@ -136,14 +136,7 @@ export const VirtualListView: Component = () => {
                 height="100%"
                 rowHeight={rowHeight()}
                 selectedIds={selection.selectedIds}
-                sortKey={Object.keys({
-                    title: "filename",
-                    type: "format",
-                    size: "size",
-                    creation: "created_at",
-                    modification: "modified_at",
-                    addition: "added_at"
-                }).find(key => key === filters.sortBy) || filters.sortBy}
+                sortKey={filters.sortBy}
                 sortOrder={filters.sortOrder as "asc" | "desc"}
                 onSort={handleSort}
                 onScroll={handleScroll}

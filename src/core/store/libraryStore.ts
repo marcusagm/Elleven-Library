@@ -28,18 +28,20 @@ export const libraryActions = {
     const folderId = filterState.selectedFolderId;
     const recursive = filterState.folderRecursiveView;
     const anyFilter = filterActions.hasActiveFilters();
+    const sortBy = filterState.sortBy;
+    const sortOrder = filterState.sortOrder;
     
-    console.log("libraryStore.refreshImages", { reset, isUntagged, folderId, recursive, anyFilter });
+    console.log("libraryStore.refreshImages", { reset, isUntagged, folderId, recursive, anyFilter, sortBy, sortOrder });
 
     if (reset) {
       currentOffset = 0;
       let firstBatch;
       if (anyFilter) {
         firstBatch = await tagService.getImagesFiltered(
-          BATCH_SIZE, 0, filterState.selectedTags, true, isUntagged, folderId || undefined, recursive
+          BATCH_SIZE, 0, filterState.selectedTags, true, isUntagged, folderId || undefined, recursive, sortBy, sortOrder
         );
       } else {
-        firstBatch = await getImages(BATCH_SIZE, 0);
+        firstBatch = await getImages(BATCH_SIZE, 0, sortBy, sortOrder);
       }
       setLibraryState("items", reconcile(firstBatch, { key: "id" }));
       currentOffset = BATCH_SIZE;
@@ -47,10 +49,10 @@ export const libraryActions = {
       let fresh;
       if (anyFilter) {
         fresh = await tagService.getImagesFiltered(
-          BATCH_SIZE, 0, filterState.selectedTags, true, isUntagged, folderId || undefined, recursive
+          BATCH_SIZE, 0, filterState.selectedTags, true, isUntagged, folderId || undefined, recursive, sortBy, sortOrder
         );
       } else {
-        fresh = await getImages(BATCH_SIZE, 0);
+        fresh = await getImages(BATCH_SIZE, 0, sortBy, sortOrder);
       }
       setLibraryState("items", reconcile(fresh, { key: "id" }));
       currentOffset = BATCH_SIZE;
@@ -66,15 +68,17 @@ export const libraryActions = {
       const folderId = filterState.selectedFolderId;
       const recursive = filterState.folderRecursiveView;
       const anyFilter = filterActions.hasActiveFilters();
+      const sortBy = filterState.sortBy;
+      const sortOrder = filterState.sortOrder;
       
       let nextBatch;
       
       if (anyFilter) {
         nextBatch = await tagService.getImagesFiltered(
-          BATCH_SIZE, currentOffset, filterState.selectedTags, true, isUntagged, folderId || undefined, recursive
+          BATCH_SIZE, currentOffset, filterState.selectedTags, true, isUntagged, folderId || undefined, recursive, sortBy, sortOrder
         );
       } else {
-        nextBatch = await getImages(BATCH_SIZE, currentOffset);
+        nextBatch = await getImages(BATCH_SIZE, currentOffset, sortBy, sortOrder);
       }
 
       if (nextBatch.length > 0) {

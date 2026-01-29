@@ -52,7 +52,7 @@ struct IndexedImage {
 #[derive(Default)]
 pub struct WatcherRegistry {
     pub watchers: HashMap<String, tokio::sync::oneshot::Sender<()>>,
-    pub pending_removals: std::collections::HashSet<String>,
+    // pub pending_removals: std::collections::HashSet<String>,
 }
 
 pub struct Indexer {

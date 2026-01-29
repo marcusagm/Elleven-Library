@@ -49,7 +49,7 @@ pub fn get_image_metadata(path: &Path) -> Option<ImageMetadata> {
             let mut buffer = [0u8; 1024];
             let _ = file.read(&mut buffer);
             match imagesize::image_type(&buffer) {
-                Ok(t) => format!("{:?}", t),
+                Ok(t) => format!("{:?}", t).to_lowercase(),
                 Err(_) => extension,
             }
         }

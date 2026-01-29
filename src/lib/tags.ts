@@ -56,7 +56,9 @@ export const tagService = {
     matchAll: boolean = true,
     untagged?: boolean,
     folderId?: number,
-    recursive: boolean = false
+    recursive: boolean = false,
+    sortBy?: string,
+    sortOrder?: string
   ): Promise<any[]> => {
     return await invoke("get_images_filtered", { 
       limit, 
@@ -65,7 +67,9 @@ export const tagService = {
       matchAll,
       untagged,
       folderId,
-      recursive
+      recursive,
+      sortBy,
+      sortOrder
     });
   },
 

@@ -18,10 +18,33 @@ impl Db {
         let pool = SqlitePool::connect_with(options).await?;
 
         // Initialize schema if tables don't exist
-        
-        // Run main schema
         let schema = include_str!("schema.sql");
         pool.execute(schema).await?;
+
+        // Manual Migrations (ensure existing DBs have the new columns)
+        let columns: Vec<(i64, String, String, i64, Option<String>, i64)> = sqlx::query_as("PRAGMA table_info(images)")
+            .fetch_all(&pool)
+            .await?;
+        
+        let column_names: Vec<String> = columns.into_iter().map(|c| c.1).collect();
+        
+        if !column_names.contains(&"format".to_string()) {
+            println!("DEBUG: Migration - Adding 'format' column to images table");
+            pool.execute("ALTER TABLE images ADD COLUMN format TEXT DEFAULT ''").await?;
+        }
+        if !column_names.contains(&"rating".to_string()) {
+            println!("DEBUG: Migration - Adding 'rating' column to images table");
+            pool.execute("ALTER TABLE images ADD COLUMN rating INTEGER DEFAULT 0").await?;
+        }
+        if !column_names.contains(&"notes".to_string()) {
+            println!("DEBUG: Migration - Adding 'notes' column to images table");
+            pool.execute("ALTER TABLE images ADD COLUMN notes TEXT").await?;
+        }
+        if !column_names.contains(&"added_at".to_string()) {
+            println!("DEBUG: Migration - Adding 'added_at' column to images table");
+            pool.execute("ALTER TABLE images ADD COLUMN added_at DATETIME DEFAULT CURRENT_TIMESTAMP").await?;
+            pool.execute("UPDATE images SET added_at = created_at WHERE added_at IS NULL").await?;
+        }
 
         Ok(Self { pool })
     }
@@ -329,7 +352,7 @@ impl Db {
             // Standard Update
             sqlx::query(
                 "UPDATE images SET 
-                    folder_id = ?, filename = ?, width = ?, height = ?, size = ?, modified_at = ? 
+                    folder_id = ?, filename = ?, width = ?, height = ?, size = ?, format = ?, modified_at = ? 
                  WHERE path = ?"
             )
             .bind(folder_id)
@@ -337,6 +360,7 @@ impl Db {
             .bind(img.width)
             .bind(img.height)
             .bind(img.size)
+            .bind(&img.format)
             .bind(img.modified_at)
             .bind(&img.path)
             .execute(&self.pool)
@@ -360,12 +384,13 @@ impl Db {
                 println!("DEBUG: DB - Adopting 'lost' image record {} for new path: {}", id, img.path);
                 sqlx::query(
                     "UPDATE images SET 
-                        path = ?, folder_id = ?, filename = ?, modified_at = ? 
+                        path = ?, folder_id = ?, filename = ?, format = ?, modified_at = ? 
                      WHERE id = ?"
                 )
                 .bind(&img.path)
                 .bind(folder_id)
                 .bind(&img.filename)
+                .bind(&img.format)
                 .bind(img.modified_at)
                 .bind(id)
                 .execute(&self.pool)
@@ -376,8 +401,8 @@ impl Db {
 
         // 3. True New File
         let res = sqlx::query(
-            "INSERT INTO images (folder_id, path, filename, width, height, size, created_at, modified_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO images (folder_id, path, filename, width, height, size, format, created_at, modified_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(folder_id)
         .bind(&img.path)
@@ -385,6 +410,7 @@ impl Db {
         .bind(img.width)
         .bind(img.height)
         .bind(img.size)
+        .bind(&img.format)
         .bind(img.created_at)
         .bind(img.modified_at)
         .execute(&self.pool)
@@ -473,14 +499,14 @@ impl Db {
         new_folder_id: i64
     ) -> Result<Option<(crate::indexer::metadata::ImageMetadata, i64)>, sqlx::Error> {
         // 1. Get existing image
-        let row: Option<(i64, i64, i32, i32, i64, String, String, Option<String>, i32, Option<String>)> = sqlx::query_as(
-            "SELECT id, folder_id, width, height, size, created_at, modified_at, thumbnail_path, rating, notes FROM images WHERE path = ?"
+        let row: Option<(i64, i64, i32, i32, i64, String, String, String, Option<String>, i32, Option<String>)> = sqlx::query_as(
+            "SELECT id, folder_id, width, height, size, format, created_at, modified_at, thumbnail_path, rating, notes FROM images WHERE path = ?"
         )
         .bind(old_path)
         .fetch_optional(&self.pool)
         .await?;
 
-        if let Some((id, old_folder_id, w, h, s, c_at, m_at, thumb, rating, notes)) = row {
+        if let Some((id, old_folder_id, w, h, s, f, c_at, m_at, thumb, rating, notes)) = row {
             // 2. Update Path, Filename, Folder
             sqlx::query(
                 "UPDATE images SET path = ?, filename = ?, folder_id = ?, modified_at = ? WHERE id = ?"
@@ -515,11 +541,7 @@ impl Db {
                 thumbnail_path: thumb,
                 rating,
                 notes,
-                format: std::path::Path::new(new_filename)
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .unwrap_or("unknown")
-                    .to_string(),
+                format: f,
                 added_at: None,
             }, old_folder_id)))
         } else {

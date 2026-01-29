@@ -196,6 +196,8 @@ impl Db {
         untagged: Option<bool>,
         folder_id: Option<i64>,
         recursive: bool,
+        sort_by: Option<String>,
+        sort_order: Option<String>,
     ) -> Result<Vec<crate::indexer::metadata::ImageMetadata>, sqlx::Error> {
         let mut query_builder: sqlx::QueryBuilder<sqlx::Sqlite> = sqlx::QueryBuilder::new(
             "WITH RECURSIVE target_folders AS (
@@ -208,10 +210,7 @@ impl Db {
                 query_builder.push(" UNION ALL SELECT f.id FROM folders f JOIN target_folders tf ON f.parent_id = tf.id");
             }
         } else {
-             // If no folder selected, effectively selecting all folders? 
-             // Or maybe we just don't use the CTE if folder_id is None.
-             // But for cleaner building, let's just put a dummy condition if None or handle it below.
-             query_builder.push(" -1 "); // Dummy ID if none provided, handled in WHERE clause
+             query_builder.push(" -1 "); 
         }
 
         query_builder.push(") SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.rating, i.notes, i.created_at, i.modified_at, i.added_at FROM images i ");
@@ -249,7 +248,35 @@ impl Db {
             }
         }
 
-        query_builder.push(" ORDER BY i.id ASC LIMIT ");
+        // Sorting Logic
+        let allowed_cols = ["filename", "created_at", "modified_at", "added_at", "size", "format", "rating"];
+        let final_sort_by = sort_by.as_deref().filter(|c| allowed_cols.contains(c)).unwrap_or("id");
+        let final_order = sort_order.as_deref().filter(|o| *o == "asc" || *o == "desc").unwrap_or("desc");
+
+        query_builder.push(" ORDER BY ");
+        
+        // Show NULLS last: (column IS NULL) ASC, column [ASC|DESC]
+        query_builder.push(" (");
+        query_builder.push(final_sort_by);
+        query_builder.push(" IS NULL) ASC, ");
+        
+        query_builder.push(final_sort_by);
+        
+        // Case-insensitive sorting for strings
+        if ["filename", "format"].contains(&final_sort_by) {
+            query_builder.push(" COLLATE NOCASE ");
+        }
+
+        query_builder.push(" ");
+        query_builder.push(final_order);
+
+        // Secondary sorting by filename for stability when primary values are equal
+        if final_sort_by != "filename" {
+            query_builder.push(", filename COLLATE NOCASE ASC");
+            // query_builder.push(final_order);
+        }
+
+        query_builder.push(" LIMIT ");
         query_builder.push_bind(limit);
         query_builder.push(" OFFSET ");
         query_builder.push_bind(offset);

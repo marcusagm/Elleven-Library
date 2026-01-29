@@ -72,9 +72,9 @@ export const CommonMetadata: Component<CommonMetadataProps> = (props) => {
             <div class="inspector-grid">
                 <div class="inspector-meta-item">
                     <span class="inspector-meta-label">Type</span>
-                    <span class="inspector-meta-value">
+                    <span class="inspector-meta-value inspector-meta-value-type">
                         <FileText size={10} />
-                        {props.item?.filename.split('.').pop()?.toUpperCase()}
+                        {props.item?.format || props.item?.filename.split('.').pop()}
                     </span>
                 </div>
                 <div class="inspector-meta-item">
@@ -100,7 +100,7 @@ export const CommonMetadata: Component<CommonMetadataProps> = (props) => {
                 </div>
             </div>
 
-            <div class="inspector-field-group" style="margin-top: 12px;">
+            <div class="inspector-field-group inspector-notes-group">
                 <label class="inspector-label">Notes</label>
                 <textarea 
                     class="inspector-notes-input"

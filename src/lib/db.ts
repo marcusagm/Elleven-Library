@@ -16,7 +16,7 @@ export async function getLocations() {
   return await invoke<any[]>("get_locations");
 }
 
-export async function getImages(limit: number = 100, offset: number = 0) {
+export async function getImages(limit: number = 100, offset: number = 0, sortBy?: string, sortOrder?: string) {
   // Use the backend command which now handles the unified logic
   return await invoke<any[]>("get_images_filtered", {
     limit,
@@ -25,6 +25,8 @@ export async function getImages(limit: number = 100, offset: number = 0) {
     matchAll: true,
     untagged: false, // optional
     folderId: null,      // was locationId
-    recursive: true   // default to recursive or not? context implies simple "get recent"
+    recursive: true,   // default to recursive or not? context implies simple "get recent"
+    sortBy,
+    sortOrder
   });
 }
