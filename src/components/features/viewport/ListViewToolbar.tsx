@@ -112,8 +112,6 @@ export const ListViewToolbar: Component = () => {
                         { type: "item", label: "Masonry Horizontal", icon: AlignCenterHorizontal as any, action: () => filters.setLayout("masonry-h") },
                         { type: "item", label: "Grid", icon: LayoutGrid as any, action: () => filters.setLayout("grid") },
                         { type: "item", label: "List", icon: List as any, action: () => filters.setLayout("list") },
-                        { type: "separator" },
-                        { type: "label", label: "Thumbnail Size" }
                     ]}
                 />
                 
@@ -122,13 +120,20 @@ export const ListViewToolbar: Component = () => {
                     Dado que o DropdownMenu atual não suporta itens customizados facilmente via props.items, 
                     vamos manter o Slider como um elemento separado por enquanto para não quebrar a UI.
                 */}
-                <div class="toolbar-group" style={{ width: "100px", "margin-left": "8px" }}>
+                <div class="toolbar-group" style={{ 
+                    width: "120px", 
+                    "margin-left": "8px",
+                    "display": "flex",
+                    "align-items": "center",
+                    "gap": "8px"
+                }}>
                     <Slider 
                         value={filters.thumbSize || 200} 
                         min={100} 
                         max={500} 
-                        step={10}
+                        step={filters.layout === 'grid' ? 20 : 10}
                         onValueChange={(val) => filters.setThumbSize(val)}
+                        title="Thumbnail Size"
                     />
                 </div>
             </div>

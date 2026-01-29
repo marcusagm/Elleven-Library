@@ -9,7 +9,8 @@
 
 .ui-table-grid-track {
   position: relative;
-  width: 100%;
+  min-width: 100%;
+  width: max-content;
 }
 
 .ui-table-grid-header {
@@ -18,7 +19,8 @@
   background-color: var(--bg-sidebar);
   border-bottom: 1px solid var(--border-color);
   z-index: 10;
-  width: 100%;
+  min-width: 100%;
+  width: max-content;
 }
 
 .ui-table-grid-header-sticky {
@@ -75,6 +77,7 @@
   top: 0;
   left: 0;
   display: flex;
+  min-width: 100%;
   width: 100%;
   border-bottom: 1px solid var(--border-subtle);
   transition: background-color var(--transition-fast);
@@ -91,6 +94,23 @@
 
 .ui-table-grid-row-focused {
   outline: 1px inset var(--accent-color);
+}
+
+.ui-table-grid-row.drop-target-active {
+  background-color: var(--surface-active) !important;
+  z-index: 20;
+}
+
+.ui-table-grid-row.drop-target-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: var(--accent-color);
+  box-shadow: 0 0 10px var(--accent-color);
+  z-index: 21;
 }
 
 .ui-table-grid-cell {

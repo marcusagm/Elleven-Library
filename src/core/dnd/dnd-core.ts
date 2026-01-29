@@ -30,3 +30,4 @@ export const dndRegistry = new DndStrategyRegistry();
 
 // Global Drag State (Signal for Reactivity)
 export const [currentDragItem, setDragItem] = createSignal<DragItem | null>(null);
+export const [currentDropTargetId, setDropTargetId] = createSignal<number | string | null>(null);

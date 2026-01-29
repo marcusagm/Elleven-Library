@@ -5,7 +5,7 @@ import { TreeView, TreeNode } from "../../ui/TreeView";
 import { SidebarPanel } from "../../ui/SidebarPanel";
 import { Button } from "../../ui/Button";
 import { CountBadge } from "../../ui/CountBadge";
-import { dndRegistry } from "../../../core/dnd";
+import { dndRegistry, setDragItem } from "../../../core/dnd";
 import { tagService } from "../../../lib/tags";
 import { TagContextMenu } from "./TagContextMenu";
 import { TagDeleteModal } from "./TagDeleteModal";
@@ -209,6 +209,7 @@ export const TagTreeSidebarPanel: Component = () => {
                     if (strategy && item.type === "TAG") await strategy.onDrop(item, "root");
                 }
             } catch(err) { console.error(err); }
+            setDragItem(null);
         }}
       >
           <TreeView 

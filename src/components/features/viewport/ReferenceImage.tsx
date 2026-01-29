@@ -128,6 +128,7 @@ export function ReferenceImage(props: ReferenceImageProps) {
         <img
           src={displaySrc()}
           alt={props.alt}
+          draggable={false}
           onLoad={() => setLoaded(true)}
           onError={handleError}
           class={loaded() ? "loaded" : "loading"}

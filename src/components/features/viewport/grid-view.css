@@ -4,7 +4,7 @@
     overflow-y: auto;
     background-color: var(--bg-color);
     position: relative;
-    padding: var(--space-4);
+    padding: var(--space-2);
     scrollbar-gutter: stable;
 }
 

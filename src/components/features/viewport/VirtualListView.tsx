@@ -1,8 +1,9 @@
-import { Component } from "solid-js";
+import { Component, createMemo } from "solid-js";
 import { Table, Column } from "../../ui/Table";
 import { useLibrary, useSelection, useViewport, useFilters } from "../../../core/hooks";
 import { ImageItem } from "../../../types";
 import { formatFileSize, formatDate } from "../../../utils/format";
+import { assetDnD } from "../../../core/dnd";
 
 export const VirtualListView: Component = () => {
     const lib = useLibrary();
@@ -16,31 +17,43 @@ export const VirtualListView: Component = () => {
         return `thumb://localhost/${filename}`;
     };
 
-    const columns: Column<ImageItem>[] = [
+    const listThumbWidth = createMemo(() => Math.floor(filters.thumbSize / 5));
+    const listThumbHeight = createMemo(() => Math.floor(listThumbWidth() * 0.75));
+    const rowHeight = createMemo(() => Math.max(32, listThumbHeight() + 8));
+
+    const columns = createMemo<Column<ImageItem>[]>(() => [
         {
             header: "",
             accessorKey: "thumbnail_path",
-            width: 50,
+            width: listThumbWidth() + 16,
             align: "center",
             cell: (item) => (
-                <>
-                    {item.thumbnail_path ? (
+                <div style={{ 
+                    width: `${listThumbWidth()}px`, 
+                    height: `${listThumbHeight()}px`, 
+                    background: "var(--surface-hover)", 
+                    "border-radius": "2px",
+                    "overflow": "hidden",
+                    display: "flex",
+                    "align-items": "center",
+                    "justify-content": "center"
+                }}>
+                    {item.thumbnail_path && (
                         <img 
                             src={getThumbUrl(item.thumbnail_path)} 
                             alt="" 
-                            style={{ "max-width": "32px", "max-height": "24px", "object-fit": "cover" }}
+                            draggable={false}
+                            style={{ "max-width": "100%", "max-height": "100%", "object-fit": "cover" }}
                         />
-                    ) : (
-                        <div style={{ width: "32px", height: "24px", background: "var(--surface-hover)", "border-radius": "2px" }} />
                     )}
-                </>
+                </div>
             )
         },
         {
             header: "Name",
             accessorKey: "filename",
             sortable: true,
-            width: "30%"
+            width: 300
         },
         {
             header: "Type",
@@ -90,10 +103,9 @@ export const VirtualListView: Component = () => {
             width: 160,
             cell: (item) => <span>{formatDate(item.added_at)}</span>
         }
-    ];
+    ]);
 
     const handleSort = (key: string, order: "asc" | "desc" | null) => {
-        // Map table sort fields to our store sort fields if needed
         const fieldMap: Record<string, any> = {
             filename: "title",
             format: "type",
@@ -120,8 +132,9 @@ export const VirtualListView: Component = () => {
         <div class="virtual-list-view">
             <Table
                 data={lib.items}
-                columns={columns}
+                columns={columns()}
                 height="100%"
+                rowHeight={rowHeight()}
                 selectedIds={selection.selectedIds}
                 sortKey={Object.keys({
                     title: "filename",
@@ -136,6 +149,12 @@ export const VirtualListView: Component = () => {
                 onScroll={handleScroll}
                 onRowClick={(item, multi) => selection.toggle(item.id, multi)}
                 onRowDoubleClick={(item) => viewport.openItem(item.id.toString())}
+                onRowMount={(el, item) => assetDnD(el, () => ({ 
+                    item, 
+                    selected: selection.selectedIds.includes(item.id),
+                    selectedIds: selection.selectedIds,
+                    allItems: lib.items
+                }))}
                 keyField="id"
             />
         </div>

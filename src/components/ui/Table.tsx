@@ -47,6 +47,8 @@ export interface TableProps<T> {
   onRowDoubleClick?: (item: T) => void;
   /** Callback for scroll events */
   onScroll?: (e: Event) => void;
+  /** Callback when a row element is mounted */
+  onRowMount?: (el: HTMLElement, item: T) => void;
   /** Key field to use for identifying rows (default: 'id') */
   keyField?: keyof T;
   /** Additional CSS class for the container */
@@ -74,6 +76,7 @@ export function Table<T>(props: TableProps<T>) {
     "onRowClick",
     "onRowDoubleClick",
     "onScroll",
+    "onRowMount",
     "keyField",
     "class",
     "height",
@@ -87,6 +90,7 @@ export function Table<T>(props: TableProps<T>) {
   const [focusedIndex, setFocusedIndex] = createSignal(-1);
 
   const rowHeight = () => local.rowHeight ?? 32; // Standard compact height for DAM
+  const HEADER_HEIGHT = 32; // Matches .ui-table-grid-header height in CSS
   const stickyHeader = () => local.stickyHeader ?? true;
   const keyField = () => local.keyField ?? ("id" as keyof T);
   const selectedIds = () => local.selectedIds ?? [];
@@ -173,7 +177,7 @@ export function Table<T>(props: TableProps<T>) {
       const rHeight = rowHeight();
       const sTop = scrollTop();
       const cHeight = containerHeight();
-      const hHeight = rHeight; // Header height
+      const hHeight = HEADER_HEIGHT; // Actual header height
 
       const itemTop = nextIndex * rHeight;
       const itemBottom = itemTop + rHeight;
@@ -192,7 +196,7 @@ export function Table<T>(props: TableProps<T>) {
     const cHeight = containerHeight();
     const rHeight = rowHeight();
     
-    const start = Math.max(0, Math.floor(sTop / rHeight) - 5);
+    const start = Math.max(0, Math.floor((sTop - HEADER_HEIGHT) / rHeight) - 5);
     const visibleCount = Math.ceil(cHeight / rHeight);
     const end = Math.min(local.data.length, start + visibleCount + 10);
     
@@ -217,7 +221,7 @@ export function Table<T>(props: TableProps<T>) {
     >
       <div 
         class="ui-table-grid-track"
-        style={{ height: `${totalHeight() + rowHeight()}px` }}
+        style={{ height: `${totalHeight() + HEADER_HEIGHT}px` }}
         role="presentation"
       >
         {/* Header Row */}
@@ -271,6 +275,7 @@ export function Table<T>(props: TableProps<T>) {
 
             return (
               <div 
+                ref={(el) => local.onRowMount?.(el, item)}
                 class={cn(
                   "ui-table-grid-row",
                   isSelected() && "ui-table-grid-row-selected",
@@ -278,7 +283,7 @@ export function Table<T>(props: TableProps<T>) {
                 )}
                 style={{ 
                   height: `${rowHeight()}px`, 
-                  transform: `translate3d(0, ${(realIndex() + 1) * rowHeight()}px, 0)` 
+                  transform: `translate3d(0, ${HEADER_HEIGHT + realIndex() * rowHeight()}px, 0)` 
                 }}
                 onClick={(e) => local.onRowClick?.(item, e.ctrlKey || e.metaKey, e.shiftKey)}
                 onDblClick={() => local.onRowDoubleClick?.(item)}

@@ -205,6 +205,8 @@ const TreeViewItem: Component<TreeViewItemProps> = (props) => {
       }
     } catch (err) {
       console.error("Drop failed", err);
+    } finally {
+      setDragItem(null);
     }
   };
 

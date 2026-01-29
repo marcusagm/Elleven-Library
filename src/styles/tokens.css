@@ -7,10 +7,10 @@
   --surface-color: #2d2d2d; /* Inputs, Cards */
   --bg-surface: #2d2d2d; /* Alias for surface components like Modals */
   --surface-hover: #37373d; /* List items hover */
-  --surface-active: #094771; /* Selection Blue (Eagle-like) */
+  --surface-active: #005f7b; /* Selection Blue (Eagle-like) */
 
   --border-color: #3e3e42; /* Subtle separators */
-  --border-active: #007fd4; /* Focus borders */
+  --border-active: #005f7b; /* Focus borders */
   --border-subtle: #2b2b2b;
 
   --text-primary: #cccccc;
@@ -19,8 +19,8 @@
   --text-inverse: #ffffff;
 
   /* Accent - Controlled Professional Blue */
-  --accent-color: #007acc;
-  --accent-hover: #0062a3;
+  --accent-color: #00a0a9;
+  --accent-hover: #005f7b;
   --accent-text: #ffffff;
 
   --danger-color: #f48771;

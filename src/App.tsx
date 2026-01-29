@@ -1,4 +1,4 @@
-import { onMount, Show } from "solid-js";
+import { onMount, Show, createEffect } from "solid-js";
 import { useSystem } from "./core/hooks";
 import { AppShell } from "./layouts/AppShell";
 import { PrimaryHeader } from "./components/layout/PrimaryHeader";
@@ -8,7 +8,7 @@ import { GlobalStatusbar } from "./components/layout/GlobalStatusbar";
 import { Viewport } from "./components/layout/Viewport";
 import { open } from "@tauri-apps/plugin-dialog";
 // Native DnD
-import { dndRegistry, TagDropStrategy, ImageDropStrategy } from "./core/dnd";
+import { dndRegistry, TagDropStrategy, ImageDropStrategy, currentDragItem, setDropTargetId } from "./core/dnd";
 import { Loader } from "./components/ui/Loader";
 
 import { useKeyboardShortcuts } from "./core/hooks/useKeyboardShortcuts";
@@ -17,6 +17,13 @@ function App() {
   const system = useSystem();
   
   useKeyboardShortcuts();
+
+  // Root-level DND cleanup
+  createEffect(() => {
+    if (!currentDragItem()) {
+      setDropTargetId(null);
+    }
+  });
 
   onMount(() => {
     system.initialize();

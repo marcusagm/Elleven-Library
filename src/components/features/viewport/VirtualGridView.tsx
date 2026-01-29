@@ -14,13 +14,20 @@ export const VirtualGridView: Component = () => {
     const [scrollTop, setScrollTop] = createSignal(0);
     const [containerHeight, setContainerHeight] = createSignal(0);
 
-    const itemSize = createMemo(() => filters.thumbSize);
+    const itemBaseSize = createMemo(() => filters.thumbSize);
     const gap = 16;
     
     const cols = createMemo(() => {
         const width = containerWidth();
         if (width <= 0) return 4;
-        return Math.max(1, Math.floor((width + gap) / (itemSize() + gap)));
+        return Math.max(1, Math.floor((width + gap) / (itemBaseSize() + gap)));
+    });
+
+    const fittedItemSize = createMemo(() => {
+        const width = containerWidth();
+        const c = cols();
+        if (width <= 0) return itemBaseSize();
+        return Math.floor((width - (gap * (c - 1))) / c);
     });
 
     onMount(() => {
@@ -56,12 +63,12 @@ export const VirtualGridView: Component = () => {
     });
 
     const totalRows = createMemo(() => Math.ceil(lib.items.length / cols()));
-    const totalHeight = createMemo(() => totalRows() * (itemSize() + gap));
+    const totalHeight = createMemo(() => totalRows() * (fittedItemSize() + gap));
 
     const visibleRange = createMemo(() => {
         const sTop = scrollTop();
         const cHeight = containerHeight();
-        const rowH = itemSize() + gap;
+        const rowH = fittedItemSize() + gap;
         
         const startRow = Math.max(0, Math.floor(sTop / rowH) - 4);
         const visibleRows = Math.ceil(cHeight / rowH) + 8;
@@ -90,8 +97,8 @@ export const VirtualGridView: Component = () => {
                         const globalIndex = createMemo(() => visibleRange().start + index());
                         const row = createMemo(() => Math.floor(globalIndex() / cols()));
                         const col = createMemo(() => globalIndex() % cols());
-                        const x = createMemo(() => col() * (itemSize() + gap));
-                        const y = createMemo(() => row() * (itemSize() + gap));
+                        const x = createMemo(() => col() * (fittedItemSize() + gap));
+                        const y = createMemo(() => row() * (fittedItemSize() + gap));
 
                         return (
                             <AssetCard
@@ -102,8 +109,8 @@ export const VirtualGridView: Component = () => {
                                     top: 0,
                                     left: 0,
                                     transform: `translate3d(${x()}px, ${y()}px, 0)`,
-                                    width: `${itemSize()}px`,
-                                    height: `${itemSize()}px`
+                                    width: `${fittedItemSize()}px`,
+                                    height: `${fittedItemSize()}px`
                                 }}
                                 onClick={(e) => {
                                     e.stopPropagation();
