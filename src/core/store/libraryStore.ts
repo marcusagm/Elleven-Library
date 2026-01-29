@@ -134,24 +134,70 @@ export const libraryActions = {
 
       // 2. Handle Additions
       if (payload.added && payload.added.length > 0) {
-          // Fallback for valid IDs or just simplicity: trigger soft refresh
+          // Trigger a soft refresh to integrate new items in the correct order/position
+          // reconcile will handle merging existing ones
           libraryActions.refreshImages(false);
       }
 
-      // 3. Handle Updates (Renames)
+      // 3. Handle Updates (Moves and Renames)
       if (payload.updated && payload.updated.length > 0) {
-          console.log("Processing updates/renames:", payload.updated);
-          for (const item of payload.updated) {
-              setLibraryState("items", i => i.id === item.id, (prev) => ({
-                  ...prev,
-                  path: item.path,
-                  filename: item.filename,
-                  modified_at: item.modified_at,
-                  folder_id: item.folder_id
-              }));
-          }
+          import("./metadataStore").then(({ metadataState }) => {
+              const selectedFolderId = filterState.selectedFolderId;
+              const recursive = filterState.folderRecursiveView;
+
+              const isChildOf = (childId: number, rootId: number): boolean => {
+                  let current: number | null = childId;
+                  while (current) {
+                      if (current === rootId) return true;
+                      const node = metadataState.locations.find(l => l.id === current);
+                      current = node ? node.parent_id : null;
+                  }
+                  return false;
+              };
+
+              let someMovedIn = false;
+              const toRemoveIDs: number[] = [];
+
+              for (const item of payload.updated) {
+                  const isNowInView = !selectedFolderId || 
+                      (recursive ? isChildOf(item.folder_id, selectedFolderId) : item.folder_id === selectedFolderId);
+
+                  const wasKnown = libraryState.items.some(i => i.id === item.id);
+
+                  if (isNowInView) {
+                      if (wasKnown) {
+                          // Update in place (Rename or Move within same recursive tree)
+                          setLibraryState("items", i => i.id === item.id, (prev) => ({
+                              ...prev,
+                              path: item.path,
+                              filename: item.filename,
+                              modified_at: item.modified_at,
+                              folder_id: item.folder_id
+                          }));
+                      } else {
+                          // Moved INTO this folder view from outside
+                          someMovedIn = true;
+                      }
+                  } else if (wasKnown) {
+                      // Was here, but moved OUT
+                      toRemoveIDs.push(item.id);
+                  }
+              }
+
+              if (toRemoveIDs.length > 0) {
+                  const removeSet = new Set(toRemoveIDs);
+                  setLibraryState("items", (items) => items.filter(i => !removeSet.has(i.id)));
+              }
+
+              if (someMovedIn) {
+                  // Re-fetch to get items moved in
+                  libraryActions.refreshImages(false);
+              }
+          });
       }
   }
+
+
 };
 
 export { libraryState };

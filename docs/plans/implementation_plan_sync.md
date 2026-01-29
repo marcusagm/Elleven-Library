@@ -110,3 +110,67 @@ During implementation, several critical robustness issues were identified and re
 
 ## ⏳ Pending
 - None. System should now be robust.
+
+
+## ✅ Resolved Issues (2025-01-29 - part 2)
+
+### 1. Folder Duplication & Case Sensitivity (macOS)
+- **Cause:** macOS is case-preserving but case-insensitive. SQLite is case-sensitive. This caused the database to not find "teste 5" when trying to rename it to "teste 4", resulting in a new entry instead of an update.
+- **Fix:** 
+    - Implemented a global `normalize_path` helper in Rust to strip trailing slashes consistently.
+    - Updated `get_folder_by_path` to use `COLLATE NOCASE` as a fallback.
+    - Added `canonicalize()` to all root paths to resolve symlinks (e.g., `/var` vs `/private/var`).
+
+### 2. Rename Propagation Failures
+- **Cause:** When a folder with deep content was renamed, only the folder record was updated, but the stored paths for all images and sub-folders inside it became invalid.
+- **Fix:** 
+    - Revamped `db.rename_folder` to use a recursive `UPDATE` using SQLite's `SUBSTR` and string concatenation.
+    - Example: `UPDATE folders SET path = ? || SUBSTR(path, ?) WHERE path LIKE ?`
+    - This ensures every single item in the hierarchy stays synced with the new parent path.
+
+### 3. "Pasta Sem Nome" (Race Condition)
+- **Cause:** When creating a New Folder and immediately typing a name, the OS sends `Create(Folder)` -> `Modify(Rename)`. If the debouncer fired between these, the DB was inconsistent.
+- **Fix:** 
+    - **Event Collapsing**: The watcher now checks if a renamed "From" path was JUST added to the buffer. If so, it updates the addition buffer in-place instead of creating a rename event. This "collapses" the temporary name out of existence.
+
+### 4. Hierarchy Leak (/User/Documents...)
+- **Cause:** An aggressive "Hierarchy Repair" logic tried to reconstruct parent folders for any detected path. If a root was removed, it climbed the tree all the way to the system root.
+- **Fix:** 
+    - **Root Shield:** `upsert_folder` now rejects any attempt to demote an existing `is_root = 1` folder into a child.
+    - **Termination Guard:** `ensure_folder_hierarchy` now checks `is_root` and stops climbing immediately.
+    - **Cleanup:** Scripts were run to prune the leaked `/Users/` and `/Documents/` entries from the database.
+
+### 5. Persistent "Ghost" Watchers
+- **Cause:** Removing a location from the UI only deleted the DB record. The background `tokio::spawn` task for that watcher was still alive, re-indexing and "repairing" hierarchy when events happened.
+- **Fix:** 
+    - Implemented `WatcherRegistry`.
+    - Every root watcher now has a `oneshot::Sender` registered in a global (Tauri State) mutex.
+    - `remove_location` now explicitly calls `indexer.stop_watcher(path)`, which signals the thread to terminate before the DB deletion.
+
+### 6. Real-time UI Staleness (File Moves)
+- **Cause:** When a file was moved out of a folder currently being viewed, the library grid didn't update until a manual refresh.
+- **Fix:** 
+    - **Reactive Filtering:** `libraryStore.ts` now analyzes `BatchChange` updates. If an item's `folder_id` changes and it no longer matches the current folder-filter (including recursive checks), it is instantly spliced out of the UI state.
+
+## 🚀 Beyond Planned Fixes (Engineering Excellence)
+
+| Feature | Description | Benefit |
+|---------|-------------|---------|
+| **Advanced Normalization** | Strips trailing slashes and canonicalizes paths | Prevents "duplicate" folders that are just path aliases. |
+| **Watcher Registry** | Shared state for active thread management | Graceful termination of background tasks, prevents memory leaks. |
+| **Event Collapsing** | Merges rapid FS events (Create + Rename) | Prevents race conditions with "Untitled Folder" creation. |
+| **Merge Strategy** | Detects if a rename target already exists | Automatically merges content instead of throwing SQL errors. |
+| **DB Protection** | Database-level guards for root folders | Prevents the system from "leaking" indexing to system folders. |
+
+## 🧪 Verification Status (Final Sync)
+
+- [x] Create Folder & Rename -> **OK** (No duplicates)
+- [x] Move File In/Out -> **OK** (UI updates instantly)
+- [x] Delete Root -> **OK** (Watcher stops + DB cleans)
+- [x] App Restart Cleanup -> **OK** (Orphan pruning active)
+- [x] Case Change Only (teste -> Teste) -> **OK** (Handled via collation/normalization)
+
+## ⏳ Pending / Next Steps
+- [ ] **Large Library Pressure Test:** Verify debounce efficiency with 1,000+ files added at once (e.g. unzip).
+- [ ] **Cross-FS Move:** Verify behavior when moving files across different Library Roots.
+- [ ] **System-level Icons:** Implementation for non-image files (PDF, etc) - *Low Priority*.

@@ -47,9 +47,9 @@
 .ui-tree-has-guide::after {
   content: "";
   position: absolute;
-  left: var(--guide-pos);
+  left: calc(var(--guide-pos) + 1px);
   top: 14px; /* Center of row */
-  width: calc(var(--tree-indent) - var(--guide-pos)); /* Span from guide to content start */
+  width: calc(var(--tree-indent) - var(--guide-pos) - 1px); /* Span from guide to content start */
   height: 1px;
   background-color: var(--border-subtle, rgba(255, 255, 255, 0.08));
   pointer-events: none;
@@ -143,8 +143,7 @@
   content: "";
   position: absolute;
   left: calc(var(--space-1, 4px) * -1);
-  top: calc(50% + 1px);
-  transform: translateY(-50%);
+  top: 50%;
   width: 18px;
   height: 1px;
   background-color: var(--border-subtle, rgba(255, 255, 255, 0.08));

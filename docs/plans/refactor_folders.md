@@ -81,4 +81,4 @@ CREATE TABLE folders (
 ### Pending / Next Steps
 - [ ] **Drag & Drop Reordering**: While the folder structure supports hierarchy, we haven't implemented Drag & Drop to move folders in the database yet. This is a potential future feature.
 - [ ] **Virtualization for Large Trees**: If the user has thousands of folders, the `FolderTreeSidebarPanel` might benefit from list virtualization (e.g., `solid-virtual`). currently it renders all nodes.
-- [ ] **Watch Mode Robustness**: Verify that `notify` watcher events correctly trigger `ensure_folder_hierarchy` for deep changes in the new unified structure. Initial tests pass, but edge cases in deep nesting should be monitored.
+- [x] **Watch Mode Robustness**: Verify that `notify` watcher events correctly trigger `ensure_folder_hierarchy` for deep changes in the new unified structure. Initial tests pass, but edge cases in deep nesting should be monitored.

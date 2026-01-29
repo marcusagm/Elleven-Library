@@ -18,9 +18,9 @@
       - [ ] Mapeamento automático de Metadados (Título, URL, Pinterest, ArtStation, etc.)
   - [ ] 1.2 Ingestão de Desktop e Sistema Operacional
     - [ ] Monitoramento e Importação
-      - [ ] Implementar Monitoramento em Tempo Real (Folder Watching)
+      - [x] Implementar Monitoramento em Tempo Real (Folder Watching)
       - [ ] Opção de replicar hierarquia original de pastas
-      - [ ] Detecção de Alterações (sincronização de remoções/renomeações)
+      - [x] Detecção de Alterações (sincronização de remoções/renomeações)
     - [ ] Integração via Clipboard
       - [ ] Colagem Direta (`Ctrl/Cmd + V`) de imagens e arquivos
     - [ ] Captura de Sistema
@@ -39,14 +39,14 @@
       - [ ] Funcionalidade de Consolidação (Merge) de bibliotecas
       - [ ] Segurança de Acesso (Senha para pastas/bibliotecas)
     - [ ] Hierarquia de Pastas
-      - [ ] Suporte a pastas e subpastas com múltiplos níveis
+      - [x] Suporte a pastas e subpastas com múltiplos níveis
       - [ ] Customização Visual (Cores e Ícones para pastas)
       - [ ] Agrupamento Virtual (sem alterar caminho físico)
   - [ ] 2.2 Ecossistema de Etiquetas (Tags) e Taxonomia
-    - [ ] Estrutura e Gestão
-      - [ ] Tags Hierárquicas (Pai e Filho)
-      - [ ] Visualização em Árvore com expansão/colapso
-      - [ ] Grupos de Tags com cores
+    - [x] Estrutura e Gestão
+      - [x] Tags Hierárquicas (Pai e Filho)
+      - [x] Visualização em Árvore com expansão/colapso
+      - [x] Grupos de Tags com cores
     - [ ] Operações Avançadas
       - [ ] Mesclagem de Tags (Merge)
       - [ ] Painel de Gestão Global (Renomear, Mover, Excluir)
@@ -69,19 +69,19 @@
       - [ ] Ajuste de Tolerância na busca por cor
   - [ ] 2.5 Metadados e Propriedades Personalizadas
     - [ ] Dados Técnicos
-      - [ ] Leitura de EXIF/IPTC (Câmera, ISO, GPS, etc.)
+      - [x] Leitura de EXIF/IPTC (Câmera, ISO, GPS, etc.)
       - [ ] Sistema de Propriedades Personalizadas (Campos definidos pelo usuário)
     - [ ] Anotações e Comentários
       - [ ] Anotações em Área (Desenhar sobre a imagem)
-      - [ ] Notas de Ativo (Texto livre)
+      - [x] Notas de Ativo (Texto livre)
       - [ ] Avaliação por Estrelas (Rating 1-5)
 
 - [ ] 3. Visualização, Inspeção e Suporte a Formatos
   - [ ] 3.1 Motor de Renderização e Visualização Universal
     - [ ] Suporte a Formatos
-      - [ ] Suporte Multiformato (+90 tipos: imagens, vetores, vídeos, 3D)
-      - [ ] Renderização de Arquivos Proprietários (PSD, AI, XD, Sketch, Affinity, Fig)
-      - [ ] Formatos Web Modernos (WebP, AVIF, HEIC, SVG) e Pro (EXR, HDR, TIFF)
+      - [x] Suporte Multiformato (+90 tipos: imagens, vetores, vídeos, 3D)
+      - [x] Renderização de Arquivos Proprietários (PSD, AI, XD, Sketch, Affinity, Fig)
+      - [x] Formatos Web Modernos (WebP, AVIF, HEIC, SVG) e Pro (EXR, HDR, TIFF)
     - [ ] Performance de Visualização
       - [ ] Previews Persistentes (Miniaturas de alta fidelidade)
       - [ ] Carregamento Progressivo (Alta definição sob demanda)
@@ -141,9 +141,9 @@
   - [ ] 4.4 Higiene e Manutenção da Biblioteca
     - [ ] Ferramentas de Limpeza
       - [ ] Detector de Duplicatas (Hash visual/arquivo)
-      - [ ] Localizador de Caminhos Quebrados
+      - [x] Localizador de Caminhos Quebrados
       - [ ] Recuperação de Locais (Remapeamento de raiz)
-      - [ ] Otimização de Banco de Dados (Reindexação/Compactação)
+      - [x] Otimização de Banco de Dados (Reindexação/Compactação)
 
 - [ ] 5. Fluxo de Trabalho, Infraestrutura e Personalização
   - [ ] 5.1 Sincronização e Mobilidade de Dados
@@ -154,7 +154,7 @@
       - [ ] Visualização Mobile (iOS/Android - Leitura)
   - [ ] 5.2 Interoperabilidade
     - [ ] Integração com Apps
-      - [ ] Drag & Drop Universal para softwares de terceiros
+      - [x] Drag & Drop Universal para softwares de terceiros
       - [ ] Plugins Dedicados (ex: Figma)
       - [ ] Cópia rápida de código HEX para clipboard
   - [ ] 5.3 Exportação e Portabilidade
@@ -171,7 +171,7 @@
   - [ ] 5.5 Infraestrutura Técnica e Performance
     - [ ] Backend
       - [ ] Arquitetura Local-First (JSON/Pastas locais)
-      - [ ] Implementação de Motor em Rust/Wasm
-      - [ ] Geração Assíncrona de Miniaturas (Workers)
+      - [x] Implementação de Motor em Rust/Wasm
+      - [x] Geração Assíncrona de Miniaturas (Workers)
       - [ ] Agendamento de Backups Automáticos
-      - [ ] Banco de Dados Interno (SQLite/TypeORM)
+      - [x] Banco de Dados Interno (SQLite/TypeORM)

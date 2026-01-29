@@ -112,5 +112,5 @@ We significantly enhanced the database schema during implementation:
 
 ### Pending Items
 - **Fuzzy Search Tag Input:** A dedicated component for adding tags via text search is planned but not yet implemented. Currently, tags are added via the sidebar context menu.
-- **Uncategorized View:** The logic to display images with `COUNT(tags) = 0` needs final verification.
+- [x] **Uncategorized View:** The logic to display images with `COUNT(tags) = 0` needs final verification.
 

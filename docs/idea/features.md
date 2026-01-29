@@ -32,7 +32,7 @@ Transforma o navegador em uma ferramenta de coleta ativa de referências.
 Integração profunda com os arquivos locais e outros softwares de design.
 
 * **Monitoramento e Importação:**
-* **Monitoramento em Tempo Real (Folder Watching/Auto-import):** Vigia diretórios específicos e importa novos arquivos automaticamente.
+* [x] **Monitoramento em Tempo Real (Folder Watching/Auto-import):** Vigia diretórios específicos e importa novos arquivos automaticamente.
 * **Mapeamento de Estrutura:** Opção de replicar a hierarquia original de pastas durante a importação.
 * **Detecção de Alterações:** Sincronização automática para remoções e renomeações de arquivos no disco.
 
@@ -133,10 +133,10 @@ Este módulo transforma a biblioteca em um "canivete suíço" visual, permitindo
 
 Capacidade de exibir e processar uma vasta gama de ativos com alta fidelidade.
 
-* [ ] **Suporte Multiformato Profissional:** Visualização de mais de 90 formatos, incluindo imagens tradicionais, vetores, vídeos, áudios e arquivos 3D.
-* [ ] **Renderização de Arquivos Proprietários:** Pré-visualização direta de arquivos do ecossistema de design como `.psd`, `.ai`, `.xd`, `.sketch`, `.affinity` e `.fig`.
-* [ ] **Formatos Web e Modernos:** Suporte nativo para `.webp`, `.avif`, `.heic`, `.svg`, além de formatos profissionais como `.exr`, `.hdr` e `.tiff`.
-* [ ] **Previews Persistentes:** Geração de miniaturas de alta fidelidade que permitem a visualização instantânea de arquivos pesados (ex: PSDs de 2GB) sem consumo excessivo de RAM.
+* [x] **Suporte Multiformato Profissional:** Visualização de mais de 90 formatos, incluindo imagens tradicionais, vetores, vídeos, áudios e arquivos 3D.
+* [x] **Renderização de Arquivos Proprietários:** Pré-visualização direta de arquivos do ecossistema de design como `.psd`, `.ai`, `.xd`, `.sketch`, `.affinity` e `.fig`.
+* [x] **Formatos Web e Modernos:** Suporte nativo para `.webp`, `.avif`, `.heic`, `.svg`, além de formatos profissionais como `.exr`, `.hdr` e `.tiff`.
+* [x] **Previews Persistentes:** Geração de miniaturas de alta fidelidade que permitem a visualização instantânea de arquivos pesados (ex: PSDs de 2GB) sem consumo excessivo de RAM.
 * [x] **Carregamento Progressivo:** Uso de miniaturas para navegação rápida e carregamento de imagens em alta definição apenas sob demanda.
 
 ### 3.2 Experiência de Navegação e Layouts Dinâmicos
