@@ -2,106 +2,26 @@
  * Settings Modal Styles
  */
 
-/* Overlay */
-.settings-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  z-index: 9998;
-  animation: settings-fade-in 0.2s ease;
-}
-
-@keyframes settings-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Container */
-.settings-modal-container {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90%;
-  max-width: 800px;
+/* 
+ * Layout Override for Modal integration
+ * We remove padding from the body to allow full-height sidebar 
+ */
+.settings-modal-wrapper {
   height: 80vh;
-  max-height: 600px;
+}
+
+.settings-modal-wrapper .ui-modal-body {
+  padding: 0;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-sidebar);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  z-index: 9999;
-  animation: settings-slide-in 0.2s ease;
   overflow: hidden;
-}
-
-@keyframes settings-slide-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -48%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
-}
-
-/* Header */
-.settings-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-header);
-}
-
-.settings-modal-title {
-  margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.settings-modal-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition:
-    background-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.settings-modal-close:hover {
-  background-color: var(--surface-hover);
-  color: var(--text-primary);
-}
-
-.settings-modal-close:focus-visible {
-  outline: 2px solid var(--accent-color);
-  outline-offset: 2px;
 }
 
 /* Content Layout */
 .settings-modal-content {
   display: flex;
   flex: 1;
-  min-height: 0;
+  min-height: 0; /* Crucial for nested scrolling */
 }
 
 /* Sidebar */
@@ -111,6 +31,7 @@
   padding: var(--space-3);
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
+  overflow-y: auto;
 }
 
 .settings-sidebar-list {
@@ -165,7 +86,7 @@
 }
 
 .settings-panel-content {
-  max-width: 560px;
+  max-width: 600px;
 }
 
 .settings-panel-title {
@@ -183,19 +104,23 @@
 }
 
 /* Scrollbar */
+.settings-sidebar::-webkit-scrollbar,
 .settings-panel::-webkit-scrollbar {
   width: 8px;
 }
 
+.settings-sidebar::-webkit-scrollbar-track,
 .settings-panel::-webkit-scrollbar-track {
   background: transparent;
 }
 
+.settings-sidebar::-webkit-scrollbar-thumb,
 .settings-panel::-webkit-scrollbar-thumb {
   background-color: var(--surface-hover);
   border-radius: 4px;
 }
 
+.settings-sidebar::-webkit-scrollbar-thumb:hover,
 .settings-panel::-webkit-scrollbar-thumb:hover {
   background-color: var(--border-color);
 }

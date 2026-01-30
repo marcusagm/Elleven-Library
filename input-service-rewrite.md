@@ -319,6 +319,10 @@ src-tauri/src/
     - UI ajustada para exibir erros de conflito sem quebrar o layout (abaixo do input).
     - Permissão para gravar a tecla `Escape` como atalho.
 
+5.  **Settings UI Standardization:**
+    - Refatoração do `SettingsModal` para utilizar o componente `Modal` compartilhado.
+    - Herda gerenciamento robusto de foco, suporte a `Escape` e estilização consistente.
+
 ## Pending / Future Work
 
 - [ ] **Strict Typing:** Refinar tipos de comandos para usar Enums/Unions em vez de strings livres.
