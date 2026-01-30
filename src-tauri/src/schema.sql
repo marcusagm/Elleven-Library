@@ -60,3 +60,9 @@ CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_folders_path ON folders(path);
 CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
 
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL, -- JSON Value
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+

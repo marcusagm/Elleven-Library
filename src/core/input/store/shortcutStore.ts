@@ -4,6 +4,7 @@
  */
 
 import { createSignal } from 'solid-js';
+import { invoke } from '@tauri-apps/api/core';
 import type { 
   ShortcutDefinition, 
   RegisteredShortcut, 
@@ -44,6 +45,23 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
     command: 'app:deselect-all',
     category: 'Selection',
     ignoreInputs: false, // Escape always works
+  },
+  {
+    name: 'Settings',
+    description: 'Open application settings',
+    keys: 'Meta+Comma',
+    scope: 'global',
+    command: 'app:settings',
+    category: 'Application',
+  },
+  {
+    name: 'Clear Search / Blur',
+    description: 'Clear search query or blur input',
+    keys: 'Escape',
+    scope: 'search',
+    command: 'search:clear',
+    category: 'Search',
+    ignoreInputs: false,
   },
   
   // Image Viewer scope
@@ -141,7 +159,6 @@ function createShortcutStore() {
   const [shortcuts, setShortcuts] = createSignal<Map<string, RegisteredShortcut>>(new Map());
   const [nextId, setNextId] = createSignal(1);
   const [customizations, setCustomizations] = createSignal<Map<string, string>>(new Map());
-  const [initialized, setInitialized] = createSignal(false);
   
   // =============================================================================
   // Internal Helpers
@@ -206,7 +223,7 @@ function createShortcutStore() {
       });
     },
     
-    edit: (id: string, newKeys: string) => {
+    edit: (id: string, newKeys: string, persist = true) => {
       const current = shortcuts().get(id);
       if (!current) {
         console.warn(`[ShortcutStore] Cannot edit: shortcut ${id} not found`);
@@ -235,6 +252,10 @@ function createShortcutStore() {
         next.set(id, updated);
         return next;
       });
+      
+      if (persist) {
+        saveToBackend();
+      }
     },
     
     resetToDefault: (id: string) => {
@@ -258,6 +279,8 @@ function createShortcutStore() {
         next.set(id, registered);
         return next;
       });
+      
+      saveToBackend();
     },
     
     resetAllToDefaults: () => {
@@ -270,6 +293,7 @@ function createShortcutStore() {
         newShortcuts.set(registered.id, registered);
       }
       setShortcuts(newShortcuts);
+      saveToBackend();
     },
     
     list: () => {
@@ -280,27 +304,31 @@ function createShortcutStore() {
       return Array.from(shortcuts().values()).filter(s => s.scope === scope);
     },
     
-    getConflicts: (keys: string, excludeId?: string) => {
+    detectConflicts: (keys: string, excludeId?: string, scope?: string) => {
       const normalized = canonicalizeShortcut(keys);
-      return Array.from(shortcuts().values()).filter(s => 
-        s.normalizedKeys === normalized && s.id !== excludeId
-      );
+      // Conflict exists if keys match AND scopes match
+      const targetScope = scope || 'global';
+      
+      return Array.from(shortcuts().values())
+        .filter(s => {
+          if (s.id === excludeId) return false;
+          if (s.normalizedKeys !== normalized) return false;
+          // Only flag conflict if scopes are the same
+          // This allows shadowing (e.g. Modal Esc vs Global Esc)
+          const sScope = s.scope || 'global';
+          return sScope === targetScope;
+        })
+        .map(s => s.name);
     },
   };
   
   // =============================================================================
-  // Initialization
+  // Initialization - Run immediately
   // =============================================================================
   
-  function initialize() {
-    if (initialized()) return;
-    
-    // Register default shortcuts
-    for (const def of DEFAULT_SHORTCUTS) {
-      actions.register(def);
-    }
-    
-    setInitialized(true);
+  // Register default shortcuts
+  for (const def of DEFAULT_SHORTCUTS) {
+    actions.register(def);
   }
   
   // =============================================================================
@@ -319,17 +347,50 @@ function createShortcutStore() {
     }));
   }
   
-  function loadCustomizations(customs: Map<string, string>) {
-    setCustomizations(customs);
-    
-    // Re-apply to existing shortcuts
-    for (const [id, keys] of customs) {
-      const current = shortcuts().get(id);
-      if (current) {
-        actions.edit(id, keys);
+  async function saveToBackend() {
+    try {
+      const data: Record<string, string> = {};
+      const custom = customizations();
+      const all = shortcuts();
+      
+      for (const [id, keys] of custom) {
+          const s = all.get(id);
+          if (s) {
+              const key = `${s.name}::${s.scope || 'global'}`;
+              data[key] = keys;
+          }
       }
+      
+      await invoke('set_setting', { key: 'shortcuts', value: data });
+    } catch (e) {
+      console.warn('[ShortcutStore] Failed to save shortcuts:', e);
     }
   }
+
+  async function loadFromBackend() {
+    try {
+      const saved = await invoke<Record<string, string> | null>('get_setting', { key: 'shortcuts' });
+      if (saved) {
+         for (const [key, keys] of Object.entries(saved)) {
+             const [name, scope] = key.split('::');
+             
+             // Find by name/scope in shortcuts (defaults are already registered)
+             const found = Array.from(shortcuts().values()).find(s => 
+                 s.name === name && (s.scope || 'global') === (scope || 'global')
+             );
+             
+             if (found) {
+                 actions.edit(found.id, keys, false);
+             }
+         }
+      }
+    } catch (e) {
+      console.warn('[ShortcutStore] Failed to load shortcuts:', e);
+    }
+  }
+  
+  // Initial Load from Backend
+  loadFromBackend();
   
   // =============================================================================
   // Getters
@@ -350,12 +411,27 @@ function createShortcutStore() {
     }
     return Array.from(cats).sort();
   }
+
+  function getDefault(id: string): ShortcutDefinition | undefined {
+    // Try to find by ID first, then by name match if ID was generated
+    const current = shortcuts().get(id);
+    if (!current) return undefined;
+    
+    return DEFAULT_SHORTCUTS.find(d => 
+      d.id === id || (current && d.name === current.name)
+    );
+  }
+
+  function getByNameAndScope(name: string, scope: InputScopeName = 'global'): RegisteredShortcut | undefined {
+    return Array.from(shortcuts().values()).find(s => 
+      s.name === name && (s.scope || 'global') === (scope || 'global')
+    );
+  }
   
   return {
     // State
     shortcuts,
     customizations,
-    initialized,
     
     // Actions
     ...actions,
@@ -363,14 +439,12 @@ function createShortcutStore() {
     // Getters
     getById,
     getByCommand,
+    getByNameAndScope,
     getCategories,
-    
-    // Lifecycle
-    initialize,
     
     // Persistence
     serialize,
-    loadCustomizations,
+    getDefault,
   };
 }
 

@@ -53,26 +53,53 @@ export function createShortcut(options: CreateShortcutOptions): ShortcutHandle {
   let shortcutId: string | null = null;
   let commandUnsub: (() => void) | null = null;
   
-  // Generate a command name
-  const commandName = `shortcut:${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // Check if shortcut already exists (to reuse definition/customization)
+  // Type assertion since getByNameAndScope is newly added and TS might not see it yet in inference or if interface wasn't updated fully
+  const existing = options.name ? shortcutStore.getByNameAndScope(options.name, options.scope) as any : undefined;
+
+  let commandName: string;
+  let wasCreated = false;
   
-  // Register shortcut immediately (not in effect to avoid loops)
-  shortcutId = shortcutStore.register({
-    name: options.name || 'Custom Shortcut',
-    description: options.description,
-    keys: options.keys,
-    scope: options.scope || 'global',
-    priority: options.priority,
-    command: commandName,
-    preventDefault: options.preventDefault ?? true,
-    ignoreInputs: options.ignoreInputs ?? true,
-    enabledWhen: () => isEnabled() && (options.enabled?.() ?? true),
-    category: options.category,
-    isDefault: false,
-  });
+  if (existing) {
+    // Reuse existing shortcut
+    shortcutId = existing.id;
+    // Use existing command or generate one if missing (shouldn't happen for active shortcuts)
+    commandName = existing.command || `shortcut:${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    
+    // If we're attaching to an existing shortcut, we might want to ensure it has a command
+    if (!existing.command) {
+        // Technically we should update the store here, but let's assume valid state for now
+        // or re-register to update command
+        console.warn(`[createShortcut] Existing shortcut ${existing.name} has no command`);
+    }
+  } else {
+    // Generate a command name
+    commandName = `shortcut:${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    
+    // Register shortcut immediately
+    wasCreated = true;
+    shortcutId = shortcutStore.register({
+        name: options.name || 'Custom Shortcut',
+        description: options.description,
+        keys: options.keys,
+        scope: options.scope || 'global',
+        priority: options.priority,
+        command: commandName,
+        preventDefault: options.preventDefault ?? true,
+        ignoreInputs: options.ignoreInputs ?? true,
+        enabledWhen: () => isEnabled() && (options.enabled?.() ?? true),
+        category: options.category,
+        isDefault: false,
+    });
+  }
   
   // Subscribe to command
   commandUnsub = onCommand(commandName, (payload: ShortcutPayload) => {
+    // Check if locally enabled before executing
+    if (options.enabled && !options.enabled()) {
+      return;
+    }
+    
     setIsActive(true);
     options.action(null, payload);
     // Reset active state after a tick
@@ -81,7 +108,7 @@ export function createShortcut(options: CreateShortcutOptions): ShortcutHandle {
   
   // Cleanup on unmount
   onCleanup(() => {
-    if (shortcutId) {
+    if (shortcutId && wasCreated) {
       shortcutStore.unregister(shortcutId);
     }
     if (commandUnsub) {
@@ -94,7 +121,7 @@ export function createShortcut(options: CreateShortcutOptions): ShortcutHandle {
     disable: () => setIsEnabled(false),
     enable: () => setIsEnabled(true),
     unregister: () => {
-      if (shortcutId) {
+      if (shortcutId && wasCreated) {
         shortcutStore.unregister(shortcutId);
         shortcutId = null;
       }
@@ -126,19 +153,9 @@ export function useShortcut(
  * Create multiple shortcuts at once
  */
 export function useShortcuts(
-  shortcuts: Array<{
-    keys: string | string[];
-    action: (event: Event | null, payload: ShortcutPayload) => void;
-    name?: string;
-    scope?: string;
-  }>
+  shortcuts: CreateShortcutOptions[]
 ): void {
   for (const shortcut of shortcuts) {
-    createShortcut({
-      keys: shortcut.keys,
-      action: shortcut.action,
-      name: shortcut.name,
-      scope: shortcut.scope,
-    });
+    createShortcut(shortcut);
   }
 }

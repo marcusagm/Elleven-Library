@@ -11,6 +11,7 @@ import { X } from "lucide-solid";
 import { cn } from "../../lib/utils";
 import { createFocusTrap } from "../../lib/primitives";
 import { createId } from "../../lib/primitives/createId";
+import { useShortcuts, createConditionalScope } from "../../core/input";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import "./modal.css";
@@ -86,22 +87,30 @@ export const Modal: Component<ModalProps> = (props) => {
   // Focus trap
   createFocusTrap(() => containerRef, () => local.isOpen);
 
-  // Handle Escape key and body scroll lock
+  // Input System Integration
+  createConditionalScope("modal", () => local.isOpen, undefined, true);
+  
+  useShortcuts([
+    {
+      keys: "Escape",
+      name: "Close Modal",
+      scope: "modal", // High priority (100)
+      enabled: () => local.isOpen,
+      action: () => {
+        // Only close if it's the top-most modal/scope interaction
+        // The scope priority handles this mostly, but good to be safe
+        local.onClose();
+      }
+    }
+  ]);
+
+  // Handle body scroll lock
   createEffect(() => {
     if (!local.isOpen) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        local.onClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
     document.body.style.overflow = "hidden";
 
     onCleanup(() => {
-      document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
     });
   });

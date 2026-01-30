@@ -6,6 +6,7 @@ import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
 import { Popover } from "../../ui/Popover";
 import { AdvancedSearchModal } from "./AdvancedSearchModal";
+import { createInputScope, useShortcuts } from "../../../core/input";
 import { cn } from "../../../lib/utils";
 import "./search-toolbar.css";
 
@@ -13,6 +14,35 @@ export const SearchToolbar: Component = () => {
     const filters = useFilters();
     const metadata = useMetadata();
     const [isModalOpen, setIsModalOpen] = createSignal(false);
+    let inputRef: HTMLInputElement | undefined;
+
+    // Input System
+    createInputScope('search');
+    
+    useShortcuts([
+        {
+            keys: 'Meta+KeyK',
+            name: 'Focus Search',
+            action: (e) => {
+                e?.preventDefault();
+                inputRef?.focus();
+            }
+        },
+        {
+            keys: 'Escape',
+            name: 'Clear Search / Blur',
+            scope: 'search',
+            enabled: () => !!filters.searchQuery || document.activeElement === inputRef,
+            action: (e) => {
+                if (filters.searchQuery) {
+                    filters.setSearch('');
+                    // Keep focus if clearing
+                } else if (document.activeElement === inputRef) {
+                    inputRef?.blur();
+                }
+            }
+        }
+    ]);
     
     // Check if current advanced search matches a smart folder
     const currentSmartFolder = createMemo(() => {
@@ -78,6 +108,7 @@ export const SearchToolbar: Component = () => {
         <div class="search-toolbar">
             <div class="search-input-wrapper">
                 <Input 
+                    ref={inputRef}
                     placeholder="Search references (Ctrl+K)" 
                     value={filters.searchQuery}
                     onInput={(e) => filters.setSearch(e.currentTarget.value)}

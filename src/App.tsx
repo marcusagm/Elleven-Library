@@ -1,4 +1,4 @@
-import { onMount, Show, createEffect } from "solid-js";
+import { onMount, onCleanup, Show, createEffect, createSignal } from "solid-js";
 import { useSystem, useNotification } from "./core/hooks";
 import { AppShell } from "./layouts/AppShell";
 import { PrimaryHeader } from "./components/layout/PrimaryHeader";
@@ -12,6 +12,7 @@ import { listen } from "@tauri-apps/api/event";
 import { dndRegistry, TagDropStrategy, ImageDropStrategy, currentDragItem, setDropTargetId } from "./core/dnd";
 import { Sonner } from "./components/ui/Sonner";
 import { Loader } from "./components/ui/Loader";
+import { SettingsModal } from "./components/features/settings";
 // Input System
 import { InputProvider, useShortcuts } from "./core/input";
 import { useSelection, useLibrary } from "./core/hooks";
@@ -21,9 +22,15 @@ function App() {
   const notification = useNotification();
   const selection = useSelection();
   const lib = useLibrary();
+  const [isSettingsOpen, setIsSettingsOpen] = createSignal(false);
   
   // Global shortcuts via Input Service
   useShortcuts([
+    {
+      keys: 'Meta+Comma',
+      name: 'Settings',
+      action: () => setIsSettingsOpen(true),
+    },
     {
       keys: 'Meta+KeyA',
       name: 'Select All',
@@ -34,7 +41,7 @@ function App() {
     },
     {
       keys: 'Escape',
-      name: 'Deselect / Blur',
+      name: 'Deselect All',
       action: () => {
         const active = document.activeElement;
         if (active && ['INPUT', 'TEXTAREA'].includes(active.tagName)) {
@@ -67,6 +74,14 @@ function App() {
     
     // Notify Splash Screen
     window.dispatchEvent(new CustomEvent('app-ready'));
+
+    // Listen for settings open requests
+    const handleOpenSettings = () => setIsSettingsOpen(true);
+    window.addEventListener('app:open-settings', handleOpenSettings);
+
+    onCleanup(() => {
+        window.removeEventListener('app:open-settings', handleOpenSettings);
+    });
   });
 
   const handleSelectFolder = async () => {
@@ -112,6 +127,11 @@ function App() {
             <Viewport />
         </AppShell>
         <Sonner position="bottom-right" richColors />
+        <SettingsModal 
+          isOpen={isSettingsOpen()} 
+          onClose={() => setIsSettingsOpen(false)}
+          initialTab="keyboard-shortcuts"
+        />
       </Show>
     </Show>
   );

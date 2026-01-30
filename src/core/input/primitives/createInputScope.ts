@@ -3,27 +3,23 @@
  * Manages scope lifecycle for components
  */
 
-import { onMount, onCleanup } from 'solid-js';
+import { onCleanup, createEffect } from 'solid-js';
 import { inputStore } from '../store/inputStore';
 import type { InputScopeName } from '../types';
 import { SCOPE_PRIORITIES } from '../types';
 
 /**
  * Push a scope when component mounts, pop when it unmounts
- * 
- * @example
- * // In ImageViewer component
- * createInputScope('image-viewer');
- * 
- * // Or with custom priority
- * createInputScope('custom-scope', 75);
  */
-export function createInputScope(name: InputScopeName, priority?: number): void {
+export function createInputScope(
+  name: InputScopeName, 
+  priority?: number, 
+  blockLowerScopes?: boolean
+): void {
   const resolvedPriority = priority ?? SCOPE_PRIORITIES[name] ?? 0;
   
   // Push scope immediately during component creation
-  // This ensures shortcuts work right away
-  inputStore.pushScope(name, resolvedPriority);
+  inputStore.pushScope(name, resolvedPriority, blockLowerScopes);
   
   // Cleanup when component unmounts
   onCleanup(() => {
@@ -32,54 +28,33 @@ export function createInputScope(name: InputScopeName, priority?: number): void 
 }
 
 /**
- * Temporarily push a scope based on a condition
- * 
- * @example
- * // Push scope when modal is open
- * createConditionalScope('modal', () => isOpen());
+ * Temporarily push a scope based on a condition (Reactive)
  */
 export function createConditionalScope(
   name: InputScopeName, 
   when: () => boolean,
-  priority?: number
+  priority?: number,
+  blockLowerScopes?: boolean
 ): void {
   const resolvedPriority = priority ?? SCOPE_PRIORITIES[name] ?? 0;
   
-  // Track if currently pushed
-  let isPushed = false;
-  
-  onMount(() => {
-    // Watch the condition
-    const checkCondition = () => {
-      const shouldBePushed = when();
-      
-      if (shouldBePushed && !isPushed) {
-        inputStore.pushScope(name, resolvedPriority);
-        isPushed = true;
-      } else if (!shouldBePushed && isPushed) {
+  createEffect(() => {
+    if (when()) {
+      inputStore.pushScope(name, resolvedPriority, blockLowerScopes);
+      onCleanup(() => {
         inputStore.popScope(name);
-        isPushed = false;
-      }
-    };
-    
-    // Initial check
-    checkCondition();
-    
-    // Note: In a real reactive context, this would need to be wrapped in createEffect
-    // But since we're receiving an accessor, we rely on the caller to handle reactivity
-  });
-  
-  onCleanup(() => {
-    if (isPushed) {
-      inputStore.popScope(name);
+      });
     }
   });
 }
 
 /**
  * HOC/Wrapper component for scope management
- * Use when you want declarative scope in JSX
  */
-export function useScopeOnMount(name: InputScopeName, priority?: number): void {
-  createInputScope(name, priority);
+export function useScopeOnMount(
+  name: InputScopeName, 
+  priority?: number, 
+  blockLowerScopes?: boolean
+): void {
+  createInputScope(name, priority, blockLowerScopes);
 }

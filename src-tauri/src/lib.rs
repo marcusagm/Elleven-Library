@@ -13,6 +13,8 @@ mod tag_commands;
 mod thumbnail_commands;
 mod thumbnail_worker;
 mod thumbnails;
+mod db_settings;
+mod settings_commands;
 
 
 use crate::database::Db;
@@ -127,7 +129,9 @@ pub fn run() {
             smart_folder_commands::get_smart_folders,
             smart_folder_commands::save_smart_folder,
             smart_folder_commands::update_smart_folder,
-            smart_folder_commands::delete_smart_folder
+            smart_folder_commands::delete_smart_folder,
+            settings_commands::get_setting,
+            settings_commands::set_setting
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

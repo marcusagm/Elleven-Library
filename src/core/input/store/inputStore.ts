@@ -82,15 +82,13 @@ function createInputStore() {
       }
     },
     
-    pushScope: (name: InputScopeName, priority?: number) => {
+    pushScope: (name: InputScopeName, priority?: number, blockLowerScopes?: boolean) => {
       const resolvedPriority = priority ?? SCOPE_PRIORITIES[name] ?? 0;
       
       setScopeStack(prev => {
-        // Don't add duplicate scopes
-        if (prev.some(s => s.name === name)) {
-          return prev;
-        }
-        return [...prev, { name, priority: resolvedPriority }];
+        // Remove existing scope if already present (to update it)
+        const filtered = prev.filter(s => s.name !== name);
+        return [...filtered, { name, priority: resolvedPriority, blockLowerScopes }];
       });
     },
     

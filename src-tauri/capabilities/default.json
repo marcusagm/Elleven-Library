@@ -37,6 +37,8 @@
     "allow-get-smart-folders",
     "allow-save-smart-folder",
     "allow-update-smart-folder",
-    "allow-delete-smart-folder"
+    "allow-delete-smart-folder",
+    "allow-get-setting",
+    "allow-set-setting"
   ]
 }

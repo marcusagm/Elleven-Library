@@ -49,16 +49,44 @@ interface MatchResult {
  * Find matching shortcuts for the current input state
  */
 function findMatches(token: InputToken): MatchResult[] {
-  const activeScopes = inputStore.activeScopeNames();
+  // Determine active scopes and blocking threshold
+  const scopeStack = inputStore.scopeStack();
+  const activeScopeNames = scopeStack.map(s => s.name);
   const sequenceBuffer = inputStore.sequenceBuffer();
   const allShortcuts = shortcutStore.list();
   
+  // Calculate priority threshold from blocking scopes
+  // Any scope with blockLowerScopes=true will block shortcuts from scopes with lower priority
+  let cutoffPriority = -Infinity;
+  for (const scope of scopeStack) {
+    if (scope.blockLowerScopes && scope.priority > cutoffPriority) {
+      cutoffPriority = scope.priority;
+    }
+  }
+  
   const candidates: RegisteredShortcut[] = [];
   
-  // Filter by scope
+  // Filter by scope and blocking
   for (const shortcut of allShortcuts) {
-    // Check scope
-    if (shortcut.scope && !activeScopes.includes(shortcut.scope)) {
+    // 1. Check if scope is active
+    if (shortcut.scope && !activeScopeNames.includes(shortcut.scope)) {
+      continue;
+    }
+    
+    // 2. Check scope blocking
+    // Resolve shortcut's effective scope priority
+    // Global shortcuts have priority 0 (SCOPE_PRIORITIES.global)
+    let shortcutScopePriority = 0;
+    if (shortcut.scope) {
+      const scopeDef = scopeStack.find(s => s.name === shortcut.scope);
+      if (scopeDef) {
+        shortcutScopePriority = scopeDef.priority;
+      }
+    }
+    
+    // If shortcut's scope priority is lower than the blocking threshold, ignore it
+    // Unless the shortcut belongs to the blocking scope itself (priorities equal)
+    if (shortcutScopePriority < cutoffPriority) {
       continue;
     }
     
@@ -124,30 +152,31 @@ function findMatches(token: InputToken): MatchResult[] {
  */
 function sortMatches(matches: MatchResult[]): MatchResult[] {
   return matches.sort((a, b) => {
-    // Non-default shortcuts first (dynamically registered shortcuts have handlers)
-    // This ensures component-registered shortcuts take priority over static defaults
-    const isDefaultA = a.shortcut.isDefault ?? true;
-    const isDefaultB = b.shortcut.isDefault ?? true;
-    if (isDefaultA !== isDefaultB) {
-      return isDefaultA ? 1 : -1; // Non-default (false) comes first
-    }
-    
-    // Longer sequences first
-    const lenA = a.shortcut.tokens.length;
-    const lenB = b.shortcut.tokens.length;
-    if (lenB !== lenA) return lenB - lenA;
-    
-    // Higher scope priority first
+    // 1. Higher scope priority first (MOST IMPORTANT)
     const scopeA = inputStore.scopeStack().find(s => s.name === a.shortcut.scope);
     const scopeB = inputStore.scopeStack().find(s => s.name === b.shortcut.scope);
     const scopePriorityA = scopeA?.priority ?? 0;
     const scopePriorityB = scopeB?.priority ?? 0;
     if (scopePriorityB !== scopePriorityA) return scopePriorityB - scopePriorityA;
     
-    // Higher shortcut priority first
+    // 2. Higher shortcut priority first
     const prioA = a.shortcut.priority ?? 0;
     const prioB = b.shortcut.priority ?? 0;
-    return prioB - prioA;
+    if (prioB !== prioA) return prioB - prioA;
+
+    // 3. Longer sequences first (Specificity)
+    const lenA = a.shortcut.tokens.length;
+    const lenB = b.shortcut.tokens.length;
+    if (lenB !== lenA) return lenB - lenA;
+
+    // 4. Non-default shortcuts first (User overrides within same scope/priority)
+    const isDefaultA = a.shortcut.isDefault ?? true;
+    const isDefaultB = b.shortcut.isDefault ?? true;
+    if (isDefaultA !== isDefaultB) {
+      return isDefaultA ? 1 : -1; // Non-default (false) comes first
+    }
+    
+    return 0;
   });
 }
 

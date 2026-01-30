@@ -14,8 +14,6 @@ import {
 import { inputStore } from './store/inputStore';
 import { shortcutStore } from './store/shortcutStore';
 import { createKeyboardProvider } from './providers/KeyboardProvider';
-import { createPointerProvider } from './providers/PointerProvider';
-import { createGestureProvider } from './providers/GestureProvider';
 import { clearCommandHandlers } from './dispatcher';
 import type { InputProviderConfig } from './types';
 
@@ -49,7 +47,7 @@ interface InputContextValue {
   editShortcut: typeof shortcutStore.edit;
   resetShortcut: typeof shortcutStore.resetToDefault;
   resetAllShortcuts: typeof shortcutStore.resetAllToDefaults;
-  getConflicts: typeof shortcutStore.getConflicts;
+  detectConflicts: typeof shortcutStore.detectConflicts;
 }
 
 const InputContext = createContext<InputContextValue>();
@@ -73,9 +71,6 @@ export const InputProvider: Component<InputProviderProps> = (props) => {
   
   // Initialize providers on mount
   onMount(() => {
-    // Initialize shortcut store with defaults
-    shortcutStore.initialize();
-    
     // Start keyboard provider
     keyboardCleanup = createKeyboardProvider();
     
@@ -119,7 +114,7 @@ export const InputProvider: Component<InputProviderProps> = (props) => {
     editShortcut: shortcutStore.edit,
     resetShortcut: shortcutStore.resetToDefault,
     resetAllShortcuts: shortcutStore.resetAllToDefaults,
-    getConflicts: shortcutStore.getConflicts,
+    detectConflicts: shortcutStore.detectConflicts,
   };
   
   return (

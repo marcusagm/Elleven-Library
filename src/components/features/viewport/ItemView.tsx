@@ -9,7 +9,7 @@ export const ItemView: Component = () => {
     const lib = useLibrary();
     
     // Push image-viewer scope when this component is mounted
-    createInputScope('image-viewer');
+    createInputScope('image-viewer', undefined, true);
     
     // Zoom 0 means "Fit Screen"
     const [zoom, setZoom] = createSignal(0); 

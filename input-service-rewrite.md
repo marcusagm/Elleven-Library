@@ -33,48 +33,62 @@ src/components/features/settings/
 ├── KeyboardShortcutsPanel.tsx  # Shortcuts configuration panel
 ├── KeyboardShortcutsPanel.css
 └── index.ts                    # Exports
+
+src-tauri/src/
+├── db_settings.rs              # Backend persistence logic
+├── settings_commands.rs        # Tauri commands for settings
+├── schema.sql                  # Database schema (added app_settings)
+└── lib.rs                      # Module registration
 ```
 
 **Scopes:**
 - `global` (Interface geral: sidebars, header, etc.) - Priority: 0
-- `image-viewer` (Viewer de imagens: zoom, navigation) - Priority: 50
+- `image-viewer` (Viewer de imagens: zoom, navigation) - Priority: 50 [BLOCKING]
 - `search` (Barra de busca e filtros) - Priority: 25
-- `modal` (Modais ativos) - Priority: 100
+- `modal` (Modais ativos) - Priority: 100 [BLOCKING]
 
-**Priority System:** Maior número = maior prioridade (modal > image-viewer > search > global)
+**Priority System:** Maior número = maior prioridade.
+**Scope Blocking:** Scopes marcados como `BLOCKING` impedem que eventos cheguem a scopes de menor prioridade.
 
 ---
 
-## Technical Decisions
+## Technical Decisions (Updated)
 
-### 1. Scope Conflict Resolution
-- Scopes mais específicos **bloqueiam** completamente os scopes inferiores
-- Sem fallthrough: se `image-viewer` tem `Ctrl+A`, o `global` não recebe
+### 1. Scope Conflict Resolution & Blocking
+- **Priority:** Scopes são organizados por prioridade.
+- **Blocking:** Funcionalidade `blockLowerScopes` implementada.
+  - Se um scope ativo tem `blockLowerScopes: true`, todos os atalhos de scopes com prioridade menor são ignorados.
+  - Exemplo: Modal aberto (priority 100, blocking) impede atalhos globais (priority 0).
+  - Exemplo: Viewer aberto (priority 50, blocking) impede atalhos globais.
 
 ### 2. Input Focus Handling
-- Flag `ignoreInputs: boolean` configurável por shortcut (default: `true`)
-- Se `ignoreInputs: true` e foco em `<input>`/`<textarea>`, shortcut é ignorado
-- Exceção: `Escape` sempre funciona para blur
+- Flag `ignoreInputs: boolean` configurável por shortcut (default: `true`).
+- Se `ignoreInputs: true` e foco em `<input>`/`<textarea>`, shortcut é ignorado.
+- Exceção: `Escape` sempre funciona para blur.
 
-### 3. Platform Modifiers
-- **Storage:** Sempre salvar como `Meta` (normalizado)
-- **Display UI:** `⌘` para Mac, `Ctrl` para Windows/Linux
-- Auto-detectar plataforma e traduzir na exibição
+### 3. Persistence (Backend)
+- Armazenamento em SQLite tabela `app_settings` (key-value store).
+- Comandos Tauri: `get_setting`, `set_setting`.
+- Carregamento assíncrono na inicialização do `shortcutStore`.
+- Persistência automática ao editar atalhos.
+- Chave de persistência composta: `NomeDoAtalho::Escopo` para estabilidade.
 
-### 4. Recording Mode
-- Aceitar **qualquer combinação** de teclas (incluindo só modificadores)
-- `Enter` é **reservado** para confirmar a gravação
-- Botão de confirmação visível na UI
-- Sem timeout - usuário confirma explicitamente
+### 4. Settings & UI
+- **SettingsModal:** Integrado ao sistema de input (escopo `modal`, blocking, focus trap).
+- **Recorder:** Permite gravar qualquer tecla, incluindo `Escape`.
+- **Conflicts:** Detecção inteligente de conflitos considerando escopo. Atalhos em escopos diferentes (especialmente se isolados/bloqueantes) não conflitam.
+- **Layout:** Avisos de conflito posicionados abaixo do campo de input para melhor visualização.
 
-### 5. Default Shortcuts Reset
 - Botão "Reset to Defaults" restaura todos os shortcuts para defaults da aplicação
 - Confirmação modal antes de resetar
 - Custom shortcuts são removidos, não sobrescritos
 
----
+### 5. Default Shortcuts Reset
+- Suporte a reset individual e global.
+- "Clear Search / Blur" adicionado aos defaults para permitir restauração.
 
-## Image Viewer Shortcuts (Scope: `image-viewer`)
+
+### 6. Image Viewer Shortcuts (Scope: `image-viewer`)
 
 | Shortcut | Action | Description |
 |----------|--------|-------------|
@@ -90,7 +104,7 @@ src/components/features/settings/
 
 ---
 
-## Tasks
+## Status Check
 
 ### Phase 1: Core Types & Normalization (Pure utilities) ✅
 
@@ -181,21 +195,21 @@ src/components/features/settings/
   - Remove old `useKeyboardShortcuts` hook
   - Verify: App loads without errors
 
-### Phase 6: Settings UI Components
+### Phase 6: Settings UI Components ✅
 
-- [ ] **6.1** Create `src/components/features/settings/SettingsModal.tsx`
+- [x] **6.1** Create `src/components/features/settings/SettingsModal.tsx`
   - Modal with header (title) + sidebar navigation
   - Sidebar items: "General", "Appearance", "Keyboard Shortcuts", etc.
   - Uses existing `Modal` component
   - Verify: Modal opens with sidebar
 
-- [ ] **6.2** Create `src/components/features/settings/SettingsModal.css`
+- [x] **6.2** Create `src/components/features/settings/SettingsModal.css`
   - Sidebar layout (200px fixed)
   - Content area scrollable
   - Uses design tokens
   - Verify: Matches app design
 
-- [ ] **6.3** Create `src/components/features/settings/KeyboardShortcutsPanel.tsx`
+- [x] **6.3** Create `src/components/features/settings/KeyboardShortcutsPanel.tsx`
   - Lists all shortcuts grouped by scope
   - Each shortcut: name, description, key combo (Kbd component)
   - Edit button → inline editing mode
@@ -203,13 +217,13 @@ src/components/features/settings/
   - Conflict detection (warning badge)
   - Verify: Panel displays shortcuts
 
-- [ ] **6.4** Create `src/components/features/settings/KeyboardShortcutsPanel.css`
+- [x] **6.4** Create `src/components/features/settings/KeyboardShortcutsPanel.css`
   - Shortcut list styling
   - Recording state styling
   - Conflict warning styling
   - Verify: Matches app design
 
-- [ ] **6.5** Create `src/components/features/settings/index.ts`
+- [x] **6.5** Create `src/components/features/settings/index.ts`
   - Export all settings components
   - Verify: Imports work
 
@@ -226,63 +240,57 @@ src/components/features/settings/
   - Selection: Ctrl+A, Escape
   - Verify: Viewport responds to keys
 
-- [ ] **7.3** Add shortcuts to search components (`src/components/features/search/`)
+- [x] **7.3** Add shortcuts to search components (`src/components/features/search/`)
   - Ctrl+K/Cmd+K: Focus search
   - Escape: Clear/close search
   - Verify: Search responds to keys
 
-- [ ] **7.4** Add modal scope to `Modal.tsx`
+- [x] **7.4** Add modal scope to `Modal.tsx`
   - Push `modal` scope when open
   - Baseline shortcuts: Escape to close
   - Verify: Modal shortcuts work
 
-### Phase 8: Backend Persistence (Tauri Commands)
-
-- [ ] **8.1** Add Rust commands for shortcut persistence
-  - `save_shortcuts(shortcuts: Vec<ShortcutDefinition>)`
-  - `load_shortcuts() -> Vec<ShortcutDefinition>`
-  - Store in SQLite database
-  - Verify: Shortcuts persist across restart
-
-- [ ] **8.2** Integrate persistence in `shortcutStore.ts`
-  - Load on init, save on changes
-  - Debounce saves
-  - Verify: Changes persist
+### Phase 8: Backend Persistence (Tauri Commands) ✅
+- [x] 8.1 Add Rust commands for shortcut persistence (`db_settings`, `settings_commands`)
+- [x] 8.2 Integrate persistence in `shortcutStore.ts` (Load/Save using `invoke`)
+- [x] 8.3 Configure Permissions (`capabilities/default.json`, `permissions/main.toml`)
 
 ### Phase 9: Verification & Polish
 
-- [ ] **9.1** Test all default shortcuts work
+- [x] **9.1** Test all default shortcuts work
   - Global: Ctrl+K (search), Ctrl+A (select all), Escape (deselect)
   - Image Viewer: Arrows, Zoom controls
   - Modals: Escape to close
   - Verify: All shortcuts functional
 
-- [ ] **9.2** Test shortcut editing flow
+- [x] **9.2** Test shortcut editing flow
   - Open settings → Keyboard Shortcuts
   - Click edit on a shortcut
   - Press new key combo
   - Save and verify it works
   - Verify: Custom shortcuts work
 
-- [ ] **9.3** Test conflict detection
+- [x] **9.3** Test conflict detection
   - Try to assign same shortcut to two actions
   - Warning should appear
   - Verify: Conflicts detected
 
-- [ ] **9.4** Remove old code
+- [x] **9.4** Remove old code
   - Delete `docs/Shortcuts/` folder
   - Clean up unused imports
   - Verify: Build passes
+  
+- [x] **9.5** Layout improvements for conflict warning
 
 ---
 
 ## Done When
 
-- [ ] All shortcuts from `useKeyboardShortcuts` work with new system
-- [ ] Shortcuts persist to backend database
-- [ ] Settings modal with keyboard shortcuts panel is functional
-- [ ] No TypeScript errors, app builds successfully
-- [ ] Touch gestures work on trackpad (swipe, pinch-to-zoom)
+- [x] All shortcuts from `useKeyboardShortcuts` work with new system
+- [x] Shortcuts persist to backend database
+- [x] Settings modal with keyboard shortcuts panel is functional
+- [x] No TypeScript errors, app builds successfully
+- [x] Touch gestures work on trackpad (swipe, pinch-to-zoom)
 
 ---
 
@@ -293,3 +301,26 @@ src/components/features/settings/
 - **Conflict Resolution:** If same combo assigned twice, show warning. Allow override with confirmation.
 - **Scope Priority:** modal (100) > image-viewer (50) > search (25) > global (0)
 - **Design:** Follow existing design tokens. No Tailwind. Each component has its own .css file.
+
+
+## Implemented Improvements
+
+1.  **Scope Blocking (`blockLowerScopes`):**
+    - Adicionado suporte para que escopos de alta prioridade (Modal, Image Viewer) bloqueiem completamente eventos de escopos inferiores (Global). Isso evita conflitos e comportamentos inesperados quando um modal está aberto.
+
+2.  **Settings Modal Input Integration:**
+    - O `SettingsModal` agora se comporta como um modal cidadão de primeira classe no sistema de input, bloqueando atalhos globais e capturando `Escape` para fechar. Uso de `FocusTrap`.
+
+3.  **Robust Persistence:**
+    - Uso de chaves compostas (`Name::Scope`) para salvar customizações, garantindo que mudanças de IDs internos não quebrem as preferências do usuário.
+    - Tabela genérica `app_settings` no banco de dados para flexibilidade futura.
+
+4.  **Recorder UX:**
+    - UI ajustada para exibir erros de conflito sem quebrar o layout (abaixo do input).
+    - Permissão para gravar a tecla `Escape` como atalho.
+
+## Pending / Future Work
+
+- [ ] **Strict Typing:** Refinar tipos de comandos para usar Enums/Unions em vez de strings livres.
+- [ ] **A11y:** Testes mais profundos de acessibilidade na navegação por teclado dentro do Settings Modal.
+- [ ] **I18n:** Melhorar formatação de exibição de teclas para teclados não-US.

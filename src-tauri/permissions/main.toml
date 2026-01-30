@@ -121,3 +121,13 @@ commands.allow = ["update_smart_folder"]
 identifier = "allow-delete-smart-folder"
 description = "Enables delete_smart_folder"
 commands.allow = ["delete_smart_folder"]
+
+[[permission]]
+identifier = "allow-get-setting"
+description = "Enables get_setting"
+commands.allow = ["get_setting"]
+
+[[permission]]
+identifier = "allow-set-setting"
+description = "Enables set_setting"
+commands.allow = ["set_setting"]

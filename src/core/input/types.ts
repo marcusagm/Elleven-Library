@@ -27,6 +27,7 @@ export type InputScopeName = 'global' | 'image-viewer' | 'search' | 'modal' | st
 export interface InputScope {
   name: InputScopeName;
   priority: number;
+  blockLowerScopes?: boolean;
 }
 
 export const SCOPE_PRIORITIES: Record<string, number> = {
@@ -192,7 +193,7 @@ export interface ShortcutState {
 export interface InputActions {
   enable: () => void;
   disable: () => void;
-  pushScope: (name: InputScopeName, priority?: number) => void;
+  pushScope: (name: InputScopeName, priority?: number, blockLowerScopes?: boolean) => void;
   popScope: (name: InputScopeName) => void;
   keyDown: (token: InputToken) => void;
   keyUp: (keyId: string) => void;
@@ -202,12 +203,12 @@ export interface InputActions {
 export interface ShortcutActions {
   register: (definition: ShortcutDefinition, handler?: ShortcutDefinition['handler']) => string;
   unregister: (id: string) => void;
-  edit: (id: string, newKeys: string) => void;
+  edit: (id: string, newKeys: string, persist?: boolean) => void;
   resetToDefault: (id: string) => void;
   resetAllToDefaults: () => void;
   list: () => RegisteredShortcut[];
   getByScope: (scope: InputScopeName) => RegisteredShortcut[];
-  getConflicts: (keys: string, excludeId?: string) => RegisteredShortcut[];
+  detectConflicts: (keys: string, excludeId?: string, scope?: string) => string[];
 }
 
 // =============================================================================
@@ -250,6 +251,7 @@ export interface CreateGestureOptions {
 export interface CreateInputScopeOptions {
   name: InputScopeName;
   priority?: number;
+  blockLowerScopes?: boolean;
 }
 
 // =============================================================================

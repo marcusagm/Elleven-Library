@@ -18,7 +18,12 @@ export const PrimaryHeader: Component = () => {
                     <span>Indexing {system.progress()?.processed} / {system.progress()?.total}</span>
                 </div>
             </Show>
-            <Button variant="ghost" size="icon">
+            <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => window.dispatchEvent(new CustomEvent('app:open-settings'))}
+                title="Settings (Cmd+,)"
+            >
                 <Settings />
             </Button>
        </div>
