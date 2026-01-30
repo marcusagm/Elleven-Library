@@ -169,6 +169,7 @@ export const FolderTreeSidebarPanel: Component = () => {
                         onContextMenu={handleContextMenu}
                         expandedIds={expandedIds()}
                         onToggle={toggleExpansion}
+                        draggable={false}
                     />
                 ) : (
                     <div class="sidebar-empty-state">

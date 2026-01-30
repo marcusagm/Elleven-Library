@@ -3,7 +3,7 @@ import { cn } from "../../lib/utils";
 import "./button.css";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "ghost-destructive" | "destructive" | "outline";
-export type ButtonSize = "sm" | "md" | "lg" | "icon" | "icon-sm" | "icon-xs";
+export type ButtonSize = "xs" | "sm" | "md" | "lg" | "icon" | "icon-sm" | "icon-xs";
 
 export interface ButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Visual variant */

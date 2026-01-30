@@ -1,17 +1,25 @@
-import { Component, createSignal, Show, For } from "solid-js";
-import { Search, SlidersHorizontal, Filter, X } from "lucide-solid";
+import { Component, createSignal, Show, For, createMemo } from "solid-js";
+import { Search, SlidersHorizontal, Funnel, X } from "lucide-solid";
 import { useFilters, useMetadata } from "../../../core/hooks";
 import { SearchGroup } from "../../../core/store/filterStore";
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
 import { Popover } from "../../ui/Popover";
 import { AdvancedSearchModal } from "./AdvancedSearchModal";
+import { cn } from "../../../lib/utils";
 import "./search-toolbar.css";
 
 export const SearchToolbar: Component = () => {
     const filters = useFilters();
     const metadata = useMetadata();
     const [isModalOpen, setIsModalOpen] = createSignal(false);
+    
+    // Check if current advanced search matches a smart folder
+    const currentSmartFolder = createMemo(() => {
+        if (!filters.advancedSearch) return null;
+        const currentJson = JSON.stringify(filters.advancedSearch);
+        return metadata.smartFolders.find(sf => sf.query_json === currentJson);
+    });
 
     // Filter helpers
     const activeFiltersList = () => {
@@ -53,10 +61,12 @@ export const SearchToolbar: Component = () => {
         }
 
         if (filters.advancedSearch) {
+            const smartFolder = currentSmartFolder();
+
             list.push({
                 type: "advanced",
-                label: "Advanced",
-                value: "Search Criteria Active",
+                label: smartFolder ? "Smart Folder" : "Advanced",
+                value: smartFolder ? smartFolder.name : "Search Criteria Active",
                 onRemove: () => filters.setAdvancedSearch(null)
             });
         }
@@ -84,14 +94,14 @@ export const SearchToolbar: Component = () => {
                                     class="search-action-btn active"
                                     title="Active Filters"
                                 >
-                                    <Filter size={14} />
+                                    <Funnel size={14} />
                                 </Button>
                             }
                         >
                             <div class="active-filters-popover">
                                 <div class="active-filters-header">
                                     <h4>Active Filters</h4>
-                                    <Button variant="ghost" size="sm" onClick={() => filters.clearAll()}>Clear All</Button>
+                                    <Button variant="ghost" size="xs" onClick={() => filters.clearAll()}>Clear All</Button>
                                 </div>
                                 <div class="active-filters-list">
                                     <For each={activeFiltersList()}>
@@ -99,12 +109,14 @@ export const SearchToolbar: Component = () => {
                                             <div class="active-filter-item">
                                                 <span class="filter-label">{filter.label}:</span>
                                                 <span class="filter-value">{filter.value}</span>
-                                                <button 
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-xs"
                                                     class="remove-filter-btn" 
                                                     onClick={filter.onRemove}
                                                 >
                                                     <X size={12} />
-                                                </button>
+                                                </Button>
                                             </div>
                                         )}
                                     </For>
@@ -116,7 +128,7 @@ export const SearchToolbar: Component = () => {
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        class="search-action-btn" 
+                        class={cn("search-action-btn", !!filters.advancedSearch && "active")} 
                         title="Advanced Search"
                         onClick={() => setIsModalOpen(true)}
                     >
@@ -129,7 +141,10 @@ export const SearchToolbar: Component = () => {
                 isOpen={isModalOpen()} 
                 onClose={() => setIsModalOpen(false)} 
                 isSmartFolderMode={true}
-                onSave={(name: string, query: SearchGroup) => metadata.saveSmartFolder(name, query)}
+                initialId={currentSmartFolder()?.id}
+                initialName={currentSmartFolder()?.name}
+                initialQuery={filters.advancedSearch || undefined}
+                onSave={(name: string, query: SearchGroup, id?: number) => metadata.saveSmartFolder(name, query, id)}
             />
         </div>
     );
