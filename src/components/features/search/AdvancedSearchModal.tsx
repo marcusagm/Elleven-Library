@@ -327,14 +327,22 @@ export const AdvancedSearchModal: Component<AdvancedSearchModalProps> = (props) 
                     <div style={{ flex: 1 }} />
                     
                     <Show when={criteria().length > 0}>
-                        <Button variant="secondary" onClick={handleSaveSmartFolder} disabled={!smartFolderName()}>
-                            <Save size={16} class="mr-2" />
+                        <Button 
+                            variant="secondary" 
+                            onClick={handleSaveSmartFolder} 
+                            disabled={!smartFolderName()}
+                            leftIcon={<Save size={16} />}
+                        >
                             Save Smart Folder
                         </Button>
                     </Show>
 
-                    <Button variant="primary" onClick={handleSearch} disabled={criteria().length === 0}>
-                        <Search size={16} class="mr-2" />
+                    <Button 
+                        variant="primary" 
+                        onClick={handleSearch}
+                        disabled={criteria().length === 0}
+                        leftIcon={<Search size={16} />}
+                    >
                         Search
                     </Button>
                 </div>

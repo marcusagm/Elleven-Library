@@ -33,7 +33,7 @@ export const SearchToolbar: Component = () => {
             name: 'Clear Search / Blur',
             scope: 'search',
             enabled: () => !!filters.searchQuery || document.activeElement === inputRef,
-            action: (e) => {
+            action: (_e) => {
                 if (filters.searchQuery) {
                     filters.setSearch('');
                     // Keep focus if clearing
@@ -121,11 +121,11 @@ export const SearchToolbar: Component = () => {
                             trigger={
                                 <Button 
                                     variant="ghost" 
-                                    size="icon" 
+                                    size="icon-xs" 
                                     class="search-action-btn active"
                                     title="Active Filters"
                                 >
-                                    <Funnel size={14} />
+                                    <Funnel />
                                 </Button>
                             }
                         >
@@ -146,7 +146,7 @@ export const SearchToolbar: Component = () => {
                                                     class="remove-filter-btn" 
                                                     onClick={filter.onRemove}
                                                 >
-                                                    <X size={12} />
+                                                    <X />
                                                 </Button>
                                             </div>
                                         )}
@@ -158,12 +158,12 @@ export const SearchToolbar: Component = () => {
 
                     <Button 
                         variant="ghost" 
-                        size="icon" 
+                        size="icon-xs" 
                         class={cn("search-action-btn", !!filters.advancedSearch && "active")} 
                         title="Advanced Search"
                         onClick={() => setIsModalOpen(true)}
                     >
-                        <SlidersHorizontal size={14} />
+                        <SlidersHorizontal />
                     </Button>
                 </div>
             </div>

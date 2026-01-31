@@ -132,11 +132,12 @@ export const KeyboardShortcutsPanel: Component = () => {
           variant="secondary" 
           size="sm"
           onClick={resetAllToDefaults}
+          leftIcon={<RotateCcw />}
         >
-          <RotateCcw size={14} />
           Reset All
         </Button>
       </div>
+
       
       <div class="shortcuts-groups">
         <For each={groupedShortcuts()}>

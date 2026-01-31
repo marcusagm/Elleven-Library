@@ -14,10 +14,6 @@ export const GlobalStatusbar: Component = () => {
                 <span class="statusbar-selected">{selection.selectedIds.length} Selected</span>
             </Show>
         </div>
-        <div class="statusbar-section">
-             {/* Future: Sync Status, Cloud Icon */}
-            <span>100%</span>
-        </div>
     </div>
   );
 };

@@ -63,6 +63,12 @@
 .ui-btn-icon {
   height: 40px;
   width: 40px;
+  justify-content: center;
+}
+
+.ui-btn-icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 .ui-btn-icon-sm {
@@ -70,9 +76,19 @@
   width: 32px;
 }
 
+.ui-btn-icon-sm svg {
+  width: 20px;
+  height: 20px;
+}
+
 .ui-btn-icon-xs {
   height: 24px;
   width: 24px;
+}
+
+.ui-btn-icon-xs svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Variant styles */
@@ -160,6 +176,55 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
+}
+
+.ui-btn-lg .ui-btn-icon-left,
+.ui-btn-lg .ui-btn-icon-right {
+  width: 24px;
+  height: 24px;
+}
+
+.ui-btn-lg .ui-btn-icon-left svg,
+.ui-btn-lg .ui-btn-icon-right svg {
+  width: 24px;
+  height: 24px;
+}
+
+.ui-btn-md .ui-btn-icon-left,
+.ui-btn-md .ui-btn-icon-right {
+  width: 20px;
+  height: 20px;
+}
+
+.ui-btn-md .ui-btn-icon-left svg,
+.ui-btn-md .ui-btn-icon-right svg {
+  width: 20px;
+  height: 20px;
+}
+
+
+.ui-btn-sm .ui-btn-icon-left,
+.ui-btn-sm .ui-btn-icon-right {
+  width: 16px;
+  height: 16px;
+}
+
+.ui-btn-sm .ui-btn-icon-left svg,
+.ui-btn-sm .ui-btn-icon-right svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ui-btn-xs .ui-btn-icon-left,
+.ui-btn-xs .ui-btn-icon-right {
+  width: 12px;
+  height: 12px;
+}
+
+.ui-btn-xs .ui-btn-icon-left svg,
+.ui-btn-xs .ui-btn-icon-right svg {
+  width: 12px;
+  height: 12px;
 }
 
 .ui-btn-content {

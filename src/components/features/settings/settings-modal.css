@@ -85,9 +85,9 @@
   background-color: var(--bg-color);
 }
 
-.settings-panel-content {
+/* .settings-panel-content {
   max-width: 600px;
-}
+} */
 
 .settings-panel-title {
   margin: 0 0 var(--space-2) 0;
