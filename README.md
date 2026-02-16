@@ -133,16 +133,16 @@ This project intentionally diverges from typical Electron/Web apps to prioritize
 
 Mundam provides extensive support for various media types, categorized by their rendering and thumbnail generation capabilities.
 
-Total registered formats: 137 extensions
-*   **Native/Full Support**: 98 (Thumbnail processing + Interactive visualization)
-*   **Basic Support**: 39 (Visualization available, thumbnails via format icons or stubs)
-*   **Testing Base**: 206 formats monitored for future expansion.
+Total registered formats: 138 extensions
+*   **Native/Full Support**: 100 (Thumbnail processing + Interactive visualization)
+*   **Basic Support**: 40 (Visualization available, thumbnails via format icons or stubs)
+*   **Testing Base**: 209 formats monitored for future expansion.
 
 ### 🖼️ Images
 | Category | Formats | Status | Notes |
 | :--- | :--- | :---: | :--- |
 | **Standards** | `jpg`, `jpeg`, `jpe`, `jfif`, `webp`, `png`, `tiff`, `gif`, `bmp`, `ico`, `tga` | ✅ | Full support (Thumb + View). |
-| **Design** | `psd`, `psb`, `afdesign`, `afphoto`, `afpub`, `xmind`, `aseprite`, `kra`, `xcf`, `clip`, `fig`, `sketch`, `mdp`, `sai` | ✅ | Full support (Thumb + View). |
+| **Design** | `psd`, `psb`, `afdesign`, `afphoto`, `afpub`, `xmind`, `aseprite`, `kra`, `xcf`, `clip`, `fig`, `sketch`, `mdp`, `sai`, `reb` | ✅ | Full support (Thumb + View). |
 | **RAW** | `dng`, `cr2`, `nef`, `nrw`, `rw2`, `raf`, `orf`, `pef`, `erf`, `sr2`, `srf`, `cr3`, `crw`, `arw`, `3fr`, `srw`, `kdc` | ✅ | Full support (Thumb + View). |
 | **RAW (Stubs)** | `braw`, `r3d`, `ari`, `gpr`, `iiq`, `x3f`, `dcr`, `fff`, `iiq`, `mos`, `sai2` | 🚧 | Planned support. |
 | **Specialized** | `pam`, `pbm`, `pgm`, `pnm`, `ppm`, `cur`, `heic`, `heif`, `avif`, `exr`, `dds` | ✅ | Full support (Thumb + View). |

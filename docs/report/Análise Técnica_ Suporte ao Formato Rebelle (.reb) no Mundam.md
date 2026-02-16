@@ -65,3 +65,11 @@ Diferente de outros formatos que embutem thumbnails proprietárias em chunks bin
 ## 4. Considerações de Performance
 *   Arquivos `.reb` podem ser grandes (centenas de MB). A extração do `canvas.png` deve ser feita via streaming ou leitura parcial do ZIP se possível, para evitar carregar todo o arquivo em memória.
 *   O cache de thumbnails é essencial para evitar a descompressão repetida do ZIP durante a navegação no grid.
+
+## 5. Status da Implementação
+
+✅ **Concluído** (2025-03-20)
+- Módulo `extractors/rebelle.rs` criado (Estratégia A).
+- Formato `.reb` registrado em `definitions.rs`.
+- Integração feita em `extractors/mod.rs`.
+- Compilado com sucesso.

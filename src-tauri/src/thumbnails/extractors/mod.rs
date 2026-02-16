@@ -6,6 +6,7 @@ pub mod clip;
 pub mod mdp;
 pub mod sai;
 pub mod sai2;
+pub mod rebelle;
 
 use std::path::Path;
 use std::io::Read;
@@ -140,6 +141,9 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                 // PaintTool SAI v2
                 "sai2" => {
                     sai2::extract_sai2_preview(path)
+                },
+                "reb" => {
+                    rebelle::extract_rebelle_preview(path)
                 },
                 "blend" => {
                     let (data, mime) = binary_jpeg::extract_any_embedded(path)?;

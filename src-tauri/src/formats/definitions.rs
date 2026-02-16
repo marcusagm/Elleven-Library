@@ -452,6 +452,15 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         playback: PlaybackStrategy::None,
     },
     FileFormat {
+        name: "Rebelle Project",
+        extensions: &["reb"],
+        mime_types: &["application/x-rebelle"],
+        type_category: MediaType::Project,
+        strategy: ThumbnailStrategy::NativeExtractor,
+        preview_strategy: PreviewStrategy::NativeExtractor,
+        playback: PlaybackStrategy::None,
+    },
+    FileFormat {
         name: "CorelDraw Image",
         extensions: &["cdr"],
         mime_types: &["application/x-coreldraw"],
