@@ -12,11 +12,11 @@ export type {
   Platform,
   ModifierKey,
   ModifierState,
-  
+
   // Scopes
   InputScopeName,
   InputScope,
-  
+
   // Tokens
   TokenKind,
   InputToken,
@@ -24,27 +24,27 @@ export type {
   PointerToken,
   WheelToken,
   GestureToken,
-  
+
   // Gestures
   GestureType,
   SwipeDirection,
   GesturePayload,
-  
+
   // Shortcuts
   ShortcutDefinition,
   RegisteredShortcut,
   ShortcutPayload,
-  
+
   // State
   InputState,
   ShortcutState,
-  
+
   // Options
   CreateShortcutOptions,
   CreateGestureOptions,
   CreateInputScopeOptions,
   InputProviderConfig,
-  
+
   // Serialization
   SerializedShortcut,
   ShortcutPreferences,
@@ -62,20 +62,25 @@ export { InputProvider, useInput, useInputOptional } from './context';
 // Primitives
 // =============================================================================
 
-export { 
-  createShortcut, 
-  useShortcut, 
-  useShortcuts 
+export {
+  createShortcut,
+  useShortcut,
+  useShortcuts
 } from './primitives/createShortcut';
 
-export { 
-  createKeyState, 
+export {
+  useCommand,
+  useCommands
+} from './primitives/useCommand';
+
+export {
+  createKeyState,
   createPressedKeys,
   createAnyKeyPressed,
   createAllKeysPressed,
 } from './primitives/createKeyState';
 
-export { 
+export {
   createInputScope,
   createConditionalScope,
   useScopeOnMount,
@@ -96,12 +101,12 @@ export {
   // Platform detection
   detectPlatform,
   isMac,
-  
+
   // Normalization
   canonicalizeShortcut,
   parseShortcutString,
   normalizeKeyCode,
-  
+
   // Display formatting
   formatShortcutForDisplay,
   getShortcutDisplayParts,

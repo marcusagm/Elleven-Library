@@ -14,7 +14,7 @@ import { cn } from '../../lib/utils';
 import { createId } from '../../lib/primitives/createId';
 import { dndRegistry, setDragItem, currentDragItem } from '../../core/dnd';
 import { useMetadata } from '../../core/hooks';
-import { useInput, SCOPE_PRIORITIES } from '../../core/input';
+import { SCOPE_PRIORITIES, createConditionalScope } from '../../core/input';
 import './tree-view.css';
 
 export interface TreeNode {
@@ -103,10 +103,16 @@ const TreeViewItem: Component<TreeViewItemProps> = props => {
     const [dropPosition, setDropPosition] = createSignal<'before' | 'inside' | 'after' | null>(
         null
     );
-    const input = useInput();
-
     let inputRef: HTMLInputElement | undefined;
-    let isEditingScopeActive = false;
+    const [isFocused, setIsFocused] = createSignal(false);
+
+    // Automatically manage 'editing' scope based on editing state and focus
+    createConditionalScope(
+        'editing',
+        () => isEditing() && isFocused(),
+        SCOPE_PRIORITIES.editing,
+        true
+    );
 
     const isExpanded = () =>
         props.expandedIds ? props.expandedIds.has(props.node.id) : localExpanded();
@@ -296,17 +302,11 @@ const TreeViewItem: Component<TreeViewItemProps> = props => {
     };
 
     const handleInputFocus = () => {
-        if (!isEditingScopeActive) {
-            input.pushScope('editing', SCOPE_PRIORITIES.editing, true);
-            isEditingScopeActive = true;
-        }
+        setIsFocused(true);
     };
 
     const handleBlur = () => {
-        if (isEditingScopeActive) {
-            input.popScope('editing');
-            isEditingScopeActive = false;
-        }
+        setIsFocused(false);
         if (inputRef) {
             const val = inputRef.value.trim();
             if (val && val !== props.node.label) {

@@ -10,7 +10,7 @@ import {
     createSignal
 } from 'solid-js';
 import { useViewport, useLibrary } from '../../../core/hooks';
-import { useShortcuts, createConditionalScope } from '../../../core/input';
+import { useCommands, createConditionalScope } from '../../../core/input';
 import { ItemViewProvider, useItemViewContext, FlipState } from './ItemViewContext';
 import { BaseToolbar } from './common/BaseToolbar';
 import { ImageToolbar } from './renderers/image/ImageToolbar';
@@ -120,40 +120,21 @@ const ItemViewContent: Component = () => {
     const toggleFlipV = () => setFlip((f: FlipState) => ({ ...f, vertical: !f.vertical }));
 
     // Global navigation shortcuts (ItemView level)
-    useShortcuts([
-        {
-            keys: 'Escape',
-            name: 'Close Viewer',
-            scope: 'image-viewer',
-            action: () => viewport.closeItem()
-        },
-        { keys: 'Equal', name: 'Zoom In', scope: 'image-viewer', action: zoomIn },
-        { keys: 'Minus', name: 'Zoom Out', scope: 'image-viewer', action: zoomOut },
-        { keys: 'Meta+Digit0', name: 'Fit to Screen', scope: 'image-viewer', action: fitToScreen },
-        { keys: 'Meta+Digit1', name: 'Original Size', scope: 'image-viewer', action: originalSize },
-        { keys: 'KeyH', name: 'Pan Tool', scope: 'image-viewer', action: () => setTool('pan') },
-        {
-            keys: 'KeyR',
-            name: 'Rotate Tool',
-            scope: 'image-viewer',
-            action: () => setTool('rotate')
-        },
-        {
-            keys: 'ArrowLeft',
-            name: 'Previous Item',
-            scope: 'image-viewer',
-            action: () => navigate(-1)
-        },
-        { keys: 'ArrowRight', name: 'Next Item', scope: 'image-viewer', action: () => navigate(1) },
-        {
-            keys: 'Space',
-            name: 'Play/Pause Slideshow',
-            scope: 'image-viewer',
-            action: () => setSlideshowPlaying(!slideshowPlaying())
-        },
-        { keys: 'Shift+KeyH', name: 'Flip Horizontal', scope: 'image-viewer', action: toggleFlipH },
-        { keys: 'Shift+KeyV', name: 'Flip Vertical', scope: 'image-viewer', action: toggleFlipV }
-    ]);
+    // Global navigation shortcuts (ItemView level) using centralized commands
+    useCommands({
+        'viewer:close': () => viewport.closeItem(),
+        'viewer:zoom-in': zoomIn,
+        'viewer:zoom-out': zoomOut,
+        'viewer:fit-screen': fitToScreen,
+        'viewer:original-size': originalSize,
+        'viewer:tool-pan': () => setTool('pan'),
+        'viewer:tool-rotate': () => setTool('rotate'),
+        'viewer:previous': () => navigate(-1),
+        'viewer:next': () => navigate(1),
+        'viewer:slideshow-toggle': () => setSlideshowPlaying(!slideshowPlaying()),
+        'viewer:flip-h': toggleFlipH,
+        'viewer:flip-v': toggleFlipV
+    });
 
     return (
         <div

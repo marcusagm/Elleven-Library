@@ -1,11 +1,11 @@
 /**
  * useGridKeyboardNav
- * 
+ *
  * Keyboard navigation hook for grid-based viewports (Masonry, Grid).
  * Provides arrow key navigation, selection, and scroll-to-focus functionality.
- * 
+ *
  * Designed to work with virtualized layouts where items are positioned absolutely.
- * 
+ *
  * Keyboard shortcuts:
  * - Arrow keys: Navigate between items
  * - Home/End: Go to first/last item
@@ -14,7 +14,7 @@
  */
 
 import { createSignal, createEffect, on, Accessor } from "solid-js";
-import { useShortcuts, createConditionalScope } from "../input";
+import { useCommands, createConditionalScope } from "../input";
 import type { ItemPosition } from "../viewport";
 
 export interface GridKeyboardNavOptions {
@@ -72,12 +72,12 @@ export function useGridKeyboardNav(
   ): number | null => {
     const visibleItems = options.visibleItems();
     const currentPos = visibleItems.find(p => p.id === currentId);
-    
+
     if (!currentPos) {
       // Current item not visible, try to find by index
       const allItems = options.allItems();
       const currentIndex = getItemIndex(currentId);
-      
+
       if (direction === "up" || direction === "left") {
         return currentIndex > 0 ? allItems[currentIndex - 1].id : null;
       } else {
@@ -142,7 +142,7 @@ export function useGridKeyboardNav(
     if (!bestCandidate) {
       const allItems = options.allItems();
       const currentIndex = getItemIndex(currentId);
-      
+
       if (direction === "up" || direction === "left") {
         return currentIndex > 0 ? allItems[currentIndex - 1].id : null;
       } else {
@@ -160,7 +160,7 @@ export function useGridKeyboardNav(
 
     // First try visible items (sync)
     let pos: ItemPosition | null | undefined = options.visibleItems().find(p => p.id === id);
-    
+
     // If not visible and we have a query capability, try that (async)
     if (!pos && options.getItemRect) {
       try {
@@ -179,7 +179,7 @@ export function useGridKeyboardNav(
       // Estimate based on average item height
       const avgHeight = container.scrollHeight / allItems.length;
       const estimatedTop = index * avgHeight;
-      
+
       container.scrollTo({
         top: estimatedTop - container.clientHeight / 2,
         behavior: "smooth"
@@ -189,13 +189,13 @@ export function useGridKeyboardNav(
 
     const containerRect = container.getBoundingClientRect();
     const scrollTop = container.scrollTop;
-    
+
     // Use the found position (either from visible items or worker)
     const itemTop = pos.y;
     // For worker results, height might be available. If not, assume default.
-    const itemHeight = pos.height || 280; 
+    const itemHeight = pos.height || 280;
     const itemBottom = itemTop + itemHeight;
-    
+
     // Check if item is fully visible
     if (itemTop < scrollTop) {
       // Scroll up to show item
@@ -244,42 +244,52 @@ export function useGridKeyboardNav(
       moveDown: () => move('down'),
       moveLeft: () => move('left'),
       moveRight: () => move('right'),
-      
+
       home: () => {
           const allItems = options.allItems();
           if (allItems.length > 0) setFocusedId(allItems[0].id);
       },
-      
+
       end: () => {
            const allItems = options.allItems();
            if (allItems.length > 0) setFocusedId(allItems[allItems.length - 1].id);
       },
-      
+
       open: () => {
           const current = focusedId();
           if (current !== null) options.onOpen(current);
       },
-      
-      toggleSelect: (e?: Event | null) => {
+
+      toggleSelect: (arg?: Event | any) => {
           const current = focusedId();
           if (current !== null) {
-              const multi = e && (e as KeyboardEvent).shiftKey ? (e as KeyboardEvent).shiftKey : false;
+              let multi = false;
+
+              if (arg && 'shiftKey' in arg) {
+                  // Standard DOM Event
+                  multi = arg.shiftKey;
+              } else if (arg && arg.meta && Array.isArray(arg.meta.modifiers)) {
+                  // ShortcutPayload
+                  multi = arg.meta.modifiers.includes('Shift');
+              }
+
               options.onSelect(current, multi);
           }
       }
   };
 
   // Register Shortcuts
-  useShortcuts([
-      { keys: 'ArrowUp', name: 'Move Up', scope: 'viewport', action: actions.moveUp },
-      { keys: 'ArrowDown', name: 'Move Down', scope: 'viewport', action: actions.moveDown },
-      { keys: 'ArrowLeft', name: 'Move Left', scope: 'viewport', action: actions.moveLeft },
-      { keys: 'ArrowRight', name: 'Move Right', scope: 'viewport', action: actions.moveRight },
-      { keys: 'Home', name: 'Go to Start', scope: 'viewport', action: actions.home },
-      { keys: 'End', name: 'Go to End', scope: 'viewport', action: actions.end },
-      { keys: 'Space', name: 'Toggle Selection', scope: 'viewport', action: actions.toggleSelect },
-      { keys: 'Enter', name: 'Open Item', scope: 'viewport', action: actions.open },
-  ]);
+  // Subscribe to navigation commands
+  useCommands({
+      'viewport:move-up': actions.moveUp,
+      'viewport:move-down': actions.moveDown,
+      'viewport:move-left': actions.moveLeft,
+      'viewport:move-right': actions.moveRight,
+      'viewport:home': actions.home,
+      'viewport:end': actions.end,
+      'viewport:toggle-select': actions.toggleSelect,
+      'viewport:open': actions.open
+  });
 
   return {
     focusedId,

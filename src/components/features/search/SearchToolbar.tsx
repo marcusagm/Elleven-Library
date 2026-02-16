@@ -6,7 +6,7 @@ import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Popover } from '../../ui/Popover';
 import { AdvancedSearchModal } from './AdvancedSearchModal';
-import { createInputScope, useShortcuts, shortcutStore } from '../../../core/input';
+import { createConditionalScope, useCommands, shortcutStore } from '../../../core/input';
 import { formatShortcutForDisplay } from '../../../core/input/normalizer';
 import { cn } from '../../../lib/utils';
 import './search-toolbar.css';
@@ -15,10 +15,11 @@ export const SearchToolbar: Component = () => {
     const filters = useFilters();
     const metadata = useMetadata();
     const [isModalOpen, setIsModalOpen] = createSignal(false);
+    const [isFocused, setIsFocused] = createSignal(false);
     let inputRef: HTMLInputElement | undefined;
 
-    // Input System
-    createInputScope('search');
+    // Input System - Scope only active when searching or focused
+    createConditionalScope('search', () => !!filters.searchQuery || isFocused());
 
     const focusSearchShortcut = createMemo(() =>
         shortcutStore.getByNameAndScope('Focus Search', 'global')
@@ -31,30 +32,36 @@ export const SearchToolbar: Component = () => {
         return formatShortcutForDisplay(keys);
     });
 
-    useShortcuts([
-        {
-            keys: focusSearchShortcut()?.keys || 'Meta+KeyK',
-            name: 'Focus Search',
-            action: e => {
-                e?.preventDefault();
-                inputRef?.focus();
-            }
+    useCommands({
+        'app:focus-search': () => {
+            // Check payload if needed, but command usually implies action
+            // e is Payload, need event?
+            // The handler in useShortcuts had 'e'. which is Event | null.
+            // Dispatcher emits payload.
+            // However, useCommand handler is (payload).
+            // Payload doesn't have preventDefault.
+            // But dispatcher handles preventDefault based on shortcut definition!
+            // Global Focus Search has preventDefault: true (default).
+            inputRef?.focus();
         },
-        {
-            keys: 'Escape',
-            name: 'Clear Search / Blur',
-            scope: 'search',
-            enabled: () => !!filters.searchQuery || document.activeElement === inputRef,
-            action: _e => {
+        'search:close': () => {
+            if (
+                activeFiltersList().length > 0 ||
+                filters.searchQuery ||
+                document.activeElement === inputRef
+            ) {
+                // Only act if "enabled" condition was met
+                // The original condition was:
+                // enabled: () => !!filters.searchQuery || document.activeElement === inputRef
+
                 if (filters.searchQuery) {
                     filters.setSearch('');
-                    // Keep focus if clearing
                 } else if (document.activeElement === inputRef) {
                     inputRef?.blur();
                 }
             }
         }
-    ]);
+    });
 
     // Check if current advanced search matches a smart folder
     const currentSmartFolder = createMemo(() => {
@@ -126,6 +133,8 @@ export const SearchToolbar: Component = () => {
                     placeholder={`Search references (${shortcutLabel()})`}
                     value={filters.searchQuery}
                     onInput={e => filters.setSearch(e.currentTarget.value)}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
                     leftIcon={<Search size={14} />}
                     class="search-input"
                 />
