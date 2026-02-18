@@ -1,104 +1,104 @@
 # Technical Analysis: Encapsulated PostScript (.eps) File Format
 
-## 1. Visão Geral do Formato
-*   **Nome da Extensão:** `.eps` (Encapsulated PostScript).
-*   **Possível Origem:** Desenvolvido pela Adobe Systems em 1987.
-*   **Categoria:** Documento de Gráficos Vetoriais / Container.
-*   **Assinatura Mágica (Hexadecimal):**
+## 1. Format Overview
+*   **Extension Name:** `.eps` (Encapsulated PostScript).
+*   **Possible Origin:** Developed by Adobe Systems in 1987.
+*   **Category:** Vector Graphics Document / Container.
+*   **Magic Signature (Hexadecimal):**
     *   **Binary EPS:** `C5 D0 D3 C6` (Little-Endian: `0xC6D3D0C5`).
     *   **ASCII EPS:** `25 21 50 53` (`%!PS`).
-*   **Tamanho Típico Observado:** 3 KB a 10 MB (dependendo da complexidade vetorial e da presença de previews TIFF).
-*   **Variações entre Arquivos Analisados:** Observou-se tanto arquivos puramente textuais (PostScript Puro) quanto arquivos binários (Adobe Generic Header) que embutem o PostScript ASCII junto com miniaturas binárias.
+*   **Typical Size Observed:** 3 KB to 10 MB (depending on vector complexity and the presence of TIFF previews).
+*   **Variations Between Analyzed Files:** Both purely textual files (Pure PostScript) and binary files (Adobe Generic Header) that embed ASCII PostScript along with binary thumbnails were observed.
 
-## 2. Estrutura Binária Global
+## 2. Global Binary Structure
 
 ### 2.1. Binary EPS (Adobe Generic)
-Arquivos que utilizam o header binário facilitam a visualização rápida sem necessidade de um interpretador PostScript completo.
+Files that use the binary header facilitate fast visualization without the need for a full PostScript interpreter.
 
-| Offset | Tamanho | Tipo | Nome do Campo | Descrição | Observações |
+| Offset | Size | Type | Field Name | Description | Observations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `0x00` | 4 bytes | `u32` | **Magic** | `C5 D0 D3 C6`. | Little-endian order. |
-| `0x04` | 4 bytes | `u32` | **PS Offset** | Início do código PostScript. | Geralmente 30 (Logo após o header). |
-| `0x08` | 4 bytes | `u32` | **PS Size** | Tamanho do código PostScript. | |
-| `0x0C` | 4 bytes | `u32` | **WMF Offset** | Início do preview WMF. | 0 se não presente. |
-| `0x10` | 4 bytes | `u32` | **WMF Size** | Tamanho do preview WMF. | |
-| `0x14` | 4 bytes | `u32` | **TIFF Offset** | Início do preview TIFF. | Comumente localizado após o PostScript. |
-| `0x18` | 4 bytes | `u32` | **TIFF Size** | Tamanho do preview TIFF. | |
-| `0x1C` | 2 bytes | `u16` | **Checksum** | Header checksum. | Frequentemente `0xFFFF`. |
+| `0x04` | 4 bytes | `u32` | **PS Offset** | Start of PostScript code. | Usually 30 (immediately after header). |
+| `0x08` | 4 bytes | `u32` | **PS Size** | PostScript code size. | |
+| `0x0C` | 4 bytes | `u32` | **WMF Offset** | Start of WMF preview. | 0 if not present. |
+| `0x10` | 4 bytes | `u32` | **WMF Size** | WMF preview size. | |
+| `0x14` | 4 bytes | `u32` | **TIFF Offset** | Start of TIFF preview. | Commonly located after PostScript. |
+| `0x18` | 4 bytes | `u32` | **TIFF Size** | TIFF preview size. | |
+| `0x1C` | 2 bytes | `u16` | **Checksum** | Header checksum. | Frequently `0xFFFF`. |
 
 ### 2.2. ASCII EPS (Raw PostScript)
-Segue as convenções de estruturação de documentos (DSC - Document Structuring Conventions).
+Follows Document Structuring Conventions (DSC).
 
-| Offset | Tamanho | Tipo | Descrição |
+| Offset | Size | Type | Description |
 | :--- | :--- | :--- | :--- |
-| `0x00` | Var | `ASCII` | Inicia com `%!PS-Adobe-3.0 EPSF-3.0`. |
-| Var    | Var | `Comentário`| Comentários DSC (ex: `%%Title`, `%%BoundingBox`). |
-| Var    | Var | `Metadata` | Bloco XMP (XML) embutido em comentários. |
-| Var    | Var | `Code` | Operadores PostScript (ex: `moveto`, `lineto`). |
+| `0x00` | Var | `ASCII` | Starts with `%!PS-Adobe-3.0 EPSF-3.0`. |
+| Var    | Var | `Comment`| DSC Comments (e.g., `%%Title`, `%%BoundingBox`). |
+| Var    | Var | `Metadata` | XMP block (XML) embedded in comments. |
+| Var    | Var | `Code` | PostScript operators (e.g., `moveto`, `lineto`). |
 
-## 3. Header Principal
+## 3. Main Header
 ### 3.1. Binary Header
-*   **Estrutura:** 30 bytes fixos.
-*   **Campos:** Ponteiros absolutos para os três segmentos possíveis (PostScript, Windows Metafile, TIFF).
+*   **Structure:** 30 fixed bytes.
+*   **Fields:** Absolute pointers to the three possible segments (PostScript, Windows Metafile, TIFF).
 *   **Endianness:** Little-endian.
 
 ### 3.2. ASCII Header
-*   **Estrutura:** Texto livre seguindo convenções proprietárias.
-*   **Campos:** Versão do EPSF, Criador, Data, Bounding Box.
+*   **Structure:** Free text following proprietary conventions.
+*   **Fields:** EPSF version, Creator, Date, Bounding Box.
 *   **Endianness:** N/A (Textual).
 
-## 4. Estruturas Internas Identificadas
+## 4. Identified Internal Structures
 
-### 4.1. Bloco PostScript (Obrigatório)
-*   Contém a descrição vetorial real.
-*   Em arquivos binários, o offset aponta para este bloco.
-*   Termina com o operador `showpage` ou `%%EOF`.
+### 4.1. PostScript Block (Mandatory)
+*   Contains the actual vector description.
+*   In binary files, the offset points to this block.
+*   Ends with the `showpage` operator or `%%EOF`.
 
-### 4.2. Bloco TIFF Preview (Opcional)
-*   **Assinatura:** `49 49 2A 00` (II) ou `4D 4D 00 2A` (MM).
-*   **Função:** Uma imagem raster em baixa resolução para exibição rápida em softwares de design que não renderizam PostScript em tempo real.
+### 4.2. TIFF Preview Block (Optional)
+*   **Signature:** `49 49 2A 00` (II) or `4D 4D 00 2A` (MM).
+*   **Function:** A low-resolution raster image for fast display in design software that does not render PostScript in real-time.
 
-### 4.3. Bloco XMP Metadata (Moderno)
-*   **Localização:** Frequentemente dentro da seção de PostScript como um bloco XML.
-*   **Thumbnail:** Tags `<xmpGImg:image>` contêm uma string Base64 que representa um JPEG.
+### 4.3. XMP Metadata Block (Modern)
+*   **Location:** Frequently within the PostScript section as an XML block.
+*   **Thumbnail:** `<xmpGImg:image>` tags contain a Base64 string representing a JPEG.
 
 ## 5. Endianness
 *   **Binary Header:** **Little-Endian**.
-*   **Embedded TIFF:** Pode ser **Little-Endian (II)** ou **Big-Endian (MM)**.
-*   **PostScript:** O código em si é textual.
+*   **Embedded TIFF:** Can be **Little-Endian (II)** or **Big-Endian (MM)**.
+*   **PostScript:** The code itself is textual.
 
-## 6. Compressão
-*   **Indícios:** O PostScript pode usar filtros como `/FlateDecode` (Zlib) ou `/ASCII85Decode`.
-*   **Previews:** O preview TIFF pode estar comprimido com PackBits ou LZW.
-*   **Thumbnails XMP:** São JPEGs padrão codificados em Base64.
+## 6. Compression
+*   **Indication:** PostScript can use filters like `/FlateDecode` (Zlib) or `/ASCII85Decode`.
+*   **Previews:** TIFF preview might be compressed with PackBits or LZW.
+*   **XMP Thumbnails:** Standard Base64-encoded JPEGs.
 
-## 7. Dados de Imagem
-*   **Vetorial:** Representado por coordenadas e comandos PS.
-*   **Raster embutido:** Pode existir via comando `image` no PostScript ou via preview binário.
+## 7. Image Data
+*   **Vector:** Represented by coordinates and PS commands.
+*   **Embedded Raster:** Can exist via `image` command in PostScript or via binary preview.
 
-## 8. Thumbnail / Preview Embutido
-*   **Como detectar automaticamente:**
-    1.  Verificar magic `C5 D0 D3 C6`. Se sim, ler offset em `0x14`.
-    2.  Se ASCII, buscar pela string `<xmpGImg:image>` para miniaturas modernas.
-    3.  Se ASCII legado, buscar por `%%BeginPreview`.
+## 8. Embedded Thumbnail / Preview
+*   **How to automatically detect:**
+    1.  Check for `C5 D0 D3 C6` magic. If so, read offset at `0x14`.
+    2.  If ASCII, search for the `<xmpGImg:image>` string for modern thumbnails.
+    3.  If legacy ASCII, search for `%%BeginPreview`.
 
-## 9. Metadados
+## 9. Metadata
 *   **DSC:** `%%Title`, `%%Creator`, `%%CreationDate`.
-*   **XMP:** Bloco XML embutido com informações ricas de autoria e histórico de edição (Adobe Creative Cloud).
+*   **XMP:** Embedded XML block with rich authorship and editing history information (Adobe Creative Cloud).
 
-## 10. Engenharia Reversa Estrutural
-*   **Container Híbrido:** O EPS é um dos raros formatos que mistura cabeçalhos binários de comprimento fixo com corpos de dados textuais de comprimento variável.
-*   **Pointer System:** O header binário utiliza um sistema de tabelas de offsets absoluto, permitindo pular o PostScript e ir direto para o preview.
+## 10. Structural Reverse Engineering
+*   **Hybrid Container:** EPS is one of the rare formats that mixes fixed-length binary headers with variable-length textual data bodies.
+*   **Pointer System:** The binary header uses an absolute offset table system, allowing to skip PostScript and go straight to the preview.
 
-## 11. Estratégia para Implementação de Parser
-1.  **Diferenciação:** Ler os primeiros 4 bytes.
-2.  **Caso Binário:** Extrair os 30 bytes do header, validar o offset do TIFF e extrair o sub-arquivo.
-3.  **Caso ASCII:**
-    - Scan por marcadores de metadados (`%%BeginMetadata`, `<x:xmpmeta>`).
-    - Decodificar XMP Thumbnail se presente (Base64 -> JPEG).
-4.  **Tratamento de Erros:** Validar se os offsets lidos no header binário não ultrapassam o tamanho total do arquivo.
+## 11. Strategy for Parser Implementation
+1.  **Differentiation:** Read first 4 bytes.
+2.  **Binary Case:** Extract header 30 bytes, validate TIFF offset, and extract sub-file.
+3.  **ASCII Case:**
+    - Scan for metadata markers (`%%BeginMetadata`, `<x:xmpmeta>`).
+    - Decode XMP Thumbnail if present (Base64 -> JPEG).
+4.  **Error Handling:** Validate if offsets read in the binary header do not exceed the total file size.
 
-## 12. Pseudocódigo de Parser
+## 12. Parser Pseudocode
 ```pseudo
 open file
 read magic(4)
@@ -120,27 +120,27 @@ else if (magic == "%!PS"):
         return parse_hex_preview()
 ```
 
-## 13. Estratégia para Geração de Thumbnail
-*   **Alta Velocidade:** Priorizar o preview TIFF da estrutura binária ou o JPEG do XMP.
-*   **Complexidade:**
-    - TIFF (Binário): Baixa.
-    - XMP (ASCII): Média (requer decodificação Base64).
-    - PostScript Puro (Sem Preview): Alta (requer renderizador vetorial como Ghostscript).
+## 13. Strategy for Thumbnail Generation
+*   **High Speed:** Prioritize binary structure TIFF preview or XMP JPEG.
+*   **Complexity:**
+    - TIFF (Binary): Low.
+    - XMP (ASCII): Medium (requires Base64 decoding).
+    - Pure PostScript (Without Preview): High (requires vector renderer like Ghostscript).
 
-## 14. Estratégia para Visualização Básica
-*   Ao encontrar o TIFF binário, exibi-lo como uma imagem comum.
-*   Caso contrário, renderizar apenas o metadado visual se disponível.
+## 14. Strategy for Basic Visualization
+*   Upon finding binary TIFF, display it as a standard image.
+*   Otherwise, render only visual metadata if available.
 
-## 15. Mapa Comparativo Entre Arquivos
-| Arquivo | Estrutura | Preview | Observações |
+## 15. Comparative Map Between Files
+| File | Structure | Preview | Observations |
 | :--- | :--- | :--- | :--- |
-| `Quran 27-40...` | Binary | TIFF (66 KB) | Preview de alta fidelidade presente. |
-| `i18k_e46y...` | ASCII | XMP/JPEG | Formato moderno Adobe. |
-| `knightstour.eps` | ASCII | Nenhum | PostScript puro, vetorial simples. |
+| `Quran 27-40...` | Binary | TIFF (66 KB) | High-fidelity preview present. |
+| `i18k_e46y...` | ASCII | XMP/JPEG | Modern Adobe format. |
+| `knightstour.eps` | ASCII | None | Pure PostScript, simple vector. |
 
-## 16. Pontos Incertos
-*   **WMF Compatibility:** O preview WMF (recurso do Windows) caiu em desuso, mas arquivos antigos ainda podem contê-lo (Confiança: 100% da presença, 40% da utilidade moderna).
-*   **Checksum Calculation:** O campo checksum de 2 bytes é raramente validado por softwares modernos, que confiam apenas nos offsets (Confiança: 80%).
+## 16. Uncertain Points
+*   **WMF Compatibility:** WMF (Windows feature) preview has fallen out of use, but old files may still contain it (Confidence: 100% of presence, 40% of modern utility).
+*   **Checksum Calculation:** The 2-byte checksum field is rarely validated by modern software, which relies only on offsets (Confidence: 80%).
 
-## 17. Conclusão Técnica
-O `.eps` é um formato de transição bem documentado, mas que exige tratamento duplo para lidar com suas variantes binárias e textuais. A extração de miniaturas é extremamente eficiente em arquivos gerados por softwares profissionais (Adobe/Corel), mas arquivos minimalistas gerados manualmente exigem renderização completa do código PostScript.
+## 17. Technical Conclusion
+The `.eps` is a well-documented transition format, but requires dual treatment to handle its binary and textual variants. Thumbnail extraction is extremely efficient in files generated by professional software (Adobe/Corel), but manually generated minimalist files require full PostScript code rendering.

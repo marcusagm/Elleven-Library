@@ -5,11 +5,11 @@
 *   **Extension:** `.afphoto`
 *   **Software:** Serif Affinity Photo.
 *   **Family:** Affinity Document Format (shared with `.afdesign`, `.afpub`).
-*   **Category:** Raster/Vector Graphics Project / Container.
+*   **Category:** Layered Raster/Vector Image Document / Container.
 *   **Magic Signature:** `00 FF 4B 41` (Little-Endian: `0x414BFF00`).
 *   **Endianness:** **Little-Endian**.
-*   **Structure:** Header with fixed pointers to internal blocks.
-*   **Thumbnail:** Embedded **PNG**, easily accessible via header pointer.
+*   **Structure:** Header with fixed pointers to internal serialized blocks.
+*   **Thumbnail:** Embedded **PNG**, accessible via header pointer.
 
 ---
 
@@ -108,13 +108,23 @@ def extract_affinity_photo_thumb(path):
 
 ---
 
-## 7. Uncertainties
+## 7. Comparison Between Samples
+
+| File | Sub-Version | Thumb Offset | Size | Observation |
+| :--- | :--- | :--- | :--- | :--- |
+| `sample_640x426.afphoto`| 524299 | `0x1D264` | 38.2 KB | Normal preview. |
+| `sample.afphoto` | 524299 | `0x2A155` | 41.5 KB | Small design project. |
+| `DSC...afphoto` | 11 | `0x1A22C` | 155 KB | High-resolution photography. |
+
+---
+
+## 8. Uncertainties
 
 *   **Version Field:** Similar to `.afdesign`, the version field at `0x04` varies (`0xB...`).
 *   **Header Pointers:** The exact function of pointers at `0x10` and `0x20` is inferred as Content/Object Store pointers, but reverse engineering their internal object graphs is complex and unnecessary for thumbnail extraction.
 
 ---
 
-## 8. Conclusion
+## 9. Conclusion
 
 Affinity Photo files share the unified **Affinity Document Format**. Thumbnail extraction is identical to Affinity Designer: efficient, pointer-based, and relies on standard embedded PNGs. The process is robust and performant.

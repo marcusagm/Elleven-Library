@@ -27,7 +27,7 @@ The file strictly follows the ZIP format (PKWARE).
 
 ---
 
-## 3. Header Principal
+## 3. Main Header
 
 Not applicable in the traditional sense. The "Header" is the ZIP structure itself.
 However, Krita files usually start with the `mimetype` file as the **first entry** in the ZIP, uncompressed, to allow easy identification by file command (ODF convention).
@@ -85,7 +85,7 @@ Raw layer composition requires parsing `maindoc.xml` to understand the stack (op
 
 ---
 
-## 8. Thumbnail / Embedded Preview
+## 8. Embedded Thumbnail / Preview
 
 The format contains TWO previews.
 
@@ -104,7 +104,7 @@ The format contains TWO previews.
 
 ---
 
-## 9. Metadados
+## 9. Metadata
 
 The `maindoc.xml` contains the true project state.
 
@@ -125,7 +125,7 @@ The `maindoc.xml` contains the true project state.
 
 ---
 
-## 10. Engenharia Reversa Estrutural
+## 10. Structural Reverse Engineering
 
 *   **Pattern:** ODF-like ZIP Container.
 *   **Storage Strategy:** Separation of Metadata (XML) and Data (Binary/PNG).
@@ -133,7 +133,7 @@ The `maindoc.xml` contains the true project state.
 
 ---
 
-## 11. Estratégia para Implementação de Parser
+## 11. Strategy for Parser Implementation
 
 1.  **Open ZIP:** Validate magic `PK\x03\x04`.
 2.  **Read `mimetype`:** Confirm `application/x-krita`.
@@ -143,7 +143,7 @@ The `maindoc.xml` contains the true project state.
 
 ---
 
-## 12. Pseudocódigo de Parser
+## 12. Parser Pseudocode
 
 ```python
 def parse_krita(filepath):
@@ -154,8 +154,8 @@ def parse_krita(filepath):
         # Validation
         if "mimetype" in zf.namelist():
              if zf.read("mimetype").decode() != "application/x-krita":
-                 warn("Unknown mimetype")
-                 
+                  warn("Unknown mimetype")
+                  
         # Dimensions
         xml_data = zf.read("maindoc.xml")
         width, height = extract_xml_dimensions(xml_data)
@@ -180,7 +180,7 @@ def parse_krita(filepath):
 
 ---
 
-## 13. Estratégia para Geração de Thumbnail
+## 13. Strategy for Thumbnail Generation
 
 ALWAYS use `preview.png` or `mergedimage.png`.
 
@@ -193,23 +193,23 @@ ALWAYS use `preview.png` or `mergedimage.png`.
 
 ---
 
-## 14. Mapa Comparativo Entre Arquivos
+## 14. Comparative Map Between Files
 
-| Arquivo Analisado | Versão (XML) | Tamanho Preview | Merged Image? | Camadas |
+| File | XML Version | Preview Size | Merged Image? | Layers |
 | :--- | :--- | :--- | :--- | :--- |
-| `2024-11-03_for_Huion.kra` | 5.x | ~70KB | Sim (27MB) | Multiple (Binary Files) |
-| `2023-03-30...Save-Point.kra` | 5.x | ~120KB | Sim (11MB) | Multiple |
+| `2024-11-03_for_Huion.kra` | 5.x | ~70KB | Yes (27MB) | Multiple (Binary Files) |
+| `2023-03-30...Save-Point.kra` | 5.x | ~120KB | Yes (11MB) | Multiple |
 
 ---
 
-## 16. Pontos Incertos
+## 16. Uncertain Points
 
 1.  **Layer Compression:** The exact compression of the pixel tiles in `layers/` (LZF vs others) depends on the exact Krita version.
 2.  **Color Space:** ICC profiles are stored separately (`.icc`). Rendering the raw layers correctly requires applying these profiles, which adds significant complexity compared to using `mergedimage.png` (which is usually sRGB or pre-converted for display).
 
 ---
 
-## 17. Conclusão Técnica
+## 17. Technical Conclusion
 
 The `.kra` format is extremely developer-friendly for extraction purposes.
 *   **Parsing:** Trivial (Standard ZIP/XML).

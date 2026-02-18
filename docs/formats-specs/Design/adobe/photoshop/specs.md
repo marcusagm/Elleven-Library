@@ -1,91 +1,91 @@
 # Adobe Photoshop (.psd) File Format Technical Specification
 
-## 1. Visão Geral do Formato
-*   **Nome da Extensão:** `.psd` (Photoshop Document).
-*   **Possível Origem:** Desenvolvido pela Adobe Systems Inc.
-*   **Categoria:** Documento de Imagem Raster Multicamada.
-*   **Assinatura Mágica (Hexadecimal):** `38 42 50 53` (`8BPS`).
-*   **Tamanho Típico Observado:** 1.6 MB a 120 MB nos exemplares (pode atingir gigabytes no formato `.psb`).
-*   **Variações entre Arquivos Analisados:** Todos os arquivos analisados (exceto os samples base de baixa resolução) contêm blocos de recursos complexos incluindo thumbnails JPEG e metadados XMP.
+## 1. Format Overview
+*   **Extension Name:** `.psd` (Photoshop Document).
+*   **Possible Origin:** Developed by Adobe Systems Inc.
+*   **Category:** Multilayer Raster Image Document.
+*   **Magic Signature (Hexadecimal):** `38 42 50 53` (`8BPS`).
+*   **Typical Size Observed:** 1.6 MB to 120 MB in samples (can reach gigabytes in `.psb` format).
+*   **Variations Between Analyzed Files:** All analyzed files (except low-resolution base samples) contain complex resource blocks including JPEG thumbnails and XMP metadata.
 
-## 2. Estrutura Binária Global
+## 2. Global Binary Structure
 
-| Offset | Tamanho | Tipo | Nome do Campo | Descrição | Observações |
+| Offset | Size | Type | Field Name | Description | Observations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `0x00` | 26 bytes | `Header` | **File Header** | Metadados básicos do documento. | Tamanho fixo. |
-| Variável | 4 + N | `Block`  | **Color Mode Data** | Tabela de cores indexadas ou dados duotone. | Geralmente 0 para RGB/CMYK. |
-| Variável | 4 + N | `Block`  | **Image Resources** | Metadados, previews, caminhos, etc. | Estrutura iterativa baseada em IDs. |
-| Variável | 4 + N | `Block`  | **Layer & Mask Info** | Dados de todas as camadas e máscaras. | Frequentemente a maior seção. |
-| Variável | 2 + N | `Data`   | **Image Data** | Imagem mesclada final (composite). | Ponto de visualização imediata. |
+| `0x00` | 26 bytes | `Header` | **File Header** | Basic document metadata. | Fixed size. |
+| Variable | 4 + N | `Block`  | **Color Mode Data** | Indexed color table or duotone data. | Usually 0 for RGB/CMYK. |
+| Variable | 4 + N | `Block`  | **Image Resources** | Metadata, previews, paths, etc. | Iterative structure based on IDs. |
+| Variable | 4 + N | `Block`  | **Layer & Mask Info** | Data for all layers and masks. | Often the largest section. |
+| Variable | 2 + N | `Data`   | **Image Data** | Final merged (composite) image. | Point of immediate visualization. |
 
-## 3. Header Principal
-*   **Estrutura Detalhada:**
+## 3. Main Header
+*   **Detailed Structure:**
     *   `0x00`: Signature (4 bytes) - `8BPS`.
-    *   `0x04`: Version (2 bytes) - `1` para PSD, `2` para PSB.
-    *   `0x06`: Reserved (6 bytes) - Deve ser zero.
-    *   `0x0C`: Channels (2 bytes) - Número de canais de cor (1-56).
-    *   `0x0E`: Height (4 bytes) - Altura em pixels.
-    *   `0x12`: Width (4 bytes) - Largura em pixels.
-    *   `0x16`: Depth (2 bytes) - Bits por canal (1, 8, 16, 32).
-    *   `0x18`: Color Mode (2 bytes) - Modo de cor (3 = RGB, 4 = CMYK, etc).
+    *   `0x04`: Version (2 bytes) - `1` for PSD, `2` for PSB.
+    *   `0x06`: Reserved (6 bytes) - Must be zero.
+    *   `0x0C`: Channels (2 bytes) - Number of color channels (1-56).
+    *   `0x0E`: Height (4 bytes) - Height in pixels.
+    *   `0x12`: Width (4 bytes) - Width in pixels.
+    *   `0x16`: Depth (2 bytes) - Bits per channel (1, 8, 16, 32).
+    *   `0x18`: Color Mode (2 bytes) - Color mode (3 = RGB, 4 = CMYK, etc).
 *   **Endianness:** Big-Endian.
-*   **Flags/Checksums:** Não há checksums globais no header básico.
+*   **Flags/Checksums:** There are no global checksums in the basic header.
 
-## 4. Estruturas Internas Identificadas
+## 4. Identified Internal Structures
 
 ### 4.1. Image Resource Block (8BIM)
-*   **Offset inicial:** Após a seção Color Mode Data.
-*   **Tamanho:** Variável (definido no início da seção).
-*   **Estrutura Interna:**
+*   **Initial Offset:** After the Color Mode Data section.
+*   **Size:** Variable (defined at the beginning of the section).
+*   **Internal Structure:**
     *   Signature (4 bytes): `8BIM`.
-    *   ID (2 bytes): Identificador do recurso (ex: 1036 para Thumbnail).
-    *   Name (Pascal String): Nome do recurso (alinhado a 2 bytes).
-    *   Size (4 bytes): Comprimento dos dados do recurso.
-    *   Data (Variável): Payload do recurso (alinhado a 2 bytes).
-*   **Função:** Repetido N vezes para armazenar thumbnails, perfis ICC, metadados XMP e guias.
+    *   ID (2 bytes): Resource identifier (e.g., 1036 for Thumbnail).
+    *   Name (Pascal String): Resource name (aligned to 2 bytes).
+    *   Size (4 bytes): Resource data length.
+    *   Data (Variable): Resource payload (aligned to 2 bytes).
+*   **Function:** Repeated N times to store thumbnails, ICC profiles, XMP metadata, and guides.
 
 ## 5. Endianness
-*   **Big-Endian:** Absolutamente todos os campos numéricos (inteiros de 16, 32 e 64 bits) seguem o formato de byte mais significativo primeiro.
-*   **Evidência Encontrada:** O campo de versão `00 01` e resoluções observadas nos dados hexadecimais confirmam a ordem Adobe Standard (Big-Endian).
+*   **Big-Endian:** Absolutely all numeric fields (16, 32, and 64-bit integers) follow the most significant byte first format.
+*   **Evidence Found:** The version field `00 01` and resolutions observed in the hexadecimal data confirm the Adobe Standard (Big-Endian) order.
 
-## 6. Compressão
-*   **Indícios:** O campo inicial da seção *Image Data* indica o método.
-*   **Algoritmos:**
-    *   `0`: Raw (Sem compressão).
+## 6. Compression
+*   **Indication:** The initial field of the *Image Data* section indicates the method.
+*   **Algorithms:**
+    *   `0`: Raw (No compression).
     *   `1`: RLE (PackBits).
-    *   `2`: Zip sem predição.
-    *   `3`: Zip com predição.
-*   **Estratégia:** Para RLE, cada canal/linha deve ser descompactado sequencialmente de acordo com a tabela de comprimentos de linha.
+    *   `2`: Zip without prediction.
+    *   `3`: Zip with prediction.
+*   **Strategy:** For RLE, each channel/row must be decompressed sequentially according to the row length table.
 
-## 7. Dados de Imagem (Merged Composite)
-*   **Offset:** Localizado na seção final do arquivo.
-*   **Format:** Planar (Canais separados). Se for RGB, armazena todos os pixels do canal R, seguidos por G, depois B.
-*   **Bit Depth:** 8-bit é o mais comum, mas 16-bit e 32-bit (visto em HDR) são suportados.
-*   **Reconstrução:** Intercalar os dados planares em um buffer RGBA/RGB para exibição.
+## 7. Image Data (Merged Composite)
+*   **Offset:** Located in the final section of the file.
+*   **Format:** Planar (Separate channels). If RGB, it stores all pixels of the R channel, followed by G, then B.
+*   **Bit Depth:** 8-bit is most common, but 16-bit and 32-bit (seen in HDR) are supported.
+*   **Reconstruction:** Interleave planar data into an RGBA/RGB buffer for display.
 
-## 8. Thumbnail / Preview Embutido
-*   **Existe Preview?** Sim, altamente comum.
-*   **Offset:** Dentro da seção Image Resources.
-*   **ID do Recurso:** `1036` (ou `1033`).
-*   **Formato:** JPEG encapsulado (KJpegRGB).
-*   **Extração:** Localizar o recurso 1036, pular os 28 bytes de header fixo do thumbnail (dimensões e metadados internos) e extrair o stream JPEG que começa logo em seguida.
+## 8. Embedded Thumbnail / Preview
+*   **Is there a preview?** Yes, highly common.
+*   **Offset:** Within the Image Resources section.
+*   **Resource ID:** `1036` (or `1033`).
+*   **Format:** Encapsulated JPEG (KJpegRGB).
+*   **Extraction:** Locate resource 1036, skip the 28 bytes of fixed thumbnail header (dimensions and internal metadata), and extract the JPEG stream that starts immediately after.
 
-## 9. Metadados
-*   **XMP Metadata:** Encontrado no Resource ID `1060`. XML em texto puro formatado pela Adobe.
-*   **EXIF:** Frequentemente embutido nos metadados XMP ou em blocos de recursos específicos.
-*   **Strings:** Encontrados nomes de camadas em UTF-8 (dentro da seção de camadas) e nomes de recursos em Pascal Strings.
+## 9. Metadata
+*   **XMP Metadata:** Found in Resource ID `1060`. Plain text XML formatted by Adobe.
+*   **EXIF:** Frequently embedded in XMP metadata or specific resource blocks.
+*   **Strings:** UTF-8 layer names found (within the layer section) and resource names in Pascal Strings.
 
-## 10. Engenharia Reversa Estrutural
-*   **Padrões Recorrentes:** Blocos com assinatura `8BIM` seguidos por comprimentos `Size`.
-*   **TLV (Type-Length-Value):** Toda a arquitetura interna de recursos e camadas é baseada em TLV.
-*   **Alinhamento:** Preenchimento de bytes (padding) é necessário para garantir que cada bloco comece em um offset par.
+## 10. Structural Reverse Engineering
+*   **Recurring Patterns:** Blocks with signature `8BIM` followed by `Size` lengths.
+*   **TLV (Type-Length-Value):** The entire internal architecture of resources and layers is based on TLV.
+*   **Alignment:** Byte padding is necessary to ensure each block starts at an even offset.
 
-## 11. Estratégia para Implementação de Parser
-1.  **Ordem:** Header -> Skip ColorMode -> Iterate Resources (Target 1036) -> Layer Metadata.
-2.  **Validações:** Verificar se a assinatura do recurso é `8BIM`. Se falhar, o parser perdeu o alinhamento.
-3.  **Tratamento de Erros:** Usar o comprimento total da seção para evitar leitura além dos limites em arquivos mal-formados.
+## 11. Strategy for Parser Implementation
+1.  **Order:** Header -> Skip ColorMode -> Iterate Resources (Target 1036) -> Layer Metadata.
+2.  **Validations:** Check if the resource signature is `8BIM`. If it fails, the parser has lost alignment.
+3.  **Error Handling:** Use the total section length to avoid reading beyond limits in malformed files.
 
-## 12. Pseudocódigo de Parser
+## 12. Parser Pseudocode
 ```pseudo
 open file
 read magic (4 bytes) -> must be "8BPS"
@@ -105,8 +105,8 @@ while current_pos < end_resource_offset:
     data_size = read_u32()
     
     if id == 1036:
-        # Extrair Thumbnail
-        skip(28) # Header do thumb
+        # Extract Thumbnail
+        skip(28) # Thumbnail header
         jpeg_buffer = read(data_size - 28)
         save jpeg_buffer as "preview.jpg"
         break
@@ -114,24 +114,24 @@ while current_pos < end_resource_offset:
     skip(data_size + padding)
 ```
 
-## 13. Estratégia para Geração de Thumbnail
-*   **Melhor Abordagem:** Usar o Resource 1036 (JPEG). É performático e reflete exatamente a intenção do artista ao salvar.
-*   **Fallback:** Decodificar a imagem mesclada na seção final. Requer implementação de descompressão RLE ou Zip e recomposição de planos de canais.
+## 13. Strategy for Thumbnail Generation
+*   **Best Approach:** Use Resource 1036 (JPEG). It is performant and reflects exactly the artist's intention upon saving.
+*   **Fallback:** Decompress the merged image in the final section. Requires implementation of RLE or Zip decompression and channel planar recomposition.
 
-## 14. Estratégia para Visualização Básica
-*   Se o documento estiver em modo RGB, o thumbnail 1036 é um arquivo JPEG pronto.
-*   Para visualização em alta fidelidade, renderizar a seção *Image Data* aplicando o modo de cor (RGB para RGB, CMYK para RGB via perfil ICC básico).
+## 14. Strategy for Basic Visualization
+*   If the document is in RGB mode, the 1036 thumbnail is a ready-to-use JPEG file.
+*   For high-fidelity visualization, render the *Image Data* section applying the color mode (RGB to RGB, CMYK to RGB via basic ICC profile).
 
-## 15. Mapa Comparativo Entre Arquivos
-| Arquivo | Versão | Resolução | Canais | Recursos | Observações |
+## 15. Comparative Map Between Files
+| File | Version | Resolution | Channels | Resources | Observations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `SPC_8187.psd` | 1 | 4912x7360 | 4 | XMP + Thumb | Arquivo profissional pesado. |
-| `sample.psd` | 1 | 758x960 | 4 | XMP + Thumb | Exemplo padrão. |
-| `sample_640x426.psd`| 1 | 640x426 | 3 | ResolutionInfo | Sem thumbnail embutido. |
+| `SPC_8187.psd` | 1 | 4912x7360 | 4 | XMP + Thumb | Heavy professional file. |
+| `sample.psd` | 1 | 758x960 | 4 | XMP + Thumb | Standard example. |
+| `sample_640x426.psd`| 1 | 640x426 | 3 | ResolutionInfo | No embedded thumbnail. |
 
-## 16. Pontos Incertos
-*   **Alinhamento de Pascal Strings:** Alguns softwares de terceiros podem não alinhar corretamente o nome do recurso a 2 bytes (Confiança: 90%).
-*   **Zlib Predictor:** O algoritmo de predição em modo Zip (tipo 3) pode variar levemente entre versões do Photoshop (Confiança: 85%).
+## 16. Uncertain Points
+*   **Pascal String Alignment:** Some third-party softwares may not correctly align the resource name to 2 bytes (Confidence: 90%).
+*   **Zlib Predictor:** The prediction algorithm in Zip mode (type 3) may vary slightly between Photoshop versions (Confidence: 85%).
 
-## 17. Conclusão Técnica
-O formato PSD é robusto e extensível, utilizando uma arquitetura modular de recursos. A extração de thumbnails é simples devido ao encapsulamento de streams JPEG padrão dentro de blocos identificáveis por IDs fixos, permitindo que ferramentas externas gerem visualizações rápidas sem processar toda a árvore de camadas.
+## 17. Technical Conclusion
+The PSD format is robust and extensible, using a modular resource architecture. Thumbnail extraction is simple due to the encapsulation of standard JPEG streams within ID-fixed blocks, allowing external tools to generate fast previews without processing the entire layer tree.

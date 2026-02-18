@@ -1,6 +1,6 @@
 # Technical Architecture: MediBang Paint / FireAlpaca (.mdp)
 
-## 1. Vision Overview
+## 1. Format Overview
 
 *   **Extension:** `.mdp`
 *   **Origin:** MediBang Paint, FireAlpaca (MediBang Inc.).
@@ -31,7 +31,7 @@ The header is 20 bytes long. Any additional bytes before the XML are uncommon.
 *   `0x0C - 0x0F`: `BinSize` (LE)
 *   `0x10 - 0x13`: `XMLSize` (LE)
 
-## 4. Internal Structures
+## 4. Identified Internal Structures
 
 ### 4.1. Project XML
 Project structure is defined in standard UTF-8 XML.
@@ -82,7 +82,7 @@ Note: The key name (e.g., `thumb`, `layer0img`) is stored as a null-terminated A
     3.  Decompress the `ZlibSize` bytes following the 132-byte header.
     4.  Resulting buffer is `256 x 256 x 4` raw pixel data.
 
-## 9. Metadados
+## 9. Metadata
 
 *   Found in the XML portion of the file.
 *   Includes DPI, layer modes (multiply, screen, etc.), opacity, and custom brushes.

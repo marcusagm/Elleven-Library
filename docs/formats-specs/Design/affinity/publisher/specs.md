@@ -1,94 +1,94 @@
 # Technical Analysis: Affinity Publisher (.afpub)
 
-## 1. Visão Geral do Formato
+## 1. Format Overview
 
-*   **Extensão:** `.afpub`
-*   **Origem:** Serif Affinity Publisher.
-*   **Categoria:** Documento de Editoração Eletrônica (DTP) / Container.
-*   **Assinatura Mágica (Hexadecimal):** `00 FF 4B 41` (Little-Endian: `0x414BFF00`).
-*   **Tamanho Típico:** Varia de 150 KB a centenas de MB, dependendo das imagens vinculadas ou embutidas.
-*   **Variações:** Compartilha a mesma estrutura de base (Affinity Common Format) que `.afdesign` e `.afphoto`.
+*   **Extension:** `.afpub`
+*   **Origin:** Serif Affinity Publisher.
+*   **Category:** Desktop Publishing (DTP) Document / Container.
+*   **Magic Signature (Hexadecimal):** `00 FF 4B 41` (Little-Endian: `0x414BFF00`).
+*   **Typical Size:** Ranges from 150 KB to hundreds of MB, depending on linked or embedded images.
+*   **Variations:** Shares the same base structure (Affinity Common Format) as `.afdesign` and `.afphoto`.
 
-## 2. Estrutura Binária Global
+## 2. Global Binary Structure
 
-| Offset | Tamanho | Tipo | Nome do Campo | Descrição | Observações |
+| Offset | Size | Type | Field Name | Description | Observations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `0x00` | 4 bytes | `u32` | **Magic** | `00 FF 4B 41` | Identificador do formato Affinity. |
-| `0x04` | 4 bytes | `u32` | **Version/Flags** | Versão do esquema ou flags. | Ex: `0xB` (11) ou `0x8000B`. |
-| `0x08` | 8 bytes | `ASCII` | **Persona ID** | `nsrP#Inf` | "Persona Info" em Little-Endian (`Prsn#Inf`). |
-| `0x10` | 8 bytes | `u64` | **Content Ptr** | Ponteiro de Conteúdo | Endereço absoluto do bloco de dados principal. |
-| `0x18` | 8 bytes | `u64` | **Thumb Ptr** | Ponteiro de Thumbnail | Endereço absoluto do bloco de miniatura. |
-| `0x20` | ... | `u64` | **Other Ptrs** | Outros Ponteiros | Sequência de endereços para blocos adicionais. |
+| `0x00` | 4 bytes | `u32` | **Magic** | `00 FF 4B 41` | Affinity format identifier. |
+| `0x04` | 4 bytes | `u32` | **Version/Flags** | Schema version or flags. | Ex: `0xB` (11) or `0x8000B`. |
+| `0x08` | 8 bytes | `ASCII` | **Persona ID** | `nsrP#Inf` | "Persona Info" in Little-Endian (`Prsn#Inf`). |
+| `0x10` | 8 bytes | `u64` | **Content Ptr** | Content Pointer | Absolute address of the main data block. |
+| `0x18` | 8 bytes | `u64` | **Thumb Ptr** | Thumbnail Pointer | Absolute address of the thumbnail block. |
+| `0x20` | ... | `u64` | **Other Ptrs** | Other Pointers | Sequence of addresses for additional blocks. |
 
-## 3. Header Principal
+## 3. Main Header
 
-*   **Estrutura:** Bloco inicial de 64 bytes contendo as assinaturas e a tabela de endereçamento base.
-*   **Endianness:** **Little-Endian** em todos os campos numéricos.
-*   **Campos Críticos:** O ponteiro em `0x18` é o mais relevante para extração de visualização rápida.
+*   **Structure:** Initial 64-byte block containing signatures and the base addressing table.
+*   **Endianness:** **Little-Endian** in all numeric fields.
+*   **Critical Fields:** The pointer at `0x18` is the most relevant for fast visualization extraction.
 
-## 4. Estruturas Internas Identificadas
+## 4. Identified Internal Structures
 
-As seções internas são organizadas em blocos com um cabeçalho padrão de 8 bytes:
+Internal sections are organized in blocks with a standard 8-byte header:
 *   `0xFFFFFFFF` (4 bytes)
-*   Signature (4 bytes, ex: `Thmb`, `Doc `, `Prop`)
+*   Signature (4 bytes, e.g., `Thmb`, `Doc `, `Prop`)
 
-### Bloco de Thumbnail (`Thmb`)
-*   **Offset:** Definido no header em `0x18`.
-*   **Estrutura:**
-    *   `+00`: `FF FF FF FF` (Marcador de Bloco)
-    *   `+04`: `Thmb` (Assinatura)
-    *   `+08`: Version (u32, geralmente `1`)
+### Thumbnail Block (`Thmb`)
+*   **Offset:** Defined in the header at `0x18`.
+*   **Structure:**
+    *   `+00`: `FF FF FF FF` (Block Marker)
+    *   `+04`: `Thmb` (Signature)
+    *   `+08`: Version (u32, usually `1`)
     *   `+12`: Total Block Size (u32)
-    *   `+16`: Header Length (u32, fixo em `29` ou `0x1D`)
+    *   `+16`: Header Length (u32, fixed at `29` or `0x1D`)
     *   `+20`: Zero (u32)
-    *   `+24`: Payload Size (u32 - tamanho do PNG)
-    *   `+28`: Flag (1 byte, ex: `0x01`)
-    *   `+29`: **PNG Data** (Inicia com `89 50 4E 47`)
+    *   `+24`: Payload Size (u32 - PNG size)
+    *   `+28`: Flag (1 byte, e.g., `0x01`)
+    *   `+29`: **PNG Data** (Starts with `89 50 4E 47`)
 
 ## 5. Endianness
 
 *   **Little-Endian.**
-*   **Evidência:** Os ponteiros de offset lidos como `u64` Little-Endian apontam corretamente para os blocos de dados no final do arquivo, enquanto a leitura Big-Endian resultaria em endereços fora dos limites do arquivo.
+*   **Evidence:** Offset pointers read as `u64` Little-Endian correctly point to data blocks at the end of the file, whereas Big-Endian reads would result in out-of-bounds addresses.
 
-## 6. Compressão
+## 6. Compression
 
-*   **Estrutura Interna:** Os dados do documento em si são comprimidos (Zlib provável) dentro dos blocos de conteúdo.
-*   **Miniatura:** Utiliza compressão **PNG** padrão (Deflate/Zlib), facilitando a extração sem necessidade de bibliotecas proprietárias.
+*   **Internal Structure:** The document data itself is compressed (likely Zlib) within content blocks.
+*   **Thumbnail:** Uses standard **PNG** compression (Deflate/Zlib), facilitating extraction without proprietary libraries.
 
-## 7. Dados de Imagem
+## 7. Image Data
 
-*   O arquivo `.afpub` não armazena uma imagem crua única (como um RAW), mas sim um layout de páginas. No entanto, ele embuti uma visualização (thumbnail) da primeira página ou do spread atual.
+*   The `.afpub` file does not store a single raw image (like a RAW file), but rather a page layout. However, it embeds a visualization (thumbnail) of the first page or current spread.
 
-## 8. Thumbnail / Preview Embutido
+## 8. Embedded Thumbnail / Preview
 
-*   **Existe preview?** Sim.
+*   **Is there a preview?** Yes.
 *   **Format:** Standard **PNG**.
-*   **Detecção Automática:**
-    1.  Ler 8 bytes em `0x18` (Offset `T`).
-    2.  Seek para `T`.
-    3.  Confirmar `FFFFFFFF` + `Thmb`.
-    4.  Extrair stream a partir de `T + 29`.
+*   **Automatic Detection:**
+    1.  Read 8 bytes at `0x18` (Offset `T`).
+    2.  Seek to `T`.
+    3.  Confirm `FFFFFFFF` + `Thmb`.
+    4.  Extract stream starting at `T + 29`.
 
-## 9. Metadados
+## 9. Metadata
 
-*   Contém referências a arquivos externos (Linked assets) e fontes.
-*   Strings identificadas no header sugerem o uso de um "Object Store" interno onde as propriedades do documento são serializadas.
+*   Contains references to external files (Linked assets) and fonts.
+*   Strings identified in the header suggest the use of an internal "Object Store" where document properties are serialized.
 
-## 10. Engenharia Reversa Estrutural
+## 10. Structural Reverse Engineering
 
-*   **Container de Blocos:** O formato é essencialmente um diretório de blocos binários acessados por uma tabela de ponteiros no início do arquivo.
-*   **Resiliência:** O uso de ponteiros em vez de offsets fixos permite que o software anexe dados ao final do arquivo sem reescrever todo o conteúdo.
+*   **Block Container:** The format is essentially a directory of binary blocks accessed by a pointer table at the start of the file.
+*   **Resilience:** The use of pointers instead of fixed offsets allows software to append data to the end of the file without rewriting the entire content.
 
-## 11. Estratégia para Implementação de Parser
+## 11. Strategy for Parser Implementation
 
-1.  Validar Magic `00 FF 4B 41`.
-2.  Ler ponteiro de miniatura em `0x18`.
-3.  Saltar para o offset lido.
-4.  Validar cabeçalho do bloco `Thmb`.
-5.  Ler o tamanho do PNG em `Offset + 24`.
-6.  Extrair o buffer e salvar com extensão `.png`.
+1.  Validate Magic `00 FF 4B 41`.
+2.  Read thumbnail pointer at `0x18`.
+3.  Jump to the read offset.
+4.  Validate `Thmb` block header.
+5.  Read PNG size at `Offset + 24`.
+6.  Extract the buffer and save with `.png` extension.
 
-## 12. Pseudocódigo de Parser
+## 12. Parser Pseudocode
 
 ```pseudo
 open file
@@ -111,29 +111,29 @@ png_data = read(png_size)
 save png_data as preview.png
 ```
 
-## 13. Estratégia para Geração de Thumbnail
+## 13. Strategy for Thumbnail Generation
 
-*   **Abordagem:** Extração direta do bloco `Thmb`.
-*   **Complexidade:** O(1) - requer apenas dois saltos (seeks) no arquivo, independente do tamanho total.
+*   **Approach:** Direct extraction of the `Thmb` block.
+*   **Complexity:** O(1) - requires only two seeks in the file, regardless of total size.
 *   **Pipeline:** `Header Read -> PTR Seek -> Block Validate -> Stream Copy`.
 
-## 14. Estratégia para Visualização Básica
+## 14. Strategy for Basic Visualization
 
-*   Renderizar extraindo o PNG embutido. Devido à natureza DTP do arquivo, renderizar o conteúdo total exigiria reconstruir todo o motor de layout, o que não é viável sem o software original. A miniatura embutida é a representação fiel pretendida.
+*   Render by extracting the embedded PNG. Due to the DTP nature of the file, rendering the full content would require rebuilding the entire layout engine, which is not feasible without the original software. The embedded thumbnail is the intended faithful representation.
 
-## 15. Mapa Comparativo Entre Arquivos
+## 15. Comparative Map Between Files
 
-| Arquivo | Versão Header | Ptr Thumbnail | Tamanho Thumb | Observações |
+| File | Header Version | Thumbnail Ptr | Thumb Size | Observations |
 | :--- | :--- | :--- | :--- | :--- |
-| `handbook.afpub` | 524299 | `0x17BF55` | 53.8 KB | Mock-up de manual. |
-| `Flyer German.afpub`| 524299 | `0x19BCE` | 45.4 KB | Documento simples. |
-| `evermore.afpub` | 11 | `0x18FEBAA`| 8.3 KB | Documento grande, thumb pequena (ícone). |
+| `handbook.afpub` | 524299 | `0x17BF55` | 53.8 KB | Manual mock-up. |
+| `Flyer German.afpub`| 524299 | `0x19BCE` | 45.4 KB | Simple document. |
+| `evermore.afpub` | 11 | `0x18FEBAA`| 8.3 KB | Large document, small thumb (icon). |
 
-## 16. Pontos Incertos
+## 16. Uncertain Points
 
-*   **Campo Version (0x04):** O valor varia significativamente entre revisões do software (ex: `11` vs `524299`). Pode incluir flags de compatibilidade (Confiança: 70%).
-*   **Estrutura de Conteúdo:** O bloco `Prop` (Properties) contém a árvore de objetos serializada, mas o formato dessa serialização é opaco e proprietário (Confiança: 90%).
+*   **Version Field (0x04):** Value varies significantly between software revisions (e.g., `11` vs `524299`). May include compatibility flags.
+*   **Content Structure:** The `Prop` (Properties) block contains the serialized object tree, but the serialization format is opaque and proprietary.
 
-## 17. Conclusão Técnica
+## 17. Technical Conclusion
 
-O formato `.afpub` é altamente estruturado e eficiente para operações de leitura aleatória. A extração de miniaturas é simples e segue um padrão industrial sólido, permitindo interoperabilidade com assistentes e exploradores de arquivos sem risco de corrupção ou necessidade de dependências pesadas.
+The `.afpub` format is highly structured and efficient for random read operations. Thumbnail extraction is simple and follows a solid industrial pattern, allowing interoperability with assistants and file explorers without risk of corruption or need for heavy dependencies.

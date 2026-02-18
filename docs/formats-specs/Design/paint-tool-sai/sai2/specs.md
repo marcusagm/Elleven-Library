@@ -1,82 +1,82 @@
 # Technical Analysis: PaintTool SAI v2 (.sai2)
 
-## 1. Visão Geral do Formato
-*   **Nome da Extensão:** `.sai2`
-*   **Possível Origem:** SYSTEMAX PaintTool SAI (Versão 2).
-*   **Categoria:** Documento de Gráficos Raster Multicamada.
-*   **Assinatura Mágica (Hexadecimal):** `53 41 49 2D 43 41 4E 56 41 53` (`SAI-CANVAS`).
-*   **Tamanho Típico Observado:** 1.6 MB a 200 MB (em camadas e alta resolução).
-*   **Variações entre Arquivos Analisados:** O cabeçalho pode variar entre versões (ex: `SAI-CANVAS-TYPE0`), e o campo de contagem de chunks pode ser zero em versões recentes, exigindo escaneamento de tags.
+## 1. Format Overview
+*   **Extension Name:** `.sai2`
+*   **Possible Origin:** SYSTEMAX PaintTool SAI (Version 2).
+*   **Category:** Multilayer Raster Graphics Document.
+*   **Magic Signature (Hexadecimal):** `53 41 49 2D 43 41 4E 56 41 53` (`SAI-CANVAS`).
+*   **Typical Size Observed:** 1.6 MB to 200 MB (with layers and high resolution).
+*   **Variations Between Analyzed Files:** The header can vary between versions (e.g., `SAI-CANVAS-TYPE0`), and the chunk count field may be zero in recent versions, requiring tag scanning.
 
-## 2. Estrutura Binária Global
+## 2. Global Binary Structure
 
-| Offset | Tamanho | Tipo | Nome do Campo | Descrição | Observações |
+| Offset | Size | Type | Field Name | Description | Observations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `0x00` | 64 bytes | `Header` | **File Header** | Identificação e metadados globais. | Tamanho fixo. |
-| `0x40` | N * 16 bytes | `List` | **Chunk List** | Tabela de descritores de blocos. | N pode ser variável. |
-| Variável | Variável | `Block` | **Chunk Data** | Dados brutos dos chunks sequenciados. | Alinhamento variável. |
+| `0x00` | 64 bytes | `Header` | **File Header** | Identification and global metadata. | Fixed size. |
+| `0x40` | N * 16 bytes | `List` | **Chunk List** | Block descriptor table. | N can be variable. |
+| Variable | Variable | `Block` | **Chunk Data** | Raw data of sequenced chunks. | Variable alignment. |
 
-## 3. Header Principal
-*   **Estrutura Detalhada:**
+## 3. Main Header
+*   **Detailed Structure:**
     *   `0x00`: Magic (10 bytes) - `SAI-CANVAS`.
-    *   `0x0A`: Type Suffix (6 bytes) - Ex: `-TYPE0`.
-    *   `0x10`: Unknown (4 bytes) - Frequentemente `0x00004000`.
-    *   `0x14`: Chunk Count Alt (4 bytes) - Pode conter o número real de chunks se o campo oficial for zero.
-    *   `0x20`: Canvas Width (4 bytes) - Largura em pixels (u32 LE).
-    *   `0x24`: Canvas Height (4 bytes) - Altura em pixels (u32 LE).
-    *   `0x28`: Chunk Count (4 bytes) - Campo oficial para número de chunks (u32 LE).
+    *   `0x0A`: Type Suffix (6 bytes) - e.g., `-TYPE0`.
+    *   `0x10`: Unknown (4 bytes) - Often `0x00004000`.
+    *   `0x14`: Chunk Count Alt (4 bytes) - May contain the actual number of chunks if the official field is zero.
+    *   `0x20`: Canvas Width (4 bytes) - Width in pixels (u32 LE).
+    *   `0x24`: Canvas Height (4 bytes) - Height in pixels (u32 LE).
+    *   `0x28`: Chunk Count (4 bytes) - Official field for the number of chunks (u32 LE).
 *   **Endianness:** Little-Endian.
 
-## 4. Estruturas Internas Identificadas
+## 4. Identified Internal Structures
 
 ### 4.1. Chunk Descriptor (16 bytes)
-*   **Tag (4 bytes):** Identificador ASCII (ex: `thum`, `view`, `layr`).
-*   **ID/Flags (4 bytes):** Identificador único do bloco ou flags de estado.
-*   **Size (8 bytes):** Tamanho dos dados do chunk em bytes (u64 LE).
+*   **Tag (4 bytes):** ASCII identifier (e.g., `thum`, `view`, `layr`).
+*   **ID/Flags (4 bytes):** Unique block identifier or state flags.
+*   **Size (8 bytes):** Chunk data size in bytes (u64 LE).
 
 ### 4.2. Chunk Data (Canvas Entries)
-Alguns chunks (`thum`, `layr`) utilizam uma estrutura interna de entradas:
-*   **Type (4 bytes):** Tipo da entrada (ex: `0x11` para Thumbnail Losssy).
-*   **Size (4 bytes):** Tamanho da entrada.
-*   **Data (Variável):** Conteúdo.
+Some chunks (`thum`, `layr`) use an internal entry structure:
+*   **Type (4 bytes):** Entry type (e.g., `0x11` for Lossy Thumbnail).
+*   **Size (4 bytes):** Entry size.
+*   **Data (Variable):** Content.
 
 ## 5. Endianness
-*   **Little-Endian:** Verificado nos campos de largura, altura e tamanhos de chunks.
-*   **Evidência:** O valor `87 00 00 00` interpretado como `135` reflete as dimensões reais de canvas observadas em ferramentas de inspeção.
+*   **Little-Endian:** Verified in width, height, and chunk size fields.
+*   **Evidence:** The value `87 00 00 00` interpreted as `135` reflects the actual canvas dimensions observed in inspection tools.
 
-## 6. Compressão
-*   **Zlib:** Indícios em alguns blocos de dados.
-*   **DPCM (Differential Pulse Code Modulation):** Utilizado para thumbnails lossless e dados de pixels de camada (`lpix`). Requer reconstrução: `Pixel[n] = Pixel[n-1] + Delta[n]`.
-*   **JPEG:** O chunk `view` e `thum` pode conter JPEGs encapsulados em contêineres `JSSF`.
+## 6. Compression
+*   **Zlib:** Evidence in some data blocks.
+*   **DPCM (Differential Pulse Code Modulation):** Used for lossless thumbnails and layer pixel data (`lpix`). Requires reconstruction: `Pixel[n] = Pixel[n-1] + Delta[n]`.
+*   **JPEG:** The `view` and `thum` chunks can contain JPEGs encapsulated in `JSSF` containers.
 
-## 7. Dados de Imagem (Raster)
-*   **Tiles:** O SAI2 armazena pixels em blocos (tiles), comumente de 256x256 pixels.
-*   **Canais:** Armazenamento em formato BGRA (Blue, Green, Red, Alpha).
-*   **Reconstrução:** Exige o processamento de múltiplos chunks `layr` e `lpix` associados.
+## 7. Image Data (Raster)
+*   **Tiles:** SAI2 stores pixels in blocks (tiles), commonly 256x256 pixels.
+*   **Channels:** Background storage format in BGRA (Blue, Green, Red, Alpha).
+*   **Reconstruction:** Requires processing multiple associated `layr` and `lpix` chunks.
 
-## 8. Thumbnail / Preview Embutido
-*   **Existe preview?** Sim, altamente comum.
-*   **Chunk Tags:** `thum` (pequena miniatura) e `view` (visualização de maior qualidade).
-*   **Formato:**
-    *   **Lossy:** Stream JPEG dentro de um cabeçalho `JSSF`.
-    *   **Lossless:** Dados DPCM crus.
-*   **Extração:** Localizar o chunk `view` na lista de descritores, buscar pela assinatura `JSSF` nos dados e extrair o JPEG sequencial.
+## 8. Embedded Thumbnail / Preview
+*   **Is there a preview?** Yes, highly common.
+*   **Chunk Tags:** `thum` (small thumbnail) and `view` (higher quality visualization).
+*   **Format:**
+    *   **Lossy:** JPEG stream within a `JSSF` header.
+    *   **Lossless:** Raw DPCM data.
+*   **Extraction:** Locate the `view` chunk in the descriptor list, look for the `JSSF` signature in the data, and extract the sequential JPEG.
 
-## 9. Metadados
-*   **Histórico:** Chunk `hist` (ou `normhist`) contém strings UTF-16 com datas de salvamento e modificação.
-*   **Nomes de Camada:** Armazenados nos chunks `layr`.
+## 9. Metadata
+*   **History:** `hist` (or `normhist`) chunk contains UTF-16 strings with save and modification dates.
+*   **Layer Names:** Stored in `layr` chunks.
 
-## 10. Engenharia Reversa Estrutural
-*   **Container de Blocos:** O formato é extensível via tags de 4 letras.
-*   **Escaneamento Resiliente:** Devido à inconsistência do campo `Chunk Count` entre versões, a estratégia de escanear a Tabela de Chunks por strings conhecidas é obrigatória para parsers modernos.
+## 10. Structural Reverse Engineering
+*   **Block Container:** Extensible format via 4-letter tags.
+*   **Resilient Scanning:** Due to the inconsistency of the `Chunk Count` field between versions, scanning the Chunk Table for known strings is mandatory for modern parsers.
 
-## 11. Estratégia para Implementação de Parser
-1.  **Validar Header:** Checar `SAI-CANVAS`.
-2.  **Determinar Chunk Count:** Testar offset `0x28`. Se zero, checar `0x14` ou realizar scan linear de tags ASCII começando em `0x40`.
-3.  **Mapear Offsets:** Data Offset de um chunk `i` é `(Header + ListSize) + sum(Sizes i-1)`.
-4.  **Priorizar Visualização:** Buscar chunk `view`. Se não existir, usar `thum`.
+## 11. Strategy for Parser Implementation
+1.  **Validate Header:** Check for `SAI-CANVAS`.
+2.  **Determine Chunk Count:** Test offset `0x28`. If zero, check `0x14` or perform a linear scan of ASCII tags starting at `0x40`.
+3.  **Map Offsets:** Data Offset of a chunk `i` is `(Header + ListSize) + sum(Sizes i-1)`.
+4.  **Prioritize Visualization:** Search for the `view` chunk. If it doesn't exist, use `thum`.
 
-## 12. Pseudocódigo de Parser
+## 12. Parser Pseudocode
 ```pseudo
 open file
 read magic -> "SAI-CANVAS"
@@ -104,22 +104,22 @@ for chunk in chunks:
     running_offset += chunk.size
 ```
 
-## 13. Estratégia para Geração de Thumbnail
-*   **Alta Fidelidade:** Extrair do chunk `view`.
-*   **Compatibilidade:** Implementar o decodificador DPCM para arquivos salvos em modo sem perdas.
+## 13. Strategy for Thumbnail Generation
+*   **High Fidelity:** Extract from the `view` chunk.
+*   **Compatibility:** Implement the DPCM decoder for files saved in lossless mode.
 *   **Pipeline:** `List Scan -> Offset Resolve -> JSSF Detect -> JPEG Decode`.
 
-## 14. Estratégia para Visualização Básica
-*   Extração do JPEG embutido é a única forma prática sem implementar o motor de renderização de tiles e camadas proprietário.
+## 14. Strategy for Basic Visualization
+*   Extraction of the embedded JPEG is the only practical way without implementing the proprietary tile and layer rendering engine.
 
-## 15. Mapa Comparativo Entre Arquivos
-| Arquivo | Versão Header | Chunks Detectados | Resolução | Observações |
+## 15. Comparative Map Between Files
+| File | Header Version | Detected Chunks | Resolution | Observations |
 | :--- | :--- | :--- | :--- | :--- |
-| `elfinha4.sai2` | TYPE0 | 135 | 135x276 | Contagem oficial em 0x28 é 0. |
+| `elfinha4.sai2` | TYPE0 | 135 | 135x276 | Official count at 0x28 is 0. |
 
-## 16. Pontos Incertos
-*   **Campo 0x14 (Confiança: 80%):** Parece ser um contador alternativo ou flag de offsets, visto o valor 2490 em um arquivo de 135 chunks.
-*   **Encriptação por Máquina (Confiança: 60%):** O software possui opção de salvar arquivos que só abrem no PC original; esses arquivos provavelmente usam o mesmo container mas com os dados dos chunks encriptados via AES ou similar (baseado em hardware ID).
+## 16. Uncertain Points
+*   **Field 0x14 (Confidence: 80%):** Appears to be an alternative counter or offset flag, given the value 2490 in a 135-chunk file.
+*   **Per-Machine Encryption (Confidence: 60%):** The software has an option to save files that only open on the original PC; these files likely use the same container but with chunk data encrypted via AES or similar (based on hardware ID).
 
-## 17. Conclusão Técnica
-O `.sai2` é um formato de blocos bem estruturado mas com variações de cabeçalho que desafiam parsers estáticos. A extração de thumbnails via chunks `view`/`thum` é viável e performática, desde que o parser utilize escaneamento de tags para localizar os dados corretamente.
+## 17. Technical Conclusion
+The `.sai2` is a well-structured block format but with header variations that challenge static parsers. Thumbnail extraction via `view`/`thum` chunks is feasible and performant, provided the parser uses tag scanning to locate data correctly.

@@ -1,82 +1,82 @@
 # Technical Specification: Corel Painter (.rif)
 
-## 1. Visão Geral do Formato
-*   **Nome da Extensão:** `.rif` (Raster Image File)
-*   **Possível Origem:** Procreate (Fractal Design), MetaCreation, Corel Corporation (Corel Painter).
-*   **Categoria:** Documento de Gráficos Raster Multicamada / Digital Art.
-*   **Assinatura Mágica (Hexadecimal):** `00 02` (Version 2) ou `52 49 46 46` (Legacy RIFF variant).
-*   **Tamanho Típico Observado:** 80 KB (minimalista) a 50+ MB.
-*   **Variações entre Arquivos Analisados:** Todos os arquivos modernos analisados utilizam a assinatura `00 02` e seguem uma estrutura de cabeçalho fixa de 8 bytes seguida por blocos binários.
+## 1. Format Overview
+*   **Extension Name:** `.rif` (Raster Image File)
+*   **Possible Origin:** Procreate (Fractal Design), MetaCreation, Corel Corporation (Corel Painter).
+*   **Category:** Multilayer Raster Graphics Document / Digital Art.
+*   **Magic Signature (Hexadecimal):** `00 02` (Version 2) or `52 49 46 46` (Legacy RIFF variant).
+*   **Typical Size Observed:** 80 KB (minimalist) to 50+ MB.
+*   **Variations Between Analyzed Files:** All modern analyzed files use the `00 02` signature and follow a fixed 8-byte header structure followed by binary blocks.
 
-## 2. Estrutura Binária Global
+## 2. Global Binary Structure
 
-| Offset | Tamanho | Tipo | Nome do Campo | Descrição | Observações |
+| Offset | Size | Type | Field Name | Description | Observations |
 | ------ | ------- | ---- | ------------- | --------- | ----------- |
-| `0x00` | 8 bytes | `Struct` | **Global Header** | Identificação e dimensões do canvas. | Big-Endian. |
-| `0x08` | Variável | `Binary` | **Raster Data** | Dados comprimidos do canvas (pixel layers). | Frequentemente o maior bloco. |
-| `EOF-Var`| Variável | `List` | **Metadata Segment**| Segmento contendo miniatura e metadados. | Localizado ao fim do arquivo. |
+| `0x00` | 8 bytes | `Struct` | **Global Header** | Identification and canvas dimensions. | Big-Endian. |
+| `0x08` | Variable | `Binary` | **Raster Data** | Compressed canvas data (pixel layers). | Often the largest block. |
+| `EOF-Var`| Variable | `List` | **Metadata Segment**| Segment containing thumbnail and metadata. | Located at the end of the file. |
 
-## 3. Header Principal
+## 3. Main Header
 
-*   **Estrutura Detalhada (8 bytes):**
-    *   `0x00`: `u16` Version (Sempre `0x0002` em arquivos modernos).
-    *   `0x02`: `u16` Flags (ex: `0x2000` para arquivos complexos, `0x0000` para simples).
+*   **Detailed Structure (8 bytes):**
+    *   `0x00`: `u16` Version (Always `0x0002` in modern files).
+    *   `0x02`: `u16` Flags (e.g., `0x2000` for complex files, `0x0000` for simple ones).
     *   `0x04`: `u16` Width (BE).
     *   `0x06`: `u16` Height (BE).
 *   **Endianness:** Big-Endian.
 
-## 4. Estruturas Internas Identificadas
+## 4. Identified Internal Structures
 
 ### 4.1. Metadata Blocks (Tagged Pairs)
-Os blocos de metadados seguem um padrão de identificação via tags:
-*   **Header do Bloco:**
-    *   `u32 BE TotalSize`: Tamanho total do bloco (Tag + Payload).
-    *   `4-char Tag`: Identificador ASCII (ex: `PCOL`).
-    *   `u32 BE PayloadSize`: (Opcional em alguns blocos) Tamanho dos dados reais.
-*   **Tags Comuns:**
-    *   `PCOL`: Paper Color (Geralmente 34 bytes).
-    *   `FSKT`: Friskets (Máscaras de proteção).
-    *   `ANNO`: Annotations (Anotações do usuário).
-    *   `NOTE`: Note Text (Pode incluir metadados de dimensões da miniatura).
-    *   `ICCP`: ICC Profile (Perfil de cor embutido).
-    *   `BUMB`: Bump map/Texture (Dados de superfície).
+Metadata blocks follow an identification pattern via tags:
+*   **Block Header:**
+    *   `u32 BE TotalSize`: Total block size (Tag + Payload).
+    *   `4-char Tag`: ASCII identifier (e.g., `PCOL`).
+    *   `u32 BE PayloadSize`: (Optional in some blocks) Actual data size.
+*   **Common Tags:**
+    *   `PCOL`: Paper Color (Usually 34 bytes).
+    *   `FSKT`: Friskets (Protection masks).
+    *   `ANNO`: Annotations (User annotations).
+    *   `NOTE`: Note Text (Can include thumbnail dimension metadata).
+    *   `ICCP`: ICC Profile (Embedded color profile).
+    *   `BUMB`: Bump map/Texture (Surface data).
 
 ## 5. Endianness
 *   **Principal:** Big-Endian.
-*   **Evidência:** Dimensões como `01 04` (260) e `01 F4` (500) coincidem com a largura e altura reais quando interpretadas em Big-Endian.
+*   **Evidence:** Dimensions like `01 04` (260) and `01 F4` (500) match the actual width and height when interpreted in Big-Endian.
 
-## 6. Compressão
-*   **Indícios:** A proporção entre o tamanho do arquivo e o número de pixels ($Width \times Height$) indica uma compressão eficiente.
-*   **Algoritmos Estimados:** Provavelmente utiliza uma variação de RLE ou compressão bitstream proprietária para os dados de pincel e camadas.
-*   **Miniaturas:** Utilizam compressão standard **JPEG**.
+## 6. Compression
+*   **Indication:** The ratio between file size and pixel count ($Width \times Height$) indicates efficient compression.
+*   **Estimated Algorithms:** Likely uses a variation of RLE or proprietary bitstream compression for brush and layer data.
+*   **Thumbnails:** Use standard **JPEG** compression.
 
-## 7. Dados de Imagem (Raster)
-*   **Início:** Offset `0x08`.
-*   **Estrutura:** Fluxo binário proprietário. O Corel Painter armazena não apenas pixels, mas também propriedades de simulação física (umidade, pigmento).
-*   **Diferenciação:** O chunk `LAYR` pode ser usado para separar dados de camadas individuais.
+## 7. Image Data (Raster)
+*   **Start:** Offset `0x08`.
+*   **Structure:** Proprietary binary stream. Corel Painter stores not only pixels but also physical simulation properties (wetness, pigment).
+*   **Differentiation:** The `LAYR` chunk can be used to separate individual layer data.
 
-## 8. Thumbnail / Preview Embutido
-*   **Existe preview?** Sim, na maioria das versões modernas.
-*   **Localização:** Geralmente próximo ao fim do arquivo, antes dos blocos de metadados.
-*   **Formato:** **JPEG** (standard JFIF).
-*   **Detecção Automática:** Pesquisar pela assinatura `FF D8 FF E0` (JPEG Start of Image).
-*   **Extração:** O bloco JPEG termina com a marca `FF D9`.
+## 8. Embedded Thumbnail / Preview
+*   **Is there a preview?** Yes, in most modern versions.
+*   **Location:** Generally near the end of the file, before metadata blocks.
+*   **Format:** **JPEG** (standard JFIF).
+*   **Automatic Detection:** Search for the `FF D8 FF E0` signature (JPEG Start of Image).
+*   **Extraction:** The JPEG block ends with the `FF D9` marker.
 
-## 9. Metadados
-*   **ICC Profiles:** Frequentemente embutidos ao final do arquivo, seguindo o padrão da International Color Consortium.
-*   **Strings de Texto:** Encontradas nos blocos `NOTE` ou `ANNO` em formato ASCII ou UTF-16.
+## 9. Metadata
+*   **ICC Profiles:** Frequently embedded at the end of the file, following the International Color Consortium standard.
+*   **Text Strings:** Found in `NOTE` or `ANNO` blocks in ASCII or UTF-16 format.
 
-## 10. Engenharia Reversa Estrutural
-*   **Record Chaining:** O segmento de metadados é uma sequência de registros `[Size][Tag][Data]`.
-*   **Container:** Funciona como um container linear simples, onde os dados principais ocupam o início e os metadados são anexados ao fim.
+## 10. Structural Reverse Engineering
+*   **Record Chaining:** The metadata segment is a sequence of `[Size][Tag][Data]` records.
+*   **Container:** Functions as a simple linear container, where main data occupies the beginning and metadata is appended to the end.
 
-## 11. Estratégia para Implementação de Parser
-1.  **Validar Header:** Ler os primeiros 8 bytes e validar `Version == 2`.
-2.  **Identificar Miniatura:** Realizar um scan binário por `FF D8 FF E0` para extração imediata do preview.
-3.  **Mapear Blocos:** Iniciar leitura sequencial a partir do offset encontrado após o raster data até o EOF.
-4.  **Tratamento de Erros:** Ignorar blocos com tags desconhecidas ou tamanhos que excedam o limite do arquivo.
+## 11. Strategy for Parser Implementation
+1.  **Validate Header:** Read the first 8 bytes and validate `Version == 2`.
+2.  **Identify Thumbnail:** Perform a binary scan for `FF D8 FF E0` for immediate preview extraction.
+3.  **Map Blocks:** Start sequential reading from the offset found after raster data until EOF.
+4.  **Error Handling:** Ignore blocks with unknown tags or sizes exceeding the file limit.
 
-## 12. Pseudocódigo de Parser
+## 12. Parser Pseudocode
 ```pseudo
 open file
 header = read(8)
@@ -101,26 +101,25 @@ while not EOF:
     process_metadata(block_tag, block_data)
 ```
 
-## 13. Estratégia para Geração de Thumbnail
-*   **Abordagem Recomendada:** Extração do JPEG embutido. É a forma mais rápida e precisa, pois reflete o estado salvo do documento sem processar a simulação de pintura.
-*   **Fallback:** Se não houver JPEG, a decodificação do raster principal é desencorajada devido à complexidade do motor de renderização proprietário.
+## 13. Strategy for Thumbnail Generation
+*   **Recommended Approach:** Extraction of the embedded JPEG. It is the fastest and most accurate way, as it reflects the document's saved state without processing the paint simulation.
+*   **Fallback:** If no JPEG is present, decoding the main raster is discouraged due to the complexity of the proprietary rendering engine.
 
-## 14. Estratégia para Visualização Básica
-*   Exibir a miniatura JPEG extraída.
-*   Para visualização do canvas real, seria necessário um motor capaz de interpretar os pacotes de dados proprietários pós-header (O(N) de alta complexidade).
+## 14. Strategy for Basic Visualization
+*   Display the extracted JPEG thumbnail.
+*   For real canvas visualization, an engine capable of interpreting proprietary data packets after the header would be required (high complexity O(N)).
 
-## 15. Mapa Comparativo Entre Arquivos
-
-| Arquivo | Versão | Resolução | Thumbnail | Blocos Extras |
+## 15. Comparative Map Between Files
+| File | Version | Resolution | Thumbnail | Extra Blocks |
 | ------- | ------ | --------- | --------- | ------------- |
 | `splat.rif` | 2 | 260x500 | N/A | NOTE, ANNO |
 | `Line Sketches1.rif` | 2 | 826x1169| JPEG | FSPG, PCOL |
 | `env.rif` | 2 | 826x1169| JPEG | ICCP, BUMB |
 
-## 16. Pontos Incertos
-*   **Algoritmo de Compressão Raster (Confiança: 10%):** O formato dos dados entre `0x08` e o Thumbnail é altamente opaco e proprietário.
-*   **Flags do Header (Confiança: 40%):** O bit `0x2000` parece indicar a presença de camadas complexas ou simulações físicas ativas.
-*   **Tag BUMB (Confiança: 90%):** Relacionada à simulação de "Bump" (relevo da tinta) característica do software.
+## 16. Uncertain Points
+*   **Raster Compression Algorithm (Confidence: 10%):** The format of data between `0x08` and the Thumbnail is highly opaque and proprietary.
+*   **Header Flags (Confidence: 40%):** The `0x2000` bit seems to indicate the presence of complex layers or active physical simulations.
+*   **Tag BUMB (Confidence: 90%):** Related to "Bump" simulation (paint relief) characteristic of the software.
 
-## 17. Conclusão Técnica
-O formato `.rif` (Painter 2.x) é um container binário otimizado para salvar o estado de simulação artística. Para sistemas de catalogação externa (como o Mundam), a extração de miniaturas é trivial via scan de blocos JPEG, mas a reconstrução total do documento sem o software original é um desafio de engenharia reversa de alta complexidade.
+## 17. Technical Conclusion
+The `.rif` (Painter 2.x) format is a binary container optimized for saving artistic simulation state. For external cataloging systems (like Mundam), thumbnail extraction is trivial via JPEG block scan, but total document reconstruction without the original software is a high-complexity reverse engineering challenge.

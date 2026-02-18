@@ -1,4 +1,3 @@
-
 # Reverse Engineering Analysis: Clip Studio Paint (.clip) Format
 
 ## 1. Technical Overview
@@ -116,7 +115,7 @@ Pixel data is stored within the SQLite tables or blob chunks referenced by the S
 
 ---
 
-## 9. Metadados
+## 9. Metadata
 
 Metadata is stored in the `CHNKSQLi` (Main DB) or `CHNKExta` (Metadata DB).
 Standard SQLite queries can retrieve:

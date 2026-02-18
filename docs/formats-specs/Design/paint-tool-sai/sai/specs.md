@@ -1,19 +1,19 @@
 # Technical Analysis: PaintTool SAI v1 (.sai)
 
-## 1. Visão Geral do Formato
+## 1. Format Overview
 
 *   **Extension:** `.sai`
 *   **Software:** SYSTEMAX PaintTool SAI (Version 1).
 *   **Category:** Layered Raster Image / Encrypted Container.
 *   **Magic Signature:** No plaintext magic. However, the first 4 bytes of all encrypted files are consistently `6C 22 3C 7A` (Little-Endian `0x7A3C226C`).
-*   **Tamanho Típico:** 2 MB to 100+ MB.
-*   **Variações:** Version 1.x files are encrypted; Version 2.x files (`.sai2`) use a different, unencrypted chunk-based structure.
+*   **Typical Size:** 2 MB to 100+ MB.
+*   **Variations:** Version 1.x files are encrypted; Version 2.x files (`.sai2`) use a different, unencrypted chunk-based structure.
 
-## 2. Estrutura Binária Global
+## 2. Global Binary Structure
 
 The file is divided into fixed-size **4096-byte pages**.
 
-| Offset | Tamanho | Tipo | Nome do Campo | Descrição |
+| Offset | Size | Type | Field Name | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `0x0000` | 4096 | `Table` | **Table Page 0** | Metadata and checksums for the first 511 data pages. |
 | `0x1000` | 4096 | `Data` | **Data Page 1** | Usually allocated content. |
@@ -21,7 +21,7 @@ The file is divided into fixed-size **4096-byte pages**.
 | ... | 4096 | `Data` | **Content** | Virtual files and folders. |
 | `0x200000`| 4096 | `Table` | **Table Page 1** | Encrypted metadata for pages 512-1023 (occurs every 512 pages). |
 
-## 3. Header Principal
+## 3. Main Header
 
 The "header" is actually the first **Table Page**. It is encrypted and serves as the entry point to the Virtual File System.
 
@@ -32,12 +32,12 @@ The "header" is actually the first **Table Page**. It is encrypted and serves as
 *   **Endianness:** Little-Endian.
 *   **Table Span:** 512 pages. Every 512th page is a "Table" page dedicated to metadata for the subsequent 511 "Data" pages.
 
-## 4. Estruturas Internas Identificadas
+## 4. Identified Internal Structures
 
 ### 4.1. FAT Entry (File Allocation Table)
 Located in the Root Directory (starting at Page 2) and subsequent directory pages.
 
-| Offset | Tamanho | Tipo | Descrição |
+| Offset | Size | Type | Description |
 | :--- | :--- | :--- | :--- |
 | `0x00` | 4 bytes | `u32` | **Flags** (Non-zero = Active entry). |
 | `0x04` | 32 bytes| `ASCII`| **Name** (Null-terminated ASCII). |
@@ -55,7 +55,7 @@ Located in the Root Directory (starting at Page 2) and subsequent directory page
 *   **Little-Endian.**
 *   **Evidence:** Validated by the successful decryption of page pointers and sizes using LE interpretation.
 
-## 6. Compressão / Encriptação
+## 6. Compression / Encryption
 
 ### 6.1. Encryption
 *   **Cipher:** XOR-based mask with rotation and chain additions.
@@ -67,7 +67,7 @@ Located in the Root Directory (starting at Page 2) and subsequent directory page
 ### 6.2. Compression
 *   Virtual files (like `thumbnail`) are usually uncompressed raw data within the encrypted container.
 
-## 7. Dados de Imagem (Thumbnail)
+## 7. Image Data (Thumbnail)
 
 *   **Location:** Found at virtual path `/thumbnail`.
 *   **Encapsulation:** Spans multiple pages if necessary, linked via the Table entries.
@@ -77,27 +77,26 @@ Located in the Root Directory (starting at Page 2) and subsequent directory page
     *   `u32`: Magic `0x32334D42` (`BM32`).
 *   **Pixel Format:** Raw **BGRA8** (Blue, Green, Red, Alpha).
 
-## 8. Thumbnail / Preview Embutido
-
-*   **Existe preview?** Yes, mandatory in standard saves.
-*   **Como extrair:**
+## 8. Embedded Thumbnail / Preview
+*   **Is there a preview?** Yes, mandatory in standard saves.
+*   **How to extract:**
     1.  Decrypt Page 0 (Table).
     2.  Use the checksum from Table Entry 2 to decrypt Page 2 (Root FAT).
     3.  Scan FAT entries for the name `thumbnail`.
     4.  Follow the page chain (using Table entries) to collect all bytes of the `thumbnail` virtual file.
     5.  Skip the 12-byte header and parse as BGRA.
 
-## 9. Metadados
+## 9. Metadata
 
 *   **Virtual File system:** The structure itself is a metadata rich environment.
 *   **Canvas metadata:** Found in the `canvas` virtual file.
 
-## 10. Engenharia Reversa Estrutural
+## 10. Structural Reverse Engineering
 
 *   **VFS Container:** SAI v1 is not a simple image format but a custom filesystem. It prioritizes data integrity (via page checksums) and speed (via fixed-page random access).
 *   **Linking:** Chains of pages are not stored in a central FAT like DOS; instead, each page's "next" pointer is stored in the Table page that oversees it.
 
-## 11. Estratégia para Implementação de Parser
+## 11. Strategy for Parser Implementation
 
 1.  **Initialize Key Table:** Load the 256-word SAI symmetric key.
 2.  **Verify Alignment:** File must be a multiple of 4096.
@@ -105,7 +104,7 @@ Located in the Root Directory (starting at Page 2) and subsequent directory page
 4.  **Resolve VFS:** Start at Page 2, navigate directories recursively if needed.
 5.  **Reassemble File:** Handle page chaining for files larger than 4096 bytes. Skip Table pages that interrupt the data stream every 512 blocks.
 
-## 12. Pseudocódigo de Parser
+## 12. Parser Pseudocode
 
 ```pseudo
 function decrypt_sai(file):
@@ -128,29 +127,25 @@ function decrypt_sai(file):
     pixels = raw_data[12:] # BGRA format
 ```
 
-## 13. Estratégia para Geração de Thumbnail
-
-*   **Abordagem:** Extraction from the VFS `/thumbnail` file.
-*   **Complexidade:** High (due to decryption and VFS reassembly logic).
+## 13. Strategy for Thumbnail Generation
+*   **Approach:** Extraction from the VFS `/thumbnail` file.
+*   **Complexity:** High (due to decryption and VFS reassembly logic).
 *   **Encoding:** Convertible to PNG/JPG by swapping Blue and Red channels to standard RGBA.
 
-## 14. Estratégia para Visualização Básica
-
+## 14. Strategy for Basic Visualization
 *   Since full image reconstruction requires decrypting and compositing thousands of tiles from the `layers/` folder, the embedded thumbnail is the primary source for visual representation.
 
-## 15. Mapa Comparativo Entre Arquivos
+## 15. Comparative Map Between Files
 
-| Arquivo | Tamanho | Root Page | Thumbnail Dim | Observações |
+| File | Size | Root Page | Thumbnail Dim | Observations |
 | :--- | :--- | :--- | :--- | :--- |
 | `carinha rpg.sai` | 2.06 MB | 2 | 170x96 | Standard small file. |
 | `Biga cartaz.sai` | 3.20 MB | 2 | 102x170 | Inverted aspect ratio. |
 | `capirotu.sai` | 92.3 MB | 2 | 170x170 | Large document, spans many tables. |
 
-## 16. Pontos Incertos
+## 16. Uncertain Points
+*   **FAT Flags (Confidence: 70%):** Higher bits in flags likely store attributes like read-only or hidden, but only the zero/non-zero state for activity is consistently used by parsers.
+*   **Page 1 (Confidence: 50%):** Often contains documentation or app-specific versioning headers but is not strictly part of the VFS tree.
 
-*   **Flags de FAT (Confiança: 70%):** Higher bits in flags likely store attributes like read-only or hidden, but only the zero/non-zero state for activity is consistently used by parsers.
-*   **Page 1 (Confiança: 50%):** Often contains documentation or app-specific versioning headers but is not strictly part of the VFS tree.
-
-## 17. Conclusão Técnica
-
+## 17. Technical Conclusion
 The `.sai` format is a sophisticated, albeit closed, encrypted container. Its design suggests a focus on random-access efficiency for a low-memory 2000s era environment. Implementing a parser from scratch with no reference requires heavy reverse engineering of the XOR primitive; however, with the symmetric key known, the VFS reassembly is a standard filesystem logic task.

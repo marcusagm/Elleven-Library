@@ -1,85 +1,85 @@
 # Adobe Illustrator (.ai) File Format Technical Specification
 
-## 1. Visão Geral do Formato
-*   **Nome da Extensão:** `.ai` (Adobe Illustrator Artwork).
-*   **Possível Origem:** Desenvolvido pela Adobe Inc.
-*   **Categoria:** Vetorial / Container (PDF-Hybrid).
-*   **Assinatura Mágica (Hexadecimal):** `25 50 44 46` (`%PDF`) para arquivos modernos (v9.0+). Versões legadas (v1-v8) usam `25 21 50 53` (`%!PS`).
-*   **Tamanho Típico Observado:** 60 KB a 2 MB (dependendo da complexidade e se a compatibilidade com PDF está ativa).
-*   **Variações entre Arquivos Analisados:** Todos os exemplares analisados seguem a estrutura de container PDF (PDF 1.5/1.6), agindo como "Dual Format" que contém dados PDF padrão e dados proprietários do Illustrator encapsulados.
+## 1. Format Overview
+*   **Extension Name:** `.ai` (Adobe Illustrator Artwork).
+*   **Possible Origin:** Developed by Adobe Inc.
+*   **Category:** Vector / Container (PDF-Hybrid).
+*   **Magic Signature (Hexadecimal):** `25 50 44 46` (`%PDF`) for modern files (v9.0+). Legacy versions (v1-v8) use `25 21 50 53` (`%!PS`).
+*   **Typical Size Observed:** 60 KB to 2 MB (depending on complexity and whether PDF compatibility is enabled).
+*   **Variations Between Analyzed Files:** All analyzed samples follow the PDF container structure (PDF 1.5/1.6), acting as a "Dual Format" containing standard PDF data and encapsulated proprietary Illustrator data.
 
-## 2. Estrutura Binária Global
-O formato funciona como um container PDF que "esconde" os dados originais do Illustrator em streams de metadados e objetos privados.
+## 2. Global Binary Structure
+The format functions as a PDF container that "hides" original Illustrator data within metadata streams and private objects.
 
-| Offset | Tamanho | Tipo | Nome do Campo | Descrição | Observações |
+| Offset | Size | Type | Field Name | Description | Observations |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `0x00` | 8 bytes | `ASCII` | **Magic Header** | `%PDF-1.x` | Identificado como PDF. |
-| Variável | Variável | `Object` | **PDF Body** | Objetos PDF padrão. | Catalog, Pages, Streams. |
-| Variável | Variável | `Metadata` | **XMP Block** | XML com metadados. | Contém thumbnails em Base64. |
-| Variável | Variável | `Stream` | **Private Data** | Dados `%AI12_CompressedData`. | Onde reside o vetor real. |
-| EOF | 5 bytes | `ASCII` | **Trailer** | `%%EOF` | Fim do arquivo PDF. |
+| `0x00` | 8 bytes | `ASCII` | **Magic Header** | `%PDF-1.x` | Identified as PDF. |
+| Variable | Variable | `Object` | **PDF Body** | Standard PDF objects. | Catalog, Pages, Streams. |
+| Variable | Variable | `Metadata` | **XMP Block** | XML with metadata. | Contains Base64-encoded thumbnails. |
+| Variable | Variable | `Stream` | **Private Data** | `%AI12_CompressedData` data. | Where the actual vector resides. |
+| EOF | 5 bytes | `ASCII` | **Trailer** | `%%EOF` | End of PDF file. |
 
-## 3. Header Principal
-*   **Estrutura detalhada:** Segue a especificação PDF. O arquivo começa com o marcador de versão.
-*   **Campos identificados:** Versão do PDF (ex: `1.5`, `1.6`).
-*   **Endianness:** Big-endian (padrão de rede/PDF).
-*   **Marcador Especial:** Logo após o header, geralmente há um bloco binário `%âãÏÓ` para indicar que o arquivo contém dados binários (8-bit).
+## 3. Main Header
+*   **Detailed Structure:** Follows the PDF specification. The file begins with the version marker.
+*   **Identified Fields:** PDF version (e.g., `1.5`, `1.6`).
+*   **Endianness:** Big-endian (Network/PDF standard).
+*   **Special Marker:** Immediately after the header, there is usually a binary block `%âãÏÓ` to indicate the file contains 8-bit binary data.
 
-## 4. Estruturas Internas Identificadas
+## 4. Identified Internal Structures
 
-### 4.1. Bloco XMP (Extensible Metadata Platform)
-*   **Offset inicial:** Variável (buscado pela tag `<x:xmpmeta>`).
-*   **Função:** Armazena metadados estruturados em XML.
-*   **Thumbnail:** Localizado dentro de tags `<xmpGImg:image>` em formato JPEG codificado em Base64.
+### 4.1. XMP Block (Extensible Metadata Platform)
+*   **Initial Offset:** Variable (searched by the `<x:xmpmeta>` tag).
+*   **Function:** Stores structured metadata in XML.
+*   **Thumbnail:** Located within `<xmpGImg:image>` tags in Base64-encoded JPEG format.
 
-### 4.2. Bloco Private Data (Illustrator Proprietary)
-*   **Assinatura:** `%AI12_CompressedData` (ou similar conforme versão).
-*   **Estrutura:** Um stream FlateDecode (Zlib) que contém o grafo de objetos vetoriais original do Illustrator.
-*   **Função:** Permite que o Illustrator reabra o arquivo com todas as camadas e filtros editáveis, mesmo que o PDF padrão não suporte todos os recursos.
+### 4.2. Private Data Block (Illustrator Proprietary)
+*   **Signature:** `%AI12_CompressedData` (or similar depending on version).
+*   **Structure:** A FlateDecode (Zlib) stream containing the original Illustrator vector object graph.
+*   **Function:** Allows Illustrator to reopen the file with all layers and filters editable, even if the standard PDF does not support all features.
 
-### 4.3. Bloco de Preview Legado (AI7_Thumbnail)
-*   **Assinatura:** `%AI7_Thumbnail`.
-*   **Estrutura:** Contém largura, altura, profundidade de bits e um stream hexadecimal (`%%BeginData`).
-*   **Função:** Usado por versões antigas ou plugins de visualização rápida.
+### 4.3. Legacy Preview Block (AI7_Thumbnail)
+*   **Signature:** `%AI7_Thumbnail`.
+*   **Structure:** Contains width, height, bit depth, and a hexadecimal stream (`%%BeginData`).
+*   **Function:** Used by older versions or fast preview plugins.
 
 ## 5. Endianness
-*   **Big-endian:** Padrão herdado do PostScript e adotado pelo PDF.
-*   **Evidência encontrada:** Todos os valores de comprimento de stream e identificadores de objetos no container PDF seguem a ordem big-endian.
+*   **Big-endian:** Standard inherited from PostScript and adopted by PDF.
+*   **Evidence Found:** All stream length values and object identifiers in the PDF container follow big-endian order.
 
-## 6. Compressão
-*   **Algoritmo:** **Zlib / FlateDecode**.
-*   **Assinatura:** `78 9C` (Zlib Default Compression) frequentemente encontrada após comandos como `/Filter/FlateDecode`.
-*   **Uso:** Aplicado em streams de dados privados e objetos de conteúdo da página.
+## 6. Compression
+*   **Algorithm:** **Zlib / FlateDecode**.
+*   **Signature:** `78 9C` (Zlib Default Compression) frequently found after commands like `/Filter/FlateDecode`.
+*   **Usage:** Applied to private data streams and page content objects.
 
-## 7. Dados de Imagem (Pre-render)
-*   **Dimensões:** Definidas no `/MediaBox` do PDF e no dicionário `/Page`.
-*   **Bit depth:** Geralmente 8 bits por canal para previews.
-*   **Reconstrução:** A visualização básica é feita renderizando o stream PDF padrão contido no arquivo.
+## 7. Image Data (Pre-render)
+*   **Dimensions:** Defined in the PDF `/MediaBox` and the `/Page` dictionary.
+*   **Bit Depth:** Generally 8 bits per channel for previews.
+*   **Reconstruction:** Basic visualization is performed by rendering the standard PDF stream contained in the file.
 
-## 8. Thumbnail / Preview Embutido
-*   **Existência:** Sim, múltiplos níveis.
-*   **Extração:**
-    1.  **Via XMP:** Decodificar Base64 da tag `<xmpGImg:image>`.
-    2.  **Via /Thumb:** Atributo PDF referenciando um objeto de imagem.
-    3.  **Via AI7:** Parsing de `%AI7_Thumbnail` e conversão do hex stream.
-*   **Formato:** JPEG (em XMP) ou Bitmap indexado/RGB (em AI7).
+## 8. Embedded Thumbnail / Preview
+*   **Existence:** Yes, multiple levels.
+*   **Extraction:**
+    1.  **Via XMP:** Decode Base64 from the `<xmpGImg:image>` tag.
+    2.  **Via /Thumb:** PDF attribute referencing an image object.
+    3.  **Via AI7:** Parse `%AI7_Thumbnail` and convert the hex stream.
+*   **Format:** JPEG (in XMP) or Indexed/RGB Bitmap (in AI7).
 
-## 9. Metadados
-*   **Strings encontradas:** "Adobe Illustrator", versão do criador (ex: Adobe Illustrator 24.1), data de criação, títulos de camadas.
-*   **Estrutura:** XML (XMP) e dicionários `/Info` do PDF.
+## 9. Metadata
+*   **Strings Found:** "Adobe Illustrator", creator version (e.g., Adobe Illustrator 24.1), creation date, layer titles.
+*   **Structure:** XML (XMP) and PDF `/Info` dictionaries.
 
-## 10. Engenharia Reversa Estrutural
-*   **Container:** O arquivo é um híbrido. Se renomeado para `.pdf`, abre em leitores comuns.
-*   **TLV:** O PDF usa uma estrutura de objetos indexados (`xref table`) que funcionam como ponteiros internos.
-*   **Redundância:** O Illustrator salva o desenho duas vezes: uma vez como objetos PDF simples (para compatibilidade) e outra vez como seu formato proprietário comprimido (para edição).
+## 10. Structural Reverse Engineering
+*   **Container:** The file is a hybrid. If renamed to `.pdf`, it opens in common readers.
+*   **TLV:** PDF uses an indexed object structure (`xref table`) that functions as internal pointers.
+*   **Redundancy:** Illustrator saves the drawing twice: once as simple PDF objects (for compatibility) and once as its proprietary compressed format (for editing).
 
-## 11. Estratégia para Implementação de Parser
-1.  **Validação de Header:** Checar `%PDF-`.
-2.  **Varredura de Metadados:** Procurar por `xmp:Thumbnails` para extração ultra-rápida de preview sem processar o vetor.
-3.  **Localização de Objeto /Thumb:** Verificar dicionário da primeira página.
-4.  **Parsing Incremental:** Se necessário reconstruir o vetor original, localizar o stream `/Filter /FlateDecode` associado ao marcador `%AIXX_CompressedData`.
+## 11. Strategy for Parser Implementation
+1.  **Header Validation:** Check for `%PDF-`.
+2.  **Metadata Scanning:** Search for `xmp:Thumbnails` for ultra-fast preview extraction without processing the vector.
+3.  ** /Thumb Object Location:** Check the first page dictionary.
+4.  **Incremental Parsing:** If original vector reconstruction is needed, locate the `/Filter /FlateDecode` stream associated with the `%AIXX_CompressedData` marker.
 
-## 12. Pseudocódigo de Parser
+## 12. Parser Pseudocode
 ```pseudo
 open file
 read magic ("%PDF-")
@@ -103,25 +103,25 @@ extract referenced Image object stream
 return image
 ```
 
-## 13. Estratégia para Geração de Thumbnail
-*   **Melhor Abordagem:** Usar o preview XMP embutido. É uma imagem JPEG pré-renderizada e de fácil acesso.
-*   **Complexidade:** Baixa (Regex para encontrar as tags + Decodificação Base64).
+## 13. Strategy for Thumbnail Generation
+*   **Best Approach:** Use the embedded XMP preview. It is a pre-rendered JPEG image and easily accessible.
+*   **Complexity:** Low (Regex to find tags + Base64 decoding).
 *   **Pipeline:** `Find Tag -> Extract -> Base64 Decode -> Save as .jpg`.
 
-## 14. Estratégia para Visualização Básica
-*   Utilizar bibliotecas PDF padrão (Poppler, PDF.js, MuPDF) para renderizar a página 1.
-*   Não é necessário implementar o motor vetorial proprietário da Adobe para visualização simples.
+## 14. Strategy for Basic Visualization
+*   Use standard PDF libraries (Poppler, PDF.js, MuPDF) to render page 1.
+*   It is not necessary to implement Adobe's proprietary vector engine for simple visualization.
 
-## 15. Mapa Comparativo Entre Arquivos
-| Arquivo | Estrutura | PDF Version | Thumbnail | Observações |
+## 15. Comparative Map Between Files
+| File | Structure | PDF Version | Thumbnail | Observations |
 | :--- | :--- | :--- | :--- | :--- |
-| `Logo.ai` | Hybrid | 1.6 | XMP/Base64 | Estrutura moderna. |
-| `sample.ai` | Hybrid | 1.5 | XMP/Base64 | Segue padrão Adobe CC. |
-| `Cake box...` | Hybrid | 1.5 | AI7/XMP | Contém preview legado e moderno. |
+| `Logo.ai` | Hybrid | 1.6 | XMP/Base64 | Modern structure. |
+| `sample.ai` | Hybrid | 1.5 | XMP/Base64 | Follows Adobe CC standard. |
+| `Cake box...` | Hybrid | 1.5 | AI7/XMP | Contains legacy and modern previews. |
 
-## 16. Pontos Incertos
-*   **PGF (Progressive Graphics File):** Alguns arquivos citam `Adobe_Direct_PGF`. A estrutura interna deste stream binário é opaca (Confiança: 30%).
-*   **Blending Modes Proprietários:** Certos efeitos de transparência do Illustrator podem não aparecer corretamente em renderizadores PDF genéricos se estiverem apenas no Private Data (Confiança: 80%).
+## 16. Uncertain Points
+*   **PGF (Progressive Graphics File):** Some files cite `Adobe_Direct_PGF`. The internal structure of this binary stream is opaque (Confidence: 30%).
+*   **Proprietary Blending Modes:** Certain Illustrator transparency effects may not appear correctly in generic PDF renderers if they are only in the Private Data (Confidence: 80%).
 
-## 17. Conclusão Técnica
-O formato `.ai` contemporâneo é um exemplo clássico de encapsulamento de dados proprietários em um container aberto (PDF). A extração de thumbnails é facilitada pela redundância de metadados XMP, enquanto o parsing total do vetor exige um motor PDF completo e conhecimento das extensões privadas da Adobe para reconstrução perfeita.
+## 17. Technical Conclusion
+The contemporary `.ai` format is a classic example of encapsulating proprietary data in an open container (PDF). Thumbnail extraction is facilitated by XMP metadata redundancy, while full vector parsing requires a complete PDF engine and knowledge of Adobe's private extensions for perfect reconstruction.
