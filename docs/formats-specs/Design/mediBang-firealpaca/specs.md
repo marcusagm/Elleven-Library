@@ -1,171 +1,150 @@
-# Technical analysis of MediBang Paint (.mdp) Format
+# Technical Architecture: MediBang Paint / FireAlpaca (.mdp)
 
-## 1. Format Overview
+## 1. Vision Overview
 
 *   **Extension:** `.mdp`
-*   **Software:** MediBang Paint, FireAlpaca.
-*   **Category:** Layered Raster Image Project.
-*   **Signature:** `mdipack` (followed by null or version).
-*   **Structure:** Custom binary container with an embedded XML header and a sequence of named binary blocks.
-*   **Endianness:** **Little-Endian** for all integer fields.
-*   **Compression:** Heavy use of **Zlib**.
-
----
+*   **Origin:** MediBang Paint, FireAlpaca (MediBang Inc.).
+*   **Category:** Layered Raster Image Document.
+*   **Magic Signature:** `6D 64 69 70 61 63 6B 00` ("mdipack\0").
+*   **Typical Size:** 2 KB to 500+ MB.
+*   **Container Type:** Chained Hybrid Binary Record (PAC).
 
 ## 2. Global Binary Structure
 
-The file consists of a fixed global header, a variable-length XML metadata block, and a sequence of data blocks (PAC Blocks).
+The file is partitioned into three segments based on the header. However, the logical structure (PAC blocks) ignores these partition boundaries and chains through them.
 
-| Offset | Size | Type | Name | Description |
+| Offset | Size | Type | Field Name | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `0x00` | 8 bytes | `ASCII` | **Magic** | `mdipack\x00` |
-| `0x08` | 4 bytes | `u32` | **Unknown 1** | Usually `0x00`. |
-| `0x0C` | 4 bytes | `u32` | **XML Size** | Size of the XML metadata block in bytes. |
-| `0x10` | 4 bytes | `u32` | **Binary Size** | Total size of the data blocks section. |
-| `0x14` | `XML Size` | `UTF-8` | **Metadata** | Main project structure in XML format. |
-| `...` | `Binary Size` | `Blocks` | **Data Section** | Sequence of `PAC` Blocks (Thumbnail, Layers). |
+| `0x00` | 8 | `ASCII` | **Magic** | `mdipack\0` signature. |
+| `0x08` | 4 | `u32 LE` | **Version** | Format version (usually 1 or 0). |
+| `0x0C` | 4 | `u32 LE` | **BinSize** | Partition size for the tail binary region. |
+| `0x10` | 4 | `u32 LE` | **XMLSize** | Partition size for the XML/PAC head region. |
+| `0x14` | `XMLSize` | `Mixed` | **Region 1** | XML text followed by PAC blocks. |
+| `20+XMLSize` | `BinSize` | `Binary` | **Region 2** | Remainder of PAC blocks. |
 
----
+## 3. Main Header
 
-## 3. Metadata (XML)
+The header is 20 bytes long. Any additional bytes before the XML are uncommon.
 
-Starting at offset `0x14` (20), the file contains a standard XML document describing the project.
+*   `0x00 - 0x07`: `Magic` ("mdipack\0")
+*   `0x08 - 0x0B`: `Version` (LE)
+*   `0x0C - 0x0F`: `BinSize` (LE)
+*   `0x10 - 0x13`: `XMLSize` (LE)
 
-**Key Elements:**
-*   `<Mdiapp>`: Root element. Attributes for `width`, `height`, `dpi`.
-*   `<Thumb>`: Attributes `width`, `height`, and `bin="thumb"`. Defines the thumbnail block name.
-*   `<Layer>`: Attributes defining layer properties (`name`, `opacity`, `visible`, `type`).
-    *   `bin`: The name of the binary block containing this layer's pixel data (e.g., `bin="layer0img"`).
+## 4. Internal Structures
 
----
+### 4.1. Project XML
+Project structure is defined in standard UTF-8 XML.
+*   **Structure:** Root tag `<Mdiapp>`.
+*   **Asset References:** Tags like `<Thumb>` and `<Layer>` contain a `bin` attribute (e.g., `bin="thumb"`, `bin="layer0img"`) which serves as a key for PAC block lookup.
 
-## 4. Data Section: PAC Blocks
+### 4.2. PAC Block (Chained Records)
+Binary data is stored in chained blocks starting immediately after the final XML tag (`</Mdiapp>`). Multiple PAC blocks are concatenated until the end of the file.
 
-The Data Section is a continuous sequence of **PAC Blocks**. Each block follows a strict 132-byte header structure followed by the payload.
-
-### 4.1. PAC Header (132 bytes)
-
-| Offset (internal) | Size | Type | Field | Description |
+| Offset | Size | Type | Field Name | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `0x00` | 4 bytes | `ASCII` | **Magic** | `50 41 43 20` ("PAC "). |
-| `0x04` | 4 bytes | `u32` | **Block Size** | Total size of the block (Header + Payload). |
-| `0x08` | 4 bytes | `u32` | **Type?** | Usually `0x01` in observed files. |
-| `0x0C` | 4 bytes | `u32` | **Payload Size** | Size of the actual data following the header (`Block Size - 132`). |
-| `0x10` | 32 bytes | - | **Reserved** | Usually zeroes. |
-| `0x30` | 64 bytes | `ASCII` | **Block Name** | Null-terminated string (e.g., "thumb", "layer0img"). Matches XML `bin` attribute. |
-| `0x70` | 20 bytes | - | **Padding** | Padding to reach 132 bytes. |
+| `0x00` | 4 | `ASCII` | **Magic** | `PAC ` (Space-padded). |
+| `0x04` | 4 | `u32 LE` | **TotalSize** | Length of the entire PAC block (Header + Metadata + Data). |
+| `0x08` | 4 | `u32 LE` | **Unknown** | Internal flags/version. |
+| `0x0C` | 4 | `u32 LE` | **ZlibSize** | Size of the compressed payload. |
+| `0x10` | 116 | `Binary` | **Metadata** | Entry details including the ASCII key name. |
+| `0x84` | `ZlibSize`| `Zlib` | **Payload** | Compressed block data. |
 
-### 4.2. Block Payload
+Note: The key name (e.g., `thumb`, `layer0img`) is stored as a null-terminated ASCII string within the 116-byte metadata area, typically starting around offset `0x34` (52 bytes) into the metadata area.
 
-The content of the payload depends on the block name.
+## 5. Endianness
 
----
+*   **Little-Endian (LE):** All numeric header fields and PAC metadata are stored in LE.
 
-## 5. Specific Block Formats
+## 6. Compression
 
-### 5.1. Thumbnail Block (`thumb`)
+*   **Zlib:** Each PAC block payload is a standard Zlib stream.
+*   **Method:** Deflate (Usually level 6 or higher).
 
-*   **Identified by:** Name "thumb" in header.
-*   **Referenced by:** XML `<Thumb bin="thumb" />`.
-*   **Payload Format:** **Zlib Compressed Raw Bitmap**.
+## 7. Image Data
+
+### 7.1. Thumbnail
+*   **Dimensions:** Usually `256 x 256` pixels.
+*   **Format:** Raw `BGRA` (4 bytes per pixel) uncompressed.
+*   **Total Raw Size:** $256 \times 256 \times 4 = 262,144$ bytes.
+
+### 7.2. Layers
+*   **Format:** Stored as raster planes.
+*   **Encoding:** Variable (8bpp alpha-only for some layers, 32bpp BGRA for others).
+*   **Tiling:** Large canvases may use multiple layers/tiles, although standard project files often group planes by layer ID.
+
+## 8. Embedded Thumbnail / Preview
+
+*   **Detection:** Look for a PAC block where the metadata area contains the string `thumb`.
 *   **Extraction:**
-    1.  Read payload (Offset +132).
-    2.  Decompress using Zlib.
-    3.  Result is raw **32-bit RGBA** (or ARGB/BGRA) pixel data.
-    4.  Dimensions: Defined in XML `<Thumb>` attributes (e.g., 256x256).
-    5.  Size Check: `Width * Height * 4` bytes.
+    1.  Parse header to jump into the PAC chain.
+    2.  Locate the `PAC ` block with name `thumb`.
+    3.  Decompress the `ZlibSize` bytes following the 132-byte header.
+    4.  Resulting buffer is `256 x 256 x 4` raw pixel data.
 
-### 5.2. Layer Image Block (`layerNimg`)
+## 9. Metadados
 
-*   **Identified by:** Name "layerXimg" (referenced by `<Layer bin="...">`).
-*   **Payload Format:** **Custom Header + Zlib Stream**.
-*   **Internal Structure:**
-    *   **Header (24 bytes):**
-        *   `0x00` (4 bytes): **Tile Count** (u32).
-        *   `0x04` (4 bytes): **Tile Size** (u32, usually 128).
-        *   `0x08` (16 bytes): Padding/Unknown.
-    *   **Data:** **Zlib Compressed Stream**.
-        *   Decompressed stream contains the tiled pixel data.
+*   Found in the XML portion of the file.
+*   Includes DPI, layer modes (multiply, screen, etc.), opacity, and custom brushes.
 
----
+## 10. Structural Reverse Engineering
 
-## 6. Thumbnail Extraction Strategy
+*   **Linear Chaining:** The format allows O(N) access to all layers but O(1) jump to the whole "binary package" region. 
+*   **Boundary Crossing:** PAC blocks are agnostic to the `XMLSize`/`BinSize` split.
 
-The `.mdp` format is highly optimized for quick thumbnail retrieval since the thumbnail is usually the **first block** in the data section.
+## 11. Implementation Strategy
 
-### Algorithm:
+1.  **Header Parsing:** Validate magic and get sizes.
+2.  **XML Splitting:** Read Region 1, separate XML text from binary trailing data.
+3.  **PAC Iteration:** Walk blocks starting from the first `PAC ` magic found.
+4.  **Content Resolution:** Map `bin="..."` values from XML to the names found in PAC headers.
 
-1.  **Read Global Header (20 bytes):**
-    *   Verify Magic `mdipack\x00`.
-    *   Read `XML Size` at `0x0C`.
-2.  **Read XML:**
-    *   Parse dimensions from `<Thumb>` tag (`width`, `height`).
-    *   Confirm thumbnail block name (usually "thumb").
-3.  **Jump to Data Section:**
-    *   Seek to `20 + XML Size`.
-4.  **Parse First Block:**
-    *   Verify `PAC ` magic.
-    *   Check Name at relative offset `0x30`. If "thumb":
-    *   Read `Block Size` at `0x04`.
-    *   Read Payload starting at relative `0x84` (132).
-    *   Payload Length = `Block Size - 132`.
-5.  **Decompress & Render:**
-    *   Zlib Decompress the payload.
-    *   Interpret as Raw RGBA pixels.
-    *   Encode to PNG/JPG.
+## 12. Parser Pseudocode
 
----
+```pseudo
+open file
+read mdipack_header (20 bytes)
+xml_data = read(header.xml_size)
 
-## 7. Pseudocode Implementation
+# Find where XML ends and PAC starts
+pac_offset = xml_data.find("PAC ")
+current_abs_offset = 20 + pac_offset
 
-```python
-def extract_mdp_thumbnail(filepath):
-    with open(filepath, 'rb') as f:
-        # Check Magic
-        if f.read(8) != b'mdipack\x00': return None
+while current_abs_offset < file_size:
+    seek(current_abs_offset)
+    block_header = read(132 bytes)
+    total_size = block_header.u32(4)
+    data_size = block_header.u32(12)
+    name = block_header.extract_name(16) # Search name in metadata
+    
+    if name == "thumb":
+        compressed_data = read(data_size)
+        return zlib_decompress(compressed_data)
         
-        # Read XML Size
-        f.seek(12)
-        xml_size = struct.unpack('<I', f.read(4))[0]
-        
-        # Parse XML for dimensions
-        f.seek(20)
-        xml_root = ET.fromstring(f.read(xml_size))
-        thumb_node = xml_root.find("Thumb")
-        if thumb_node is None: return None
-        
-        t_w = int(thumb_node.attrib['width'])
-        t_h = int(thumb_node.attrib['height'])
-        
-        # Seek to First Block (Data Section)
-        f.seek(20 + xml_size)
-        
-        # Read PAC Header
-        pac_magic = f.read(4) # b'PAC '
-        block_size = struct.unpack('<I', f.read(4))[0]
-        
-        # Read Name
-        f.seek(40, 1) # Skip to Name (Offset 48 from start of block)
-        name = f.read(64).strip(b'\x00')
-        
-        if name != b'thumb':
-            # Scan other blocks if necessary
-            return None 
-            
-        # Read Payload
-        f.seek(20 + xml_size + 132)
-        payload = f.read(block_size - 132)
-        
-        # Decompress
-        raw_pixels = zlib.decompress(payload)
-        
-        return create_image_from_rgba(raw_pixels, t_w, t_h)
+    current_abs_offset += total_size
 ```
 
----
+## 13. Thumbnail Generation Strategy
 
-## 8. Uncertainties
+*   **Direct Extraction:** Always prefer the `thumb` PAC block if present.
+*   **Conversion:** Swap `BGRA` channels to `RGBA` for standard web/UI display.
 
-*   **Layer Data Tiling:** The Zlib stream in layer blocks likely decompresses to a proprietary serialized format of tiles. Reconstruction of full canvas from layers requires reverse engineering this inner stream format (likely trivial sequence of bitmaps).
-*   **Color Profiles:** `ICC` profiles are likely stored in their own PAC blocks if present (e.g., named "icc"?), but were not observed in the small samples.
-*   **Bit Depth:** 8-bit layers are confirmed. 1-bit or 16-bit support is managed via the `type` attribute in XML, potentially changing the raw pixel format in the Zlib payload.
+## 14. Basic Visualization
+
+*   Display extracted `thumb` block with transparency enabled.
+
+## 15. File Mapping Between Samples
+
+| File | Res | Layers | PAC Chunks | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| `8bit_test.mdp` | 8x8 | 1 | 2 (thumb, layer) | Minimized baseline. |
+| `aula_silhueta.mdp` | - | Many | 14 | Production complexity. |
+
+## 16. Uncertain Points
+
+*   **PAC Record Padding [Confidence 75%]:** PAC total size usually aligns with a block or is simply the header + data size.
+*   **Multi-part XML [Confidence 90%]:** XML is UTF-8; non-ASCII characters in layer names are encoded normally.
+
+## 17. Technical Conclusion
+
+The MDP format is a high-performance project file designed for rapid saving and loading. By grouping raster data into independent compressed PAC blocks, it minimizes memory pressure and allows partial loading of assets. For thumbnail extractors, it is highly efficient, requiring only a simple header walk and a single Zlib decompression.

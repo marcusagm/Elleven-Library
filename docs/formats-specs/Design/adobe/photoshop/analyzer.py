@@ -1,119 +1,83 @@
 import struct
 import os
+import glob
 
-def read_be_uint16(f):
-    data = f.read(2)
-    if len(data) < 2: return None
-    return struct.unpack('>H', data)[0]
+def read_be_u16(f):
+    return struct.unpack('>H', f.read(2))[0]
 
-def read_be_uint32(f):
-    data = f.read(4)
-    if len(data) < 4: return None
-    return struct.unpack('>I', data)[0]
+def read_be_u32(f):
+    return struct.unpack('>I', f.read(4))[0]
 
 def analyze_psd(filepath):
-    print(f"\n--- Analyzing {os.path.basename(filepath)} ---")
+    print(f"\n--- Deep Analysis: {os.path.basename(filepath)} ---")
     filesize = os.path.getsize(filepath)
-    print(f"File Size: {filesize}")
 
     with open(filepath, 'rb') as f:
-        # Header (26 bytes)
-        magic = f.read(4)
-        if magic != b'8BPS':
-            print("Invalid Magic.")
-            return
+        # Header
+        magic = f.read(4) # 0x00
+        version = read_be_u16(f) # 0x04
+        f.seek(6, 1) # Reserved (0x06 - 0x0B)
+        channels = read_be_u16(f) # 0x0C
+        height = read_be_u32(f) # 0x0E
+        width = read_be_u32(f) # 0x12
+        depth = read_be_u16(f) # 0x16
+        mode = read_be_u16(f) # 0x18
 
-        version = read_be_uint16(f)
-        f.read(6) # Reserved
-        channels = read_be_uint16(f)
-        height = read_be_uint32(f)
-        width = read_be_uint32(f)
-        depth = read_be_uint16(f)
-        color_mode = read_be_uint16(f)
-
-        print(f"PSD Version: {version}")
-        print(f"Canvas: {width}x{height}, Channels: {channels}, Depth: {depth}, Mode: {color_mode}")
+        print(f"Header: Magic={magic.decode()}, Ver={version}, Size={width}x{height}, Channels={channels}, Depth={depth}, Mode={mode}")
 
         # Color Mode Data
-        cmd_size = read_be_uint32(f)
-        print(f"Color Mode Data Size: {cmd_size}")
-        f.seek(cmd_size, 1)
+        cmd_len = read_be_u32(f)
+        print(f"Color Mode Data Length: {cmd_len}")
+        f.seek(cmd_len, 1)
 
         # Image Resources
-        ir_size = read_be_uint32(f)
-        print(f"Image Resources Size: {ir_size}")
-        ir_end = f.tell() + ir_size
+        ir_len = read_be_u32(f)
+        print(f"Image Resources Length: {ir_len}")
+        ir_end = f.tell() + ir_len
 
         while f.tell() < ir_end:
-            sig = f.read(4)
-            if sig != b'8BIM':
-                # Sometimes 8BIM is followed by something else or alignment?
-                # Actually sig must be 8BIM
-                if not sig: break
-                # Skip 1 byte for alignment if it's not 8BIM?
-                # PSR format says alignment is to 2 bytes.
-                pass
+            res_sig = f.read(4)
+            if res_sig != b'8BIM' and res_sig != b'MeSa':
+                # Pad to 2 bytes?
+                if not res_sig: break
+                continue
 
-            res_id = read_be_uint16(f)
-
-            # Name (Pascal string, padded to even)
+            res_id = read_be_u16(f)
+            # Pascal String (padded to 2)
             name_len = f.read(1)[0]
             name = f.read(name_len)
             if (name_len + 1) % 2 != 0:
                 f.read(1)
 
-            res_data_size = read_be_uint32(f)
-            res_data_start = f.tell()
+            res_data_size = read_be_u32(f)
+            res_pos = f.tell()
 
-            # Thumbnails are usually 1033 (old) or 1036 (new)
-            if res_id in [1033, 1036]:
-                print(f"Found Thumbnail Resource ID: {res_id}, Size: {res_data_size}")
-                # Analyze thumbnail header
-                # 4 bytes: Format (1 = kJpegRGB, 0 = kRawRGB)
-                # 4 bytes: Width
-                # 4 bytes: Height
-                # 4 bytes: WidthBytes
-                # 4 bytes: TotalSize
-                # 4 bytes: SizeAfterCompression
-                # 2 bytes: BitsPerPixel
-                # 2 bytes: NumberOfPlanes
+            if res_id == 1033 or res_id == 1036:
+                fmt = read_be_u32(f)
+                tw = read_be_u32(f)
+                th = read_be_u32(f)
+                print(f"  [Resource {res_id}] Thumbnail: Format={fmt}, Dim={tw}x{th}, Size={res_data_size}")
+            elif res_id == 1061: # Caption digest
+                print(f"  [Resource {res_id}] Caption Digest found")
+            elif res_id == 1005: # Resolution info
+                print(f"  [Resource {res_id}] Resolution Info found")
 
-                fmt = read_be_uint32(f)
-                tw = read_be_uint32(f)
-                th = read_be_uint32(f)
-                print(f"  Thumb Meta: Format={fmt}, Dim={tw}x{th}")
-
-                if fmt == 1:
-                    # JPEG thumbnail
-                    # Data follows.
-                    # We need to skip the remaining header (total 28 bytes for thumbnail info)
-                    # We already read 12 (fmt, tw, th)
-                    f.seek(16, 1) # Skip rest of thumb header
-
-                    jpeg_data = f.read(res_data_size - 28)
-                    thumb_filename = f"{filepath}.thumb.jpg"
-                    with open(thumb_filename, 'wb') as tf:
-                        tf.write(jpeg_data)
-                    print(f"  Saved JPEG thumbnail to {thumb_filename}")
-
-            f.seek(res_data_start + res_data_size, 0)
-            # Alignment to 2 bytes
+            f.seek(res_pos + res_data_size, 0)
             if res_data_size % 2 != 0:
-                f.read(1)
+                f.read(1) # Padded to even
 
-        # Layer and Mask Information
-        f.seek(ir_end, 0)
-        lm_size = read_be_uint32(f)
-        print(f"Layer and Mask Info Size: {lm_size}")
+        # Layer and Mask Info
+        lm_len = read_be_u32(f)
+        print(f"Layer and Mask Info Length: {lm_len}")
+        f.seek(lm_len, 1)
 
-        # Image Data (Compression)
-        f.seek(lm_size, 1)
-        comp = read_be_uint16(f)
-        comp_names = {0: "Raw", 1: "RLE", 2: "Zip without prediction", 3: "Zip with prediction"}
-        print(f"Image Data Compression: {comp_names.get(comp, 'Unknown')} ({comp})")
+        # Image Data
+        if f.tell() < filesize:
+            compression = read_be_u16(f)
+            comp_types = {0: "Raw", 1: "RLE (PackBits)", 2: "Zip without prediction", 3: "Zip with prediction"}
+            print(f"Image Data Compression: {comp_types.get(compression, 'Unknown')}")
 
 if __name__ == "__main__":
-    import glob
-    files = sorted(glob.glob("*.psd"))
-    for file in files:
-        analyze_psd(file)
+    target_dir = "/Users/marcusmaia/Documents/Desenvolvimento/Mundam/file-samples/Imagens/Design/Adobe/Photoshop/"
+    for psd in sorted(glob.glob(os.path.join(target_dir, "*.psd"))):
+        analyze_psd(psd)
