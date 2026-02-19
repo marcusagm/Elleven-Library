@@ -7,6 +7,7 @@ pub mod mdp;
 pub mod sai;
 pub mod sai2;
 pub mod rebelle;
+pub mod ai;
 
 use std::path::Path;
 use std::io::Read;
@@ -67,18 +68,7 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                 },
                 // Adobe Illustrator (PDF-based)
                 "ai" => {
-                    // Try PDF stream first (most common for modern AI)
-                    if let Ok(data) = extract_ai_pdf(path) {
-                         return Ok((data, "application/pdf".to_string()));
-                    }
-                    // Fallback to binary scanner for very old AI or those without PDF compat
-                    let (data, mime) = binary_jpeg::extract_any_embedded(path)?;
-                    if mime == "image/tiff" {
-                        if let Ok(png) = convert_to_png_from_memory(&data) {
-                            return Ok((png, "image/png".to_string()));
-                        }
-                    }
-                    Ok((data, mime))
+                    ai::extract_ai_preview(path)
                 },
                 // Encapsulated PostScript
                 "eps" => {
@@ -105,7 +95,8 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                         return Ok((data, "image/jpeg".to_string()));
                     }
                     // Priority 3: Try to see if it's a PDF wrapper (rare but happens)
-                    if let Ok(data) = extract_ai_pdf(path) {
+                    // We can reuse the AI logic which is good at finding PDF streams
+                    if let Ok(data) = ai::extract_ai_pdf_stream(path) {
                         return Ok((data, "application/pdf".to_string()));
                     }
                     Err("No preview found in EPS".into())
@@ -270,21 +261,7 @@ fn convert_to_png(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     Ok(png_data)
 }
 
-fn extract_ai_pdf(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let mut file = std::fs::File::open(path)?;
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
 
-    if let Some(start) = buffer.windows(5).position(|w| w == b"%PDF-") {
-        if let Some(end_rel) = buffer[start..].windows(5).rposition(|w| w == b"%%EOF") {
-            let end = start + end_rel + 5;
-            return Ok(buffer[start..end].to_vec());
-        }
-        return Ok(buffer[start..].to_vec());
-    }
-
-    Err("Not a PDF-compatible AI file".into())
-}
 
 fn extract_psd_composite(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let bytes = std::fs::read(path)?;
@@ -314,13 +291,19 @@ pub fn generate_thumbnail_extracted<R: Runtime>(
 
     // If it's a PDF (AI/EPS), we use PDFium for high-quality multiplatform rendering.
     if mime == "application/pdf" {
+        // Try 1: Render Vector PDF (cleanest)
         if let Ok(rendered_data) = crate::media::pdf::render_pdf_data_to_image(app_handle, &data, size_px) {
             data = rendered_data;
-        } else if let Ok((embedded_data, _)) = binary_jpeg::extract_any_embedded(input_path) {
+        }
+        // Try 2: Extract Embedded Preview (fastest fallback)
+        else if let Ok((embedded_data, _)) = binary_jpeg::extract_any_embedded(input_path) {
             data = embedded_data;
-        } else if let Ok(rendered_data) = extract_ffmpeg_frame(app_handle, input_path) {
+        }
+        // Try 3: FFmpeg Rasterization (slowest fallback)
+        else if let Ok(rendered_data) = extract_ffmpeg_frame(app_handle, input_path) {
             data = rendered_data;
-        } else {
+        }
+        else {
             return Err("No PDF rendering or raster preview available for this file".into());
         }
     }
