@@ -9,6 +9,7 @@ pub mod sai2;
 pub mod rebelle;
 pub mod ai;
 pub mod coreldraw;
+pub mod corel_painter;
 
 use std::path::Path;
 use std::io::Read;
@@ -157,6 +158,9 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                 },
                 "cdr" => {
                     coreldraw::extract_coreldraw_preview(path)
+                },
+                "rif" | "riff" => {
+                    corel_painter::extract_corel_painter_preview(path)
                 },
                 _ => Err("No native extractor for this extension".into()),
             }

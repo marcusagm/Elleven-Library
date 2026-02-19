@@ -470,6 +470,15 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         playback: PlaybackStrategy::None,
     },
     FileFormat {
+        name: "Corel Painter Image",
+        extensions: &["rif", "riff"],
+        mime_types: &["application/x-painter-rif", "image/x-rif"],
+        type_category: MediaType::Project,
+        strategy: ThumbnailStrategy::NativeExtractor,
+        preview_strategy: PreviewStrategy::NativeExtractor,
+        playback: PlaybackStrategy::None,
+    },
+    FileFormat {
         name: "PDF Document",
         extensions: &["pdf"],
         mime_types: &["application/pdf"],
