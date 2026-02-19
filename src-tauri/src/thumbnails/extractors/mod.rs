@@ -8,6 +8,7 @@ pub mod sai;
 pub mod sai2;
 pub mod rebelle;
 pub mod ai;
+pub mod coreldraw;
 
 use std::path::Path;
 use std::io::Read;
@@ -153,6 +154,9 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                 "fig" => {
                     let data = extract_figma_preview(path)?;
                     Ok((data, "image/png".to_string()))
+                },
+                "cdr" => {
+                    coreldraw::extract_coreldraw_preview(path)
                 },
                 _ => Err("No native extractor for this extension".into()),
             }

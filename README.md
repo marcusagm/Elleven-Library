@@ -142,13 +142,13 @@ Total registered formats: 138 extensions
 | Category | Formats | Status | Notes |
 | :--- | :--- | :---: | :--- |
 | **Standards** | `jpg`, `jpeg`, `jpe`, `jfif`, `webp`, `png`, `tiff`, `gif`, `bmp`, `ico`, `tga` | ✅ | Full support (Thumb + View). |
-| **Design** | `psd`, `psb`, `afdesign`, `afphoto`, `afpub`, `xmind`, `aseprite`, `kra`, `xcf`, `clip`, `fig`, `sketch`, `mdp`, `sai`, `reb` | ✅ | Full support (Thumb + View). |
+| **Design** | `psd`, `psb`, `ai`, `afdesign`, `afphoto`, `afpub`, `xmind`, `aseprite`, `kra`, `xcf`, `clip`, `fig`, `sketch`, `mdp`, `sai`, `reb` | ✅ | Full support (Thumb + View). |
 | **RAW** | `dng`, `cr2`, `nef`, `nrw`, `rw2`, `raf`, `orf`, `pef`, `erf`, `sr2`, `srf`, `cr3`, `crw`, `arw`, `3fr`, `srw`, `kdc` | ✅ | Full support (Thumb + View). |
 | **RAW (Stubs)** | `braw`, `r3d`, `ari`, `gpr`, `iiq`, `x3f`, `dcr`, `fff`, `iiq`, `mos`, `sai2` | 🚧 | Planned support. |
 | **Specialized** | `pam`, `pbm`, `pgm`, `pnm`, `ppm`, `cur`, `heic`, `heif`, `avif`, `exr`, `dds` | ✅ | Full support (Thumb + View). |
 | **Vectors** | `svg` | ✅ | Full support (Thumb + View). |
 | **Publishing** | `indd`, `idml`, `cdr`, `pdf` | 🚧 | Planned support. |
-| **Adobe/OS** | `ai`, `eps` | 👁️ | View usually works via WebView/OS. |
+| **Adobe/OS** | `eps` | 👁️ | View usually works via WebView/OS. |
 
 ### 🧊 3D Models
 | Category | Formats | Status | Notes |
