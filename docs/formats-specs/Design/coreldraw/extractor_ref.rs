@@ -27,13 +27,6 @@ pub fn extract_coreldraw_preview(path: &Path) -> Result<(Vec<u8>, String), Box<d
     // Hex: 57 4C ...
     if magic[0] == 0x57 && magic[1] == 0x4C {
         println!("CDR [DEBUG]: Format detected: Legacy Corel (v3-v5) WL signature");
-
-        // Try to extract the specific Header Thumbnail first
-        if let Ok(thumb) = extract_wl_thumbnail(path) {
-             return Ok(thumb);
-        }
-
-        // Use fallback scanning for embedded BMP as backup
         // These are proprietary binary formats, not standard RIFF.
         // We will try a "lucky scan" for a BMP header embedded in the file.
         return scan_for_embedded_bmp(path);
@@ -136,18 +129,7 @@ fn extract_riff_preview_recursive(path: &Path) -> Result<(Vec<u8>, String), Box<
     file.seek(SeekFrom::Start(8))?;
     let mut sig = [0u8; 4];
     file.read_exact(&mut sig)?;
-
-    // Check CDR signature at 0x8
-    file.seek(SeekFrom::Start(8))?;
-    let mut sig = [0u8; 4];
-    file.read_exact(&mut sig)?;
-
-    // Supported signatures:
-    // CDR  - Standard
-    // CDRB - Compressed
-    // CDRD - CorelDRAW 4? (Found in 03- Design.cdr)
-    if sig != *b"CDR " && sig != *b"CDRB" && sig != *b"CDRD" {
-         println!("CDR [DEBUG]: Invalid/Unknown RIFF CDR signature: {:02X?}", sig);
+    if sig != *b"CDR " && sig != *b"CDRB" {
          return Err("Not a valid RIFF CDR file".into());
     }
 
@@ -205,13 +187,13 @@ fn walk_riff(file: &mut File, start_pos: u64, end_pos: u64) -> Result<(Vec<u8>, 
 
              // BMP with header offset (sometimes 4-byte generic header)
              // Header: [08, 00, 00, 00, 28, 00, 00, 00] -> The '28' is the size of BITMAPINFOHEADER (40 bytes)
-             // Header: [08, 00, 00, 00, 28, 00, 00, 00] -> The '28' is the size of BITMAPINFOHEADER (40 bytes)
-             // Header: [2C, 28, 00, 00] -> Found in 03- Design.cdr (hex: 2C 28 00 00).
-             // 2C = ? 28 = 40 (BITMAPINFOHEADER size).
-             // 00000010: ... 4449 5350 2c28 0000 ... (DISP , ( ..)
-
              if data.len() > 8 && data[4] == 0x28 && data[5] == 0x00 && data[6] == 0x00 && data[7] == 0x00 {
-                 println!("CDR [DEBUG]: Found BMP with 4-byte offset header (Standard Corel)");
+                 println!("CDR [DEBUG]: Found BMP with 4-byte offset header (BITMAPINFOHEADER)");
+
+                 // We need to construct a BMP File Header (14 bytes) + DIB Header + Pixel Data
+                 // The data starting at offset 4 is the DIB Header (BITMAPINFOHEADER) followed by pixel data.
+                 // We can construct a valid BMP file in memory.
+
                  let dib_header_slice = &data[4..];
                  let bmp = construct_bmp_from_dib(dib_header_slice);
                  if let Ok(bmp_data) = bmp {
@@ -219,20 +201,6 @@ fn walk_riff(file: &mut File, start_pos: u64, end_pos: u64) -> Result<(Vec<u8>, 
                  }
                  println!("CDR [DEBUG]: Failed to construct BMP from DIB");
              }
-
-             // Check for 2-byte offset header [?? 28 00 00]
-             // Specifically [2C 28 00 00] or similar where 28 is at offset 1
-             if data.len() > 5 && data[1] == 0x28 && data[2] == 0x00 && data[3] == 0x00 {
-                  println!("CDR [DEBUG]: Found BMP with 1-byte? offset header?");
-                  // Actually, purely creating from offset 1
-                  let dib_header_slice = &data[1..];
-                   let bmp = construct_bmp_from_dib(dib_header_slice);
-                 if let Ok(bmp_data) = bmp {
-                     return Ok((bmp_data, "image/bmp".to_string()));
-                 }
-             }
-
-             // Standard BMP check 'BM'
 
              // Standard BMP check 'BM'
              if data.len() > 2 && data[0] == b'B' && data[1] == b'M' {
@@ -259,8 +227,8 @@ fn walk_riff(file: &mut File, start_pos: u64, end_pos: u64) -> Result<(Vec<u8>, 
              println!("CDR [DEBUG]: DISP format not identified. Header: {:02X?}", &data[0..8.min(data.len())]);
              file.seek(SeekFrom::Start(next_chunk_pos))?;
 
-        } else if &chunk_id == b"icp0" || &chunk_id == b"bmp " || &chunk_id == b"imhd" {
-             println!("CDR [DEBUG]: Found Icon/BMP/IMHD chunk '{}'", String::from_utf8_lossy(&chunk_id));
+        } else if &chunk_id == b"icp0" || &chunk_id == b"bmp " {
+             println!("CDR [DEBUG]: Found Icon/BMP chunk '{}'", String::from_utf8_lossy(&chunk_id));
              let mut data = vec![0u8; chunk_size as usize];
              file.read_exact(&mut data)?;
              if data.len() > 2 && data[0] == b'B' && data[1] == b'M' {
@@ -395,124 +363,4 @@ fn scan_for_embedded_bmp(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::
     }
 
     Err("No embedded BMP found in scan".into())
-}
-
-/// Extracts the fixed-header thumbnail from WL (Corel v3-v5) files.
-/// Based on hex dump analysis:
-/// Header looks like: 57 4C ...
-/// Offset 0x48 (72): Width (u16)
-/// Offset 0x4A (74): Height (u16)
-/// Offset 0x56 (86): Start of 1-bit Bitmap Data?
-fn extract_wl_thumbnail(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
-    let mut file = File::open(path)?;
-    // Read first ~8KB which likely contains the header + preview
-    let mut header = [0u8; 1024];
-    file.read_exact(&mut header)?;
-
-    // Width and Height are usually at 0x48 and 0x4A ???
-    // Let's verify with values from FLAG.CDR dump:
-    // 00000040: ... 005A 005A ... -> 0x5A = 90.
-    // DRINKS.CDR:
-    // 00000040: ... 0080 0080 ... -> 0x80 = 128.
-
-    // Position 0x48 seems to be width, 0x4A height.
-    // Verify with values from FLAG.CDR dump:
-    // 00000040: ... 005A 005A ...
-    // These are 0x5A (90) Little Endian if we read as u16.
-    // 00 5A -> 0x5A00 (23040) in LE.
-    // 00 5A -> 90 in BE.
-    // Corel WL likely uses Big Endian for these fields.
-
-    let width = u16::from_be_bytes([header[0x48], header[0x49]]) as u32;
-    let height = u16::from_be_bytes([header[0x4A], header[0x4B]]) as u32;
-
-    if width == 0 || height == 0 || width > 1024 || height > 1024 {
-        return Err("Invalid WL header dimensions".into());
-    }
-
-    println!("CDR [DEBUG]: WL Thumbnail detected: {}x{}", width, height);
-
-    // 1-bit per pixel. Rows are padded to 32-bit (4 byte) boundary usually?
-    // Or maybe 16-bit?
-    // Let's assume standard BMP stride: (width * bpp + 31) / 32 * 4 bytes
-    // For 1bpp: (width + 31) / 32 * 4
-
-    let stride = ((width + 31) / 32) * 4;
-    let data_size = (stride * height) as usize;
-
-    // Data starts at 0x56?
-    let start_offset = 0x56;
-
-    if start_offset + data_size > header.len() {
-        // We might need to read more if the preview is large
-        // But for 128x128 -> stride 16 -> 2048 bytes.
-        // Let's read full file part if needed.
-        // Re-read file to vector
-        file.seek(SeekFrom::Start(0))?;
-        let mut full_data = Vec::new();
-        file.read_to_end(&mut full_data)?;
-
-        if start_offset + data_size > full_data.len() {
-             return Err("WL file too short for expected thumbnail data".into());
-        }
-
-        let raw_bits = &full_data[start_offset..start_offset + data_size];
-        return wrap_raw_1bit_bmp(raw_bits, width, height);
-    }
-
-    let raw_bits = &header[start_offset..start_offset + data_size];
-    wrap_raw_1bit_bmp(raw_bits, width, height)
-}
-
-fn wrap_raw_1bit_bmp(raw_data: &[u8], width: u32, height: u32) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
-    use std::io::Write;
-
-    // Construct valid BMP with 1bpp monochrome palette
-    let file_header_size = 14;
-    let info_header_size = 40;
-    let palette_size = 2 * 4; // 2 colors * 4 bytes
-    let offset = file_header_size + info_header_size + palette_size;
-    let file_size = offset + raw_data.len() as u32;
-
-    let mut bmp = Vec::with_capacity(file_size as usize);
-
-    // -- File Header --
-    bmp.write_all(b"BM")?;
-    bmp.write_all(&file_size.to_le_bytes())?;
-    bmp.write_all(&[0u8; 4])?; // Reserved
-    bmp.write_all(&offset.to_le_bytes())?;
-
-    // -- Info Header --
-    bmp.write_all(&(info_header_size as u32).to_le_bytes())?;
-    bmp.write_all(&(width as i32).to_le_bytes())?;
-
-    // Height is negative if top-down? Or positive if bottom-up?
-    // Corel usually stores top-down (scanlines order).
-    // BMP standard is bottom-up.
-    // If image is flipped, try passing negative height:
-    bmp.write_all(&(-(height as i32)).to_le_bytes())?;
-
-    bmp.write_all(&(1u16).to_le_bytes())?; // Planes = 1
-    bmp.write_all(&(1u16).to_le_bytes())?; // BPP = 1
-    bmp.write_all(&[0u8; 4])?; // Compression = 0 (BI_RGB)
-    bmp.write_all(&(raw_data.len() as u32).to_le_bytes())?; // Image Size
-    bmp.write_all(&[0u8; 4])?; // X Pels
-    bmp.write_all(&[0u8; 4])?; // Y Pels
-    bmp.write_all(&[0u8; 4])?; // Colors Used
-    bmp.write_all(&[0u8; 4])?; // Colors Important
-
-    // -- Palette (B-G-R-A) --
-    // Color 0: Black (00 00 00 00)
-    // Color 1: White (FF FF FF 00)
-    // Note: In 1bpp, 0 usually means index 0, 1 means index 1.
-    // The background in hex dump is FF (11111111).
-    // If FF is background, and we want it White, then 1 => White.
-
-    bmp.write_all(&[0x00, 0x00, 0x00, 0x00])?; // Black
-    bmp.write_all(&[0xFF, 0xFF, 0xFF, 0x00])?; // White
-
-    // -- Pixel Data --
-    bmp.write_all(raw_data)?;
-
-    Ok((bmp, "image/bmp".to_string()))
 }

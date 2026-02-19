@@ -6,8 +6,8 @@
 *   **Category:** Vector Graphics Document.
 *   **Magic Signature (Hexadecimal):**
     *   **Modern (X4+):** `50 4B 03 04` (ZIP container).
-    *   **Legacy (X3 and below):** `52 49 46 46` (RIFF container).
-    *   **Ultra Legacy (v5-):** `57 4C 6D 00` (`WLm.` proprietary header).
+    *   **Legacy (v6-X3):** `52 49 46 46` (RIFF container).
+    *   **Ultra Legacy (v3-v5):** `57 4C` (`WL..` proprietary header).
 *   **Typical Size Observed:** 3 KB (minimalist) to 3 MB in samples.
 *   **Variations Between Analyzed Files:** A clear transition from RIFF containers to ZIP containers was observed. Very old files use a direct binary format without a standard container.
 
@@ -26,8 +26,16 @@
 | ------ | ------- | ---- | ------------- | --------- |
 | `0x00` | 4 bytes | `ASCII`| **RIFF Magic**| `RIFF`. |
 | `0x04` | 4 bytes | `u32`  | **FileSize**  | Total file size - 8. |
-| `0x08` | 4 bytes | `ASCII`| **CDR Signature**| `CDR ` or `CDRB`. |
+| `0x08` | 4 bytes | `ASCII`| **CDR Signature**| `CDR `, `CDRB`, or `CDRD` (v4/5). |
 | `0x0C` | Var     | `Chunk`| **Chunks**    | Sequence of sub-RIFF blocks. |
+
+### 2.3. Ultra-Legacy Structure (WL-based, v3-v5)
+| Offset | Size | Type | Field Name | Description |
+| ------ | ------- | ---- | ------------- | --------- |
+| `0x00` | 2 bytes | `Hex`  | **WL Magic**  | `57 4C` (`WL`). |
+| `0x48` | 2 bytes | `u16`  | **Width**     | Image width (**Big Endian**). |
+| `0x4A` | 2 bytes | `u16`  | **Height**    | Image height (**Big Endian**). |
+| `0x56` | Var     | `Bin`  | **Bitmap Data**| 1-bit monochrome bitmap stream. |
 
 ## 3. Main Header
 
@@ -38,16 +46,24 @@
 
 ### 3.2. Legacy (RIFF)
 *   **Structure:**
-    *   `0x08`: Identifier `CDR ` (CorelDRAW) or `CDRB` (Compressed versions).
+    *   `0x08`: Identifier `CDR ` (CorelDRAW), `CDRB` (Compressed), or `CDRD` (v4/5).
     *   **Version:** Frequently found in the `vrsn` sub-chunk.
 *   **Endianness:** Little-endian.
+
+### 3.3. Ultra-Legacy (WL)
+*   **Structure:** Fixed header block of ~8KB.
+*   **Endianness:** **Big Endian** for dimensions (`u16`).
+*   **Preview:** Embedded 1-bit monochrome bitmap at offset `0x56`.
 
 ## 4. Identified Internal Structures
 
 ### 4.1. RIFF Chunks (Legacy)
 *   **vrsn:** Contains 2 bytes indicating the software version (e.g., `02 00` for v2, `0D 00` for X3).
-*   **DISP:** (Display) Block containing the preview for Windows Explorer (usually WMF or Bitmap).
+*   **DISP:** (Display) Block containing the preview. Can appear inside `page`, `doc `, `gobj` lists or at top level.
+    *   **Variant A:** Header `08 00 00 00 28 00 00 00` (Standard 40-byte BITMAPINFOHEADER at offset 4).
+    *   **Variant B:** Header `2C 28 00 00` (BITMAPINFOHEADER at offset 1).
 *   **icp0:** Chunk that stores icon/thumbnail for some versions.
+*   **imhd:** (Image Header) Can contain a direct BMP stream starting with `BM`.
 
 ### 4.2. ZIP Paths (Modern)
 *   `previews/thumbnail.png`: Default document thumbnail (PNG).
@@ -55,8 +71,9 @@
 *   `color/color.xml`: Color profile definitions.
 
 ## 5. Endianness
-*   **Little-endian:** Verified in RIFF chunk sizes and ZIP headers.
-*   **Evidence:** `ABCNEWS.CDR` (Legacy) file shows offsets and sizes in increasing order of significance.
+*   **Little-endian:** Verfied in RIFF chunk sizes and ZIP headers.
+*   **Big-endian:** Verified in **WL header dimensions** (e.g., `00 5A` = 90).
+*   **Evidence:** `FLAG.CDR` (WL) shows dimensions in Big Endian; `ABCNEWS.CDR` matches this pattern. `example.cdr` (ZIP) uses Little Endian.
 
 ## 6. Compression
 *   **Modern:** Standard ZIP **Deflate** compression.
@@ -70,8 +87,9 @@
 *   **Modern:** `previews/thumbnail.png` file inside the ZIP.
 *   **Legacy:** `DISP` or `icp0` chunk in the RIFF container.
 *   **Preview Format:**
-    *   Modern: **PNG**.
-    *   Legacy: **BMP** or **WMF** (Windows Metafile).
+    *   Modern: **PNG** (files `page1.png`, `preview.png`, `thumbnail.png`).
+    *   Legacy (RIFF): **BMP** (embedded DIB in `DISP`/`imhd`) or **WMF**.
+    *   Legacy (WL): **1-bit BMP** (constructed from raw data).
 *   **Detection:**
     *   Extract file from ZIP.
     *   Search for chunk ID `DISP` in the RIFF binary stream.
@@ -128,8 +146,9 @@ else if header == "RIFF":
 | File | Structure | Estimated Version | Thumbnail | Observations |
 | ------- | --------- | --------------- | --------- | ----------- |
 | `example.cdr`| ZIP | X4+ | PNG (previews/) | Complete modern structure. |
-| `ABCNEWS.CDR`| WLm. | v5 or lower | N/A | Raw proprietary binary format. |
-| `01-Receipt...`| RIFF | X3 or lower | DISP Chunk | Legacy financial document. |
+| `ABCNEWS.CDR`| WL | v3-v5 | Raw 1-bit | Proprietary binary format (`WL` magic). Big Endian dims. |
+| `03- Design.cdr`| RIFF | v4/5 | DISP (offset 1) | Uses `CDRD` signature. Top-level DISP chunk. |
+| `01-Receipt...`| RIFF | X3 or lower | DISP (offset 4) | Standard Legacy format. |
 
 ## 16. Uncertain Points
 *   **WLm. Format:** Practically undocumented. Based on direct memory dumps of software structures from the 80s/90s (Confidence: 20%).
