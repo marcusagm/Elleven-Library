@@ -62,6 +62,7 @@
 *   **DISP:** (Display) Block containing the preview. Can appear inside `page`, `doc `, `gobj` lists or at top level.
     *   **Variant A:** Header `08 00 00 00 28 00 00 00` (Standard 40-byte BITMAPINFOHEADER at offset 4).
     *   **Variant B:** Header `2C 28 00 00` (BITMAPINFOHEADER at offset 1).
+*   **cmpr:** (Compressed) A `LIST` chunk containing Zlib-compressed sub-chunks. Critical for X3+ legacy files.
 *   **icp0:** Chunk that stores icon/thumbnail for some versions.
 *   **imhd:** (Image Header) Can contain a direct BMP stream starting with `BM`.
 
@@ -77,7 +78,10 @@
 
 ## 6. Compression
 *   **Modern:** Standard ZIP **Deflate** compression.
-*   **Legacy (CDRB):** Uses customized LZW or RLE compression algorithms within vector data chunks to reduce RIFF size.
+*   **Legacy (CDRB/CMX):**
+    *   **cmpr chunk:** Uses **Zlib** compression.
+    *   **Structure:** `LIST` (4) + Size (4) + `cmpr` (4) + Header (~24 bytes) + Zlib Stream.
+    *   **Data:** Contains nested RIFF chunks (often `page` or `gobj`) after decompression.
 
 ## 7. Image Data
 *   **Vector:** The core of the format describes Bézier curves, gradient fills, and styles.

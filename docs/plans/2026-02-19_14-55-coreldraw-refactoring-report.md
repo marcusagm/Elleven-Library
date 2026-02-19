@@ -58,6 +58,34 @@ All sample files provided by the user now generate thumbnails:
 - `DRINKS.CDR`: 1-bit BMP from WL header (128x128).
 - `FOX.CDR`: BMP from `imhd` chunk.
 
-## 4. Next Steps
-- Monitor for other `DISP` header variants.
-- Consider using an external converter (like `uniconvertor` or `inkscape`) for vectors if higher quality is needed for legacy files.
+## 4. Quality Improvements (Step 2)
+### 4.1. "Collect All" Strategy
+- **Issue:** Legacy extraction was stopping at the first valid preview found (often a small thumbnail like `DISP` or `icp0`).
+- **Solution:** 
+  - Refactored `walk_riff_generic` to traverse the entire file and collect **all** potential image candidates (`DISP`, `bmp`, `imhd`, `icp0`).
+  - Updated `scan_for_embedded_bmp` to return a list of all found BMPs.
+  - The extractor now aggregates all candidates from all strategies and selects the **largest** image file by byte size.
+  - This ensures that if a high-res preview exists deep in the file (e.g., inside a `cmpr` compressed chunk), it takes precedence over a low-res thumbnail found earlier.
+
+### 4.2. Compression Support (`cmpr`)
+- **Issue:** Files from CorelDRAW X3+ often use Zlib compression for `cmpr` chunks, hiding high-quality previews.
+- **Solution:**
+  - Implemented `cmpr` chunk handling using `flate2::read::ZlibDecoder`.
+  - The extractor now decompresses these chunks in-memory and recursively parses them for hidden `DISP` or other image chunks.
+
+### 4.3. Multi-Format & Dynamic Header Support
+- **Issue:** 
+  - `scan_for_embedded_bmp` only looked for BMPs.
+  - `construct_bmp_from_dib` assumed a fixed 40-byte header, breaking modern BMPs (V4/V5) or causing color shifts.
+  - **Correction (Step 3):** Initial attempt to scan for JPEG caused false positives (random binary data matching `FF D8`) in legacy files (`DRINKS.CDR`, `11-40.cdr`), breaking valid thumbnails.
+- **Solution:**
+  - **Disabled JPEG scanning** in fallback mode to prevent corruption.
+  - Strengthened PNG scanning to require full 8-byte magic `89 50 4E 47 0D 0A 1A 0A` and valid `IEND` chunk.
+  - Updated `construct_bmp_from_dib` to dynamically read the DIB header size (first 4 bytes), ensuring correct pixel offset calculation for any BMP version.
+  - `walk_riff_generic` continues to recursively parse structure for legitimate embedded images.
+
+## 5. Conclusion
+- **Status:** **Resolved**.
+- All sample files now generate valid thumbnails.
+- **Quality Constraint:** "Terrible quality" on specific legacy files (e.g., `DRINKS.CDR`, `06-Business Card.cdr`) is confirmed to be an inherent limitation of the source file, which only contains a low-resolution (e.g., 128x128 1-bit) raster thumbnail. No higher-quality raster data exists in these files.
+- **Recommendation:** If higher quality is required for these specific legacy files in the future, integration with a vector rendering engine (like `libcdr` or `uniconvertor`) will be necessary, as extraction has reached its theoretical limit.

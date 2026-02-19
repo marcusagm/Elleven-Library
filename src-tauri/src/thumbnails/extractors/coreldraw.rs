@@ -1,50 +1,75 @@
 
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, Cursor};
 use std::path::Path;
 use byteorder::{ReadBytesExt, LittleEndian};
+use flate2::read::ZlibDecoder;
 
 /// Entry point for generating a high-quality preview.
 pub fn extract_coreldraw_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     println!("CDR [DEBUG]: Analyzing file: {:?}", path);
+    let mut candidates: Vec<(Vec<u8>, String)> = Vec::new();
+
+    // 1. Try format-specific extraction
     let mut file = File::open(path)?;
     let mut magic = [0u8; 4];
-    file.read_exact(&mut magic)?;
-
-    // Modern ZIP
-    if magic == [0x50, 0x4B, 0x03, 0x04] {
-        println!("CDR [DEBUG]: Format detected: Modern ZIP");
-        return extract_zip_best_quality(path);
-    }
-
-    // Legacy RIFF
-    if magic == *b"RIFF" {
-        println!("CDR [DEBUG]: Format detected: Legacy RIFF");
-        return extract_riff_preview_recursive(path);
-    }
-
-    // WL.. signature (CorelDRAW v3-v5)
-    // Hex: 57 4C ...
-    if magic[0] == 0x57 && magic[1] == 0x4C {
-        println!("CDR [DEBUG]: Format detected: Legacy Corel (v3-v5) WL signature");
-
-        // Try to extract the specific Header Thumbnail first
-        if let Ok(thumb) = extract_wl_thumbnail(path) {
-             return Ok(thumb);
+    if file.read_exact(&mut magic).is_ok() {
+        // Modern ZIP
+        if magic == [0x50, 0x4B, 0x03, 0x04] {
+            println!("CDR [DEBUG]: Format detected: Modern ZIP");
+             match extract_zip_best_quality(path) {
+                Ok(res) => candidates.push(res),
+                Err(e) => println!("CDR [DEBUG]: ZIP extraction failed: {}", e),
+            }
         }
-
-        // Use fallback scanning for embedded BMP as backup
-        // These are proprietary binary formats, not standard RIFF.
-        // We will try a "lucky scan" for a BMP header embedded in the file.
-        return scan_for_embedded_bmp(path);
+        // Legacy RIFF
+        else if magic == *b"RIFF" {
+            println!("CDR [DEBUG]: Format detected: Legacy RIFF");
+             match extract_riff_previews(path) {
+                Ok(mut res) => candidates.append(&mut res),
+                Err(e) => println!("CDR [DEBUG]: RIFF extraction failed: {}", e),
+            }
+        }
+        // WL.. signature (CorelDRAW v3-v5)
+        else if magic[0] == 0x57 && magic[1] == 0x4C {
+            println!("CDR [DEBUG]: Format detected: Legacy Corel (v3-v5) WL signature");
+            if let Ok(thumb) = extract_wl_thumbnail(path) {
+                 candidates.push(thumb);
+            }
+        }
     }
 
-    println!("CDR [DEBUG]: Unknown magic: {:02X?}. Attempting fallback scan...", magic);
-    // Even if unknown, try scanning for BMP
-    scan_for_embedded_bmp(path)
+    // 2. Always run fallback "lucky scan" for embedded BMPs in binary files
+    if candidates.is_empty() || is_legacy_format(path) {
+         println!("CDR [DEBUG]: Running fallback BMP/Image scan...");
+         match scan_for_embedded_images(path) {
+             Ok(mut res) => candidates.append(&mut res),
+             Err(_) => {}
+         }
+    }
+
+    // 3. Select Best Candidate
+    if let Some(best) = candidates.into_iter().max_by_key(|(data, _)| data.len()) {
+        println!("CDR [DEBUG]: Best preview found. Size: {} bytes", best.0.len());
+        if best.0.len() < 100 {
+             return Err("Preview too small to be valid".into());
+        }
+        return Ok(best);
+    }
+
+    Err("No valid preview found in CorelDRAW file".into())
 }
 
-/// Helper just for identifying if it's CorelDRAW (used by indexer)
+fn is_legacy_format(path: &Path) -> bool {
+   if let Ok(mut file) = File::open(path) {
+       let mut magic = [0u8; 4];
+       if file.read_exact(&mut magic).is_ok() {
+           return magic != [0x50, 0x4B, 0x03, 0x04];
+       }
+   }
+   true
+}
+
 pub fn is_coreldraw(path: &Path) -> bool {
    if let Ok(mut file) = File::open(path) {
        let mut magic = [0u8; 4];
@@ -60,19 +85,12 @@ pub fn is_coreldraw(path: &Path) -> bool {
 fn extract_zip_best_quality(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
-
-    // Priority for Preview (High Quality):
-    // 1. previews/page1.png (Full page render)
-    // 2. content/preview.png
-    // 3. previews/thumbnail.png
-
     let candidates = [
         "previews/page1.png",
         "content/preview.png",
         "previews/thumbnail.png",
     ];
 
-    // Collect all valid candidates and pick the largest one to ensure best quality
     let mut best_candidate: Option<(Vec<u8>, String)> = None;
     let mut max_size = 0;
 
@@ -80,26 +98,19 @@ fn extract_zip_best_quality(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
         if let Ok(mut entry) = archive.by_name(candidate) {
             let size = entry.size();
             println!("CDR [DEBUG]: Found candidate '{}' size: {} bytes", candidate, size);
-
             if size > max_size {
                 let mut buf = Vec::new();
                 entry.read_to_end(&mut buf)?;
                 max_size = size;
                 best_candidate = Some((buf, "image/png".to_string()));
             }
-        } else {
-            println!("CDR [DEBUG]: Candidate '{}' not found", candidate);
         }
     }
 
     if let Some(candidate_data) = best_candidate {
-        println!("CDR [DEBUG]: Selected best candidate size: {}", max_size);
         return Ok(candidate_data);
     }
 
-    println!("CDR [DEBUG]: No standard candidates found. Scanning all files...");
-
-    // Fallback: search for largest png
     let mut best_entry_index = None;
     let mut max_size = 0;
 
@@ -107,7 +118,6 @@ fn extract_zip_best_quality(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
         if let Ok(entry) = archive.by_index(i) {
             let name = entry.name().to_lowercase();
             if name.ends_with(".png") && (name.contains("preview") || name.contains("page") || name.contains("thumb")) {
-                println!("CDR [DEBUG]: Found potential preview '{}' size: {}", entry.name(), entry.size());
                 if entry.size() > max_size {
                     max_size = entry.size();
                     best_entry_index = Some(i);
@@ -129,299 +139,278 @@ fn extract_zip_best_quality(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
 
 // --- LEGACY (RIFF) STRATEGY (RECURSIVE) ---
 
-fn extract_riff_preview_recursive(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+fn extract_riff_previews(path: &Path) -> Result<Vec<(Vec<u8>, String)>, Box<dyn std::error::Error>> {
     let mut file = File::open(path)?;
-
-    // Check CDR signature at 0x8
     file.seek(SeekFrom::Start(8))?;
     let mut sig = [0u8; 4];
     file.read_exact(&mut sig)?;
 
-    // Check CDR signature at 0x8
-    file.seek(SeekFrom::Start(8))?;
-    let mut sig = [0u8; 4];
-    file.read_exact(&mut sig)?;
-
-    // Supported signatures:
-    // CDR  - Standard
-    // CDRB - Compressed
-    // CDRD - CorelDRAW 4? (Found in 03- Design.cdr)
     if sig != *b"CDR " && sig != *b"CDRB" && sig != *b"CDRD" {
-         println!("CDR [DEBUG]: Invalid/Unknown RIFF CDR signature: {:02X?}", sig);
          return Err("Not a valid RIFF CDR file".into());
     }
 
     let file_len = file.metadata()?.len();
-
-    // Recursively walk from 12
-    walk_riff(&mut file, 12, file_len)
+    let mut candidates = Vec::new();
+    walk_riff_generic(&mut file, 12, file_len, &mut candidates)?;
+    Ok(candidates)
 }
 
-fn walk_riff(file: &mut File, start_pos: u64, end_pos: u64) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
-    file.seek(SeekFrom::Start(start_pos))?;
+fn walk_riff_generic<R: Read + Seek>(
+    reader: &mut R,
+    start_pos: u64,
+    end_pos: u64,
+    candidates: &mut Vec<(Vec<u8>, String)>
+) -> Result<(), Box<dyn std::error::Error>> {
+    reader.seek(SeekFrom::Start(start_pos))?;
 
-    while file.stream_position()? < end_pos - 8 {
+    while reader.stream_position()? + 8 <= end_pos {
         let mut chunk_id = [0u8; 4];
-        if file.read_exact(&mut chunk_id).is_err() { break; }
+        if reader.read_exact(&mut chunk_id).is_err() { break; }
 
-        let chunk_size = file.read_u32::<LittleEndian>()?;
-        let next_chunk_pos = file.stream_position()? + chunk_size as u64 + (chunk_size % 2) as u64;
+        let chunk_size = reader.read_u32::<LittleEndian>()?;
 
-        // println!("CDR [DEBUG]: Chunk '{}' size: {}", String::from_utf8_lossy(&chunk_id), chunk_size);
+        if chunk_size > 100_000_000 { break; }
+
+        let next_chunk_pos = reader.stream_position()? + chunk_size as u64 + (chunk_size % 2) as u64;
 
         if chunk_id == *b"LIST" {
-            // Recurse into LIST
-            // LIST structure: [LIST (4)] [Size (4)] [Type (4)] [SubChunks...]
-            let list_type_pos = file.stream_position()?;
+            let list_type_pos = reader.stream_position()?;
             let mut list_type = [0u8; 4];
-            file.read_exact(&mut list_type)?;
+            reader.read_exact(&mut list_type)?;
 
-            println!("CDR [DEBUG]: Entering LIST '{}'", String::from_utf8_lossy(&list_type));
-
-            // Allow recursion if type matches known containers or just always recurse?
-            // "INFO" lists contain metadata, maybe previews? "page" contains page data
-            // Allow recursion into known containers.
-            // "doc " (Document), "page" (Page), "gobj" (Graphic Object), "INFO", "disp", "cmpr"
             if list_type == *b"disp" || list_type == *b"page" || list_type == *b"INFO" || list_type == *b"CMPR"
-               || list_type == *b"doc " || list_type == *b"gobj" {
-                 // Try to find DISP inside
-                 match walk_riff(file, list_type_pos + 4, next_chunk_pos) {
-                     Ok(res) => return Ok(res),
+               || list_type == *b"doc " || list_type == *b"gobj" || list_type == *b"iccp" {
+                 match walk_riff_generic(reader, list_type_pos + 4, next_chunk_pos, candidates) {
+                     Ok(_) => {},
                      Err(_) => {
-                         // Continue searching next chunks on this level
-                         file.seek(SeekFrom::Start(next_chunk_pos))?;
+                         reader.seek(SeekFrom::Start(next_chunk_pos))?;
                      }
                  }
+            } else if list_type == *b"cmpr" {
+                 if chunk_size > 40 {
+                     let mut compressed_data = vec![0u8; (chunk_size - 4) as usize];
+                     reader.read_exact(&mut compressed_data)?;
+
+                     if compressed_data.len() > 32 {
+                         let zlib_offset = 24;
+                         if zlib_offset < compressed_data.len() {
+                             let zlib_stream = &compressed_data[zlib_offset..];
+                             let mut decoder = ZlibDecoder::new(zlib_stream);
+                             let mut decompressed = Vec::new();
+                             if let Ok(_) = decoder.read_to_end(&mut decompressed) {
+                                 let mut cursor = Cursor::new(decompressed);
+                                 let len = cursor.get_ref().len() as u64;
+                                 let _ = walk_riff_generic(&mut cursor, 0, len, candidates);
+                             }
+                         }
+                     }
+                 }
+                 reader.seek(SeekFrom::Start(next_chunk_pos))?;
             } else {
-                 // Skip unknown list
-                 file.seek(SeekFrom::Start(next_chunk_pos))?;
+                 reader.seek(SeekFrom::Start(next_chunk_pos))?;
             }
 
-        } else if &chunk_id == b"DISP" {
-             println!("CDR [DEBUG]: Found DISP chunk. Size: {}", chunk_size);
-             // Extract DISP data
+        } else if &chunk_id == b"DISP" || &chunk_id == b"icp0" || &chunk_id == b"bmp " || &chunk_id == b"imhd" {
+             if chunk_size == 0 {
+                 reader.seek(SeekFrom::Start(next_chunk_pos))?;
+                 continue;
+             }
+
              let mut data = vec![0u8; chunk_size as usize];
-             file.read_exact(&mut data)?;
+             reader.read_exact(&mut data)?;
 
-             // BMP with header offset (sometimes 4-byte generic header)
-             // Header: [08, 00, 00, 00, 28, 00, 00, 00] -> The '28' is the size of BITMAPINFOHEADER (40 bytes)
-             // Header: [08, 00, 00, 00, 28, 00, 00, 00] -> The '28' is the size of BITMAPINFOHEADER (40 bytes)
-             // Header: [2C, 28, 00, 00] -> Found in 03- Design.cdr (hex: 2C 28 00 00).
-             // 2C = ? 28 = 40 (BITMAPINFOHEADER size).
-             // 00000010: ... 4449 5350 2c28 0000 ... (DISP , ( ..)
+             // Strategy: Try several BMP headers
+             let mut found_bmp = false;
 
-             if data.len() > 8 && data[4] == 0x28 && data[5] == 0x00 && data[6] == 0x00 && data[7] == 0x00 {
-                 println!("CDR [DEBUG]: Found BMP with 4-byte offset header (Standard Corel)");
-                 let dib_header_slice = &data[4..];
-                 let bmp = construct_bmp_from_dib(dib_header_slice);
-                 if let Ok(bmp_data) = bmp {
-                     return Ok((bmp_data, "image/bmp".to_string()));
+             // 1. Check for PNG/JPG/TIFF inside DISP
+             if check_and_extract_image(&data, candidates) {
+                 found_bmp = true;
+             } else {
+                 // 2. BMP variants
+                 if data.len() > 2 && data[0] == b'B' && data[1] == b'M' {
+                     candidates.push((data.clone(), "image/bmp".to_string()));
+                     found_bmp = true;
                  }
-                 println!("CDR [DEBUG]: Failed to construct BMP from DIB");
-             }
-
-             // Check for 2-byte offset header [?? 28 00 00]
-             // Specifically [2C 28 00 00] or similar where 28 is at offset 1
-             if data.len() > 5 && data[1] == 0x28 && data[2] == 0x00 && data[3] == 0x00 {
-                  println!("CDR [DEBUG]: Found BMP with 1-byte? offset header?");
-                  // Actually, purely creating from offset 1
-                  let dib_header_slice = &data[1..];
-                   let bmp = construct_bmp_from_dib(dib_header_slice);
-                 if let Ok(bmp_data) = bmp {
-                     return Ok((bmp_data, "image/bmp".to_string()));
+                 else if data.len() > 6 && data[4] == b'B' && data[5] == b'M' {
+                     candidates.push((data[4..].to_vec(), "image/bmp".to_string()));
+                     found_bmp = true;
+                 }
+                 else if data.len() > 8 && data[4] == 0x28 && data[5] == 0x00 && data[6] == 0x00 && data[7] == 0x00 {
+                     if let Ok(bmp) = construct_bmp_from_dib(&data[4..]) {
+                         candidates.push((bmp, "image/bmp".to_string()));
+                         found_bmp = true;
+                     }
+                 }
+                 else if data.len() > 5 && data[1] == 0x28 && data[2] == 0x00 && data[3] == 0x00 {
+                     if let Ok(bmp) = construct_bmp_from_dib(&data[1..]) {
+                         candidates.push((bmp, "image/bmp".to_string()));
+                         found_bmp = true;
+                     }
+                 }
+                 else if data.len() > 4 && data[0] == 0x28 && data[1] == 0x00 && data[2] == 0x00 {
+                     if let Ok(bmp) = construct_bmp_from_dib(&data) {
+                         candidates.push((bmp, "image/bmp".to_string()));
+                         found_bmp = true;
+                     }
                  }
              }
 
-             // Standard BMP check 'BM'
-
-             // Standard BMP check 'BM'
-             if data.len() > 2 && data[0] == b'B' && data[1] == b'M' {
-                 return Ok((data, "image/bmp".to_string()));
-             }
-             // BMP with 'BM' at offset 4 (rare but seen in code comments previously)
-             if data.len() > 6 && data[4] == b'B' && data[5] == b'M' {
-                 return Ok((data[4..].to_vec(), "image/bmp".to_string()));
+             if !found_bmp {
+                 // Could be unknown format or just raw pixels?
              }
 
-             // Check for WMF (Placeable Metafile Header: 0xD7CDC69A)
-             // WMF is vector, hard to render. But we can identify it.
-             if data.len() > 4 && data[0] == 0x9A && data[1] == 0xC6 && data[2] == 0xCD && data[3] == 0xD7 {
-                  println!("CDR [DEBUG]: DISP is WMF (vector). Skipping.");
-                  // Found WMF. This needs conversion.
-                  // For now, return it as "image/wmf" and let the caller/frontend fail or use a converter if available.
-                  // Our system doesn't have a WMF converter natively in Rust yet (unless we use image-rs with some plugin?)
-                  // Actually, let's look for other chunks. Maybe there IS a BMP later?
-                  // No, usually DISP is unique per view.
-                  // return Err("Found DISP chunk but it is WMF (vector), not BMP (bitmap). Conversion not supported.".into());
-             }
-
-             // Continue if not identified
-             println!("CDR [DEBUG]: DISP format not identified. Header: {:02X?}", &data[0..8.min(data.len())]);
-             file.seek(SeekFrom::Start(next_chunk_pos))?;
-
-        } else if &chunk_id == b"icp0" || &chunk_id == b"bmp " || &chunk_id == b"imhd" {
-             println!("CDR [DEBUG]: Found Icon/BMP/IMHD chunk '{}'", String::from_utf8_lossy(&chunk_id));
-             let mut data = vec![0u8; chunk_size as usize];
-             file.read_exact(&mut data)?;
-             if data.len() > 2 && data[0] == b'B' && data[1] == b'M' {
-                 return Ok((data, "image/bmp".to_string()));
-             }
-             file.seek(SeekFrom::Start(next_chunk_pos))?;
+             reader.seek(SeekFrom::Start(next_chunk_pos))?;
         } else {
-            // println!("CDR [DEBUG]: Skipping chunk '{}'", String::from_utf8_lossy(&chunk_id));
-            file.seek(SeekFrom::Start(next_chunk_pos))?;
+            reader.seek(SeekFrom::Start(next_chunk_pos))?;
         }
     }
+    Ok(())
+}
 
-    Err("No preview found in this RIFF level".into())
+fn check_and_extract_image(data: &[u8], candidates: &mut Vec<(Vec<u8>, String)>) -> bool {
+    // Check for PNG
+    if data.len() > 8 && data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 {
+        candidates.push((data.to_vec(), "image/png".to_string()));
+        return true;
+    }
+    // Check for JPEG
+    if data.len() > 2 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF {
+         candidates.push((data.to_vec(), "image/jpeg".to_string()));
+         return true;
+    }
+    // Check for TIFF (II*/MM*)
+    if data.len() > 4 {
+        if (data[0] == 0x49 && data[1] == 0x49 && data[2] == 0x2A && data[3] == 0x00) ||
+           (data[0] == 0x4D && data[1] == 0x4D && data[2] == 0x00 && data[3] == 0x2A) {
+             candidates.push((data.to_vec(), "image/tiff".to_string()));
+             return true;
+        }
+    }
+    // Check GIF
+    if data.len() > 3 && data[0] == b'G' && data[1] == b'I' && data[2] == b'F' {
+        candidates.push((data.to_vec(), "image/gif".to_string()));
+        return true;
+    }
+    false
 }
 
 /// Constructs a full BMP file from a DIB (Device Independent Bitmap) memory block.
-/// The DIB block usually starts with the BITMAPINFOHEADER.
 fn construct_bmp_from_dib(dib_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use std::io::Write;
+    if dib_data.len() < 4 { return Err("Too short".into()); }
 
-    // BITMAPINFOHEADER is 40 bytes
-    if dib_data.len() < 40 {
-        return Err("DIB data too short".into());
-    }
-
-    // Parse width/height/bpp from header to calculate size if needed,
-    // or just assume the rest of the data is the pixel array.
-    // DIB Header layout (partial):
-    // Offset 0 (u32): Header Size (40)
-    // Offset 4 (i32): Width
-    // Offset 8 (i32): Height
-    // Offset 14 (u16): BPP
-
-    // But for a simple file reconstruction, we just need to prepend the BMP File Header (14 bytes).
-    // BMP File Header:
-    // 0x00: "BM" (2 bytes)
-    // 0x02: File Size (4 bytes)
-    // 0x06: Reserved (2)
-    // 0x08: Reserved (2)
-    // 0x0A: Offset to Pixel Data (4 bytes)
+    let header_size = u32::from_le_bytes([dib_data[0], dib_data[1], dib_data[2], dib_data[3]]);
+    let header_size_usize = header_size as usize;
+    if dib_data.len() < header_size_usize { return Err("DIB smaller than header".into()); }
 
     let dib_len = dib_data.len() as u32;
-    let file_size = 14 + dib_len;
-    // Offset to pixel data: 14 (FileHeader) + 40 (InfoHeader, usually) + Palette size (if any)
-    // This is tricky without parsing.
-    // However, many viewers (and `image` crate) might handle a pointer to DIB if we just wrap it with a basic header?
+    let file_size = 14 + dib_len; // Approx
 
-    // Let's try to be smart about the pixel offset.
-    // Read BPP at offset 14 (u16)
-    let bpp = u16::from_le_bytes([dib_data[14], dib_data[15]]);
+    // Parse BPP to guess palette size
     let mut palette_size = 0;
 
-    if bpp <= 8 {
-        // If clrUsed is crucial. Offset 32 (u32)
-        let clr_used = u32::from_le_bytes([dib_data[32], dib_data[33], dib_data[34], dib_data[35]]);
-        if clr_used > 0 {
-            palette_size = clr_used * 4;
-        } else {
-            palette_size = (1 << bpp) * 4;
+    // BPP is at offset 14 usually (if header >= 16 bytes)
+    if header_size >= 16 && dib_data.len() >= 16 {
+        let bpp = u16::from_le_bytes([dib_data[14], dib_data[15]]);
+        if bpp <= 8 {
+            let mut clr_used = 0;
+            // clrUsed is at offset 32 if header >= 36
+            if header_size >= 36 && dib_data.len() >= 36 {
+                clr_used = u32::from_le_bytes([dib_data[32], dib_data[33], dib_data[34], dib_data[35]]);
+            }
+
+            if clr_used > 0 {
+                palette_size = clr_used * 4;
+            } else {
+                palette_size = (1 << bpp) * 4;
+            }
         }
     }
 
-    let pixel_offset = 14 + 40 + palette_size; // assuming 40-byte header
+    let pixel_offset = 14 + header_size + palette_size;
 
     let mut bmp_data = Vec::with_capacity(file_size as usize);
-    // Signature
     bmp_data.write_all(b"BM")?;
-    // File Size
     bmp_data.write_all(&file_size.to_le_bytes())?;
-    // Reserved
     bmp_data.write_all(&[0u8; 4])?;
-    // Offset
     bmp_data.write_all(&pixel_offset.to_le_bytes())?;
-
-    // Write the rest (DIB)
     bmp_data.write_all(dib_data)?;
 
     Ok(bmp_data)
 }
 
-/// Fallback: Scans the entire file for a BMP header ('BM').
-/// This is useful for proprietary "WL" formats or broken RIFFs.
-fn scan_for_embedded_bmp(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+/// Fallback: Scans the entire file for Embedded Images (BMP/PNG/JPG/TIFF).
+fn scan_for_embedded_images(path: &Path) -> Result<Vec<(Vec<u8>, String)>, Box<dyn std::error::Error>> {
     let mut file = File::open(path)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
 
-    // Naive search for "BM" followed by reasonable file size
-    // BMP Header: B (0x42) M (0x4D) [File Size (4 bytes)]
-
+    let mut found = Vec::new();
     let len = buffer.len();
-    for i in 0..len.saturating_sub(14) {
+    let mut i = 0;
+
+    // Search for BMP and PNG only.
+    // JPEG matching is disabled as 'FF D8' is too common in random binary data (false positives).
+
+    while i < len.saturating_sub(16) {
+        // BMP: 'BM' + Size check
         if buffer[i] == 0x42 && buffer[i+1] == 0x4D {
-            // Potential BMP start
-            // Read next 4 bytes as size
             let size_bytes = &buffer[i+2..i+6];
             let declared_size = u32::from_le_bytes(size_bytes.try_into()?) as usize;
 
-            // Heuristic checks:
-            // 1. Size must be plausible (> headers, < file size usually, but sometimes embedded < total)
-            // 2. Size should effectively verify that we have enough bytes left in buffer?
-            //    Legacy files might not respect valid BMP structure perfectly inside.
-
-            // Corel often zero-pads or creates custom BMPs.
-            // Let's check deeper: Offset 0x0A (Pixel array offset)
-            if i + 14 > len { continue; }
-            let offset_bytes = &buffer[i+10..i+14];
-            let pixel_offset = u32::from_le_bytes(offset_bytes.try_into()?) as usize;
-
-            // Offset must be larger than header (14) and usually > 54
-            if pixel_offset < 14 || pixel_offset > 10000 { continue; }
-
-            // Check DIB header size (usually 40) at i+14
-            if i + 18 > len { continue; }
-            let dib_size = u32::from_le_bytes(buffer[i+14..i+18].try_into()?) as usize;
-            if dib_size != 40 && dib_size != 12 && dib_size != 108 && dib_size != 124 { continue; }
-
-            // If we are here, it looks like a BMP.
-            // Extract it.
-            // Note: `declared_size` in BMP header might be unreliable in some raw dumps?
-            // Trust it if it fits in the buffer.
-
-            let safe_end = (i + declared_size).min(len);
-
-            // Basic sanity check on size
-            if safe_end - i < 50 { continue; } // Too small
-
-            println!("CDR [DEBUG]: Found embedded BMP at offset {}. Size: {}", i, declared_size);
-            let bmp_data = buffer[i..safe_end].to_vec();
-            return Ok((bmp_data, "image/bmp".to_string()));
+            // Heuristic: Size must be reasonable for an embedded resource
+            if declared_size > 50 && (i + declared_size) <= len {
+                 let offset_val = u32::from_le_bytes(buffer[i+10..i+14].try_into()?) as usize;
+                 // Header size check (offset usually 14 + header_size)
+                 // Common offsets: 54 (v3), 14+header_size
+                 if offset_val >= 14 && offset_val < 10000 {
+                      let bmp_data = buffer[i..i+declared_size].to_vec();
+                      found.push((bmp_data, "image/bmp".to_string()));
+                      i += declared_size;
+                      continue;
+                 }
+            }
         }
+
+        // PNG: Strict Magic Check (8 bytes)
+        // 89 50 4E 47 0D 0A 1A 0A
+        if buffer[i] == 0x89 && buffer[i+1] == 0x50 && buffer[i+2] == 0x4E && buffer[i+3] == 0x47 &&
+           buffer[i+4] == 0x0D && buffer[i+5] == 0x0A && buffer[i+6] == 0x1A && buffer[i+7] == 0x0A {
+
+            // Scan for IEND to find end
+            let mut end_pos = 0;
+            // IEND chunk: Length(00 00 00 00) + 'IEND' + CRC(4 bytes) = 12 bytes total
+            // But we just search for the 'IEND' tag and add 4 for CRC.
+            for j in (i+8)..len.saturating_sub(8) {
+                if buffer[j] == 0x49 && buffer[j+1] == 0x45 && buffer[j+2] == 0x4E && buffer[j+3] == 0x44 {
+                    end_pos = j + 8; // IEND tag (4) + CRC (4) = end of chunk. (Tag starts at j)
+                    break;
+                }
+            }
+            if end_pos > 0 && end_pos <= len {
+                let png_data = buffer[i..end_pos].to_vec();
+                if png_data.len() > 60 { // Min PNG size
+                     println!("CDR [DEBUG]: Found embedded PNG at {}. Size: {}", i, png_data.len());
+                     found.push((png_data, "image/png".to_string()));
+                     i = end_pos;
+                     continue;
+                }
+            }
+        }
+
+        i += 1;
     }
 
-    Err("No embedded BMP found in scan".into())
+    if found.is_empty() {
+        return Err("No embedded images found".into());
+    }
+    Ok(found)
 }
 
-/// Extracts the fixed-header thumbnail from WL (Corel v3-v5) files.
-/// Based on hex dump analysis:
-/// Header looks like: 57 4C ...
-/// Offset 0x48 (72): Width (u16)
-/// Offset 0x4A (74): Height (u16)
-/// Offset 0x56 (86): Start of 1-bit Bitmap Data?
 fn extract_wl_thumbnail(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let mut file = File::open(path)?;
-    // Read first ~8KB which likely contains the header + preview
     let mut header = [0u8; 1024];
     file.read_exact(&mut header)?;
-
-    // Width and Height are usually at 0x48 and 0x4A ???
-    // Let's verify with values from FLAG.CDR dump:
-    // 00000040: ... 005A 005A ... -> 0x5A = 90.
-    // DRINKS.CDR:
-    // 00000040: ... 0080 0080 ... -> 0x80 = 128.
-
-    // Position 0x48 seems to be width, 0x4A height.
-    // Verify with values from FLAG.CDR dump:
-    // 00000040: ... 005A 005A ...
-    // These are 0x5A (90) Little Endian if we read as u16.
-    // 00 5A -> 0x5A00 (23040) in LE.
-    // 00 5A -> 90 in BE.
-    // Corel WL likely uses Big Endian for these fields.
 
     let width = u16::from_be_bytes([header[0x48], header[0x49]]) as u32;
     let height = u16::from_be_bytes([header[0x4A], header[0x4B]]) as u32;
@@ -432,86 +421,45 @@ fn extract_wl_thumbnail(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::e
 
     println!("CDR [DEBUG]: WL Thumbnail detected: {}x{}", width, height);
 
-    // 1-bit per pixel. Rows are padded to 32-bit (4 byte) boundary usually?
-    // Or maybe 16-bit?
-    // Let's assume standard BMP stride: (width * bpp + 31) / 32 * 4 bytes
-    // For 1bpp: (width + 31) / 32 * 4
-
     let stride = ((width + 31) / 32) * 4;
     let data_size = (stride * height) as usize;
-
-    // Data starts at 0x56?
     let start_offset = 0x56;
 
     if start_offset + data_size > header.len() {
-        // We might need to read more if the preview is large
-        // But for 128x128 -> stride 16 -> 2048 bytes.
-        // Let's read full file part if needed.
-        // Re-read file to vector
         file.seek(SeekFrom::Start(0))?;
         let mut full_data = Vec::new();
         file.read_to_end(&mut full_data)?;
-
-        if start_offset + data_size > full_data.len() {
-             return Err("WL file too short for expected thumbnail data".into());
-        }
-
+        if start_offset + data_size > full_data.len() { return Err("WL too short".into()); }
         let raw_bits = &full_data[start_offset..start_offset + data_size];
         return wrap_raw_1bit_bmp(raw_bits, width, height);
     }
-
     let raw_bits = &header[start_offset..start_offset + data_size];
     wrap_raw_1bit_bmp(raw_bits, width, height)
 }
 
 fn wrap_raw_1bit_bmp(raw_data: &[u8], width: u32, height: u32) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     use std::io::Write;
-
-    // Construct valid BMP with 1bpp monochrome palette
     let file_header_size = 14;
     let info_header_size = 40;
-    let palette_size = 2 * 4; // 2 colors * 4 bytes
+    let palette_size = 2 * 4;
     let offset = file_header_size + info_header_size + palette_size;
     let file_size = offset + raw_data.len() as u32;
 
     let mut bmp = Vec::with_capacity(file_size as usize);
-
-    // -- File Header --
     bmp.write_all(b"BM")?;
     bmp.write_all(&file_size.to_le_bytes())?;
-    bmp.write_all(&[0u8; 4])?; // Reserved
+    bmp.write_all(&[0u8; 4])?;
     bmp.write_all(&offset.to_le_bytes())?;
-
-    // -- Info Header --
     bmp.write_all(&(info_header_size as u32).to_le_bytes())?;
     bmp.write_all(&(width as i32).to_le_bytes())?;
-
-    // Height is negative if top-down? Or positive if bottom-up?
-    // Corel usually stores top-down (scanlines order).
-    // BMP standard is bottom-up.
-    // If image is flipped, try passing negative height:
     bmp.write_all(&(-(height as i32)).to_le_bytes())?;
-
-    bmp.write_all(&(1u16).to_le_bytes())?; // Planes = 1
-    bmp.write_all(&(1u16).to_le_bytes())?; // BPP = 1
-    bmp.write_all(&[0u8; 4])?; // Compression = 0 (BI_RGB)
-    bmp.write_all(&(raw_data.len() as u32).to_le_bytes())?; // Image Size
-    bmp.write_all(&[0u8; 4])?; // X Pels
-    bmp.write_all(&[0u8; 4])?; // Y Pels
-    bmp.write_all(&[0u8; 4])?; // Colors Used
-    bmp.write_all(&[0u8; 4])?; // Colors Important
-
-    // -- Palette (B-G-R-A) --
-    // Color 0: Black (00 00 00 00)
-    // Color 1: White (FF FF FF 00)
-    // Note: In 1bpp, 0 usually means index 0, 1 means index 1.
-    // The background in hex dump is FF (11111111).
-    // If FF is background, and we want it White, then 1 => White.
-
-    bmp.write_all(&[0x00, 0x00, 0x00, 0x00])?; // Black
-    bmp.write_all(&[0xFF, 0xFF, 0xFF, 0x00])?; // White
-
-    // -- Pixel Data --
+    bmp.write_all(&(1u16).to_le_bytes())?;
+    bmp.write_all(&(1u16).to_le_bytes())?;
+    bmp.write_all(&[0u8; 4])?;
+    bmp.write_all(&(raw_data.len() as u32).to_le_bytes())?;
+    bmp.write_all(&[0u8; 16])?;
+    bmp.write_all(&[0x00, 0x00, 0x00, 0x00])?;
+    bmp.write_all(&[0xFF, 0xFF, 0xFF, 0x00])?;
     bmp.write_all(raw_data)?;
 
     Ok((bmp, "image/bmp".to_string()))
