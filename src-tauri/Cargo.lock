@@ -3210,6 +3210,7 @@ dependencies = [
  "webp",
  "wuff",
  "zip",
+ "zstd",
  "zune-jpeg 0.4.21",
 ]
 

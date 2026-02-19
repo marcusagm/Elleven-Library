@@ -66,6 +66,7 @@ wait-timeout = "0.2"
 byteorder = "1.5"
 flate2 = "1.0"
 quick-xml = "0.37"
+zstd = "0.13.3"
 
 
 

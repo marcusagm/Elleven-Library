@@ -10,6 +10,7 @@ pub mod rebelle;
 pub mod ai;
 pub mod coreldraw;
 pub mod corel_painter;
+pub mod penpot;
 
 use std::path::Path;
 use std::io::Read;
@@ -161,6 +162,10 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                 },
                 "rif" | "riff" => {
                     corel_painter::extract_corel_painter_preview(path)
+                },
+                "penpot" => {
+                    let data = penpot::extract_penpot_preview(path)?;
+                    Ok((data, "image/png".to_string()))
                 },
                 _ => Err("No native extractor for this extension".into()),
             }
