@@ -7,36 +7,28 @@ use crate::thumbnails::extractors::binary_jpeg;
 /// Main entry point for AI file preview extraction.
 /// Implements a hybrid strategy: XMP -> PDF -> Binary Fallback.
 pub fn extract_ai_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
-    println!("AI_EXTRACT: Analyzing {:?}", path);
-    // 1. Try XMP Metadata Thumbnail (Fastest, usually JPEG)
+    // 1. Try PDF Stream (Highest Quality)
+    // We prioritize this to ensure the frontend gets a vector-based PDF for high-fidelity previews,
+    // which matches the "native" behavior users expect (browser rendering the PDF).
+    if let Ok(data) = extract_ai_pdf_stream(path) {
+        return Ok((data, "application/pdf".to_string()));
+    }
+
+    // 2. Try XMP Metadata Thumbnail (Fastest, usually JPEG)
+    // Fallback if PDF stream is missing or incompatible.
     // We implement a binary-safe scan here instead of relying on string conversion
     // because .ai files are binary and often fail UTF-8 validation.
     if let Ok(data) = extract_xmp_thumbnail_safe(path) {
-        println!("AI_EXTRACT: Found XMP thumbnail ({} bytes)", data.len());
         return Ok((data, "image/jpeg".to_string()));
-    } else {
-        println!("AI_EXTRACT: XMP extraction failed");
-    }
-
-    // 2. Try PDF Stream (Highest Quality)
-    // This allows the PDF backend to render the vector content.
-    if let Ok(data) = extract_ai_pdf_stream(path) {
-        println!("AI_EXTRACT: Found PDF stream ({} bytes)", data.len());
-        return Ok((data, "application/pdf".to_string()));
-    } else {
-        println!("AI_EXTRACT: PDF stream extraction failed");
     }
 
     // 3. Fallback to binary scanner (Legacy AI / PDF-incompatible)
     // This finds any embedded JPEG/TIFF/PNG using purely binary signatures.
     if let Ok((data, mime)) = binary_jpeg::extract_any_embedded(path) {
-        println!("AI_EXTRACT: Found embedded {} ({} bytes)", mime, data.len());
         // If we found a TIFF, we might want to let the caller handle it (convert to PNG if needed),
         // but here we just return the raw data and let the pipeline decide.
         // In mod.rs, there is logic to convert TIFF to PNG if needed.
         return Ok((data, mime));
-    } else {
-        println!("AI_EXTRACT: Binary scanning failed");
     }
 
     Err("No preview found in AI file".into())
@@ -44,7 +36,7 @@ pub fn extract_ai_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std:
 
 /// Binary-safe extraction of XMP thumbnail.
 /// Searches for <xmpGImg:image> tags without assuming the file is valid UTF-8 text.
-fn extract_xmp_thumbnail_safe(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn extract_xmp_thumbnail_safe(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut buffer = Vec::new();
 

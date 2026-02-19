@@ -295,11 +295,15 @@ pub fn generate_thumbnail_extracted<R: Runtime>(
         if let Ok(rendered_data) = crate::media::pdf::render_pdf_data_to_image(app_handle, &data, size_px) {
             data = rendered_data;
         }
-        // Try 2: Extract Embedded Preview (fastest fallback)
+        // Try 2: Extract XMP Thumbnail (high priority especially for AI/EPS)
+        else if let Ok(embedded_data) = ai::extract_xmp_thumbnail_safe(input_path) {
+             data = embedded_data;
+        }
+        // Try 3: General Binary Scanner (fallback for non-XMP embedded images)
         else if let Ok((embedded_data, _)) = binary_jpeg::extract_any_embedded(input_path) {
             data = embedded_data;
         }
-        // Try 3: FFmpeg Rasterization (slowest fallback)
+        // Try 4: FFmpeg Rasterization (slowest fallback)
         else if let Ok(rendered_data) = extract_ffmpeg_frame(app_handle, input_path) {
             data = rendered_data;
         }
