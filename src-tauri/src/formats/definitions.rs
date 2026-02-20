@@ -371,6 +371,15 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         playback: PlaybackStrategy::None,
     },
     FileFormat {
+        name: "PostScript Document",
+        extensions: &["ps"],
+        mime_types: &["application/postscript"],
+        type_category: MediaType::Image,
+        strategy: ThumbnailStrategy::NativeExtractor,
+        preview_strategy: PreviewStrategy::NativeExtractor,
+        playback: PlaybackStrategy::None,
+    },
+    FileFormat {
         name: "GIMP Image",
         extensions: &["xcf"],
         mime_types: &["image/x-xcf"],

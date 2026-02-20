@@ -11,6 +11,7 @@ pub mod ai;
 pub mod coreldraw;
 pub mod corel_painter;
 pub mod penpot;
+pub mod eps;
 
 use std::path::Path;
 use std::io::Read;
@@ -73,10 +74,9 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                 "ai" => {
                     ai::extract_ai_preview(path)
                 },
-                // Encapsulated PostScript
-                "eps" => {
-                    // Priority 0: Official Binary EPS Header (Pointer-based TIFF)
-                    if let Ok((data, mime)) = binary_jpeg::extract_eps_binary_pointer(path) {
+                // Encapsulated PostScript / PostScript
+                "eps" | "ps" => {
+                    if let Ok((data, mime)) = eps::extract_eps_ps_preview(path) {
                         if mime == "image/tiff" {
                             if let Ok(png) = convert_to_png_from_memory(&data) {
                                 return Ok((png, "image/png".to_string()));
@@ -84,25 +84,14 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                         }
                         return Ok((data, mime));
                     }
-                    // Priority 1: Fast Binary Scanner & XMP
-                    if let Ok((data, mime)) = binary_jpeg::extract_any_embedded(path) {
-                        if mime == "image/tiff" {
-                             if let Ok(png) = convert_to_png_from_memory(&data) {
-                                 return Ok((png, "image/png".to_string()));
-                             }
-                        }
-                        return Ok((data, mime));
-                    }
-                    // Priority 2: FFmpeg (Ghostscript) for rendering vector EPS
+
+                    // Fallback to external process if native extraction fails.
+                    // Priority: FFmpeg (relies on Ghostscript) for rendering vector
                     if let Ok(data) = extract_ffmpeg_frame(app_handle, path) {
                         return Ok((data, "image/jpeg".to_string()));
                     }
-                    // Priority 3: Try to see if it's a PDF wrapper (rare but happens)
-                    // We can reuse the AI logic which is good at finding PDF streams
-                    if let Ok(data) = ai::extract_ai_pdf_stream(path) {
-                        return Ok((data, "application/pdf".to_string()));
-                    }
-                    Err("No preview found in EPS".into())
+
+                    Err("No preview found in EPS/PS".into())
                 },
                 // ZIP-based Project Previews
                 "xmind" => {

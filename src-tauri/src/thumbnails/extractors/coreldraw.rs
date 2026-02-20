@@ -70,16 +70,6 @@ fn is_legacy_format(path: &Path) -> bool {
    true
 }
 
-pub fn is_coreldraw(path: &Path) -> bool {
-   if let Ok(mut file) = File::open(path) {
-       let mut magic = [0u8; 4];
-       if file.read_exact(&mut magic).is_ok() {
-           return magic == [0x50, 0x4B, 0x03, 0x04] || magic == *b"RIFF";
-       }
-   }
-   false
-}
-
 // --- MODERN (ZIP) STRATEGY ---
 
 fn extract_zip_best_quality(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {

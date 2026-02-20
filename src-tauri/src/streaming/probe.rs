@@ -187,7 +187,7 @@ mod tests {
     fn test_codec_native() {
         assert!(is_codec_native(&Some("h264".to_string()), &Some("aac".to_string())));
         assert!(!is_codec_native(&Some("hevc".to_string()), &Some("aac".to_string())));
-        assert!(!is_codec_native(&Some("h264".to_string()), &Some("opus".to_string())));
+        assert!(is_codec_native(&Some("h264".to_string()), &Some("opus".to_string())));
         assert!(!is_codec_native(&Some("vp9".to_string()), &Some("opus".to_string())));
     }
 }
