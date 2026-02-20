@@ -65,43 +65,13 @@ pub(crate) fn brute_force_scan_jpeg(path: &Path) -> Result<image::DynamicImage, 
 
 /// Variant that returns raw bytes, needed for extraction without re-encoding to serve as Web preview.
 pub fn brute_force_extract_jpeg_data(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let file = std::fs::File::open(path)?;
-    let mmap = unsafe { memmap2::MmapOptions::new().map(&file)? };
+    let img = brute_force_scan_jpeg(path)?;
+    let mut jpeg_data = Vec::new();
+    let mut cursor = std::io::Cursor::new(&mut jpeg_data);
 
-    let mut best_start = 0;
-    let mut best_size = 0;
-    let mut best_end = 0;
-
-    let scan_limit = mmap.len().min(10 * 1024 * 1024); // 10MB limit for full previews
-    let mut i = 0;
-    while i < scan_limit - 4 {
-        if mmap[i] == 0xFF && mmap[i+1] == 0xD8 && mmap[i+2] == 0xFF {
-            if let Ok(img) = image::load_from_memory(&mmap[i..]) {
-                let s = img.width() * img.height();
-                if s > best_size {
-                    best_size = s;
-                    best_start = i;
-                    // Find EOI (End of Image) to return a clean slice
-                    let search_limit = (i + 15 * 1024 * 1024).min(mmap.len());
-                    // Seek for FF D9, but it might have multiple segments with thumbnails, so we just wrap safely
-                    if let Some(pos) = mmap[i+2..search_limit].windows(2).position(|w| w == [0xFF, 0xD9]) {
-                        best_end = i + 2 + pos + 2;
-                    } else {
-                        best_end = search_limit;
-                    }
-                }
-                i += 2048;
-                continue;
-            }
-        }
-        i += 1;
-    }
-
-    if best_size > 0 {
-        Ok(mmap[best_start..best_end].to_vec())
-    } else {
-        Err("No JPEG found via brute force scan".into())
-    }
+    let rgb = img.to_rgb8();
+    rgb.write_to(&mut cursor, image::ImageFormat::Jpeg)?;
+    Ok(jpeg_data)
 }
 
 /// Extracts the largest embedded preview from a RAW file using rsraw.
@@ -130,7 +100,7 @@ pub fn extract_raw_preview_data(path: &Path) -> Result<Vec<u8>, Box<dyn std::err
 }
 
 /// Helper to resize and save the image
-fn process_image(
+pub(crate) fn process_image(
     img: image::DynamicImage,
     output_path: &Path,
     size_px: u32,

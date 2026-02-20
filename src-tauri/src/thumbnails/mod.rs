@@ -15,6 +15,8 @@ pub mod commands;
 pub mod worker;
 pub mod priority;
 pub mod raw;
+#[cfg(test)]
+pub mod tests_tmp;
 
 /// Determines the best strategy for generating a thumbnail based on file detection.
 ///
@@ -88,7 +90,7 @@ pub fn generate_thumbnail<R: tauri::Runtime>(
     // Explicitly exclude RAW formats from FFmpeg priority
     let is_raw_format = matches!(strategy, ThumbnailStrategy::Raw) || [
         "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "dng", "raf", "orf", "rw2", "pef", "erf",
-        "3fr", "fff", "dcr", "k25", "kdc", "dc2", "kc2", "srw", "x3f", "iiq", "cap", "mos", "rwl", "mrw", "mdc",
+        "3fr", "fff", "dcr", "k25", "kdc", "dc2", "kc2", "srw", "x3f", "iiq", "cap", "mos", "rwl", "mrw",
         "cine", "bay", "cs1", "sti", "qtk", "pxn", "bmq", "rwz", "rdc", "raw", "mef"
     ].contains(&ext.as_str());
 
@@ -109,7 +111,20 @@ pub fn generate_thumbnail<R: tauri::Runtime>(
         ThumbnailStrategy::NativeImage => native::generate_thumbnail_fast(input_path, &output_path, size_px, open_file.as_mut()).map(|_| hashed_filename.to_string()),
         ThumbnailStrategy::ZipPreview => archive::generate_thumbnail_zip_preview(input_path, &output_path, size_px).map(|_| hashed_filename.to_string()),
         ThumbnailStrategy::NativeExtractor => extractors::generate_thumbnail_extracted(app_handle, input_path, &output_path, size_px).map(|_| hashed_filename.to_string()),
-        ThumbnailStrategy::Raw => raw::generate_raw_thumbnail(input_path, &output_path, size_px).map(|_| hashed_filename.to_string()),
+        ThumbnailStrategy::Raw => {
+            match raw::generate_raw_thumbnail(input_path, &output_path, size_px) {
+                Ok(_) => Ok(hashed_filename.to_string()),
+                Err(e) => {
+                    if ffmpeg_available {
+                        let is_video = false; // RAW is always image
+                        if crate::media::ffmpeg::generate_thumbnail_ffmpeg_full(app_handle, input_path, &output_path, size_px, is_video).is_ok() {
+                            return Ok(hashed_filename.to_string());
+                        }
+                    }
+                    Err(e)
+                }
+            }
+        },
         ThumbnailStrategy::Webview => svg::generate_thumbnail_svg(input_path, &output_path, size_px).map(|_| hashed_filename.to_string()),
         ThumbnailStrategy::Font => font::generate_font_thumbnail(input_path, &output_path, size_px).map(|_| hashed_filename.to_string()),
         ThumbnailStrategy::Model3D => model::generate_model_preview(input_path, thumbnails_dir, hashed_filename, size_px),

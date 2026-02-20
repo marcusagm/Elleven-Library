@@ -250,15 +250,6 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         playback: PlaybackStrategy::None,
     },
     FileFormat {
-        name: "Minolta MDC",
-        extensions: &["mdc"],
-        mime_types: &["image/x-minolta-mdc"],
-        type_category: MediaType::Image,
-        strategy: ThumbnailStrategy::Raw,
-        preview_strategy: PreviewStrategy::Raw,
-        playback: PlaybackStrategy::None,
-    },
-    FileFormat {
         name: "Blackmagic RAW",
         extensions: &["braw"],
         mime_types: &["application/x-braw"],

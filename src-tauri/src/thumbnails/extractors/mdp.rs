@@ -50,9 +50,9 @@ struct MdpLayerInfo {
     /// The name of the binary PAC block containing tile data.
     binary_block_name: String,
     /// Width of the layer in pixels.
-    width: u32,
+    _width: u32,
     /// Height of the layer in pixels.
-    height: u32,
+    _height: u32,
     /// Horizontal offset on the canvas.
     offset_x: i32,
     /// Vertical offset on the canvas.
@@ -300,8 +300,8 @@ fn parse_mdp_header<R: Read + Seek>(reader: &mut R) -> Result<MdpHeader, Box<dyn
 
                             visible_layers.push(MdpLayerInfo {
                                 binary_block_name: blob_name,
-                                width,
-                                height,
+                                _width: width,
+                                _height: height,
                                 offset_x,
                                 offset_y,
                                 alpha,

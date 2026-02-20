@@ -44,12 +44,6 @@ pub fn extract_any_embedded(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
     best.ok_or_else(|| "No embedded image found".into())
 }
 
-pub fn extract_embedded_jpeg(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let file = File::open(path)?;
-    let mmap = unsafe { Mmap::map(&file)? };
-    scan_mmap_for_jpeg(&mmap)
-}
-
 #[allow(dead_code)]
 pub fn extract_embedded_png(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let file = File::open(path)?;
@@ -130,9 +124,13 @@ fn scan_mmap_for_tiff(mmap: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>
 
     while i < scan_limit.saturating_sub(4) {
         if mmap[i..].starts_with(TIFF_LE) || mmap[i..].starts_with(TIFF_BE) {
-            // We don't know the exact length, but image crate is good at partial parsing.
-            // We take a generous chunk (up to 50MB) and let the decoder handle it.
-            let end = (i + 50 * 1024 * 1024).min(mmap.len());
+            // If the very first bytes are TIFF, the entire file IS a TIFF (common for RAWs).
+            // Return everything to avoid truncating deep directories.
+            let end = if i == 0 {
+                mmap.len()
+            } else {
+                (i + 50 * 1024 * 1024).min(mmap.len())
+            };
             return Ok(mmap[i..end].to_vec());
         }
         i += 1;

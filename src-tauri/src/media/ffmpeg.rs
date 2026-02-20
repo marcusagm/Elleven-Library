@@ -114,7 +114,7 @@ pub fn generate_with_ffmpeg(
         let mut cmd = Command::new(ffmpeg_path);
         cmd.args(&args);
 
-        let output = run_command_with_timeout(cmd, 15)?;
+        let output = run_command_with_timeout(cmd, 45)?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
