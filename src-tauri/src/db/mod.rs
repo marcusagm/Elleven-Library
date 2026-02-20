@@ -37,19 +37,20 @@ impl Db {
     ///
     /// Returns a `sqlx::Error` if the connection fails or if migrations fail to run.
     pub async fn new(path: PathBuf) -> AppResult<Self> {
-        use sqlx::sqlite::SqliteConnectOptions;
-        use sqlx::Executor;
+        use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous, SqlitePoolOptions};
         use std::str::FromStr;
+        use std::time::Duration;
 
         let url = format!("sqlite:{}", path.to_string_lossy());
         let options = SqliteConnectOptions::from_str(&url)?
-            .create_if_missing(true);
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Wal)
+            .synchronous(SqliteSynchronous::Normal)
+            .busy_timeout(Duration::from_secs(30));
 
-        let pool = SqlitePool::connect_with(options).await?;
-
-        // Optimize SQLite performance for concurrent read-heavy workloads
-        pool.execute("PRAGMA journal_mode = WAL").await?;
-        pool.execute("PRAGMA synchronous = NORMAL").await?;
+        let pool = SqlitePoolOptions::new()
+            .max_connections(5)
+            .connect_with(options).await?;
 
         // Initialize schema and run migrations from the /migrations directory
         sqlx::migrate!("./migrations")

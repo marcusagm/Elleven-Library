@@ -146,6 +146,12 @@ impl Db {
 
         let mut tx = self.pool.begin().await?;
 
+        // Prevent SQLITE_BUSY deadlocks by upgrading to a write lock IMMEDIATELY
+        sqlx::query("INSERT INTO app_settings (key, value) VALUES ('_db_lock', '1') ON CONFLICT(key) DO UPDATE SET value = '1'")
+            .execute(&mut *tx)
+            .await
+            .ok();
+
         for img_id in &image_ids {
             for tag_id in &tag_ids {
                 sqlx::query!(

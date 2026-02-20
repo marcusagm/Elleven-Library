@@ -108,6 +108,13 @@ impl Db {
         items: Vec<(i64, crate::db::models::ImageMetadata)>,
     ) -> Result<(), sqlx::Error> {
         let mut tx = self.pool.begin().await?;
+
+        // Prevent SQLITE_BUSY deadlocks by upgrading to a write lock IMMEDIATELY
+        sqlx::query("INSERT INTO app_settings (key, value) VALUES ('_db_lock', '1') ON CONFLICT(key) DO UPDATE SET value = '1'")
+            .execute(&mut *tx)
+            .await
+            .ok();
+
         for (folder_id, img) in items {
             if let Err(e) = self.save_image_internal(&mut *tx, folder_id, &img).await {
                 eprintln!("Failed to save image in batch: {}", e);

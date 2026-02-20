@@ -234,6 +234,12 @@ impl Db {
         // 2. Iterative creation in a transaction
         let mut tx = self.pool.begin().await?;
 
+        // Prevent SQLITE_BUSY deadlocks by upgrading to a write lock IMMEDIATELY
+        sqlx::query("INSERT INTO app_settings (key, value) VALUES ('_db_lock', '1') ON CONFLICT(key) DO UPDATE SET value = '1'")
+            .execute(&mut *tx)
+            .await
+            .ok();
+
         // Determine if path is absolute (Unix)
         let is_absolute = path.starts_with('/');
         let components: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
