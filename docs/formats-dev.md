@@ -69,8 +69,8 @@ Delega inteiramente ao uso atrelado à `LibRaw` no backend. Formatos variam imen
 
 | Extensões | `ThumbnailStrategy` | `PreviewStrategy` | `PlaybackStrategy` |
 | :--- | :--- | :--- | :--- |
-| `dng`, `cr2`, `nef`, `nrw`, `rw2`, `raf`, `orf`, `pef`, `erf`, `sr2`, `srf`, `cr3`, `crw`, `arw`, `3fr`, `srw`, `kdc`, `mos`, `rwl`, `mrw` | `Raw` | `Raw` | `None` |
-
+| `dng`, `cr2`, `nef`, `nrw`, `rw2`, `raf`, `orf`, `pef`, `erf`, `sr2`, `srf`, `cr3`, `crw`, `arw`, `srw`, `mos`, `rwl`, `mrw`, `fff`, `iiq`, `raw`, `x3f`, `mef`, `3fr`, `kdc` | `Raw` | `Raw` | `None` |
+> **Nota:** A estratégia `Raw` possui um fallback automático para `NativeExtractor` (varredura binária) caso o decodificador LibRaw falhe ou não suporte o modelo específico.
 ---
 
 ## 🧊 Modelos 3D
@@ -133,6 +133,6 @@ Um histórico direto do pipeline em falha na engenharia atual. Formatos que, ape
 | Formato / Software (Extensões) | Sub-Estratégias Falhas | Causa / Bug / Status |
 | :--- | :--- | :--- |
 | Paint Tool SAI 2 (`sai2`) | `NativeExtractor` / `NativeExtractor` | Mudança severa na infra do arquivo. Não existe mais ponte de extração direta de imagens. |
-| Módulos RAW Estuturais ou Raros (`dcr`, `fff`, `iiq`, `raw`, `x3f`, `mef`, `mdc`) | `Raw` / `Raw` | Sem perfis na versão presente da _LibRaw_ utilizada no módulo ou *Panic* em arquivos grandes. Resultam em bypass completo ("Arquivo Vazio"). |
+| Módulos RAW Falhos (`dcr`, `mdc`) | `None` / `None` | Arquivos possuem preview criptografado/color-spaced desconhecido (DCR) ou sequer embutem um Jpeg/Tiff genérico (MDC). Resultam em Arquivo Vazio. |
 | PostScript Clássico (`eps`, `ps`) | `NativeExtractor` / `NativeExtractor` | Extrações abortam (não possuímos ponte PDFium/Ghostscript configurada 100% à prova de falhas neste estágio de suporte web nativo). |
 | Fonte EOT (`eot`) | `Icon` / `None` / `None` | Biblioteca de extração de glifos não lida com essa estrutura; desativado ("Stubbed"). |

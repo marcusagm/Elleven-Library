@@ -32,8 +32,8 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
             if let Ok(data) = extract_raw_preview(path) {
                 return Ok((data, "image/jpeg".to_string()));
             }
-            if let Ok(data) = binary_jpeg::extract_embedded_jpeg(path) {
-                return Ok((data, "image/jpeg".to_string()));
+            if let Ok((data, mime)) = binary_jpeg::extract_any_embedded(path) {
+                return Ok((data, mime));
             }
             if let Ok(data) = extract_ffmpeg_frame(app_handle, path) {
                 return Ok((data, "image/jpeg".to_string()));
@@ -156,6 +156,7 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                     let data = penpot::extract_penpot_preview(path)?;
                     Ok((data, "image/png".to_string()))
                 },
+
                 _ => Err("No native extractor for this extension".into()),
             }
         },
@@ -356,7 +357,12 @@ fn process_extracted_image(
 }
 
 fn extract_raw_preview(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    crate::thumbnails::raw::extract_raw_preview_data(path)
+    // 1. Try LibRaw first
+    if let Ok(data) = crate::thumbnails::raw::extract_raw_preview_data(path) {
+        return Ok(data);
+    }
+    // 2. Fallback to brute-force JPEG scanner
+    crate::thumbnails::raw::brute_force_extract_jpeg_data(path)
 }
 
 fn extract_ffmpeg_frame<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {

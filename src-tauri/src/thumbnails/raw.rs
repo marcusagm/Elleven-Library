@@ -1,33 +1,106 @@
 use std::path::Path;
 
-/// Generates a thumbnail for a RAW image using rsraw (LibRaw).
+/// Generates a thumbnail for a RAW image using rsraw (LibRaw) with brute-force fallbacks.
 ///
-/// This leverages LibRaw's robust decoding to support formats that are difficult
-/// to parse manually (like CR3, RAF, newer ARW).
-///
-/// # Arguments
-///
-/// * `input_path` - Path to the RAW file.
-/// * `output_path` - Destination path for the WebP thumbnail.
-/// * `size_px` - Target size in pixels.
-/// Generates a thumbnail for a RAW image using rsraw (LibRaw).
-///
-/// This leverages LibRaw's robust decoding to support formats that are difficult
-/// to parse manually (like CR3, RAF, newer ARW).
+/// This leverages LibRaw's robust decoding for standard formats (CR3, RAF, ARW)
+/// and falls back to a resilient binary scanner for rare or problematic files.
 pub fn generate_raw_thumbnail(
     input_path: &Path,
     output_path: &Path,
     size_px: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let data = extract_raw_preview_data(input_path)?;
+    // 1. Try robust LibRaw extraction first (standard market formats)
+    if let Ok(data) = extract_raw_preview_data(input_path) {
+        if let Ok(img) = image::load_from_memory(&data) {
+             return process_image(img, output_path, size_px);
+        }
+    }
 
-    use image::load_from_memory;
-    let img = load_from_memory(&data)
-        .map_err(|e| format!("Failed to decode extracted RAW preview: {}", e))?;
+    // 2. Fallback: Efficient Brute Force JPEG Scan (works for rare/legacy formats)
+    if let Ok(img) = brute_force_scan_jpeg(input_path) {
+        return process_image(img, output_path, size_px);
+    }
 
-    // Resize and save
-    process_image(img, output_path, size_px)?;
-    Ok(())
+    // 3. Last Resort: Broad Binary Extractor (handles PNG/TIFF/XMP)
+    if let Ok((data, _)) = crate::thumbnails::extractors::binary_jpeg::extract_any_embedded(input_path) {
+        if let Ok(img) = image::load_from_memory(&data) {
+             return process_image(img, output_path, size_px);
+        }
+    }
+
+    Err(format!("Failed all RAW preview extraction methods for {:?}", input_path).into())
+}
+
+/// Scans the file for JPEG SOI markers and attempts to decode them.
+/// This is very resilient to weird offsets and truncated files.
+pub(crate) fn brute_force_scan_jpeg(path: &Path) -> Result<image::DynamicImage, Box<dyn std::error::Error>> {
+    let file = std::fs::File::open(path)?;
+    let mmap = unsafe { memmap2::MmapOptions::new().map(&file)? };
+
+    let mut best_img: Option<image::DynamicImage> = None;
+    let mut best_size = 0;
+
+    // Scan first 8MB which usually contains all previews for most manufacturers.
+    let scan_limit = mmap.len().min(8 * 1024 * 1024);
+    let mut i = 0;
+    while i < scan_limit - 4 {
+        // JPEG SOI: FF D8 FF
+        if mmap[i] == 0xFF && mmap[i+1] == 0xD8 && mmap[i+2] == 0xFF {
+            if let Ok(img) = image::load_from_memory(&mmap[i..]) {
+                let s = img.width() * img.height();
+                if s > best_size {
+                    best_size = s;
+                    best_img = Some(img);
+                }
+                // Skip ahead 2KB to find next potential candidate
+                i += 2048;
+                continue;
+            }
+        }
+        i += 1;
+    }
+
+    best_img.ok_or_else(|| "No decodable JPEG preview found via brute force".into())
+}
+
+/// Variant that returns raw bytes, needed for extraction without re-encoding.
+pub fn brute_force_extract_jpeg_data(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let file = std::fs::File::open(path)?;
+    let mmap = unsafe { memmap2::MmapOptions::new().map(&file)? };
+
+    let mut best_start = 0;
+    let mut best_size = 0;
+    let mut best_end = 0;
+
+    let scan_limit = mmap.len().min(10 * 1024 * 1024); // 10MB limit for full previews
+    let mut i = 0;
+    while i < scan_limit - 4 {
+        if mmap[i] == 0xFF && mmap[i+1] == 0xD8 && mmap[i+2] == 0xFF {
+            if let Ok(img) = image::load_from_memory(&mmap[i..]) {
+                let s = img.width() * img.height();
+                if s > best_size {
+                    best_size = s;
+                    best_start = i;
+                    // Find EOI (End of Image) to return a clean slice
+                    let search_limit = (i + 15 * 1024 * 1024).min(mmap.len());
+                    if let Some(pos) = mmap[i+2..search_limit].windows(2).position(|w| w == [0xFF, 0xD9]) {
+                        best_end = i + 2 + pos + 2;
+                    } else {
+                        best_end = search_limit;
+                    }
+                }
+                i += 2048;
+                continue;
+            }
+        }
+        i += 1;
+    }
+
+    if best_size > 0 {
+        Ok(mmap[best_start..best_end].to_vec())
+    } else {
+        Err("No JPEG found via brute force scan".into())
+    }
 }
 
 /// Extracts the largest embedded preview from a RAW file using rsraw.

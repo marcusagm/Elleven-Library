@@ -44,8 +44,7 @@ O Mundam consegue extrair as miniaturas de dentro dos projetos salvos pelos prin
 
 ## 📸 RAW (Fotografia)
 Arquivos diretos de câmeras digitais profissionais recebem suporte robusto de indexação e visualização no aplicativo.
-- `3fr`, `arw`, `cr2`, `cr3`, `crw`, `dng`, `erf`, `kdc`, `mos`, `mrw`, `nef`, `nrw`, `orf`, `pef`, `raf`, `rw2`, `rwl`, `sr2`, `srf`, `srw`, `tif`, `tiff` - Com miniatura e visualização completa.
-
+- `3fr`, `arw`, `cr2`, `cr3`, `crw`, `dng`, `erf`, `fff`, `iiq`, `kdc`, `mef`, `mos`, `mrw`, `nef`, `nrw`, `orf`, `pef`, `raf`, `raw`, `rw2`, `rwl`, `sr2`, `srf`, `srw`, `tif`, `tiff`, `x3f` - Com miniatura e visualização completa.
 
 ## 🧊 Modelos 3D
 Os arquivos 3D podem ser inspecionados iterativamente com rotação e pan direto na visualização do Mundam. No momento, a maioria exibe apenas o modelo na visualização e aguarda atualização para geração da miniatura.
@@ -87,6 +86,6 @@ Estes formatos podem ser abertos, mas poderão exibir a miniatura de forma pixel
 ### Sem Suporte Vigente (Arquivo não abre / Sem arte)
 Os formatos abaixo não conseguem ser abertos corretamente. O app não exibe a arte visual (nem thumbnail, nem preview):
 - Paint Tool SAI 2 (`sai2`) - Sem thumbnail e sem preview.
-- RAW Estuturais: `dcr`, `fff`, `iiq`, `raw`, `x3f`, `mef`, `mdc` - Sem thumbnail e sem preview.
+- RAW Falhos (`mdc`, `dcr`) - Formatos proprietários antigos sem compatibilidade de cores ou que não armazenam jpeg em seu corpo.
 - PostScript Clássico (`eps`, `ps`) - Sem miniatura (thumb) e sem preview.
 - EOT (`eot`) - Formato de fonte antiga EOT não está sendo trabalhado.
