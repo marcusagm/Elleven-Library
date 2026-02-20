@@ -1,0 +1,67 @@
+name: MUNDAM CI
+
+on:
+    push:
+        branches: ['main']
+    pull_request:
+        branches: ['main']
+
+jobs:
+    frontend:
+        name: Frontend Quality
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            - name: Install Dependencies
+              run: npm ci || npm install
+
+            - name: Lint Code
+              run: npm run lint
+
+            - name: Typecheck
+              run: npm run typecheck
+
+            - name: Run Tests
+              run: npm run test
+
+    backend:
+        name: Backend Quality
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+
+            - name: Install System Dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+            - name: Setup Rust
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  components: clippy, rustfmt
+
+            - name: Cache Rust dependencies
+              uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: 'src-tauri'
+
+            - name: Rustfmt Check
+              working-directory: src-tauri
+              run: cargo fmt --all -- --check
+
+            - name: Clippy Check
+              working-directory: src-tauri
+              run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+            - name: Run Tests
+              working-directory: src-tauri
+              run: cargo test --workspace --all-targets --all-features
