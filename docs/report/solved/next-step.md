@@ -6,8 +6,8 @@
 
 Não há segredos ou chaves de API visíveis no código que exijam rotação. O código é local-first.
 
-* **Clarificação:** O arquivo `src-tauri/ffmpeg/ffmpeg` é um binário? O script `download-ffmpeg.sh` sugere que ele deve ser baixado. O ambiente de build precisará ter o FFmpeg configurado ou o script executado.
-* **Acesso:** Se houver intenção de usar recursos de IA (sugerido pelo plugin `mcp-bridge`), será necessário configurar chaves de API locais ou remotas futuramente, mas não há config explícita no momento.
+* ✅ *Realizado* - **Clarificação:** O arquivo `src-tauri/ffmpeg/ffmpeg` é um binário? O script `download-ffmpeg.sh` sugere que ele deve ser baixado. O ambiente de build precisará ter o FFmpeg configurado ou o script executado.
+* ✅ *Realizado* - **Acesso:** Se houver intenção de usar recursos de IA (sugerido pelo plugin `mcp-bridge`), será necessário configurar chaves de API locais ou remotas futuramente, mas não há config explícita no momento.
 
 ### 2. Plano Inicial para Próximos Recursos
 
@@ -24,13 +24,13 @@ Priorizado por Impacto/Esforço:
 
 
 3. **Editor de Tags em Massa (Batch Tagging)**
-* *Esforço:* Baixo (Frontend).
+* ✅ *Realizado* - *Esforço:* Baixo (Frontend).
 * *Impacto:* Médio. Melhorar o `MultiInspector.tsx` para permitir adicionar/remover tags de 100+ imagens selecionadas com performance.
 
 
 4. **Suporte a Vídeo Player (Preview)**
 * *Esforço:* Médio (Frontend).
-* *Impacto:* Médio. Atualmente foca muito em thumbnails. Permitir "tocar" o vídeo ao passar o mouse (hover scrub) como no Eagle.cool.
+* ✅ *Realizado* - *Impacto:* Médio. Atualmente foca muito em thumbnails. Permitir "tocar" o vídeo ao passar o mouse (hover scrub) como no Eagle.cool.
 
 
 

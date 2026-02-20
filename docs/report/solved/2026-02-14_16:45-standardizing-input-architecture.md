@@ -17,12 +17,12 @@ O sistema de input do Mundam é robusto e segue um padrão de "Stack de Escopos"
 ### 1.1 Hierarquia de Escopos (Stack Logic)
 A prioridade define quem "vence" conflitos e quem pode bloquear escopos inferiores.
 *Prioridades (definidas em `types.ts`):*
-1.  **Modal** (`priority: 1200`) - Bloqueia tudo abaixo.
+1.  ✅ *Realizado* - **Modal** (`priority: 1200`) - Bloqueia tudo abaixo.
 2.  **Search** (`priority: 1100`) - Bloqueia navegação e edição.
 3.  **Editing** (`priority: 1000`) - Bloqueia visualizadores.
 4.  **Image Viewer** (`priority: 50`) - Bloqueia Viewport (grid).
 5.  **Viewport** (`priority: 10`) - Navegação principal.
-6.  **Global** (`priority: 0`) - Atalhos gerais (Settings, Select All).
+6.  ✅ *Realizado* - **Global** (`priority: 0`) - Atalhos gerais (Settings, Select All).
 
 ### 1.2 O Problema do ESC no ItemView
 Atualmente, o ESC não fecha o ItemView.
@@ -30,7 +30,7 @@ Atualmente, o ESC não fecha o ItemView.
 1.  **Lógica de Bloqueio (`blocking`)**: O `ItemView` ativa o escopo `image-viewer` com `blocking: true`. Isso impede que atalhos de escopos menores (Global: priority 0) funcionem.
 2.  **Definição do Atalho**: Embora o ESC esteja definido localmente no `ItemView` (via `useShortcuts`), ele depende do comando `viewer:close`.
 3.  **Conflito de ID/Comando**: Se o atalho Global "Deselect All" (ESC) também estiver registrado, e o sistema de bloqueio impedir o Global, o `ItemView` deveria pegar. Contudo, se houver qualquer falha na ativação do escopo `image-viewer` ou se a prioridade calculada estiver equivocada, o evento é descartado.
-4.  **Possível Falha de Foco**: O `ItemView` foca um `div` (overlay). Se o dispatcher considerar isso como "Input" (improvável, pois é div), poderia ignorar. Mas o mais provável é que a definição do atalho no `shortcutStore` precise ser explícita e única para o escopo.
+4.  ✅ *Realizado* - **Possível Falha de Foco**: O `ItemView` foca um `div` (overlay). Se o dispatcher considerar isso como "Input" (improvável, pois é div), poderia ignorar. Mas o mais provável é que a definição do atalho no `shortcutStore` precise ser explícita e única para o escopo.
 
 ---
 
@@ -43,7 +43,7 @@ Atualmente, o ESC não fecha o ItemView.
 ### 2.2 Search (Busca)
 - **Componente**: `SearchBox` / `SearchModal`.
 - **Atalhos**: Clean/Close (ESC), Navigate results (Up/Down), Open (Enter).
-- **Tratamento**: Deve isolar input enquanto digita (evitar disparar atalhos globais de letras).
+- ✅ *Realizado* - **Tratamento**: Deve isolar input enquanto digita (evitar disparar atalhos globais de letras).
 
 ### 2.3 ItemView (Visualizador)
 - **Componente**: `ItemView`.
@@ -79,15 +79,15 @@ Atualmente, componentes usam `useShortcuts` definindo teclas hardcoded.
 Em vez de redefinir atalhos, os componentes apenas "assinam" comandos.
 - Criar hook `useCommand(commandId, handler)`.
 - O componente não sabe qual tecla dispara `viewer:close`, apenas sabe que deve fechar quando o comando ocorrer.
-- `useShortcuts` deve ser usado apenas para atalhos *efêmeros* ou muito específicos que não merecem estar nas configurações globais.
+- ✅ *Realizado* - `useShortcuts` deve ser usado apenas para atalhos *efêmeros* ou muito específicos que não merecem estar nas configurações globais.
 
 ### Passo 3: Refinamento da Hierarquia e Bloqueio
 - Garantir que `ESC` tenha definições explícitas em cada escopo (`global`, `modal`, `image-viewer`, `search`).
-- O `dispatcher` deve garantir que o `ESC` do escopo *mais alto* vença, mesmo que todos usem a mesma tecla.
+- ✅ *Realizado* - O `dispatcher` deve garantir que o `ESC` do escopo *mais alto* vença, mesmo que todos usem a mesma tecla.
 
 ### Passo 4: Feedback Visual e Acessibilidade
-- Adicionar sons (opcionais) ou feedback visual ao acionar atalhos.
-- Garantir que `FocusTrap` funcione corretamente em Modais e ItemView para leitores de tela.
+- ✅ *Realizado* - Adicionar sons (opcionais) ou feedback visual ao acionar atalhos.
+- ✅ *Realizado* - Garantir que `FocusTrap` funcione corretamente em Modais e ItemView para leitores de tela.
 
 ---
 

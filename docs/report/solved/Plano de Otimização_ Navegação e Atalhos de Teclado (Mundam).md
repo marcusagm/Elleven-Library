@@ -6,7 +6,7 @@ Este plano detalha a reformulação do sistema de entrada para garantir uma nave
 
 ## 1. Diagnóstico de Problemas Atuais
 
-1.  **Conflitos de Foco:** Atalhos globais (como `f` para busca) disparam mesmo quando o usuário está digitando em um campo de texto.
+1.  ✅ *Realizado* - **Conflitos de Foco:** Atalhos globais (como `f` para busca) disparam mesmo quando o usuário está digitando em um campo de texto.
 2.  **Falta de Escopos Claros:** Não há uma hierarquia rígida que impeça atalhos de componentes em segundo plano de serem executados.
 3.  **Navegação em Grid Inconsistente:** A navegação por setas no grid de assets perde o foco ao carregar novos itens ou ao abrir o inspetor.
 4.  **Feedback Visual:** O usuário não tem indicação clara de qual elemento detém o "foco de atalho" atual.
@@ -35,7 +35,7 @@ Implementaremos uma pilha de escopos com prioridades e bloqueio seletivo.
 ## 3. Etapas de Implementação
 
 ### Fase 1: Refatoração do Dispatcher
-*   **Ação:** Atualizar `isInputFocused` em `dispatcher.ts` para ser mais rigoroso.
+*   ✅ *Realizado* - **Ação:** Atualizar `isInputFocused` em `dispatcher.ts` para ser mais rigoroso.
 *   **Melhoria:** Modificar a lógica de filtragem para respeitar a flag `blockLowerScopes` da pilha de escopos do `inputStore`.
 
 ### Fase 2: Hook `useInputScope`
@@ -56,7 +56,7 @@ Implementaremos uma pilha de escopos com prioridades e bloqueio seletivo.
 
 ### Fase 4: Acessibilidade e Feedback
 *   **Indicador de Foco:** Adicionar um contorno visual (ring) distinto para o elemento que possui o foco de teclado atual.
-*   **Guia de Atalhos:** Atualizar o painel de ajuda (`?`) para mostrar atalhos dinamicamente baseados no escopo ativo.
+*   ✅ *Realizado* - **Guia de Atalhos:** Atualizar o painel de ajuda (`?`) para mostrar atalhos dinamicamente baseados no escopo ativo.
 
 ---
 

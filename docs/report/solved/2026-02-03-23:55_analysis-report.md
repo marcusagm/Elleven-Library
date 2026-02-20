@@ -12,15 +12,15 @@ O código demonstra um nível de maturidade técnica elevado, com decisões arqu
 ### 2.1 Backend (Rust / Tauri)
 O backend atua como a "espinha dorsal" de alta performance, responsável por acesso ao sistema de arquivos, banco de dados (SQLite) e processamento pesado (thumbnails).
 
-*   **Modularidade**: O código está excelentemente organizado em módulos (`commands`, `database`, `indexer`, `thumbnails`), facilitando a manutenção e testes. A separação por domínio (`tag_commands`, `location_commands`) é um padrão de projeto muito bem aplicado.
+*   ✅ *Realizado* - **Modularidade**: O código está excelentemente organizado em módulos (`commands`, `database`, `indexer`, `thumbnails`), facilitando a manutenção e testes. A separação por domínio (`tag_commands`, `location_commands`) é um padrão de projeto muito bem aplicado.
 *   **Camada de Dados (SQLite + SQLx)**:
     *   Uso de **SQLx** garante segurança de tipos e prevenção contra SQL Injection.
     *   **Full Text Search (FTS5)** com tokenizer *Trigram* é uma escolha premium para buscas rápidas de substrings em grandes volumes de dados.
     *   **Recursive CTEs**: O uso de Common Table Expressions recursivas para contagem de pastas e hierarquias (`get_folder_counts_recursive`) demonstra domínio avançado de SQL e evita o problema "N+1" típico de ORMs.
-    *   **Upsert & Self-Healing**: A lógica de `upsert` e migrações manuais no código garante que o banco de dados seja resiliente a falhas e atualizações.
+    *   ✅ *Realizado* - **Upsert & Self-Healing**: A lógica de `upsert` e migrações manuais no código garante que o banco de dados seja resiliente a falhas e atualizações.
 *   **Concorrência (Rayon & Tokio)**:
-    *   O `thumbnail_worker` utiliza corretamente `spawn_blocking` e `Rayon` para não bloquear o loop de eventos do Tokio.
-    *   O sistema de eventos (`emit("thumbnail:ready")`) permite atualizações otimistas na UI.
+    *   ✅ *Realizado* - O `thumbnail_worker` utiliza corretamente `spawn_blocking` e `Rayon` para não bloquear o loop de eventos do Tokio.
+    *   ✅ *Realizado* - O sistema de eventos (`emit("thumbnail:ready")`) permite atualizações otimistas na UI.
 
 ### 2.2 Frontend (SolidJS / Vite)
 O frontend prioriza a reatividade fina do SolidJS para garantir 60fps mesmo com grandes listas.
@@ -53,20 +53,20 @@ Comparando com o `README.md` e o estado atual do código:
 ## 4. Oportunidades de Otimização e Melhoria
 
 ### 4.1 Performance Backend
-*   **Thread Pool Rígido**: No arquivo `thumbnail_worker.rs`, o pool do Rayon está limitado a **2 threads** (`.num_threads(2)`).
-    *   *Sugestão*: Tornar este valor configurável baseando-se no `num_cpus` da máquina do usuário (ex: `num_cpus::get() / 2`), permitindo renderização 4x-8x mais rápida em máquinas high-end.
+*   ✅ *Realizado* - **Thread Pool Rígido**: No arquivo `thumbnail_worker.rs`, o pool do Rayon está limitado a **2 threads** (`.num_threads(2)`).
+    *   ✅ *Realizado* - *Sugestão*: Tornar este valor configurável baseando-se no `num_cpus` da máquina do usuário (ex: `num_cpus::get() / 2`), permitindo renderização 4x-8x mais rápida em máquinas high-end.
 *   **Query Strings Gigantes**: Em `rename_folder`, a lógica de atualização de caminhos filhos usa concatenação de strings dentro do SQL (`path || SUBSTR(...)`). Em bibliotecas gigantes (100k+ arquivos), isso pode gerar transações lentas.
-    *   *Sugestão*: Avaliar se mover IDs (closures) é mais eficiente que depender de caminhos string como chave primária lógica.
+    *   ✅ *Realizado* - *Sugestão*: Avaliar se mover IDs (closures) é mais eficiente que depender de caminhos string como chave primária lógica.
 
 ### 4.2 Arquitetura e Manutenibilidade
 *   **Parsing de Data Frágil**: Em `search_logic.rs`, há uma conversão manual de datas (`DD/MM/YYYY` -> `ISO`).
     *   *Sugestão*: Padronizar todas as datas no frontend para ISO-8601 antes de enviar ao backend, removendo a lógica de parsing de string do Rust.
 *   **Hardcoded Configs**: Valores como `BATCH_SIZE = 100` (frontend) e timeouts estão espalhados.
-    *   *Sugestão*: Centralizar em um arquivo de constantes globais compartilhadas ou configuração injetável.
+    *   ✅ *Realizado* - *Sugestão*: Centralizar em um arquivo de constantes globais compartilhadas ou configuração injetável.
 
 ### 4.3 Frontend
 *   **Recursividade em Hot Paths**: A função `isChildOf` em `libraryStore.ts` percorre a árvore de pastas linearmente a cada atualização de WebSocket.
-    *   *Sugestão*: Se a árvore de pastas for profunda, criar um Mapa de Ancestrais (Flat Map) em memória para verificação O(1).
+    *   ✅ *Realizado* - *Sugestão*: Se a árvore de pastas for profunda, criar um Mapa de Ancestrais (Flat Map) em memória para verificação O(1).
 
 ---
 

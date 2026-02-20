@@ -20,7 +20,7 @@ Para a maioria dos formatos de imagem (incluindo WebP, AVIF e formatos básicos)
 
 * **`resvg`:** A melhor biblioteca para renderizar **SVG** para PNG (muito superior às outras).
 * **`fontdue`** ou **`swash`:** Para rasterizar fontes (**TTF, OTF, WOFF**) e gerar previews.
-* **`pdfium-render`:** Wrapper para o motor do Chrome (Pdfium). É a forma mais confiável de gerar thumbnails de **PDF**.
+* ✅ *Realizado* - **`pdfium-render`:** Wrapper para o motor do Chrome (Pdfium). É a forma mais confiável de gerar thumbnails de **PDF**.
 
 ### 3. 3D e CAD (Reiterando e Expandindo)
 
@@ -34,7 +34,7 @@ Para a maioria dos formatos de imagem (incluindo WebP, AVIF e formatos básicos)
 Trabalhar com codecs nativamente em Rust é complexo. A recomendação padrão da indústria é usar o **FFmpeg**.
 
 * **`ffmpeg-next`:** Bindings para o FFmpeg. Resolve **MP4, MOV, WEBM, M4V** (H.264, H.265, AV1) e todos os formatos de áudio (**MP3, FLAC, AAC, WAV, OGG**).
-* **Uso:** Você usará o FFmpeg para extrair um frame (ex: aos 5 segundos) e salvar como o thumbnail do vídeo.
+* ✅ *Realizado* - **Uso:** Você usará o FFmpeg para extrair um frame (ex: aos 5 segundos) e salvar como o thumbnail do vídeo.
 
 ### 5. Arquivos RAW (Fotografia Profissional)
 
@@ -42,7 +42,7 @@ Trabalhar com codecs nativamente em Rust é complexo. A recomendação padrão d
 
 ### 6. Office e Documentos
 
-* **`dotext`:** Para extrair texto de **DOCX, XLSX, PPTX**.
+* ✅ *Realizado* - **`dotext`:** Para extrair texto de **DOCX, XLSX, PPTX**.
 * **Pandoc (via CLI):** A "faca suíça" para converter **Office, HTML, RTF** e outros para PDF ou Imagem.
 * **`headless_chrome`:** Para renderizar **HTML/URL** e tirar um "print" da página.
 
@@ -52,11 +52,11 @@ Trabalhar com codecs nativamente em Rust é complexo. A recomendação padrão d
 
 Aqui está o maior desafio. Arquivos como **PSD, AI, Affinity, Sketch, XD e InDesign** não têm bibliotecas de leitura total em Rust.
 
-* **PSD/PSB:** Use o crate **`psd`**. Ele consegue ler as camadas e extrair o preview mesclado.
-* **AI (Illustrator):** Se o arquivo foi salvo com "PDF Compatibility" (padrão), você pode lê-lo usando uma biblioteca de **PDF**.
-* **Sketch/Adobe XD:** São essencialmente arquivos `.zip` com JSONs e PNGs dentro. Você pode usar o crate **`zip`** para abrir e extrair o arquivo `preview.png` que eles costumam salvar internamente.
+* ✅ *Realizado* - **PSD/PSB:** Use o crate **`psd`**. Ele consegue ler as camadas e extrair o preview mesclado.
+* ✅ *Realizado* - **AI (Illustrator):** Se o arquivo foi salvo com "PDF Compatibility" (padrão), você pode lê-lo usando uma biblioteca de **PDF**.
+* ✅ *Realizado* - **Sketch/Adobe XD:** São essencialmente arquivos `.zip` com JSONs e PNGs dentro. Você pode usar o crate **`zip`** para abrir e extrair o arquivo `preview.png` que eles costumam salvar internamente.
 * **Affinity/Corel/C4D:** Não há suporte open-source confiável. A estratégia para o seu sistema de assets deve ser:
-1. Tentar extrair o thumbnail embutido (existem ferramentas em C++ como `lib-exif` que o Rust pode acessar).
+1. ✅ *Realizado* - Tentar extrair o thumbnail embutido (existem ferramentas em C++ como `lib-exif` que o Rust pode acessar).
 2. Caso contrário, marcar como "Sem Preview" ou usar o ícone da extensão.
 
 
@@ -65,7 +65,7 @@ Aqui está o maior desafio. Arquivos como **PSD, AI, Affinity, Sketch, XD e InDe
 
 ### Resumo de Implementação
 
-### Estrutura de Código Sugerida (Trait-based)
+### Estrutura de Código Sugerida (Trait-based) ✅ *Realizado*
 
 No seu projeto Rust, você pode criar uma `Trait` para simplificar a gestão:
 

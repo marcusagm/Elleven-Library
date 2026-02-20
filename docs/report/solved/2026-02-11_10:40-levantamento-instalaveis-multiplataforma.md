@@ -27,7 +27,7 @@ A pasta `src-tauri/assimp` tem ~201 MB e mistura artefatos de múltiplos SOs (DL
 
 Resultado: o fallback para `assimp` no `PATH` tende a ser acionado na maioria dos cenários, novamente não determinístico.
 
-### 1.5 Estratégia de runtime depende demais de fallback em PATH
+### 1.5 Estratégia de runtime depende demais de fallback em PATH ✅ *Realizado*
 Tanto FFmpeg quanto Assimp têm lógica “best effort” para usar dependência do sistema quando o bundle não tem o executável correto. Para distribuição, isso reduz confiabilidade (máquina do usuário pode não ter nada instalado).
 
 ---
@@ -56,8 +56,8 @@ Substituir wildcard amplo por declaração explícita e/ou `externalBin` para ex
 
 - Para `ffmpeg/ffprobe` (executáveis): priorizar configuração e naming que o Tauri reconheça por target.
 - Para libs dinâmicas (`libassimp.so`, `.dylib`, `.dll`): decidir entre:
-  - (A) distribuir apenas CLI `assimp` por SO (mais simples para o fluxo atual), ou
-  - (B) abandonar CLI e usar binding/crate Rust (mais complexo, mas elimina subprocesso).
+  - ✅ *Realizado* - (A) distribuir apenas CLI `assimp` por SO (mais simples para o fluxo atual), ou
+  - ✅ *Realizado* - (B) abandonar CLI e usar binding/crate Rust (mais complexo, mas elimina subprocesso).
 
 ## 2.4 Normalizar resolução de paths no runtime
 Centralizar descoberta de binários em um módulo único de “toolchain runtime”, com ordem clara:
@@ -77,7 +77,7 @@ Padronizar pipeline de build para cada SO/arch com checklist:
 - build release,
 - smoke test de inicialização do app,
 - comando de sanidade: `ffmpeg -version`, `ffprobe -version`, `assimp version` (ou comando equivalente),
-- teste funcional mínimo (gerar thumbnail de vídeo e converter um modelo para GLB).
+- ✅ *Realizado* - teste funcional mínimo (gerar thumbnail de vídeo e converter um modelo para GLB).
 
 ---
 
@@ -85,7 +85,7 @@ Padronizar pipeline de build para cada SO/arch com checklist:
 
 ### FFmpeg (recomendação forte)
 1. Tratar `ffmpeg` + `ffprobe` como sidecars/binários versionados por target.
-2. Parar de usar binário único na raiz `src-tauri/ffmpeg/ffmpeg`.
+2. ✅ *Realizado* - Parar de usar binário único na raiz `src-tauri/ffmpeg/ffmpeg`.
 3. Implementar script de download/verificação por hash no CI e local.
 
 ### Assimp (recomendação pragmática em 2 fases)
@@ -104,7 +104,7 @@ Padronizar pipeline de build para cada SO/arch com checklist:
 ## 4) Backlog proposto (ordem de execução)
 
 1. **Inventário e decisão de distribuição** de FFmpeg/Assimp por target (fonte oficial, licença, hash).  
-2. **Criar scripts de provisionamento** para baixar e preparar pasta `vendor/` por target.  
+2. ✅ *Realizado* - **Criar scripts de provisionamento** para baixar e preparar pasta `vendor/` por target.  
 3. **Refatorar `tauri.conf.json`** para empacotamento explícito por plataforma (evitar wildcard amplo).  
 4. **Refatorar `get_ffmpeg_path` e `get_assimp_path`** para resolver layout novo e logar origem.  
 5. **Incluir `ffprobe` no pacote** e validar probe em runtime.  

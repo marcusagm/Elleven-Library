@@ -7,9 +7,9 @@
 A organização do frontend segue uma estrutura robusta e escalável, baseada em domínios de funcionalidade e separação entre UI "pura" e componentes de negócio.
 
 ### Estrutura
-*   **`core/`**: O "cérebro" da aplicação. Contém a lógica de estado (`store`), hooks globais, sistema de input (atalhos) e configurações do Tauri.
-*   **`components/ui/`**: Biblioteca de componentes visuais agnósticos (botões, sliders, modais). Atua como um "Design System" interno.
-*   **`components/features/`**: Componentes de negócio que compõem as telas principais (`itemview`, `library`, `settings`).
+*   ✅ *Realizado* - **`core/`**: O "cérebro" da aplicação. Contém a lógica de estado (`store`), hooks globais, sistema de input (atalhos) e configurações do Tauri.
+*   ✅ *Realizado* - **`components/ui/`**: Biblioteca de componentes visuais agnósticos (botões, sliders, modais). Atua como um "Design System" interno.
+*   ✅ *Realizado* - **`components/features/`**: Componentes de negócio que compõem as telas principais (`itemview`, `library`, `settings`).
 *   **`components/layout/`**: Estrutura macro da página (`Sidebar`, `Viewport`, `Inspector`).
 
 **Avaliação**: A estrutura é excelente. Separa claramente responsabilidades, facilitando a manutenção. Novos desenvolvedores conseguem intuir onde encontrar cada peça do código.
@@ -54,7 +54,7 @@ Um componente complexo e feature-rich.
     *   UI Customizada completa (Seekbar com preview, controles de volume, fullscreen).
     *   Tratamento de erros e retry automático para transcoding.
     *   Acessibilidade básica (`tabindex`, atalhos de teclado).
-*   **⚠️ Melhoria**: O arquivo é grande (~700 linhas). Extrair a "Barra de Controles" e a "Seekbar" para sub-componentes (`VideoControls.tsx`, `VideoSeekbar.tsx`) melhoraria a legibilidade.
+*   ✅ *Realizado* - **⚠️ Melhoria**: O arquivo é grande (~700 linhas). Extrair a "Barra de Controles" e a "Seekbar" para sub-componentes (`VideoControls.tsx`, `VideoSeekbar.tsx`) melhoraria a legibilidade.
 
 ### 4.2 `ItemView.tsx`
 O orquestrador de visualização.
@@ -72,7 +72,7 @@ O orquestrador de visualização.
 
 *   **TypeScript**: Tipagem forte utilizada consistentemente (`interface`, `enums` importados do backend ou definidos localmente).
 *   **Nomes Significativos**: Variáveis e funções com nomes claros (`navigate`, `toggleFlipH`, `isTranscoding`).
-*   **Signals e Effects**: Uso correto das primitivas do SolidJS. `createEffect` é usado com parcimônia para sincronização (ex: atrelar HLS ao elemento video), evitando "Effect Chains" desnecessários.
+*   ✅ *Realizado* - **Signals e Effects**: Uso correto das primitivas do SolidJS. `createEffect` é usado com parcimônia para sincronização (ex: atrelar HLS ao elemento video), evitando "Effect Chains" desnecessários.
 
 ---
 

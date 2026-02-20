@@ -12,7 +12,7 @@ Este documento detalha o que ainda precisa ser construído para alinhar o softwa
 *   **Status**: ❌ Não Iniciado
 *   **Visão**: O usuário deve conseguir buscar imagens por "Vibrante", "Escura" ou selecionar uma cor (ex: `#FF0000`) e ver imagens com essa tonalidade dominante.
 *   **Requer**:
-    *   **Backend**: Extração de paleta via FFmpeg ou ImageMagick durante a geração de thumbnails.
+    *   ✅ *Realizado* - **Backend**: Extração de paleta via FFmpeg ou ImageMagick durante a geração de thumbnails.
     *   **Banco de Dados**: Tabela `image_colors` ou colunas JSON/Vetorial.
     *   **Frontend**: UI de `ColorPicker` no filtro de busca.
 
@@ -27,7 +27,7 @@ Este documento detalha o que ainda precisa ser construído para alinhar o softwa
 *   **Status**: ⚠️ Parcial (Apenas cópia simples)
 *   **Visão**: Criar pacotes `.eale` ou `.zip` contendo as imagens + metadados (tags, notas, rating) para compartilhar com outros usuários do Mundam ou backup.
 *   **Requer**:
-    *   **Backend**: Lógica de geração de JSON de manifesto + ZIP das imagens originais.
+    *   ✅ *Realizado* - **Backend**: Lógica de geração de JSON de manifesto + ZIP das imagens originais.
     *   **UI**: Modal de Exportação.
 
 ### 1.4 Suporte a Plugins / Scripts
@@ -42,12 +42,12 @@ Este documento detalha o que ainda precisa ser construído para alinhar o softwa
 ### 2.1 Migrações de Banco de Dados
 *   **Severidade**: 🔴 Alta
 *   **Ação**: Substituir lógica manual em `database.rs` por `sqlx migrate`.
-*   **Por que?**: Sem isso, adicionar a feature de "Cor" (que precisa de tabela nova) vai quebrar instalações existentes ou exigir código de migração manual propenso a falhas.
+*   ✅ *Realizado* - **Por que?**: Sem isso, adicionar a feature de "Cor" (que precisa de tabela nova) vai quebrar instalações existentes ou exigir código de migração manual propenso a falhas.
 
 ### 2.2 Refatoração do `LibraryStore` (Frontend)
 *   **Severidade**: 🟠 Média
 *   **Ação**: Mover a lógica de filtragem de árvore folder-by-folder para o Rust (`get_images_by_folder_recursive`).
-*   **Por que?**: Para bibliotecas pequenas (1k itens) o JS aguenta. Para profissionais (50k+ itens), a UI vai travar (jank) ao trocar de pasta.
+*   ✅ *Realizado* - **Por que?**: Para bibliotecas pequenas (1k itens) o JS aguenta. Para profissionais (50k+ itens), a UI vai travar (jank) ao trocar de pasta.
 
 ---
 
@@ -61,15 +61,15 @@ Este documento detalha o que ainda precisa ser construído para alinhar o softwa
 
 ### Fase 2: Visual Experience (Q2 2026)
 > Objetivo: Implementar as "Killer Features" visuais.
-1.  [Backend] Criar pipeline de extração de cores em `thumbnails/mod.rs`.
+1.  ✅ *Realizado* - [Backend] Criar pipeline de extração de cores em `thumbnails/mod.rs`.
 2.  [Database] Atualizar schema para armazenar cores.
 3.  [Frontend] Implementar Filtro por Cor na barra lateral.
 4.  [Frontend] Melhorar Viewer 3D (suporte a texturas e iluminação básica).
 
 ### Fase 3: Conectividade (Q3 2026)
 > Objetivo: Trazer conteúdo da web para dentro do app.
-1.  [Extensão] Criar "Mundam Clipper" MVP (Salvar imagem com clique direito).
-2.  [Backend] Criar endpoint `/ingest` no servidor local para receber do Clipper.
+1.  ✅ *Realizado* - [Extensão] Criar "Mundam Clipper" MVP (Salvar imagem com clique direito).
+2.  ✅ *Realizado* - [Backend] Criar endpoint `/ingest` no servidor local para receber do Clipper.
 3.  [Frontend] Notificações Toast ao receber injeção externa.
 
 ## 4. Conclusão

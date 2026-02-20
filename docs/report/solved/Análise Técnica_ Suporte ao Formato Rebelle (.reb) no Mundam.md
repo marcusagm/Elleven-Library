@@ -24,12 +24,12 @@ O arquivo `.reb` é um **pacote ZIP** (identificado pelo magic number `PK\x03\x0
 
 Diferente de outros formatos que embutem thumbnails proprietárias em chunks binários, o Rebelle utiliza arquivos de imagem padrão dentro do ZIP, o que facilita a implementação.
 
-### Geração de Thumbnail
+### Geração de Thumbnail ✅ *Realizado*
 *   **Fonte:** O arquivo `canvas.png` dentro do ZIP.
 *   **Processo:** 
     1.  Abrir o arquivo `.reb` como um arquivo ZIP.
-    2.  Localizar e extrair o fluxo de dados de `canvas.png`.
-    3.  Redimensionar para o tamanho padrão de thumbnail do Mundam (ex: 256x256).
+    2.  ✅ *Realizado* - Localizar e extrair o fluxo de dados de `canvas.png`.
+    3.  ✅ *Realizado* - Redimensionar para o tamanho padrão de thumbnail do Mundam (ex: 256x256).
 *   **Vantagem:** O `canvas.png` já representa a arte final com todas as camadas e efeitos aplicados.
 
 ### Visualização de Alta Qualidade (Preview)
@@ -42,7 +42,7 @@ Diferente de outros formatos que embutem thumbnails proprietárias em chunks bin
 ## 3. Plano de Implementação (Padrões Mundam)
 
 ### Backend (Rust/Tauri)
-1.  **Novo Extrator:** Criar `src-tauri/src/thumbnails/extractors/rebelle.rs`.
+1.  ✅ *Realizado* - **Novo Extrator:** Criar `src-tauri/src/thumbnails/extractors/rebelle.rs`.
 2.  **Dependências:** Utilizar a crate `zip` para leitura do contêiner e `image` para processamento (se necessário upscale/downscale).
 3.  **Lógica:**
     ```rust
@@ -64,12 +64,12 @@ Diferente de outros formatos que embutem thumbnails proprietárias em chunks bin
 
 ## 4. Considerações de Performance
 *   Arquivos `.reb` podem ser grandes (centenas de MB). A extração do `canvas.png` deve ser feita via streaming ou leitura parcial do ZIP se possível, para evitar carregar todo o arquivo em memória.
-*   O cache de thumbnails é essencial para evitar a descompressão repetida do ZIP durante a navegação no grid.
+*   ✅ *Realizado* - O cache de thumbnails é essencial para evitar a descompressão repetida do ZIP durante a navegação no grid.
 
 ## 5. Status da Implementação
 
 ✅ **Concluído** (2025-03-20)
-- Módulo `extractors/rebelle.rs` criado (Estratégia A).
+- ✅ *Realizado* - Módulo `extractors/rebelle.rs` criado (Estratégia A).
 - Formato `.reb` registrado em `definitions.rs`.
 - Integração feita em `extractors/mod.rs`.
 - Compilado com sucesso.
