@@ -29,10 +29,7 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
         },
 
         crate::formats::PreviewStrategy::Raw => {
-            if let Ok(data) = extract_raw_preview(path) {
-                return Ok((data, "image/jpeg".to_string()));
-            }
-            if let Ok((data, mime)) = binary_jpeg::extract_any_embedded(path) {
+            if let Ok((data, mime)) = extract_raw_preview(path) {
                 return Ok((data, mime));
             }
             if let Ok(data) = extract_ffmpeg_frame(app_handle, path) {
@@ -356,13 +353,63 @@ fn process_extracted_image(
     Ok(())
 }
 
-fn extract_raw_preview(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn is_valid_image(data: &[u8]) -> bool {
+    // Fast validation: try reading image dimensions from the payload.
+    // This catches truncated JPEGs and unknown binary garbage masquerading as JPEGs.
+    std::panic::catch_unwind(|| {
+        let cursor = std::io::Cursor::new(data);
+        if let Ok(reader) = image::ImageReader::new(cursor).with_guessed_format() {
+            // into_dimensions reads just the header, it's very fast
+            reader.into_dimensions().is_ok()
+        } else {
+            false
+        }
+    }).unwrap_or(false)
+}
+
+fn extract_raw_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     // 1. Try LibRaw first
     if let Ok(data) = crate::thumbnails::raw::extract_raw_preview_data(path) {
-        return Ok(data);
+        let mime = if data.starts_with(&[0xFF, 0xD8]) {
+            "image/jpeg"
+        } else if data.starts_with(&[0x89, b'P', b'N', b'G']) {
+            "image/png"
+        } else if data.starts_with(&[0x49, 0x49, 0x2A, 0x00]) || data.starts_with(&[0x4D, 0x4D, 0x00, 0x2A]) {
+            "image/tiff"
+        } else {
+            "image/jpeg" // fallback guess
+        };
+
+        if mime == "image/tiff" {
+            // Browsers cannot display TIFF natively. Convert to PNG to render successfully.
+            if let Ok(png_data) = convert_to_png_from_memory(&data) {
+                return Ok((png_data, "image/png".to_string()));
+            }
+        } else if is_valid_image(&data) {
+            return Ok((data, mime.to_string()));
+        }
     }
-    // 2. Fallback to brute-force JPEG scanner
-    crate::thumbnails::raw::brute_force_extract_jpeg_data(path)
+
+    // 2. Fallback to broad binary scanner (safely extracts JPEG/TIFF without truncation)
+    if let Ok((data, mime)) = crate::thumbnails::extractors::binary_jpeg::extract_any_embedded(path) {
+        if mime == "image/tiff" || mime == "image/x-tiff" {
+            // Ensure browser compatibility
+            if let Ok(png_data) = convert_to_png_from_memory(&data) {
+                return Ok((png_data, "image/png".to_string()));
+            }
+        } else if is_valid_image(&data) {
+            return Ok((data, mime));
+        }
+    }
+
+    // 3. Fallback to brute-force JPEG scanner (safe for finding JPEGs inside complex binaries like .x3f or .raw)
+    if let Ok(jpeg_data) = crate::thumbnails::raw::brute_force_extract_jpeg_data(path) {
+        if is_valid_image(&jpeg_data) {
+            return Ok((jpeg_data, "image/jpeg".to_string()));
+        }
+    }
+
+    Err("Failed RAW preview extraction (No LibRaw thumb and no embedded binary found)".into())
 }
 
 fn extract_ffmpeg_frame<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -376,4 +423,39 @@ fn convert_to_png_from_memory(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error
     let mut cursor = std::io::Cursor::new(&mut png_data);
     img.to_rgb8().write_to(&mut cursor, image::ImageFormat::Png)?;
     Ok(png_data)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn test_preview_issue() {
+        let base = Path::new("../file-samples/Imagens/RAW");
+        let ext_folders = vec!["3fr", "fff", "iiq", "kdc", "mef", "raw", "x3f"];
+
+        for ext in ext_folders {
+            let dir = base.join(ext);
+            if dir.exists() {
+                for entry in std::fs::read_dir(dir).unwrap() {
+                    let entry = entry.unwrap();
+                    let path = entry.path();
+                    if path.is_file() {
+                        println!("\nTesting: {:?}", path);
+                        match extract_raw_preview(&path) {
+                            Ok((data, mime)) => {
+                                println!("  extract_raw_preview OK: {} bytes, mime: {}", data.len(), mime);
+                                match image::load_from_memory(&data) {
+                                    Ok(_) => println!("    -> image::load_from_memory SUCCESS"),
+                                    Err(e) => println!("    -> image::load_from_memory FAIL: {}", e),
+                                }
+                            }
+                            Err(e) => println!("  extract_raw_preview ERR: {:?}", e),
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

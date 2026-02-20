@@ -63,7 +63,7 @@ pub(crate) fn brute_force_scan_jpeg(path: &Path) -> Result<image::DynamicImage, 
     best_img.ok_or_else(|| "No decodable JPEG preview found via brute force".into())
 }
 
-/// Variant that returns raw bytes, needed for extraction without re-encoding.
+/// Variant that returns raw bytes, needed for extraction without re-encoding to serve as Web preview.
 pub fn brute_force_extract_jpeg_data(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(path)?;
     let mmap = unsafe { memmap2::MmapOptions::new().map(&file)? };
@@ -83,6 +83,7 @@ pub fn brute_force_extract_jpeg_data(path: &Path) -> Result<Vec<u8>, Box<dyn std
                     best_start = i;
                     // Find EOI (End of Image) to return a clean slice
                     let search_limit = (i + 15 * 1024 * 1024).min(mmap.len());
+                    // Seek for FF D9, but it might have multiple segments with thumbnails, so we just wrap safely
                     if let Some(pos) = mmap[i+2..search_limit].windows(2).position(|w| w == [0xFF, 0xD9]) {
                         best_end = i + 2 + pos + 2;
                     } else {
