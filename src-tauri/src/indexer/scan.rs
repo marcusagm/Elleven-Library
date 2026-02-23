@@ -3,6 +3,7 @@ use super::watcher::start_watcher;
 use crate::db::models::ImageMetadata;
 use crate::db::Db;
 use crate::indexer::metadata::get_image_metadata;
+use crate::lifecycle::LifecycleRegistry;
 use chrono::{DateTime, Utc};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -11,10 +12,13 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::mpsc;
 use walkdir::WalkDir;
 
+/// Run a full scan of the given root path, persisting results to the database,
+/// then start a filesystem watcher for ongoing changes.
 pub async fn run_scan(
     app: AppHandle,
     db: Arc<Db>,
     registry: Arc<tokio::sync::Mutex<WatcherRegistry>>,
+    lifecycle: Arc<LifecycleRegistry>,
     root_path: PathBuf,
 ) {
     // Normalize root path (absolute and resolve symlinks)
@@ -193,8 +197,11 @@ pub async fn run_scan(
         let _ = app.emit("indexer:complete", 0);
     }
 
-    // 6. Start File Watcher
-    start_watcher(app, db, registry, root_for_watcher, root_str);
+    // 6. Start File Watcher and register its handle for lifecycle tracking
+    let watcher_task_name = format!("watcher:{}", root_str);
+    let watcher_handle = start_watcher(app, db, registry, root_for_watcher, root_str);
+    let watcher_token = lifecycle.child_token();
+    lifecycle.register(watcher_task_name, watcher_token, watcher_handle);
 }
 
 async fn ensure_folder_hierarchy(

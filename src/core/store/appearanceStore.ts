@@ -37,6 +37,9 @@ const [appearance, setAppearance] = createSignal<AppearanceState>(DEFAULT_STATE)
 // Event name for cross-window sync
 const SYNC_EVENT = 'appearance:sync';
 
+/** Stored unlisten function for the cross-window sync listener */
+let unlistenSyncEvent: (() => void) | null = null;
+
 export const appearanceActions = {
     initialize: async () => {
         // Load individual settings to match "GeneralPanel" pattern
@@ -56,10 +59,17 @@ export const appearanceActions = {
 
         appearanceActions.apply();
 
-        // Listen for changes from other windows
+        // Listen for changes from other windows (with cleanup)
+        // Dispose any previous listener before re-registering
+        if (unlistenSyncEvent) {
+            unlistenSyncEvent();
+            unlistenSyncEvent = null;
+        }
         listen(SYNC_EVENT, (event: any) => {
             setAppearance(event.payload);
             appearanceActions.apply();
+        }).then(unlisten => {
+            unlistenSyncEvent = unlisten;
         });
     },
 

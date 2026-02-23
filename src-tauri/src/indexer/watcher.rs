@@ -7,16 +7,26 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
+use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
+/// Start a filesystem watcher for the given root path.
+///
+/// Returns the `JoinHandle` for the spawned watcher task so it can be
+/// registered in the `LifecycleRegistry` for graceful shutdown tracking.
+///
+/// The watcher is stopped cooperatively via the `CancellationToken` stored
+/// in the `WatcherRegistry`. Cancelling that token causes the internal
+/// `select!` loop to break.
 pub fn start_watcher(
     app: AppHandle,
     db: Arc<Db>,
     registry: Arc<tokio::sync::Mutex<WatcherRegistry>>,
     path: PathBuf,
     root_str: String,
-) {
+) -> JoinHandle<()> {
     let watch_path = path.canonicalize().unwrap_or(path);
     let app_data_dir = app
         .path()
@@ -24,16 +34,20 @@ pub fn start_watcher(
         .unwrap_or_else(|_| PathBuf::from(""));
     let root_str_clone = root_str.clone();
 
-    tokio::spawn(async move {
-        let (tx, mut rx) = mpsc::channel::<Event>(100);
-        let (stop_tx, mut stop_rx) = tokio::sync::oneshot::channel::<()>();
+    // Create a cancellation token for this watcher
+    let watcher_token = CancellationToken::new();
 
-        // Register stop handle
+    tauri::async_runtime::spawn(async move {
+        let (tx, mut rx) = mpsc::channel::<Event>(100);
+
+        // Register token in registry (cancelling any previous watcher for this path)
         {
             let mut reg = registry.lock().await;
-            // If there's already a watcher for this path, stop it first
-            if let Some(old_tx) = reg.watchers.insert(root_str_clone.clone(), stop_tx) {
-                let _ = old_tx.send(());
+            if let Some(old_token) = reg
+                .watchers
+                .insert(root_str_clone.clone(), watcher_token.clone())
+            {
+                old_token.cancel();
             }
         }
 
@@ -73,7 +87,7 @@ pub fn start_watcher(
 
         loop {
             tokio::select! {
-                _ = &mut stop_rx => {
+                _ = watcher_token.cancelled() => {
                     println!("DEBUG: Watcher task received STOP for {}", root_str_clone);
                     break;
                 }
@@ -339,7 +353,7 @@ pub fn start_watcher(
                 }
             }
         }
-    });
+    })
 }
 
 fn normalize_path(path: &str) -> String {

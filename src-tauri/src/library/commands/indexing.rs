@@ -1,6 +1,7 @@
 use crate::db::Db;
 use crate::error::AppResult;
 use crate::indexer::Indexer;
+use crate::lifecycle::LifecycleRegistry;
 use std::path::PathBuf;
 use tauri::Manager;
 
@@ -21,7 +22,16 @@ pub async fn start_indexing(path: String, app: tauri::AppHandle) -> AppResult<()
         .try_state::<std::sync::Arc<tokio::sync::Mutex<crate::indexer::WatcherRegistry>>>()
         .ok_or_else(|| crate::error::AppError::Internal("Registry not initialized".to_string()))?;
 
-    let indexer = Indexer::new(app.clone(), db.inner(), registry.inner().clone());
+    let lifecycle = app
+        .try_state::<std::sync::Arc<LifecycleRegistry>>()
+        .ok_or_else(|| crate::error::AppError::Internal("Lifecycle not initialized".to_string()))?;
+
+    let indexer = Indexer::new(
+        app.clone(),
+        db.inner(),
+        registry.inner().clone(),
+        lifecycle.inner().clone(),
+    );
 
     let root = PathBuf::from(path);
     indexer.start_scan(root).await;

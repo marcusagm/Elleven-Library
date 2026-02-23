@@ -8,6 +8,7 @@ mod indexer;
 mod protocols;
 // Moved to thumbnails: thumbnail_worker, thumbnail_priority
 pub mod formats;
+pub mod lifecycle;
 mod thumbnails;
 // Moved to settings: config
 pub mod library;
@@ -18,6 +19,7 @@ mod transcoding;
 
 use crate::db::Db;
 use crate::indexer::Indexer;
+use crate::lifecycle::LifecycleRegistry;
 use tauri::Manager;
 
 #[allow(clippy::expect_used)]
@@ -37,8 +39,13 @@ pub fn run() {
             let thumbnails_dir = app_data.join("thumbnails");
             std::fs::create_dir_all(&thumbnails_dir).ok();
 
+            // Create the lifecycle registry — central hub for managing all background tasks
+            let lifecycle = std::sync::Arc::new(LifecycleRegistry::new());
+            app.manage(lifecycle.clone());
+
             // Initialize DB and Worker
             let handle = app.handle().clone();
+            let lifecycle_for_setup = lifecycle.clone();
             tauri::async_runtime::spawn(async move {
                 match Db::new(db_path).await {
                     Ok(db) => {
@@ -62,6 +69,8 @@ pub fn run() {
                         handle.manage(config_state);
                         handle.manage(priority_state.clone());
 
+                        // Start Thumbnail Worker with lifecycle token
+                        let thumbnail_token = lifecycle_for_setup.child_token();
                         let worker = crate::thumbnails::worker::ThumbnailWorker::new(
                             db_arc.clone(),
                             thumbnails_dir,
@@ -69,25 +78,43 @@ pub fn run() {
                             app_config,
                             priority_state,
                         );
-                        worker.start().await;
+                        let thumbnail_handle = worker.start(thumbnail_token.clone());
+                        lifecycle_for_setup.register(
+                            "thumbnail_worker".to_string(),
+                            thumbnail_token,
+                            thumbnail_handle,
+                        );
 
                         // Start Watchers for Existing Roots
                         if let Ok(roots) = db_arc.get_all_root_folders().await {
                             println!("INFO: Starting watchers for {} roots", roots.len());
                             for (_id, path) in roots {
-                                let indexer =
-                                    Indexer::new(handle.clone(), &db_arc, watcher_registry.clone());
+                                let indexer = Indexer::new(
+                                    handle.clone(),
+                                    &db_arc,
+                                    watcher_registry.clone(),
+                                    lifecycle_for_setup.clone(),
+                                );
                                 let root_path = std::path::PathBuf::from(path);
                                 indexer.start_scan(root_path).await;
                             }
                         }
                     }
-                    Err(e) => eprintln!("Failed to initialize database: {}", e),
+                    Err(db_error) => eprintln!("Failed to initialize database: {}", db_error),
                 }
             });
 
-            // Start HLS Streaming Server
-            crate::streaming::server::spawn_server(app.handle().clone());
+            // Start HLS Streaming Server with lifecycle token
+            let streaming_token = lifecycle.child_token();
+            let streaming_handle = crate::streaming::server::spawn_server(
+                app.handle().clone(),
+                streaming_token.clone(),
+            );
+            lifecycle.register(
+                "streaming_server".to_string(),
+                streaming_token,
+                streaming_handle,
+            );
 
             Ok(())
         })

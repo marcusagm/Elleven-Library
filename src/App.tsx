@@ -90,9 +90,16 @@ function App() {
         dndRegistry.register('TAG', TagDropStrategy);
         dndRegistry.register('IMAGE', ImageDropStrategy);
 
-        // Listen for indexing completion
+        // Listen for indexing completion (with proper cleanup)
+        let unlistenIndexerComplete: (() => void) | null = null;
         listen('indexer:complete', () => {
             notification.success('Indexing Complete', 'Library update finished');
+        }).then(unlisten => {
+            unlistenIndexerComplete = unlisten;
+        });
+
+        onCleanup(() => {
+            if (unlistenIndexerComplete) unlistenIndexerComplete();
         });
 
         // Notify Splash Screen

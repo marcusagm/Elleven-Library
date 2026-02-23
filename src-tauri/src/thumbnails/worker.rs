@@ -3,18 +3,32 @@ use crate::thumbnails::priority::ThumbnailPriorityState;
 use crate::thumbnails::{generate_thumbnail, get_thumbnail_filename};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter};
 use tokio::time::{sleep, Duration};
+use tokio_util::sync::CancellationToken;
 
+/// Background worker that continuously generates thumbnails for indexed assets.
+///
+/// Processes a priority queue first (user-visible items), then falls back to
+/// the regular queue of assets awaiting thumbnails. The worker cooperatively
+/// shuts down when its `CancellationToken` is cancelled, finishing any
+/// in-progress batch before exiting.
 pub struct ThumbnailWorker {
+    /// Shared database connection.
     db: Arc<Db>,
+    /// Directory where generated thumbnails are stored.
     thumbnails_dir: PathBuf,
+    /// Handle to the Tauri application for emitting events.
     app_handle: AppHandle,
+    /// Application configuration snapshot.
     config: crate::settings::config::AppConfig,
+    /// Shared priority state for on-demand thumbnail generation.
     priority_state: Arc<ThumbnailPriorityState>,
 }
 
 impl ThumbnailWorker {
+    /// Create a new thumbnail worker instance.
     pub fn new(
         db: Arc<Db>,
         thumbnails_dir: PathBuf,
@@ -31,7 +45,17 @@ impl ThumbnailWorker {
         }
     }
 
-    pub async fn start(self) {
+    /// Start the thumbnail worker loop on a background task.
+    ///
+    /// Returns the `JoinHandle` so callers can register it in the
+    /// `LifecycleRegistry` for graceful shutdown tracking.
+    ///
+    /// The worker checks its `CancellationToken` between batches. When
+    /// cancelled, it finishes the current in-progress batch (so that
+    /// thumbnails being generated are not lost) and then exits. Any
+    /// remaining items stay in the DB queue with `thumbnail_path IS NULL`
+    /// and will be picked up on the next application start.
+    pub fn start(self, token: CancellationToken) -> JoinHandle<()> {
         let db = self.db.clone();
         let app = self.app_handle.clone();
         let thumb_dir = self.thumbnails_dir.clone();
@@ -40,11 +64,17 @@ impl ThumbnailWorker {
 
         tauri::async_runtime::spawn(async move {
             loop {
+                // Check for cancellation before starting a new batch
+                if token.is_cancelled() {
+                    println!("LIFECYCLE: ThumbnailWorker shutting down (token cancelled)");
+                    break;
+                }
+
                 // 1. Check Priority Queue First
                 let priority_ids = priority_state
                     .priority_ids
                     .lock()
-                    .unwrap_or_else(|e| e.into_inner())
+                    .unwrap_or_else(|poisoned_error| poisoned_error.into_inner())
                     .iter()
                     .cloned()
                     .collect::<Vec<i64>>();
@@ -57,7 +87,6 @@ impl ThumbnailWorker {
                         db.get_images_needing_thumbnails_by_ids(&priority_ids).await
                     {
                         if !priority_imgs.is_empty() {
-                            // println!("DEBUG: Processing {} priority thumbnails", priority_imgs.len());
                             images = priority_imgs;
                             is_priority_batch = true;
                         }
@@ -73,18 +102,29 @@ impl ThumbnailWorker {
                         Ok(imgs) => {
                             images = imgs;
                         }
-                        Err(e) => {
-                            eprintln!("Thumbnail worker DB error: {}", e);
-                            sleep(Duration::from_secs(10)).await;
-                            continue;
+                        Err(database_error) => {
+                            eprintln!("Thumbnail worker DB error: {}", database_error);
+                            // Wait before retrying, but respect cancellation
+                            tokio::select! {
+                                _ = token.cancelled() => {
+                                    println!("LIFECYCLE: ThumbnailWorker shutting down during error backoff");
+                                    break;
+                                }
+                                _ = sleep(Duration::from_secs(10)) => { continue; }
+                            }
                         }
                     }
                 }
 
                 if images.is_empty() {
-                    // No work at all
-                    sleep(Duration::from_secs(2)).await;
-                    continue;
+                    // No work — wait briefly, but respect cancellation
+                    tokio::select! {
+                        _ = token.cancelled() => {
+                            println!("LIFECYCLE: ThumbnailWorker shutting down (idle)");
+                            break;
+                        }
+                        _ = sleep(Duration::from_secs(2)) => { continue; }
+                    }
                 }
 
                 if !is_priority_batch {
@@ -106,9 +146,9 @@ impl ThumbnailWorker {
 
                     // Create a limited thread pool
                     let pool = match ThreadPoolBuilder::new().num_threads(num_threads).build() {
-                        Ok(p) => p,
-                        Err(e) => {
-                            eprintln!("Failed to create thread pool: {}", e);
+                        Ok(thread_pool) => thread_pool,
+                        Err(pool_error) => {
+                            eprintln!("Failed to create thread pool: {}", pool_error);
                             return Vec::new();
                         }
                     };
@@ -133,15 +173,17 @@ impl ThumbnailWorker {
                                     300,
                                 ) {
                                     Ok(generated_filename) => (*id, Ok(generated_filename)),
-                                    Err(e) => (*id, Err(e.to_string())),
+                                    Err(generation_error) => {
+                                        (*id, Err(generation_error.to_string()))
+                                    }
                                 }
                             })
                             .collect::<Vec<_>>()
                     })
                 })
                 .await
-                .unwrap_or_else(|e| {
-                    eprintln!("Blocking task failed: {}", e);
+                .unwrap_or_else(|join_error| {
+                    eprintln!("Blocking task failed: {}", join_error);
                     Vec::new()
                 });
 
@@ -155,8 +197,9 @@ impl ThumbnailWorker {
                 for (id, result) in db_updates {
                     match result {
                         Ok(filename) => {
-                            if let Err(e) = db.update_thumbnail_path(id, &filename).await {
-                                eprintln!("Error updating DB for thumbnail: {}", e);
+                            if let Err(update_error) = db.update_thumbnail_path(id, &filename).await
+                            {
+                                eprintln!("Error updating DB for thumbnail: {}", update_error);
                             } else {
                                 let payload = ThumbnailPayload {
                                     id,
@@ -167,22 +210,24 @@ impl ThumbnailWorker {
                         }
                         Err(err_msg) => {
                             eprintln!("Thumbnail error for ID {}: {}", id, err_msg);
-                            if let Err(e) = db.record_thumbnail_error(id, err_msg).await {
-                                eprintln!("Failed to record thumbnail error in DB: {}", e);
+                            if let Err(record_error) = db.record_thumbnail_error(id, err_msg).await
+                            {
+                                eprintln!(
+                                    "Failed to record thumbnail error in DB: {}",
+                                    record_error
+                                );
                             }
                         }
                     }
                 }
 
-                // If we processed a priority batch, we loop immediately to check for more or resume normal work.
-                // If it was a normal batch, we also loop immediately but maybe yield.
+                // Brief yield between batches
                 if !is_priority_batch {
                     sleep(Duration::from_millis(100)).await;
                 } else {
-                    // Give a tiny yield just in case
                     sleep(Duration::from_millis(10)).await;
                 }
             }
-        });
+        })
     }
 }

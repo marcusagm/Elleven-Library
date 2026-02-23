@@ -20,8 +20,10 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use tauri::async_runtime::JoinHandle;
 use tauri::Manager;
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use tower_http::cors::{Any, CorsLayer};
 
 use super::{linear::LinearManager, playlist, probe, process_manager::ProcessManager, segment};
@@ -36,15 +38,21 @@ pub const SEGMENT_DURATION: f64 = 10.0;
 /// Shared state for the streaming server
 #[derive(Clone)]
 pub struct AppState {
+    /// Shared transcoding cache.
     pub cache: Arc<TranscodeCache>,
+    /// Shared process manager for tracking ffmpeg processes.
     pub process_manager: Arc<RwLock<ProcessManager>>,
+    /// Manager for linear HLS streaming sessions.
     pub linear_manager: LinearManager,
+    /// Handle to the Tauri application.
     pub app_handle: tauri::AppHandle,
 }
 
 /// The HLS Streaming Server
 pub struct StreamingServer {
+    /// Port to bind the server on.
     port: u16,
+    /// Handle to the Tauri application.
     app_handle: tauri::AppHandle,
 }
 
@@ -54,13 +62,20 @@ impl StreamingServer {
         Self { port, app_handle }
     }
 
-    /// Start the server on a background task
-    pub async fn start(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    /// Start the server on a background task.
+    ///
+    /// Accepts a `CancellationToken` for graceful shutdown. When the token is
+    /// cancelled, the axum server stops accepting new connections, in-flight
+    /// requests are completed, and internal cleanup loops exit cooperatively.
+    pub async fn start(
+        self,
+        token: CancellationToken,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let app_data = self
             .app_handle
             .path()
             .app_local_data_dir()
-            .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+            .map_err(|dir_error| format!("Failed to get app data dir: {}", dir_error))?;
 
         let cache = Arc::new(TranscodeCache::new(&app_data));
         let process_manager = Arc::new(RwLock::new(ProcessManager::new()));
@@ -73,25 +88,41 @@ impl StreamingServer {
             app_handle: self.app_handle.clone(),
         };
 
-        // Spawn cleanup task
-        let pm_clone = process_manager.clone();
+        // Spawn cleanup task for stale processes (child token for cancellation)
+        let process_cleanup_token = token.child_token();
+        let process_manager_clone = process_manager.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(10));
             loop {
-                interval.tick().await;
-                let mut pm = pm_clone.write().await;
-                pm.cleanup_stale(30); // 30 seconds timeout
+                tokio::select! {
+                    _ = process_cleanup_token.cancelled() => {
+                        println!("LIFECYCLE: Process cleanup task shutting down");
+                        break;
+                    }
+                    _ = interval.tick() => {
+                        let mut process_manager_guard = process_manager_clone.write().await;
+                        process_manager_guard.cleanup_stale(30); // 30 seconds timeout
+                    }
+                }
             }
         });
 
-        // Spawn cleanup task for linear sessions
-        let lm_clone = linear_manager.clone();
+        // Spawn cleanup task for linear sessions (child token for cancellation)
+        let linear_cleanup_token = token.child_token();
+        let linear_manager_clone = linear_manager.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(30));
             loop {
-                interval.tick().await;
-                // Cleanup sessions inactive for 60 seconds
-                lm_clone.cleanup(Duration::from_secs(60)).await;
+                tokio::select! {
+                    _ = linear_cleanup_token.cancelled() => {
+                        println!("LIFECYCLE: Linear session cleanup task shutting down");
+                        break;
+                    }
+                    _ = interval.tick() => {
+                        // Cleanup sessions inactive for 60 seconds
+                        linear_manager_clone.cleanup(Duration::from_secs(60)).await;
+                    }
+                }
             }
         });
 
@@ -115,8 +146,16 @@ impl StreamingServer {
 
         println!("INFO: HLS streaming server started on http://{}", addr);
 
-        axum::serve(listener, app).await?;
+        // Graceful shutdown: axum stops accepting new connections when the token is cancelled,
+        // but finishes processing in-flight requests before returning.
+        axum::serve(listener, app)
+            .with_graceful_shutdown(async move {
+                token.cancelled().await;
+                println!("LIFECYCLE: Streaming server received shutdown signal");
+            })
+            .await?;
 
+        println!("LIFECYCLE: Streaming server stopped");
         Ok(())
     }
 }
@@ -144,11 +183,11 @@ async fn probe_handler(State(state): State<AppState>, Path(path): Path<String>) 
                 .body(Body::from(json))
                 .unwrap()
         }
-        Err(e) => {
-            eprintln!("PROBE_ERROR for {:?}: {}", file_path, e);
+        Err(probe_error) => {
+            eprintln!("PROBE_ERROR for {:?}: {}", file_path, probe_error);
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!("Probe failed: {}", e)))
+                .body(Body::from(format!("Probe failed: {}", probe_error)))
                 .unwrap()
         }
     }
@@ -168,11 +207,14 @@ async fn playlist_handler(
 
     // First, probe the video to get duration
     let info = match probe::get_video_info(&state.app_handle, &file_path).await {
-        Ok(i) => i,
-        Err(e) => {
+        Ok(video_info) => video_info,
+        Err(probe_error) => {
             return Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!("Failed to probe video: {}", e)))
+                .body(Body::from(format!(
+                    "Failed to probe video: {}",
+                    probe_error
+                )))
                 .unwrap();
         }
     };
@@ -200,7 +242,7 @@ async fn segment_handler(
     // Path format: /segment/{encoded_file_path}/{index}
     // We need to parse out the index from the end
     let (file_path, index) = match parse_segment_path(&path) {
-        Some((p, i)) => (p, i),
+        Some((parsed_path, parsed_index)) => (parsed_path, parsed_index),
         None => {
             return Response::builder()
                 .status(StatusCode::BAD_REQUEST)
@@ -226,11 +268,11 @@ async fn segment_handler(
             .header(header::CACHE_CONTROL, "max-age=3600")
             .body(Body::from(data))
             .unwrap(),
-        Err(e) => {
-            eprintln!("SEGMENT_ERROR: {}", e);
+        Err(segment_error) => {
+            eprintln!("SEGMENT_ERROR: {}", segment_error);
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!("Segment failed: {}", e)))
+                .body(Body::from(format!("Segment failed: {}", segment_error)))
                 .unwrap()
         }
     }
@@ -245,10 +287,6 @@ async fn linear_hls_handler(
     Path(path): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Response {
-    // 1. Parse path
-    // Path might look like "Users/me/video.swf/index.m3u8"
-    // We need to split the "resource" (last part) from "file path"
-
     // 1. Handle Playlist Request
     if path.ends_with("/index.m3u8") {
         // Strip the suffix
@@ -291,9 +329,12 @@ async fn linear_hls_handler(
                             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                             .body(Body::from(content))
                             .unwrap(),
-                        Err(e) => Response::builder()
+                        Err(read_error) => Response::builder()
                             .status(StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(Body::from(format!("Failed to read playlist: {}", e)))
+                            .body(Body::from(format!(
+                                "Failed to read playlist: {}",
+                                read_error
+                            )))
                             .unwrap(),
                     }
                 } else {
@@ -303,9 +344,12 @@ async fn linear_hls_handler(
                         .unwrap()
                 }
             }
-            Err(e) => Response::builder()
+            Err(start_error) => Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!("Failed to start streaming: {}", e)))
+                .body(Body::from(format!(
+                    "Failed to start streaming: {}",
+                    start_error
+                )))
                 .unwrap(),
         }
     }
@@ -334,8 +378,8 @@ async fn linear_hls_handler(
                             .header(header::CACHE_CONTROL, "no-cache")
                             .body(Body::from(data))
                             .unwrap(),
-                        Err(e) => {
-                            eprintln!("Error reading segment {:?}: {}", segment_path, e);
+                        Err(read_error) => {
+                            eprintln!("Error reading segment {:?}: {}", segment_path, read_error);
                             Response::builder()
                                 .status(StatusCode::NOT_FOUND)
                                 .body(Body::empty())
@@ -417,12 +461,15 @@ fn parse_segment_path(path: &str) -> Option<(PathBuf, u32)> {
     None
 }
 
-/// Start the streaming server in a background task
-pub fn spawn_server(app_handle: tauri::AppHandle) {
+/// Start the streaming server in a background task.
+///
+/// Returns the `JoinHandle` so it can be registered in the `LifecycleRegistry`.
+/// The server shuts down gracefully when the provided `CancellationToken` is cancelled.
+pub fn spawn_server(app_handle: tauri::AppHandle, token: CancellationToken) -> JoinHandle<()> {
     tauri::async_runtime::spawn(async move {
         let server = StreamingServer::new(DEFAULT_PORT, app_handle);
-        if let Err(e) = server.start().await {
-            eprintln!("ERROR: HLS streaming server failed: {}", e);
+        if let Err(server_error) = server.start(token).await {
+            eprintln!("ERROR: HLS streaming server failed: {}", server_error);
         }
-    });
+    })
 }

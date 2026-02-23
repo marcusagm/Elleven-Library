@@ -1,6 +1,7 @@
 use crate::db::models::ImageMetadata;
 use serde::Serialize;
 use std::collections::HashMap;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Clone, Serialize)]
 pub struct ProgressPayload {
@@ -38,7 +39,12 @@ pub struct IndexedImage {
     pub parent_dir: String,
 }
 
+/// Registry of active filesystem watchers, keyed by root path.
+///
+/// Each watcher is associated with a `CancellationToken` that can be cancelled
+/// to stop the watcher task cooperatively.
 #[derive(Default)]
 pub struct WatcherRegistry {
-    pub watchers: HashMap<String, tokio::sync::oneshot::Sender<()>>,
+    /// Map from normalized root path to the cancellation token for that watcher.
+    pub watchers: HashMap<String, CancellationToken>,
 }

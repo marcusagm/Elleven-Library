@@ -2,7 +2,8 @@
 
 **Data:** 2026-02-19  
 **Escopo:** Frontend (Solid + TS), Backend (Rust + Tauri), arquitetura, performance, confiabilidade, segurança, DX e usabilidade DAM.  
-**Base de avaliação:** código atual + guias em `docs/guidelines`.
+**Base de avaliação:** código atual + guias em `docs/guidelines`.  
+**Última atualização:** 2026-02-23
 
 ---
 
@@ -105,17 +106,21 @@ Principais desvios:
 
 > Não foi encontrado vazamento de memória comprovado por profiling neste ciclo (heap snapshots/flamegraphs). Entretanto, existem **riscos reais** de vazamento/retenção e falhas por lifecycle.
 
-1. **Listeners sem teardown explícito em pontos centrais**  
-   Em ciclo de vida de app/store, assinaturas de eventos precisam garantir cancelamento previsível.
+1. **[RESOLVIDO] Listeners sem teardown explícito em pontos centrais**  
+   ~~Em ciclo de vida de app/store, assinaturas de eventos precisam garantir cancelamento previsível.~~  
+   *Resolvido em 2026-02-23: Frontend listeners agora usam `unlisten` via `onCleanup`. Ver `docs/plans/2026-02-23_10:45-lifecycle-management.md`.*
 
-2. **Loops/tarefas de limpeza contínua sem estratégia clara de shutdown**  
-   No servidor de streaming, tarefas periódicas são iniciadas e permanecem ativas durante a vida do processo; isso exige política formal de start/stop para evitar acúmulo em cenários de restart.
+2. **[RESOLVIDO] Loops/tarefas de limpeza contínua sem estratégia clara de shutdown**  
+   ~~No servidor de streaming, tarefas periódicas são iniciadas e permanecem ativas durante a vida do processo; isso exige política formal de start/stop para evitar acúmulo em cenários de restart.~~  
+   *Resolvido em 2026-02-23: `LifecycleRegistry` com `CancellationToken` hierárquico + `JoinHandle` tracking. Todas as tasks de longa duração são canceláveis cooperativamente.*
 
-3. **`unwrap/expect` em runtime backend**  
-   Qualquer erro inesperado pode causar panic local (indisponibilidade funcional).
+3. **[RESOLVIDO] `unwrap/expect` em runtime backend**  
+   ~~Qualquer erro inesperado pode causar panic local (indisponibilidade funcional).~~  
+   *Resolvido em 2026-02-20: Removidas todas as ocorrências de `unwrap/expect` no runtime. Ver `docs/plans/2026-02-20_19:19-remove-crash-vectors.md`.*
 
-4. **Watcher com `expect` na criação/registro**  
-   Falhas no monitoramento de diretórios podem quebrar o fluxo em vez de degradar com erro tratável.
+4. **[RESOLVIDO] Watcher com `expect` na criação/registro**  
+   ~~Falhas no monitoramento de diretórios podem quebrar o fluxo em vez de degradar com erro tratável.~~  
+   *Resolvido em 2026-02-20 como parte da remoção de crash-vectors.*
 
 5. **Uso de `unsafe` (mmap)**  
    Justificável por performance, mas deve ser encapsulado com invariantes documentadas e testes de robustez para evitar UB em bordas.
@@ -174,10 +179,10 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 ## 5. Backlog Priorizado
 
 ### Fase 0 — Correções críticas (1–2 semanas)
-1. [x] Remover `unwrap/expect` de runtime backend e substituir por `AppResult` + contexto.
-2. [ ] Introduzir política formal de lifecycle para listeners e tasks periódicas (start/stop idempotente).
+1. [x] Remover `unwrap/expect` de runtime backend e substituir por `AppResult` + contexto. *(Concluído em 2026-02-20)*
+2. [x] Introduzir política formal de lifecycle para listeners e tasks periódicas (start/stop idempotente). *(Concluído em 2026-02-23)*
 3. [ ] Restringir CORS e adicionar mecanismo de autorização por sessão/token no streaming.
-4. [ ] Adicionar scripts de qualidade no frontend (`lint`, `typecheck`, `test`) e gate mínimo em CI.
+4. [x] Adicionar scripts de qualidade no frontend (`lint`, `typecheck`, `test`) e gate mínimo em CI. *(Concluído em 2026-02-20)*
 
 ### Fase 1 — Estruturação arquitetural (2–4 semanas)
 1. [ ] Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos.

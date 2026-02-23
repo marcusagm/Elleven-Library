@@ -1,6 +1,7 @@
 use crate::db::Db;
 use crate::error::{AppError, AppResult};
 use crate::indexer::Indexer;
+use crate::lifecycle::LifecycleRegistry;
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -73,7 +74,16 @@ pub async fn add_location(
         .try_state::<Arc<tokio::sync::Mutex<crate::indexer::WatcherRegistry>>>()
         .ok_or_else(|| AppError::Internal("Registry not initialized".to_string()))?;
 
-    let indexer = Indexer::new(app.clone(), db.inner(), registry.inner().clone());
+    let lifecycle = app
+        .try_state::<Arc<LifecycleRegistry>>()
+        .ok_or_else(|| AppError::Internal("Lifecycle not initialized".to_string()))?;
+
+    let indexer = Indexer::new(
+        app.clone(),
+        db.inner(),
+        registry.inner().clone(),
+        lifecycle.inner().clone(),
+    );
     tokio::spawn(async move {
         indexer.start_scan(root).await;
     });
@@ -127,7 +137,16 @@ pub async fn remove_location(
         .try_state::<Arc<tokio::sync::Mutex<crate::indexer::WatcherRegistry>>>()
         .ok_or_else(|| AppError::Internal("Registry not initialized".to_string()))?;
 
-    let indexer = Indexer::new(app.clone(), db.inner(), registry.inner().clone());
+    let lifecycle = app
+        .try_state::<Arc<LifecycleRegistry>>()
+        .ok_or_else(|| AppError::Internal("Lifecycle not initialized".to_string()))?;
+
+    let indexer = Indexer::new(
+        app.clone(),
+        db.inner(),
+        registry.inner().clone(),
+        lifecycle.inner().clone(),
+    );
     indexer.stop_watcher(&location_path).await;
 
     println!("DEBUG: Folder {} deleted successfully", location_id);
