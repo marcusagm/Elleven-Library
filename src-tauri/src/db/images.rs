@@ -306,6 +306,7 @@ impl Db {
     }
 
     /// Updates image metadata due to a rename or move operation on the filesystem.
+    #[allow(clippy::type_complexity)]
     pub async fn rename_image(
         &self,
         old_path: &str,

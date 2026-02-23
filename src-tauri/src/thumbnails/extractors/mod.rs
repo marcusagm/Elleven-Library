@@ -247,8 +247,8 @@ fn extract_psd_composite(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Err
     let psd = psd::Psd::from_bytes(&bytes).map_err(|e| format!("PSD parse error: {}", e))?;
 
     let rgba = psd.rgba();
-    let width = psd.width() as u32;
-    let height = psd.height() as u32;
+    let width = psd.width();
+    let height = psd.height();
 
     let mut png_data = Vec::new();
     let mut cursor = std::io::Cursor::new(&mut png_data);

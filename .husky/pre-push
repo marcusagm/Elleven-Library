@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "[Mundam CI] 🦀 Running cargo sqlx prepare to ensure query cache is up to date..."
+
+# Save current directory and go to src-tauri
+cd src-tauri || exit 1
+
+# Prepare the sqlx cache
+cargo sqlx prepare
+
+# Check if the prepare command resulted in any changes to .sqlx tracking folder
+if ! git diff --quiet --exit-code .sqlx; then
+  echo "[Mundam CI] ⚠️ Outdated SQLx offline cache detected! Auto-updating..."
+  git add .sqlx
+  git commit -m "chore(db): update sqlx offline cache [skip ci]"
+
+  echo "[Mundam CI] 🛑 Auto-commit created with the updated .sqlx metadata."
+  echo "[Mundam CI] Because the current Git push session already captured the payload, the newly created commit won't go out in this push."
+  echo "[Mundam CI] 👉 Action Required: Please run 'git push' one more time!"
+  exit 1
+fi
+
+echo "[Mundam CI] ✅ SQLx offline cache is up to date!"
+exit 0
