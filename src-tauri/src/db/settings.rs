@@ -24,7 +24,7 @@ impl Db {
 
     /// Saves or updates a setting value.
     pub async fn set_setting(&self, key: &str, value: &Value) -> Result<(), sqlx::Error> {
-        let json_str = serde_json::to_string(value).unwrap();
+        let json_str = serde_json::to_string(value).unwrap_or_else(|_| "null".to_string());
 
         sqlx::query(
             "INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)

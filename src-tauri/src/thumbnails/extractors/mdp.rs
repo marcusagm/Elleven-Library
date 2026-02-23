@@ -356,8 +356,8 @@ fn read_pac_blocks<R: Read + Seek>(
             break;
         }
 
-        let item_total_size = u32::from_le_bytes(pac_header[4..8].try_into().unwrap());
-        let item_type_flag = u32::from_le_bytes(pac_header[8..12].try_into().unwrap());
+        let item_total_size = u32::from_le_bytes(pac_header[4..8].try_into().unwrap_or_default());
+        let item_type_flag = u32::from_le_bytes(pac_header[8..12].try_into().unwrap_or_default());
 
         let raw_name = &pac_header[68..132];
         let item_name = std::str::from_utf8(raw_name)
@@ -415,12 +415,12 @@ fn composite_layer_onto_canvas(
         return Ok(());
     }
 
-    let tile_count = u32::from_le_bytes(block_data[0..4].try_into().unwrap());
+    let tile_count = u32::from_le_bytes(block_data[0..4].try_into().unwrap_or_default());
     if tile_count == 0 || block_data.len() < 8 {
         return Ok(());
     }
 
-    let tile_dimension = u32::from_le_bytes(block_data[4..8].try_into().unwrap());
+    let tile_dimension = u32::from_le_bytes(block_data[4..8].try_into().unwrap_or_default());
 
     let mut offset = 8usize;
 
@@ -429,10 +429,10 @@ fn composite_layer_onto_canvas(
             break;
         }
 
-        let tile_column = u32::from_le_bytes(block_data[offset..offset + 4].try_into().unwrap());
-        let tile_row = u32::from_le_bytes(block_data[offset + 4..offset + 8].try_into().unwrap());
-        let compression_type = u32::from_le_bytes(block_data[offset + 8..offset + 12].try_into().unwrap());
-        let compressed_data_size = u32::from_le_bytes(block_data[offset + 12..offset + 16].try_into().unwrap());
+        let tile_column = u32::from_le_bytes(block_data[offset..offset + 4].try_into().unwrap_or_default());
+        let tile_row = u32::from_le_bytes(block_data[offset + 4..offset + 8].try_into().unwrap_or_default());
+        let compression_type = u32::from_le_bytes(block_data[offset + 8..offset + 12].try_into().unwrap_or_default());
+        let compressed_data_size = u32::from_le_bytes(block_data[offset + 12..offset + 16].try_into().unwrap_or_default());
 
         offset += 16;
 
@@ -624,6 +624,7 @@ fn blit_tile_onto_canvas(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use std::path::PathBuf;

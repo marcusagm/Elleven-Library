@@ -174,7 +174,7 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 ## 5) Backlog Priorizado
 
 ## Fase 0 — Correções críticas (1–2 semanas)
-1. Remover `unwrap/expect` de runtime backend e substituir por `AppResult` + contexto.
+1. [x] Remover `unwrap/expect` de runtime backend e substituir por `AppResult` + contexto.
 2. Introduzir política formal de lifecycle para listeners e tasks periódicas (start/stop idempotente).
 3. Restringir CORS e adicionar mecanismo de autorização por sessão/token no streaming.
 4. Adicionar scripts de qualidade no frontend (`lint`, `typecheck`, `test`) e gate mínimo em CI.

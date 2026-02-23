@@ -376,7 +376,7 @@ fn scan_for_chunks<R: Read + Seek>(reader: &mut R) -> Result<Vec<ChunkDescriptor
         let potential_tag = &buffer[i..i+4];
         if signatures.iter().any(|sig| sig == &potential_tag) {
             let size_slice = &buffer[i+8..i+16];
-            let data_size = u64::from_le_bytes(size_slice.try_into().unwrap());
+            let data_size = u64::from_le_bytes(size_slice.try_into().unwrap_or_default());
             let data_offset = (i + 16) as u64;
 
             if data_offset + data_size <= buffer.len() as u64 {

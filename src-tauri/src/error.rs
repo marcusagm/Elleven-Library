@@ -57,3 +57,32 @@ impl Serialize for AppError {
 
 /// A specialized `Result` type for Mundam backend operations.
 pub type AppResult<T> = Result<T, AppError>;
+
+/// Extension trait to provide `.context()` method mimicking anyhow's functionality.
+pub trait Context<T> {
+    /// Attach context to an error or an absence of value (Option), returning an AppResult.
+    fn context<C>(self, context: C) -> AppResult<T>
+    where
+        C: std::fmt::Display + Send + Sync + 'static;
+}
+
+impl<T> Context<T> for Option<T> {
+    fn context<C>(self, context: C) -> AppResult<T>
+    where
+        C: std::fmt::Display + Send + Sync + 'static,
+    {
+        self.ok_or_else(|| AppError::Internal(context.to_string()))
+    }
+}
+
+impl<T, E> Context<T> for Result<T, E>
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    fn context<C>(self, context: C) -> AppResult<T>
+    where
+        C: std::fmt::Display + Send + Sync + 'static,
+    {
+        self.map_err(|error| AppError::Generic(format!("{}: {}", context, error)))
+    }
+}

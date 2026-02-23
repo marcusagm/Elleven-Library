@@ -41,7 +41,7 @@ impl ThumbnailWorker {
         tauri::async_runtime::spawn(async move {
             loop {
                 // 1. Check Priority Queue First
-                let priority_ids = priority_state.priority_ids.lock().unwrap().iter().cloned().collect::<Vec<i64>>();
+                let priority_ids = priority_state.priority_ids.lock().unwrap_or_else(|e| e.into_inner()).iter().cloned().collect::<Vec<i64>>();
 
                 let mut images = Vec::new();
                 let mut is_priority_batch = false;
@@ -94,10 +94,13 @@ impl ThumbnailWorker {
                     use rayon::ThreadPoolBuilder;
 
                     // Create a limited thread pool
-                    let pool = ThreadPoolBuilder::new()
-                        .num_threads(num_threads)
-                        .build()
-                        .unwrap();
+                    let pool = match ThreadPoolBuilder::new().num_threads(num_threads).build() {
+                        Ok(p) => p,
+                        Err(e) => {
+                            eprintln!("Failed to create thread pool: {}", e);
+                            return Vec::new();
+                        }
+                    };
 
                     pool.install(|| {
                         images

@@ -36,16 +36,25 @@ pub fn start_watcher(
 
         let debouncer_window = Duration::from_millis(600);
 
-        let mut watcher = RecommendedWatcher::new(
+        let mut watcher = match RecommendedWatcher::new(
             move |res: notify::Result<Event>| {
                 if let Ok(event) = res {
                         let _ = tx.blocking_send(event);
                 }
             },
             Config::default(),
-        ).expect("Failed to create watcher");
+        ) {
+            Ok(w) => w,
+            Err(e) => {
+                eprintln!("Failed to create watcher: {}", e);
+                return;
+            }
+        };
 
-        watcher.watch(&watch_path, RecursiveMode::Recursive).expect("Failed to watch path");
+        if let Err(e) = watcher.watch(&watch_path, RecursiveMode::Recursive) {
+            eprintln!("Failed to watch path: {}", e);
+            return;
+        }
         let _watcher_ref = watcher; // Keep alive
 
         let mut buffer_added: HashMap<String, ImageMetadata> = HashMap::new();

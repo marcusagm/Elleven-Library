@@ -426,6 +426,7 @@ fn convert_to_png_from_memory(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use std::path::Path;

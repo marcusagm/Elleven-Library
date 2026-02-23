@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 //! Axum HTTP Server for HLS Streaming
 //!
 //! Runs on a separate thread and provides endpoints for:

@@ -1,22 +1,20 @@
-use std::path::Path;
 use crate::formats::{FileFormat, ThumbnailStrategy};
+use std::path::Path;
 use tauri::AppHandle;
 
-pub mod native;
-pub mod archive;
 pub mod affinity;
+pub mod archive;
 pub mod extractors;
+pub mod native;
 
-pub mod icon;
-pub mod svg;
-pub mod font;
-pub mod model;
 pub mod commands;
-pub mod worker;
+pub mod font;
+pub mod icon;
+pub mod model;
 pub mod priority;
 pub mod raw;
-#[cfg(test)]
-pub mod tests_tmp;
+pub mod svg;
+pub mod worker;
 
 /// Determines the best strategy for generating a thumbnail based on file detection.
 ///
@@ -71,11 +69,21 @@ pub fn generate_thumbnail<R: tauri::Runtime>(
 
     let (strategy, is_video) = if let Some(ref mut file) = open_file {
         FileFormat::detect_header(file, input_path)
-            .map(|f| (f.strategy.clone(), f.type_category == crate::formats::MediaType::Video))
+            .map(|f| {
+                (
+                    f.strategy.clone(),
+                    f.type_category == crate::formats::MediaType::Video,
+                )
+            })
             .unwrap_or_else(|| (get_thumbnail_strategy(input_path), false))
     } else {
         FileFormat::detect(input_path)
-            .map(|f| (f.strategy.clone(), f.type_category == crate::formats::MediaType::Video))
+            .map(|f| {
+                (
+                    f.strategy.clone(),
+                    f.type_category == crate::formats::MediaType::Video,
+                )
+            })
             .unwrap_or_else(|| (ThumbnailStrategy::Icon, false))
     };
 
@@ -84,68 +92,129 @@ pub fn generate_thumbnail<R: tauri::Runtime>(
     // OPTIMIZATION: Try external FFmpeg FIRST if available for Image/Video
     let ffmpeg_available = crate::media::ffmpeg::is_ffmpeg_available();
 
-    let ext = input_path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-    let is_special_project = ["afphoto", "afdesign", "afpub", "clip", "xmind", "xcf", "aseprite", "ase", "mdp", "sketch", "fig", "sai", "sai2", "ai", "cdr", "penpot"].contains(&ext.as_str());
+    let ext = input_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let is_special_project = [
+        "afphoto", "afdesign", "afpub", "clip", "xmind", "xcf", "aseprite", "ase", "mdp", "sketch",
+        "fig", "sai", "sai2", "ai", "cdr", "penpot",
+    ]
+    .contains(&ext.as_str());
 
     // Explicitly exclude RAW formats from FFmpeg priority
-    let is_raw_format = matches!(strategy, ThumbnailStrategy::Raw) || [
-        "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "dng", "raf", "orf", "rw2", "pef", "erf",
-        "3fr", "fff", "dcr", "k25", "kdc", "dc2", "kc2", "srw", "x3f", "iiq", "cap", "mos", "rwl", "mrw",
-        "cine", "bay", "cs1", "sti", "qtk", "pxn", "bmq", "rwz", "rdc", "raw", "mef"
-    ].contains(&ext.as_str());
+    let is_raw_format = matches!(strategy, ThumbnailStrategy::Raw)
+        || [
+            "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "dng", "raf", "orf", "rw2",
+            "pef", "erf", "3fr", "fff", "dcr", "k25", "kdc", "dc2", "kc2", "srw", "x3f", "iiq",
+            "cap", "mos", "rwl", "mrw", "cine", "bay", "cs1", "sti", "qtk", "pxn", "bmq", "rwz",
+            "rdc", "raw", "mef",
+        ]
+        .contains(&ext.as_str());
 
-    if ffmpeg_available && !is_special_project && !is_raw_format && matches!(strategy, ThumbnailStrategy::Ffmpeg | ThumbnailStrategy::NativeImage | ThumbnailStrategy::NativeExtractor) {
-         if let Ok(_) = crate::media::ffmpeg::generate_thumbnail_ffmpeg_full(app_handle, input_path, &output_path, size_px, is_video) {
-             let elapsed = start.elapsed();
-             println!("THUMB (FFmpeg Priority): SUCCESS | {:?} | {:?}", elapsed, input_path.file_name().unwrap_or_default());
-             return Ok(hashed_filename.to_string());
-         }
-         println!("THUMB (FFmpeg Priority): FAILED - Falling back to Native");
+    if ffmpeg_available
+        && !is_special_project
+        && !is_raw_format
+        && matches!(
+            strategy,
+            ThumbnailStrategy::Ffmpeg
+                | ThumbnailStrategy::NativeImage
+                | ThumbnailStrategy::NativeExtractor
+        )
+    {
+        if let Ok(_) = crate::media::ffmpeg::generate_thumbnail_ffmpeg_full(
+            app_handle,
+            input_path,
+            &output_path,
+            size_px,
+            is_video,
+        ) {
+            let elapsed = start.elapsed();
+            println!(
+                "THUMB (FFmpeg Priority): SUCCESS | {:?} | {:?}",
+                elapsed,
+                input_path.file_name().unwrap_or_default()
+            );
+            return Ok(hashed_filename.to_string());
+        }
+        println!("THUMB (FFmpeg Priority): FAILED - Falling back to Native");
     }
 
     let result = match strategy {
         ThumbnailStrategy::Ffmpeg => {
-            println!("THUMB: Ffmpeg Strategy Final Failure for {:?}", input_path.file_name());
+            println!(
+                "THUMB: Ffmpeg Strategy Final Failure for {:?}",
+                input_path.file_name()
+            );
             Err("FFmpeg strategy failed or unavailable".into())
-        },
-        ThumbnailStrategy::NativeImage => native::generate_thumbnail_fast(input_path, &output_path, size_px, open_file.as_mut()).map(|_| hashed_filename.to_string()),
-        ThumbnailStrategy::ZipPreview => archive::generate_thumbnail_zip_preview(input_path, &output_path, size_px).map(|_| hashed_filename.to_string()),
-        ThumbnailStrategy::NativeExtractor => extractors::generate_thumbnail_extracted(app_handle, input_path, &output_path, size_px).map(|_| hashed_filename.to_string()),
+        }
+        ThumbnailStrategy::NativeImage => {
+            native::generate_thumbnail_fast(input_path, &output_path, size_px, open_file.as_mut())
+                .map(|_| hashed_filename.to_string())
+        }
+        ThumbnailStrategy::ZipPreview => {
+            archive::generate_thumbnail_zip_preview(input_path, &output_path, size_px)
+                .map(|_| hashed_filename.to_string())
+        }
+        ThumbnailStrategy::NativeExtractor => {
+            extractors::generate_thumbnail_extracted(app_handle, input_path, &output_path, size_px)
+                .map(|_| hashed_filename.to_string())
+        }
         ThumbnailStrategy::Raw => {
             match raw::generate_raw_thumbnail(input_path, &output_path, size_px) {
                 Ok(_) => Ok(hashed_filename.to_string()),
                 Err(e) => {
                     if ffmpeg_available {
                         let is_video = false; // RAW is always image
-                        if crate::media::ffmpeg::generate_thumbnail_ffmpeg_full(app_handle, input_path, &output_path, size_px, is_video).is_ok() {
+                        if crate::media::ffmpeg::generate_thumbnail_ffmpeg_full(
+                            app_handle,
+                            input_path,
+                            &output_path,
+                            size_px,
+                            is_video,
+                        )
+                        .is_ok()
+                        {
                             return Ok(hashed_filename.to_string());
                         }
                     }
                     Err(e)
                 }
             }
-        },
-        ThumbnailStrategy::Webview => svg::generate_thumbnail_svg(input_path, &output_path, size_px).map(|_| hashed_filename.to_string()),
-        ThumbnailStrategy::Font => font::generate_font_thumbnail(input_path, &output_path, size_px).map(|_| hashed_filename.to_string()),
-        ThumbnailStrategy::Model3D => model::generate_model_preview(input_path, thumbnails_dir, hashed_filename, size_px),
+        }
+        ThumbnailStrategy::Webview => {
+            svg::generate_thumbnail_svg(input_path, &output_path, size_px)
+                .map(|_| hashed_filename.to_string())
+        }
+        ThumbnailStrategy::Font => font::generate_font_thumbnail(input_path, &output_path, size_px)
+            .map(|_| hashed_filename.to_string()),
+        ThumbnailStrategy::Model3D => {
+            model::generate_model_preview(input_path, thumbnails_dir, hashed_filename, size_px)
+        }
         ThumbnailStrategy::Icon | ThumbnailStrategy::None => {
             icon::get_or_generate_icon(input_path, thumbnails_dir, size_px)
-        },
+        }
     };
 
     let final_result = match result {
         Ok(path) => Ok(path),
         Err(e) => {
-             if !matches!(strategy, ThumbnailStrategy::Icon) {
-                  icon::get_or_generate_icon(input_path, thumbnails_dir, size_px)
-             } else {
-                  Err(e)
-             }
+            if !matches!(strategy, ThumbnailStrategy::Icon) {
+                icon::get_or_generate_icon(input_path, thumbnails_dir, size_px)
+            } else {
+                Err(e)
+            }
         }
     };
 
     let elapsed = start.elapsed();
-    println!("THUMB: {:?} | {:?} | {:?}", strategy, elapsed, input_path.file_name().unwrap_or_default());
+    println!(
+        "THUMB: {:?} | {:?} | {:?}",
+        strategy,
+        elapsed,
+        input_path.file_name().unwrap_or_default()
+    );
 
     final_result
 }

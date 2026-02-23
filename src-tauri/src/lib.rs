@@ -1,3 +1,6 @@
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+
 pub mod db;
 pub mod error;
 mod indexer;
@@ -19,6 +22,7 @@ use crate::indexer::Indexer;
 use tauri::Manager;
 
 
+#[allow(clippy::expect_used)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();

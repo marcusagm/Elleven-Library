@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_process_manager_basic() {
-        let mut pm = ProcessManager::new();
+        let pm = ProcessManager::new();
 
         assert_eq!(pm.active_count(), 0);
         assert!(!pm.is_processing("test:0"));

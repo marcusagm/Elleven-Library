@@ -59,7 +59,7 @@ pub fn generate_raw_thumbnail(
             &output_str,
         ];
 
-        let retry_output = Command::new(get_ffmpeg_path(None).unwrap())
+        let retry_output = Command::new(&ffmpeg_path)
             .args(&simple_args)
             .output()?;
 
