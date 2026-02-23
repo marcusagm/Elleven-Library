@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE images SET path = ?, filename = ?, folder_id = ?, modified_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "3b6980643c00c6a826cae2a2afe5cba86c0c6278996a1267edb2e3e452052632"
+}

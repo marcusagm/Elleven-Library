@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO smart_folders (name, query_json) VALUES (?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "dcdecca55ffbf3617f58fd150f4027f94777b1ecdba1baa4d9f16d0685a783bc"
+}

@@ -61,7 +61,11 @@ jobs:
             - name: Clippy Check
               working-directory: src-tauri
               run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+              env:
+                  SQLX_OFFLINE: true
 
             - name: Run Tests
               working-directory: src-tauri
               run: cargo test --workspace --all-targets --all-features
+              env:
+                  SQLX_OFFLINE: true

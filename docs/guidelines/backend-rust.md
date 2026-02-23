@@ -268,6 +268,12 @@ The database layer is organized into the `src/db/` module. **NEVER** place datab
   ```
 - **Case Consistency**: Backend models should **avoid** `#[serde(rename_all = "camelCase")]` unless strictly required, to maintain consistency with the SQL schema and existing frontend property expectations (which often use `snake_case` from the API).
  
+### 🚀 CI / Offline Compilation (SQLx Prepare)
+Because we use `sqlx` macros (`query!`, `query_as!`), the Rust compiler requires an active database connection to verify queries during type-checking. To ensure our CI pipelines (GitHub Actions) succeed without spinning up a live database:
+1. **Always run `cargo sqlx prepare`** inside the `src-tauri/` directory whenever you **add, modify, or delete** any SQL query.
+2. **Commit the `.sqlx/` folder**: This command generates/updates the `src-tauri/.sqlx/` directory, which acts as an offline cache. This folder **must** be committed.
+3. The CI workflow uses `SQLX_OFFLINE=true` to consume this cache instead of a live connection.
+
 ### Performance & Transactions
 - **Batch Operations**: Use dedicated `batch` functions for high-volume operations (indexing).
 - **Transactions**: Wrap multi-step logic in `pool.begin()`. Reusable helpers should accept `&mut SqliteConnection` or `&mut SqliteTransaction`.
