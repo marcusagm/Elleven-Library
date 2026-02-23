@@ -1,24 +1,27 @@
-use crate::db::Db;
+use super::types::{AddedItemContext, BatchChangePayload, RemovedItemContext, WatcherRegistry};
 use crate::db::models::ImageMetadata;
+use crate::db::Db;
 use crate::indexer::metadata::get_image_metadata;
-use super::types::{BatchChangePayload, AddedItemContext, RemovedItemContext, WatcherRegistry};
+use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc;
-use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 pub fn start_watcher(
     app: AppHandle,
     db: Arc<Db>,
     registry: Arc<tokio::sync::Mutex<WatcherRegistry>>,
     path: PathBuf,
-    root_str: String
+    root_str: String,
 ) {
     let watch_path = path.canonicalize().unwrap_or(path);
-    let app_data_dir = app.path().app_local_data_dir().unwrap_or_else(|_| PathBuf::from(""));
+    let app_data_dir = app
+        .path()
+        .app_local_data_dir()
+        .unwrap_or_else(|_| PathBuf::from(""));
     let root_str_clone = root_str.clone();
 
     tokio::spawn(async move {
@@ -39,7 +42,7 @@ pub fn start_watcher(
         let mut watcher = match RecommendedWatcher::new(
             move |res: notify::Result<Event>| {
                 if let Ok(event) = res {
-                        let _ = tx.blocking_send(event);
+                    let _ = tx.blocking_send(event);
                 }
             },
             Config::default(),
@@ -58,8 +61,10 @@ pub fn start_watcher(
         let _watcher_ref = watcher; // Keep alive
 
         let mut buffer_added: HashMap<String, ImageMetadata> = HashMap::new();
-        let mut buffer_added_folders: std::collections::HashSet<String> = std::collections::HashSet::new();
-        let mut buffer_removed: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut buffer_added_folders: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
+        let mut buffer_removed: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
         let mut buffer_renamed: HashMap<String, String> = HashMap::new();
         let mut pending_renames: HashMap<usize, String> = HashMap::new();
         let mut refresh_needed = false;
@@ -118,15 +123,13 @@ pub fn start_watcher(
                                     } else {
                                         buffer_renamed.insert(from, path_str.clone());
                                     }
-                                } else {
-                                    if path_str != root_str_clone {
-                                        let path = &event.paths[0];
-                                        if path.is_dir() {
-                                            buffer_added_folders.insert(path_str);
-                                        } else if is_image_file(path) {
-                                            if let Some(meta) = get_image_metadata(path) {
-                                                buffer_added.insert(path_str, meta);
-                                            }
+                                } else if path_str != root_str_clone {
+                                    let path = &event.paths[0];
+                                    if path.is_dir() {
+                                        buffer_added_folders.insert(path_str);
+                                    } else if is_image_file(path) {
+                                        if let Some(meta) = get_image_metadata(path) {
+                                            buffer_added.insert(path_str, meta);
                                         }
                                     }
                                 }
@@ -293,7 +296,7 @@ pub fn start_watcher(
                     // C. Process Added Folders
                     for path in buffer_added_folders.drain() {
                         println!("DEBUG: Watcher - Ensuring folder: {}", path);
-                        if let Ok(_) = db.ensure_folder_hierarchy(&path).await {
+                        if db.ensure_folder_hierarchy(&path).await.is_ok() {
                             refresh_needed = true;
                         }
                     }
@@ -341,7 +344,9 @@ pub fn start_watcher(
 
 fn normalize_path(path: &str) -> String {
     let p = path.trim_end_matches('/');
-    if p.is_empty() { return "/".to_string(); }
+    if p.is_empty() {
+        return "/".to_string();
+    }
     p.to_string()
 }
 

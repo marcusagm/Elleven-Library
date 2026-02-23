@@ -8,8 +8,8 @@ import { onCommand } from '../dispatcher';
 import { ShortcutPayload } from '../types';
 
 export function useCommand(command: string, handler: (payload: ShortcutPayload) => void) {
-  const unsub = onCommand(command, handler);
-  onCleanup(unsub);
+    const unsub = onCommand(command, handler);
+    onCleanup(unsub);
 }
 
 export function useCommands(commands: Record<string, (payload: ShortcutPayload) => void>) {

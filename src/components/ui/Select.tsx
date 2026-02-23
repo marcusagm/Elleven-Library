@@ -1,3 +1,4 @@
+/* eslint-disable complexity, max-lines */
 import {
     Component,
     JSX,
@@ -77,6 +78,7 @@ export const Select: Component<SelectProps> = props => {
     const { value, setValue } = createControllableSignal({
         value: () => local.value,
         defaultValue: local.defaultValue ?? '',
+        // eslint-disable-next-line solid/reactivity
         onChange: local.onValueChange
     });
 
@@ -122,7 +124,7 @@ export const Select: Component<SelectProps> = props => {
         const offset = 4;
 
         let top = rect.bottom + offset;
-        let left = rect.left;
+        const left = rect.left;
 
         // Boundary check - Bottom overflow
         if (top + contentRect.height > viewportHeight - 10) {
@@ -197,13 +199,14 @@ export const Select: Component<SelectProps> = props => {
                 e.preventDefault();
                 setHighlightedIndex(i => Math.max(i - 1, 0));
                 break;
-            case 'Enter':
+            case 'Enter': {
                 e.preventDefault();
                 const highlighted = options[highlightedIndex()];
                 if (highlighted && !highlighted.disabled) {
                     selectOption(highlighted);
                 }
                 break;
+            }
         }
     };
 

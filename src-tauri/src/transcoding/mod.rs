@@ -3,10 +3,10 @@
 //! Uses FFmpeg to transcode audio/video formats that are not natively
 //! supported by the WebView (WKWebView/WebView2).
 
-pub mod quality;
 pub mod cache;
-pub mod ffmpeg_pipe;
 pub mod detector;
+pub mod ffmpeg_pipe;
+pub mod quality;
 
 pub mod commands;
 

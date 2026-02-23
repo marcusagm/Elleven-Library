@@ -1,6 +1,6 @@
 // Define types for Draggable Items
 export interface DragItem {
-    type: "IMAGE" | "TAG";
+    type: 'IMAGE' | 'TAG';
     payload: any;
 }
 
@@ -24,7 +24,7 @@ class DndStrategyRegistry {
     }
 }
 
-import { createSignal } from "solid-js";
+import { createSignal } from 'solid-js';
 
 export const dndRegistry = new DndStrategyRegistry();
 

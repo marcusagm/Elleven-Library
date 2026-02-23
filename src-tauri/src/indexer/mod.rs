@@ -1,13 +1,12 @@
 pub mod metadata;
 pub mod types;
 pub use types::*;
-pub mod watcher;
 pub mod scan;
+pub mod watcher;
 
 use crate::db::Db;
 use std::sync::Arc;
 use tauri::AppHandle;
-
 
 pub struct Indexer {
     app_handle: AppHandle,
@@ -16,10 +15,16 @@ pub struct Indexer {
 }
 
 impl Indexer {
-    pub fn new(app_handle: AppHandle, db: &Db, registry: Arc<tokio::sync::Mutex<WatcherRegistry>>) -> Self {
+    pub fn new(
+        app_handle: AppHandle,
+        db: &Db,
+        registry: Arc<tokio::sync::Mutex<WatcherRegistry>>,
+    ) -> Self {
         Self {
             app_handle,
-            db: Arc::new(Db { pool: db.pool.clone() }),
+            db: Arc::new(Db {
+                pool: db.pool.clone(),
+            }),
             registry,
         }
     }
@@ -38,13 +43,16 @@ impl Indexer {
             self.app_handle.clone(),
             self.db.clone(),
             self.registry.clone(),
-            root_path
-        ).await;
+            root_path,
+        )
+        .await;
     }
 }
 
 fn normalize_path(path: &str) -> String {
     let p = path.trim_end_matches('/');
-    if p.is_empty() { return "/".to_string(); }
+    if p.is_empty() {
+        return "/".to_string();
+    }
     p.to_string()
 }

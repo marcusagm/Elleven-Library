@@ -112,7 +112,7 @@ fn extract_largest_png_from_buffer(buffer: &[u8]) -> Option<Vec<u8>> {
                     buffer[chunk_offset + 3],
                 ]) as usize;
 
-                let chunk_type = &buffer[chunk_offset + 4 .. chunk_offset + 8];
+                let chunk_type = &buffer[chunk_offset + 4..chunk_offset + 8];
 
                 // Advance past Length (4), Type (4), Data (length), CRC (4)
                 chunk_offset += 8 + length + 4;
@@ -144,6 +144,7 @@ fn extract_largest_png_from_buffer(buffer: &[u8]) -> Option<Vec<u8>> {
 }
 
 fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack.windows(needle.len()).position(|window| window == needle)
+    haystack
+        .windows(needle.len())
+        .position(|window| window == needle)
 }
-

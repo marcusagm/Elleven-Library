@@ -1,5 +1,5 @@
+use crate::formats::{MediaType as FormatMediaType, PlaybackStrategy};
 use std::path::Path;
-use crate::formats::{PlaybackStrategy, MediaType as FormatMediaType};
 
 /// Media type for routing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,8 +40,8 @@ pub fn get_media_type(path: &Path) -> MediaType {
 #[allow(dead_code)]
 pub fn is_audio_transcode(path: &Path) -> bool {
     if let Some(format) = crate::formats::FileFormat::detect(path) {
-        matches!(format.type_category, FormatMediaType::Audio) &&
-        !matches!(format.playback, PlaybackStrategy::Native)
+        matches!(format.type_category, FormatMediaType::Audio)
+            && !matches!(format.playback, PlaybackStrategy::Native)
     } else {
         false
     }
@@ -51,8 +51,8 @@ pub fn is_audio_transcode(path: &Path) -> bool {
 #[allow(dead_code)]
 pub fn is_video_transcode(path: &Path) -> bool {
     if let Some(format) = crate::formats::FileFormat::detect(path) {
-        matches!(format.type_category, FormatMediaType::Video) &&
-        !matches!(format.playback, PlaybackStrategy::Native)
+        matches!(format.type_category, FormatMediaType::Video)
+            && !matches!(format.playback, PlaybackStrategy::Native)
     } else {
         false
     }

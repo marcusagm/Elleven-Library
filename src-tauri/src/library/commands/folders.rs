@@ -22,7 +22,10 @@ pub async fn add_location(
     app: AppHandle,
     db: State<'_, Arc<Db>>,
 ) -> AppResult<FolderNode> {
-    println!("COMMAND: add_location (add_root) called with path: {}", path);
+    println!(
+        "COMMAND: add_location (add_root) called with path: {}",
+        path
+    );
 
     let root = PathBuf::from(&path);
 
@@ -31,7 +34,10 @@ pub async fn add_location(
         return Err(AppError::NotFound(format!("Path does not exist: {}", path)));
     }
     if !root.is_dir() {
-        return Err(AppError::Generic(format!("Path is not a directory: {}", path)));
+        return Err(AppError::Generic(format!(
+            "Path is not a directory: {}",
+            path
+        )));
     }
 
     // Check if a parent folder already exists
@@ -55,9 +61,7 @@ pub async fn add_location(
         .unwrap_or(&path)
         .to_string();
 
-    let id = db
-        .upsert_folder(&path, &name, parent_id, is_root)
-        .await?;
+    let id = db.upsert_folder(&path, &name, parent_id, is_root).await?;
 
     // Attempt to adopt orphaned roots
     if let Err(e) = db.adopt_orphaned_children(id, &path).await {
@@ -65,7 +69,8 @@ pub async fn add_location(
     }
 
     // Start indexing in background
-    let registry = app.try_state::<Arc<tokio::sync::Mutex<crate::indexer::WatcherRegistry>>>()
+    let registry = app
+        .try_state::<Arc<tokio::sync::Mutex<crate::indexer::WatcherRegistry>>>()
         .ok_or_else(|| AppError::Internal("Registry not initialized".to_string()))?;
 
     let indexer = Indexer::new(app.clone(), db.inner(), registry.inner().clone());
@@ -90,19 +95,16 @@ pub async fn remove_location(
     db: State<'_, Arc<Db>>,
 ) -> AppResult<()> {
     // Get location path for stopping watcher
-    let location_path = db.get_folder_path(location_id).await?
+    let location_path = db
+        .get_folder_path(location_id)
+        .await?
         .ok_or_else(|| AppError::NotFound(format!("Folder not found: {}", location_id)))?;
 
     // Get thumbnail paths before deletion using get_location_thumbnails
-    let thumbnail_paths = db
-        .get_location_thumbnails(location_id)
-        .await?;
+    let thumbnail_paths = db.get_location_thumbnails(location_id).await?;
 
     // Delete thumbnails from filesystem
-    let thumbnails_dir = app
-        .path()
-        .app_local_data_dir()?
-        .join("thumbnails");
+    let thumbnails_dir = app.path().app_local_data_dir()?.join("thumbnails");
 
     let mut deleted_count = 0;
     for thumb_filename in thumbnail_paths {
@@ -121,7 +123,8 @@ pub async fn remove_location(
     db.delete_folder(location_id).await?;
 
     // Stop the watcher via Indexer
-    let registry = app.try_state::<Arc<tokio::sync::Mutex<crate::indexer::WatcherRegistry>>>()
+    let registry = app
+        .try_state::<Arc<tokio::sync::Mutex<crate::indexer::WatcherRegistry>>>()
         .ok_or_else(|| AppError::Internal("Registry not initialized".to_string()))?;
 
     let indexer = Indexer::new(app.clone(), db.inner(), registry.inner().clone());
@@ -133,12 +136,8 @@ pub async fn remove_location(
 
 /// Get all folders (roots and hierarchy)
 #[tauri::command]
-pub async fn get_locations(
-    db: State<'_, Arc<Db>>,
-) -> AppResult<Vec<FolderNode>> {
-    let folders = db
-        .get_folder_hierarchy()
-        .await?;
+pub async fn get_locations(db: State<'_, Arc<Db>>) -> AppResult<Vec<FolderNode>> {
+    let folders = db.get_folder_hierarchy().await?;
 
     Ok(folders
         .into_iter()
@@ -155,22 +154,16 @@ pub async fn get_locations(
 // Deprecated or Aliased commands for compatibility if needed (but we are refactoring frontend)
 
 #[tauri::command]
-pub async fn get_all_subfolders(
-    db: State<'_, Arc<Db>>,
-) -> AppResult<Vec<FolderNode>> {
+pub async fn get_all_subfolders(db: State<'_, Arc<Db>>) -> AppResult<Vec<FolderNode>> {
     get_locations(db).await
 }
 
 #[tauri::command]
-pub async fn get_subfolder_counts(
-    db: State<'_, Arc<Db>>,
-) -> AppResult<Vec<(i64, i64)>> {
+pub async fn get_subfolder_counts(db: State<'_, Arc<Db>>) -> AppResult<Vec<(i64, i64)>> {
     Ok(db.get_folder_counts_recursive().await?)
 }
 
 #[tauri::command]
-pub async fn get_location_root_counts(
-    _db: State<'_, Arc<Db>>,
-) -> AppResult<Vec<(i64, i64)>> {
+pub async fn get_location_root_counts(_db: State<'_, Arc<Db>>) -> AppResult<Vec<(i64, i64)>> {
     Ok(vec![])
 }

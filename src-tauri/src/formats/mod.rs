@@ -1,13 +1,13 @@
 use serde::Serialize;
-use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
-pub mod types;
 pub mod definitions;
+pub mod types;
 
-pub use types::*;
 pub use definitions::SUPPORTED_FORMATS;
+pub use types::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FileFormat {
@@ -53,15 +53,21 @@ impl FileFormat {
                 // CRITICAL FIX: If infer says it's a generic format like TIFF or ZIP,
                 // we check the extension FIRST because many professional formats (RAW, Adobe, Affinity)
                 // use these containers but need specific processing.
-                if mime == "image/tiff" || mime == "application/zip" || mime == "application/octet-stream" {
+                if mime == "image/tiff"
+                    || mime == "application/zip"
+                    || mime == "application/octet-stream"
+                {
                     if let Some(fmt) = Self::detect_extension(path_fallback) {
-                         // If the extension match is also a member of this container family or the strategy is specific, use it.
-                         return Some(fmt);
+                        // If the extension match is also a member of this container family or the strategy is specific, use it.
+                        return Some(fmt);
                     }
                 }
 
                 // Normal path: Check registry for the MIME returned by infer
-                if let Some(fmt) = SUPPORTED_FORMATS.iter().find(|f| f.mime_types.contains(&mime)) {
+                if let Some(fmt) = SUPPORTED_FORMATS
+                    .iter()
+                    .find(|f| f.mime_types.contains(&mime))
+                {
                     return Some(fmt);
                 }
             }
@@ -74,7 +80,9 @@ impl FileFormat {
     fn detect_extension(path: &Path) -> Option<&'static FileFormat> {
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             let ext_lower = ext.to_lowercase();
-            return SUPPORTED_FORMATS.iter().find(|f| f.extensions.contains(&ext_lower.as_str()));
+            return SUPPORTED_FORMATS
+                .iter()
+                .find(|f| f.extensions.contains(&ext_lower.as_str()));
         }
         None
     }

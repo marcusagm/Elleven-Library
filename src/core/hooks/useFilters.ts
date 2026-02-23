@@ -1,49 +1,74 @@
-import { filterState, filterActions } from "../store/filterStore";
-import { libraryActions } from "../store/libraryStore";
+import { filterState, filterActions } from '../store/filterStore';
+import { libraryActions } from '../store/libraryStore';
 
 export const useFilters = () => {
-  const withRefresh = (action: (...args: any[]) => void) => (...args: any[]) => {
-    action(...args);
-    libraryActions.refreshImages(true);
-  };
+    const withRefresh =
+        (action: (...args: any[]) => void) =>
+        (...args: any[]) => {
+            action(...args);
+            libraryActions.refreshImages(true);
+        };
 
-  return {
-    // State (Read-only proxies)
-    get selectedTags() { return filterState.selectedTags; },
-    get selectedFolderId() { return filterState.selectedFolderId; },
-    get folderRecursiveView() { return filterState.folderRecursiveView; },
-    get filterUntagged() { return filterState.filterUntagged; },
-    get searchQuery() { return filterState.searchQuery; },
-    get sortBy() { return filterState.sortBy; },
-    get sortOrder() { return filterState.sortOrder; },
-    get layout() { return filterState.layout; },
-    get thumbSize() { return filterState.thumbSize; },
-    get advancedSearch() { return filterState.advancedSearch; },
-    
-    // History State
-    get canGoBack() { return filterActions.canGoBack(); },
-    get canGoForward() { return filterActions.canGoForward(); },
+    return {
+        // State (Read-only proxies)
+        get selectedTags() {
+            return filterState.selectedTags;
+        },
+        get selectedFolderId() {
+            return filterState.selectedFolderId;
+        },
+        get folderRecursiveView() {
+            return filterState.folderRecursiveView;
+        },
+        get filterUntagged() {
+            return filterState.filterUntagged;
+        },
+        get searchQuery() {
+            return filterState.searchQuery;
+        },
+        get sortBy() {
+            return filterState.sortBy;
+        },
+        get sortOrder() {
+            return filterState.sortOrder;
+        },
+        get layout() {
+            return filterState.layout;
+        },
+        get thumbSize() {
+            return filterState.thumbSize;
+        },
+        get advancedSearch() {
+            return filterState.advancedSearch;
+        },
 
-    // Actions
-    toggleTag: withRefresh(filterActions.toggleTag),
-    setUntagged: withRefresh(filterActions.setUntagged),
-    toggleUntagged: withRefresh(filterActions.toggleUntagged),
-    setFolder: withRefresh(filterActions.setFolder),
-    setFolderRecursiveView: withRefresh(filterActions.setFolderRecursiveView),
-    setSearch: withRefresh(filterActions.setSearch),
-    setSortBy: withRefresh(filterActions.setSortBy),
-    setSortOrder: withRefresh(filterActions.setSortOrder),
-    // UI-only settings - don't trigger data refresh
-    setLayout: filterActions.setLayout,
-    setThumbSize: filterActions.setThumbSize,
-    setAdvancedSearch: withRefresh(filterActions.setAdvancedSearch),
-    clearAll: withRefresh(filterActions.clearAll),
-    
-    // History Actions
-    goBack: withRefresh(filterActions.goBack),
-    goForward: withRefresh(filterActions.goForward),
+        // History State
+        get canGoBack() {
+            return filterActions.canGoBack();
+        },
+        get canGoForward() {
+            return filterActions.canGoForward();
+        },
 
-    hasActiveFilters: filterActions.hasActiveFilters
-  };
+        // Actions
+        toggleTag: withRefresh(filterActions.toggleTag),
+        setUntagged: withRefresh(filterActions.setUntagged),
+        toggleUntagged: withRefresh(filterActions.toggleUntagged),
+        setFolder: withRefresh(filterActions.setFolder),
+        setFolderRecursiveView: withRefresh(filterActions.setFolderRecursiveView),
+        setSearch: withRefresh(filterActions.setSearch),
+        setSortBy: withRefresh(filterActions.setSortBy),
+        setSortOrder: withRefresh(filterActions.setSortOrder),
+        // UI-only settings - don't trigger data refresh
+        setLayout: filterActions.setLayout,
+        setThumbSize: filterActions.setThumbSize,
+        setAdvancedSearch: withRefresh(filterActions.setAdvancedSearch),
+        clearAll: withRefresh(filterActions.clearAll),
+
+        // History Actions
+        goBack: withRefresh(filterActions.goBack),
+        goForward: withRefresh(filterActions.goForward),
+
+        hasActiveFilters: filterActions.hasActiveFilters
+    };
 };
-

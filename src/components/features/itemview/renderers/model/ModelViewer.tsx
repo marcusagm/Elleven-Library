@@ -1,13 +1,23 @@
-import { Component, createMemo, Show, createEffect } from "solid-js";
-import "@google/model-viewer";
-import { Loader } from "../../../../ui/Loader";
-import { useItemViewContext } from "../../ItemViewContext";
-import "./model-viewer.css";
+import { Component, createMemo, Show, createEffect } from 'solid-js';
+import '@google/model-viewer';
+import { Loader } from '../../../../ui/Loader';
+import { useItemViewContext } from '../../ItemViewContext';
+import './model-viewer.css';
 
-declare module "solid-js" {
+declare module 'solid-js' {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace JSX {
         interface IntrinsicElements {
-            "model-viewer": any;
+            'model-viewer': JSX.HTMLAttributes<HTMLElement> & {
+                src?: string;
+                poster?: string;
+                alt?: string;
+                'shadow-intensity'?: string;
+                'camera-controls'?: boolean;
+                'ar-status'?: string;
+                'interaction-prompt'?: string;
+                style?: JSX.CSSProperties | string;
+            };
         }
     }
 }
@@ -18,20 +28,32 @@ interface ModelViewerProps {
     thumbnail?: string | null;
 }
 
-export const ModelViewer: Component<ModelViewerProps> = (props) => {
+interface ModelViewerElement extends HTMLElement {
+    dismissPoster(): void;
+    play(): void;
+    pause(): void;
+    jumpCameraToGoal(): void;
+    autoRotate: boolean;
+    cameraOrbit: string;
+    cameraTarget: string;
+    fieldOfView: string;
+    currentTime: number;
+}
+
+export const ModelViewer: Component<ModelViewerProps> = props => {
     const { modelSettings, resetTrigger } = useItemViewContext();
-    let viewerRef: any;
+    let viewerRef: ModelViewerElement | undefined;
 
     // Handle Reset
     createEffect(() => {
         // Track the trigger
         void resetTrigger();
-        
+
         // Don't run on first mount (0) if we want, but actually it's fine.
         if (viewerRef) {
             // Reset Camera
-            viewerRef.cameraOrbit = "auto auto auto";
-            viewerRef.fieldOfView = "auto";
+            viewerRef.cameraOrbit = 'auto auto auto';
+            viewerRef.fieldOfView = 'auto';
             viewerRef.jumpCameraToGoal();
         }
     });
@@ -58,42 +80,44 @@ export const ModelViewer: Component<ModelViewerProps> = (props) => {
         if (!props.thumbnail) return null;
         const filename = props.thumbnail.split(/[\\/]/).pop();
         if (!filename) return null;
-        const stem = filename.replace(/\.[^/.]+$/, "");
+        const stem = filename.replace(/\.[^/.]+$/, '');
         return `thumb://localhost/${stem}.glb`;
     });
 
     return (
-        <div 
-            class="model-viewer-container" 
-            style={{ "background-color": modelSettings().backgroundColor }}
+        <div
+            class="model-viewer-container"
+            style={{ 'background-color': modelSettings().backgroundColor }}
         >
-            <Show when={glbUrl()} fallback={
-                <div class="model-placeholder">
-                     <span class="model-icon">🧊</span>
-                     <p>Preview pending or unavailable</p>
-                </div>
-            }>
-                {/* @ts-ignore */}
+            <Show
+                when={glbUrl()}
+                fallback={
+                    <div class="model-placeholder">
+                        <span class="model-icon">🧊</span>
+                        <p>Preview pending or unavailable</p>
+                    </div>
+                }
+            >
                 <model-viewer
                     ref={viewerRef}
                     src={glbUrl()!}
                     poster={props.thumbnail ? `thumb://localhost/${props.thumbnail}` : undefined}
                     alt={`3D model: ${props.filename}`}
-                    shadow-intensity={modelSettings().backgroundColor === '#111111' ? "1" : "0.5"}
+                    shadow-intensity={modelSettings().backgroundColor === '#111111' ? '1' : '0.5'}
                     camera-controls
                     ar-status="not-presenting"
                     interaction-prompt="none"
-                    style={{ 
-                        width: "100%", 
-                        height: "100%", 
-                        "--poster-color": "transparent",
-                        "--progress-bar-color": "var(--accent-color, #00a0a9)", 
-                        "--progress-bar-height": "4px",
-                        "background-image": modelSettings().showGrid 
-                            ? "linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)" 
-                            : "none",
-                        "background-size": "50px 50px",
-                        "background-position": "center center"
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        '--poster-color': 'transparent',
+                        '--progress-bar-color': 'var(--accent-color, #00a0a9)',
+                        '--progress-bar-height': '4px',
+                        'background-image': modelSettings().showGrid
+                            ? 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)'
+                            : 'none',
+                        'background-size': '50px 50px',
+                        'background-position': 'center center'
                     }}
                 >
                     <div slot="poster" class="model-loading-overlay">

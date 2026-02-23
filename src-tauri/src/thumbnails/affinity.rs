@@ -15,11 +15,7 @@ pub fn extract_largest_png(input_path: &Path) -> Result<Vec<u8>, Box<dyn std::er
     // Affinity files can be huge. We'll try to find the PNG at the end of the file first.
     // Most Affinity previews are stored in the last 15-20MB.
     let scan_size = 15 * 1024 * 1024; // 15MB
-    let start_offset = if file_size > scan_size {
-        file_size - scan_size
-    } else {
-        0
-    };
+    let start_offset = file_size.saturating_sub(scan_size);
 
     file.seek(SeekFrom::Start(start_offset))?;
     let mut buffer = Vec::with_capacity((file_size - start_offset) as usize);
@@ -33,17 +29,17 @@ pub fn extract_largest_png(input_path: &Path) -> Result<Vec<u8>, Box<dyn std::er
             // Found a PNG signature!
             // Search limit: 50MB (like the JS script) or until end of buffer.
             let search_limit = (i + 50 * 1024 * 1024).min(buffer.len());
-            
+
             if let Some(iend_rel_offset) = find_iend(&buffer[i + 8..search_limit]) {
                 // The chunk ends after "IEND" (4 bytes) and CRC (4 bytes).
-                let png_length = iend_rel_offset + 8 + 4 + 4; 
-                
+                let png_length = iend_rel_offset + 8 + 4 + 4;
+
                 // We want the largest PNG found (assuming it's the high-res one)
                 let current_length = png_length;
-                if best_png.map_or(true, |(_, best_len)| current_length > best_len) {
+                if best_png.is_none_or(|(_, best_len)| current_length > best_len) {
                     best_png = Some((i, current_length));
                 }
-                
+
                 i += png_length;
                 continue;
             }
@@ -63,4 +59,3 @@ fn find_iend(data: &[u8]) -> Option<usize> {
     // Search for "IEND" string
     data.windows(4).position(|window| window == PNG_IEND)
 }
-

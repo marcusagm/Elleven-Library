@@ -3,9 +3,9 @@
 //! This module converts complex, nested search criteria from the frontend
 //! into optimized SQLite queries using `sqlx::QueryBuilder`.
 
-use serde::{Deserialize, Serialize};
-use crate::db::models::ImageMetadata;
 use super::Db;
+use crate::db::models::ImageMetadata;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -57,7 +57,7 @@ impl Db {
     ) -> Result<Vec<ImageMetadata>, sqlx::Error> {
         let mut query_builder: sqlx::QueryBuilder<sqlx::Sqlite> = sqlx::QueryBuilder::new(
             "WITH RECURSIVE target_folders AS (
-               SELECT id FROM folders WHERE id = "
+               SELECT id FROM folders WHERE id = ",
         );
 
         if let Some(fid) = folder_id {
@@ -66,7 +66,7 @@ impl Db {
                 query_builder.push(" UNION ALL SELECT f.id FROM folders f JOIN target_folders tf ON f.parent_id = tf.id");
             }
         } else {
-             query_builder.push(" -1 ");
+            query_builder.push(" -1 ");
         }
 
         query_builder.push(") SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.rating, i.notes, i.created_at, i.modified_at, i.added_at FROM images i ");
@@ -77,7 +77,9 @@ impl Db {
 
         query_builder.push(" WHERE 1=1 ");
 
-        let parsed_group = advanced_query.as_ref().and_then(|q| serde_json::from_str::<SearchGroup>(q).ok());
+        let parsed_group = advanced_query
+            .as_ref()
+            .and_then(|q| serde_json::from_str::<SearchGroup>(q).ok());
         if let Some(ref group) = parsed_group {
             query_builder.push(" AND ");
             build_where_clause(group, &mut query_builder);
@@ -121,9 +123,23 @@ impl Db {
         }
 
         // Sorting Logic
-        let allowed_cols = ["filename", "created_at", "modified_at", "added_at", "size", "format", "rating"];
-        let final_sort_by = sort_by.as_deref().filter(|c| allowed_cols.contains(c)).unwrap_or("id");
-        let final_order = sort_order.as_deref().filter(|o| *o == "asc" || *o == "desc").unwrap_or("desc");
+        let allowed_cols = [
+            "filename",
+            "created_at",
+            "modified_at",
+            "added_at",
+            "size",
+            "format",
+            "rating",
+        ];
+        let final_sort_by = sort_by
+            .as_deref()
+            .filter(|c| allowed_cols.contains(c))
+            .unwrap_or("id");
+        let final_order = sort_order
+            .as_deref()
+            .filter(|o| *o == "asc" || *o == "desc")
+            .unwrap_or("desc");
 
         query_builder.push(" ORDER BY (");
         query_builder.push(final_sort_by);
@@ -145,7 +161,10 @@ impl Db {
         query_builder.push(" OFFSET ");
         query_builder.push_bind(offset);
 
-        let images = query_builder.build_query_as::<ImageMetadata>().fetch_all(&self.pool).await?;
+        let images = query_builder
+            .build_query_as::<ImageMetadata>()
+            .fetch_all(&self.pool)
+            .await?;
         Ok(images)
     }
 
@@ -163,7 +182,7 @@ impl Db {
     ) -> Result<i64, sqlx::Error> {
         let mut query_builder: sqlx::QueryBuilder<sqlx::Sqlite> = sqlx::QueryBuilder::new(
             "WITH RECURSIVE target_folders AS (
-               SELECT id FROM folders WHERE id = "
+               SELECT id FROM folders WHERE id = ",
         );
 
         if let Some(fid) = folder_id {
@@ -172,7 +191,7 @@ impl Db {
                 query_builder.push(" UNION ALL SELECT f.id FROM folders f JOIN target_folders tf ON f.parent_id = tf.id");
             }
         } else {
-             query_builder.push(" -1 ");
+            query_builder.push(" -1 ");
         }
 
         query_builder.push(") SELECT DISTINCT i.id FROM images i ");
@@ -183,7 +202,9 @@ impl Db {
 
         query_builder.push(" WHERE 1=1 ");
 
-        let parsed_group = advanced_query.as_ref().and_then(|q| serde_json::from_str::<SearchGroup>(q).ok());
+        let parsed_group = advanced_query
+            .as_ref()
+            .and_then(|q| serde_json::from_str::<SearchGroup>(q).ok());
         if let Some(ref group) = parsed_group {
             query_builder.push(" AND ");
             build_where_clause(group, &mut query_builder);
@@ -227,20 +248,30 @@ impl Db {
         }
 
         // Fetch only IDs to count rows (most efficient way to count DISTINCT with HAVING in SQLx builder)
-        let rows = query_builder.build_query_as::<(i64,)>().fetch_all(&self.pool).await?;
+        let rows = query_builder
+            .build_query_as::<(i64,)>()
+            .fetch_all(&self.pool)
+            .await?;
         Ok(rows.len() as i64)
     }
 }
 
-pub fn build_where_clause<'a>(group: &'a SearchGroup, query_builder: &mut sqlx::QueryBuilder<'a, sqlx::Sqlite>) {
+pub fn build_where_clause<'a>(
+    group: &'a SearchGroup,
+    query_builder: &mut sqlx::QueryBuilder<'a, sqlx::Sqlite>,
+) {
     query_builder.push(" (");
 
     let mut first = true;
     for item in &group.items {
         if !first {
             match group.logical_operator {
-                LogicalOperator::And => { query_builder.push(" AND "); },
-                LogicalOperator::Or => { query_builder.push(" OR "); },
+                LogicalOperator::And => {
+                    query_builder.push(" AND ");
+                }
+                LogicalOperator::Or => {
+                    query_builder.push(" OR ");
+                }
             };
         }
         first = false;
@@ -258,7 +289,10 @@ pub fn build_where_clause<'a>(group: &'a SearchGroup, query_builder: &mut sqlx::
     query_builder.push(") ");
 }
 
-fn build_criterion_clause<'a>(c: &'a SearchCriterion, query_builder: &mut sqlx::QueryBuilder<'a, sqlx::Sqlite>) {
+fn build_criterion_clause<'a>(
+    c: &'a SearchCriterion,
+    query_builder: &mut sqlx::QueryBuilder<'a, sqlx::Sqlite>,
+) {
     match c.key.as_str() {
         "filename" | "notes" | "format" => {
             let is_fts_target = c.key == "filename" || c.key == "notes";
@@ -277,21 +311,21 @@ fn build_criterion_clause<'a>(c: &'a SearchCriterion, query_builder: &mut sqlx::
                         query_builder.push(" LIKE ");
                         query_builder.push_bind(format!("%{}%", c.value.as_str().unwrap_or("")));
                     }
-                },
+                }
                 "not_contains" => {
-                     if is_fts_target {
+                    if is_fts_target {
                         query_builder.push(" i.id NOT IN (SELECT rowid FROM images_fts WHERE ");
                         query_builder.push(&c.key);
                         query_builder.push(" MATCH ");
                         query_builder.push_bind(format!("\"{}\"", c.value.as_str().unwrap_or("")));
                         query_builder.push(") ");
-                     } else {
+                    } else {
                         query_builder.push(" i.");
                         query_builder.push(&c.key);
                         query_builder.push(" NOT LIKE ");
                         query_builder.push_bind(format!("%{}%", c.value.as_str().unwrap_or("")));
-                     }
-                },
+                    }
+                }
                 "equals" | "eq" => {
                     if c.key == "format" {
                         let val = c.value.as_str().unwrap_or("").to_lowercase();
@@ -314,13 +348,13 @@ fn build_criterion_clause<'a>(c: &'a SearchCriterion, query_builder: &mut sqlx::
                         query_builder.push(" = ");
                         query_builder.push_bind(c.value.as_str().unwrap_or(""));
                     }
-                },
+                }
                 "starts_with" => {
                     query_builder.push(" i.");
                     query_builder.push(&c.key);
                     query_builder.push(" LIKE ");
                     query_builder.push_bind(format!("{}%", c.value.as_str().unwrap_or("")));
-                },
+                }
                 "ends_with" => {
                     if c.key == "filename" {
                         query_builder.push(" (i.filename LIKE ");
@@ -334,19 +368,36 @@ fn build_criterion_clause<'a>(c: &'a SearchCriterion, query_builder: &mut sqlx::
                         query_builder.push(" LIKE ");
                         query_builder.push_bind(format!("%{}", c.value.as_str().unwrap_or("")));
                     }
-                },
-                _ => { query_builder.push(" 1=1 "); },
+                }
+                _ => {
+                    query_builder.push(" 1=1 ");
+                }
             }
-        },
+        }
         "size" | "width" | "height" | "rating" => {
             query_builder.push(" i.");
             query_builder.push(&c.key);
             match c.operator.as_str() {
-                "gt" => { query_builder.push(" > "); query_builder.push_bind(c.value.as_i64().unwrap_or(0)); },
-                "lt" => { query_builder.push(" < "); query_builder.push_bind(c.value.as_i64().unwrap_or(0)); },
-                "eq" => { query_builder.push(" = "); query_builder.push_bind(c.value.as_i64().unwrap_or(0)); },
-                "gte" => { query_builder.push(" >= "); query_builder.push_bind(c.value.as_i64().unwrap_or(0)); },
-                "lte" => { query_builder.push(" <= "); query_builder.push_bind(c.value.as_i64().unwrap_or(0)); },
+                "gt" => {
+                    query_builder.push(" > ");
+                    query_builder.push_bind(c.value.as_i64().unwrap_or(0));
+                }
+                "lt" => {
+                    query_builder.push(" < ");
+                    query_builder.push_bind(c.value.as_i64().unwrap_or(0));
+                }
+                "eq" => {
+                    query_builder.push(" = ");
+                    query_builder.push_bind(c.value.as_i64().unwrap_or(0));
+                }
+                "gte" => {
+                    query_builder.push(" >= ");
+                    query_builder.push_bind(c.value.as_i64().unwrap_or(0));
+                }
+                "lte" => {
+                    query_builder.push(" <= ");
+                    query_builder.push_bind(c.value.as_i64().unwrap_or(0));
+                }
                 "between" => {
                     if let Some(arr) = c.value.as_array() {
                         if arr.len() == 2 {
@@ -354,20 +405,35 @@ fn build_criterion_clause<'a>(c: &'a SearchCriterion, query_builder: &mut sqlx::
                             query_builder.push_bind(arr[0].as_i64().unwrap_or(0));
                             query_builder.push(" AND ");
                             query_builder.push_bind(arr[1].as_i64().unwrap_or(0));
-                        } else { query_builder.push(" = 1 "); }
-                    } else { query_builder.push(" = 1 "); }
-                },
-                _ => { query_builder.push(" = 1 "); },
+                        } else {
+                            query_builder.push(" = 1 ");
+                        }
+                    } else {
+                        query_builder.push(" = 1 ");
+                    }
+                }
+                _ => {
+                    query_builder.push(" = 1 ");
+                }
             }
-        },
+        }
         "added_at" | "created_at" | "modified_at" => {
             query_builder.push(" i.");
             query_builder.push(&c.key);
             let val = c.value.as_str().unwrap_or("");
             match c.operator.as_str() {
-                "before" => { query_builder.push(" < "); query_builder.push_bind(val); },
-                "after" => { query_builder.push(" > "); query_builder.push_bind(val); },
-                "on" => { query_builder.push(" LIKE "); query_builder.push_bind(format!("{}%", val)); },
+                "before" => {
+                    query_builder.push(" < ");
+                    query_builder.push_bind(val);
+                }
+                "after" => {
+                    query_builder.push(" > ");
+                    query_builder.push_bind(val);
+                }
+                "on" => {
+                    query_builder.push(" LIKE ");
+                    query_builder.push_bind(format!("{}%", val));
+                }
                 "between" => {
                     if let Some(arr) = c.value.as_array() {
                         if arr.len() == 2 {
@@ -376,48 +442,72 @@ fn build_criterion_clause<'a>(c: &'a SearchCriterion, query_builder: &mut sqlx::
                             query_builder.push(" BETWEEN ");
                             query_builder.push_bind(v1);
                             query_builder.push(" AND ");
-                            let v2_final = if v2.len() == 10 { format!("{} 23:59:59", v2) } else { v2.to_string() };
+                            let v2_final = if v2.len() == 10 {
+                                format!("{} 23:59:59", v2)
+                            } else {
+                                v2.to_string()
+                            };
                             query_builder.push_bind(v2_final);
-                        } else { query_builder.push(" = 1 "); }
-                    } else { query_builder.push(" = 1 "); }
-                },
-                _ => { query_builder.push(" = 1 "); },
+                        } else {
+                            query_builder.push(" = 1 ");
+                        }
+                    } else {
+                        query_builder.push(" = 1 ");
+                    }
+                }
+                _ => {
+                    query_builder.push(" = 1 ");
+                }
             }
-        },
+        }
         "tags" => {
-            let tag_id = c.value.as_str().and_then(|s| s.parse::<i64>().ok()).or_else(|| c.value.as_i64());
+            let tag_id = c
+                .value
+                .as_str()
+                .and_then(|s| s.parse::<i64>().ok())
+                .or_else(|| c.value.as_i64());
             match c.operator.as_str() {
                 "contains" | "contains_any" => {
                     if let Some(id) = tag_id {
-                        query_builder.push(" i.id IN (SELECT image_id FROM image_tags WHERE tag_id = ");
+                        query_builder
+                            .push(" i.id IN (SELECT image_id FROM image_tags WHERE tag_id = ");
                         query_builder.push_bind(id);
                         query_builder.push(") ");
-                    } else { query_builder.push(" 1=1 "); }
-                },
+                    } else {
+                        query_builder.push(" 1=1 ");
+                    }
+                }
                 "not_contains" => {
                     if let Some(id) = tag_id {
-                        query_builder.push(" i.id NOT IN (SELECT image_id FROM image_tags WHERE tag_id = ");
+                        query_builder
+                            .push(" i.id NOT IN (SELECT image_id FROM image_tags WHERE tag_id = ");
                         query_builder.push_bind(id);
                         query_builder.push(") ");
-                    } else { query_builder.push(" 1=1 "); }
-                },
-                _ => { query_builder.push(" 1=1 "); },
+                    } else {
+                        query_builder.push(" 1=1 ");
+                    }
+                }
+                _ => {
+                    query_builder.push(" 1=1 ");
+                }
+            }
+        }
+        "folder" => match c.operator.as_str() {
+            "is" => {
+                query_builder.push(" i.folder_id = ");
+                query_builder.push_bind(c.value.as_i64().unwrap_or(0));
+            }
+            "in" => {
+                query_builder.push(" i.folder_id IN (WITH RECURSIVE subfolders AS (SELECT id, 0 as depth FROM folders WHERE id = ");
+                query_builder.push_bind(c.value.as_i64().unwrap_or(0));
+                query_builder.push(" UNION ALL SELECT f.id, s.depth + 1 FROM folders f JOIN subfolders s ON f.parent_id = s.id WHERE s.depth < 50) SELECT id FROM subfolders) ");
+            }
+            _ => {
+                query_builder.push(" 1=1 ");
             }
         },
-        "folder" => {
-            match c.operator.as_str() {
-                "is" => {
-                    query_builder.push(" i.folder_id = ");
-                    query_builder.push_bind(c.value.as_i64().unwrap_or(0));
-                },
-                "in" => {
-                     query_builder.push(" i.folder_id IN (WITH RECURSIVE subfolders AS (SELECT id, 0 as depth FROM folders WHERE id = ");
-                     query_builder.push_bind(c.value.as_i64().unwrap_or(0));
-                     query_builder.push(" UNION ALL SELECT f.id, s.depth + 1 FROM folders f JOIN subfolders s ON f.parent_id = s.id WHERE s.depth < 50) SELECT id FROM subfolders) ");
-                },
-                _ => { query_builder.push(" 1=1 "); },
-            }
-        },
-        _ => { query_builder.push(" 1=1 "); },
+        _ => {
+            query_builder.push(" 1=1 ");
+        }
     }
 }

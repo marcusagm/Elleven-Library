@@ -1,6 +1,6 @@
 use super::common::{decode_path, extract_path_part, serve_file};
-use tauri::http::{header, Response, Request};
 use std::path::PathBuf;
+use tauri::http::{header, Request, Response};
 
 pub fn handler(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     let uri = request.uri().to_string();
@@ -8,10 +8,8 @@ pub fn handler(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     let decoded_path = decode_path(&path_part);
     let mut full_path = PathBuf::from(&decoded_path);
 
-    if !full_path.is_absolute() && cfg!(unix) {
-        if !path_part.starts_with('/') {
-            full_path = PathBuf::from("/").join(full_path);
-        }
+    if !full_path.is_absolute() && cfg!(unix) && !path_part.starts_with('/') {
+        full_path = PathBuf::from("/").join(full_path);
     }
 
     let range = request.headers().get(header::RANGE);

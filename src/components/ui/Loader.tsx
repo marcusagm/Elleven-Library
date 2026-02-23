@@ -41,9 +41,9 @@ export const Loader: Component<LoaderProps> = props => {
             role="status"
         >
             <div class={`loader-cards ${props.size || 'md'}`}>
-                <div class="loader-card card-3"></div>
-                <div class="loader-card card-2"></div>
-                <div class="loader-card card-1"></div>
+                <div class="loader-card card-3" />
+                <div class="loader-card card-2" />
+                <div class="loader-card card-1" />
             </div>
 
             <Show when={props.text}>

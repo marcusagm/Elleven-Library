@@ -1,7 +1,7 @@
-import { Component } from "solid-js";
-import { ConfirmModal } from "../../ui/Modal";
-import { SmartFolder } from "../../../core/store/metadataStore";
-import { useMetadata, useNotification } from "../../../core/hooks";
+import { Component } from 'solid-js';
+import { ConfirmModal } from '../../ui/Modal';
+import { SmartFolder } from '../../../core/store/metadataStore';
+import { useMetadata, useNotification } from '../../../core/hooks';
 
 interface SmartFolderDeleteModalProps {
     isOpen: boolean;
@@ -9,7 +9,7 @@ interface SmartFolderDeleteModalProps {
     folder: SmartFolder | null;
 }
 
-export const SmartFolderDeleteModal: Component<SmartFolderDeleteModalProps> = (props) => {
+export const SmartFolderDeleteModal: Component<SmartFolderDeleteModalProps> = props => {
     const metadata = useMetadata();
     const notification = useNotification();
 
@@ -19,17 +19,17 @@ export const SmartFolderDeleteModal: Component<SmartFolderDeleteModalProps> = (p
         const folderName = props.folder.name;
         try {
             await metadata.deleteSmartFolder(props.folder.id);
-            notification.success("Smart Folder Deleted", `Removed "${folderName}"`);
+            notification.success('Smart Folder Deleted', `Removed "${folderName}"`);
         } catch (err) {
-            console.error("Delete failed:", err);
-            notification.error("Failed to Delete Smart Folder");
+            console.error('Delete failed:', err);
+            notification.error('Failed to Delete Smart Folder');
         } finally {
             props.onClose();
         }
     };
 
     return (
-        <ConfirmModal 
+        <ConfirmModal
             isOpen={props.isOpen}
             onClose={props.onClose}
             onConfirm={handleConfirm}
@@ -40,10 +40,12 @@ export const SmartFolderDeleteModal: Component<SmartFolderDeleteModalProps> = (p
         >
             <div class="delete-confirmation-content">
                 <p>
-                    Are you sure you want to delete the smart folder <strong>"{props.folder?.name}"</strong>?
+                    Are you sure you want to delete the smart folder{' '}
+                    <strong>"{props.folder?.name}"</strong>?
                 </p>
                 <p class="delete-warning">
-                    This will only remove the saved search. Your images and actual folders will not be affected.
+                    This will only remove the saved search. Your images and actual folders will not
+                    be affected.
                 </p>
             </div>
         </ConfirmModal>

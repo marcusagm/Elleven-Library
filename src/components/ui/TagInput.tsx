@@ -1,3 +1,4 @@
+/* eslint-disable complexity, max-lines */
 import {
     Component,
     For,
@@ -92,7 +93,7 @@ export const TagInput: Component<TagInputProps> = props => {
         const offset = 4;
 
         let top = rect.bottom + offset;
-        let left = rect.left;
+        const left = rect.left;
 
         // Boundary check - Bottom overflow
         if (top + contentRect.height > viewportHeight - 10) {
@@ -154,7 +155,7 @@ export const TagInput: Component<TagInputProps> = props => {
                 }
                 break;
 
-            case 'Enter':
+            case 'Enter': {
                 e.preventDefault();
                 const val = inputValue().trim();
                 if (!val || !canAddMore()) return;
@@ -175,6 +176,7 @@ export const TagInput: Component<TagInputProps> = props => {
                 }
                 setHighlightedIndex(-1);
                 break;
+            }
 
             case 'Backspace':
                 if (!inputValue() && local.value.length > 0) {

@@ -1,8 +1,5 @@
 import { createSignal, createEffect, on } from 'solid-js';
-import {
-    type TranscodeQuality,
-    getAudioUrl
-} from '../../lib/stream-utils';
+import { type TranscodeQuality, getAudioUrl } from '../../lib/stream-utils';
 
 /**
  * Custom hook to manage audio source URL generation.

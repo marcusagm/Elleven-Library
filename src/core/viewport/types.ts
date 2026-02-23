@@ -1,6 +1,6 @@
 /**
  * Viewport System Types
- * 
+ *
  * Shared type definitions for the Web Worker-based virtualization engine.
  * These types define the contract between the main thread and the worker.
  */
@@ -14,8 +14,8 @@
  * Keep this lean for fast serialization over postMessage.
  */
 export interface LayoutItemInput {
-  id: number;
-  aspectRatio: number; // width / height (1 for grid mode)
+    id: number;
+    aspectRatio: number; // width / height (1 for grid mode)
 }
 
 /**
@@ -25,17 +25,17 @@ export interface LayoutItemInput {
  * - grid: Uniform square items, simple row/column calculation
  * - masonry: Alias for masonry-v (backwards compatibility)
  */
-export type LayoutMode = "masonry" | "masonry-v" | "masonry-h" | "grid";
+export type LayoutMode = 'masonry' | 'masonry-v' | 'masonry-h' | 'grid';
 
 /**
  * Configuration for layout calculation.
  */
 export interface LayoutConfig {
-  mode: LayoutMode;
-  containerWidth: number;
-  itemSize: number; // minColumnWidth for masonry, baseSize for grid
-  gap: number;
-  buffer: number; // Extra pixels to render above/below viewport
+    mode: LayoutMode;
+    containerWidth: number;
+    itemSize: number; // minColumnWidth for masonry, baseSize for grid
+    gap: number;
+    buffer: number; // Extra pixels to render above/below viewport
 }
 
 // ============================================================================
@@ -46,19 +46,19 @@ export interface LayoutConfig {
  * Calculated position and dimensions for a single item.
  */
 export interface ItemPosition {
-  id: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+    id: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
 }
 
 /**
  * Complete virtualization result sent back from worker.
  */
 export interface VirtualizationResult {
-  totalHeight: number;
-  visibleItems: ItemPosition[];
+    totalHeight: number;
+    visibleItems: ItemPosition[];
 }
 
 // ============================================================================
@@ -69,21 +69,21 @@ export interface VirtualizationResult {
  * Messages sent FROM main thread TO worker.
  */
 export type WorkerInMessage =
-  | { type: "SET_ITEMS"; payload: LayoutItemInput[] }
-  | { type: "CONFIGURE"; payload: LayoutConfig }
-  | { type: "RESIZE"; payload: { width: number } }
-  | { type: "SCROLL"; payload: { scrollTop: number; viewportHeight: number } }
-  | { type: "INVALIDATE" } // Force recalculation
-  | { type: "QUERY_POSITION"; payload: { id: number; requestId: string } };
+    | { type: 'SET_ITEMS'; payload: LayoutItemInput[] }
+    | { type: 'CONFIGURE'; payload: LayoutConfig }
+    | { type: 'RESIZE'; payload: { width: number } }
+    | { type: 'SCROLL'; payload: { scrollTop: number; viewportHeight: number } }
+    | { type: 'INVALIDATE' } // Force recalculation
+    | { type: 'QUERY_POSITION'; payload: { id: number; requestId: string } };
 
 /**
  * Messages sent FROM worker TO main thread.
  */
 export type WorkerOutMessage =
-  | { type: "LAYOUT_COMPLETE"; payload: { totalHeight: number } }
-  | { type: "VISIBLE_UPDATE"; payload: ItemPosition[] }
-  | { type: "ERROR"; payload: { message: string } }
-  | { type: "POSITION_RESULT"; payload: { requestId: string; position: ItemPosition | null } };
+    | { type: 'LAYOUT_COMPLETE'; payload: { totalHeight: number } }
+    | { type: 'VISIBLE_UPDATE'; payload: ItemPosition[] }
+    | { type: 'ERROR'; payload: { message: string } }
+    | { type: 'POSITION_RESULT'; payload: { requestId: string; position: ItemPosition | null } };
 
 // ============================================================================
 // Controller Types
@@ -93,18 +93,18 @@ export type WorkerOutMessage =
  * Public API exposed by ViewportController.
  */
 export interface IViewportController {
-  // Reactive signals (read-only from outside)
-  readonly visibleItems: () => ItemPosition[];
-  readonly totalHeight: () => number;
-  readonly isCalculating: () => boolean;
+    // Reactive signals (read-only from outside)
+    readonly visibleItems: () => ItemPosition[];
+    readonly totalHeight: () => number;
+    readonly isCalculating: () => boolean;
 
-  // Commands
-  setItems(items: LayoutItemInput[]): void;
-  setConfig(config: Partial<LayoutConfig>): void;
-  handleResize(width: number): void;
-  handleScroll(scrollTop: number, viewportHeight: number): void;
-  getItemPosition(id: number): Promise<ItemPosition | null>;
-  dispose(): void;
+    // Commands
+    setItems(items: LayoutItemInput[]): void;
+    setConfig(config: Partial<LayoutConfig>): void;
+    handleResize(width: number): void;
+    handleScroll(scrollTop: number, viewportHeight: number): void;
+    getItemPosition(id: number): Promise<ItemPosition | null>;
+    dispose(): void;
 }
 
 // ============================================================================
@@ -116,14 +116,14 @@ export interface IViewportController {
  * Used for O(1) visibility queries.
  */
 export interface SpatialCell {
-  startY: number;
-  endY: number;
-  itemIds: number[];
+    startY: number;
+    endY: number;
+    itemIds: number[];
 }
 
 /**
  * Configuration for the spatial grid.
  */
 export interface SpatialGridConfig {
-  cellHeight: number; // Height of each cell (default: 1000px)
+    cellHeight: number; // Height of each cell (default: 1000px)
 }

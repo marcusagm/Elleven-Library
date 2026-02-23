@@ -7,20 +7,18 @@ mod indexer;
 // Moved to media: metadata_reader, ffmpeg
 mod protocols;
 // Moved to thumbnails: thumbnail_worker, thumbnail_priority
-mod thumbnails;
 pub mod formats;
+mod thumbnails;
 // Moved to settings: config
-mod transcoding;
-mod streaming;
 pub mod library;
 mod media;
 mod settings;
-
+mod streaming;
+mod transcoding;
 
 use crate::db::Db;
 use crate::indexer::Indexer;
 use tauri::Manager;
-
 
 #[allow(clippy::expect_used)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -45,13 +43,19 @@ pub fn run() {
                 match Db::new(db_path).await {
                     Ok(db) => {
                         let db_arc = std::sync::Arc::new(db);
-                        let watcher_registry = std::sync::Arc::new(tokio::sync::Mutex::new(crate::indexer::WatcherRegistry::default()));
+                        let watcher_registry = std::sync::Arc::new(tokio::sync::Mutex::new(
+                            crate::indexer::WatcherRegistry::default(),
+                        ));
 
                         // Load Config
                         let app_config = crate::settings::config::load_config(&db_arc).await;
-                        let config_state = crate::settings::config::ConfigState(std::sync::Mutex::new(app_config.clone()));
+                        let config_state = crate::settings::config::ConfigState(
+                            std::sync::Mutex::new(app_config.clone()),
+                        );
 
-                        let priority_state = std::sync::Arc::new(crate::thumbnails::priority::ThumbnailPriorityState::default());
+                        let priority_state = std::sync::Arc::new(
+                            crate::thumbnails::priority::ThumbnailPriorityState::default(),
+                        );
 
                         handle.manage(db_arc.clone());
                         handle.manage(watcher_registry.clone());
@@ -69,12 +73,13 @@ pub fn run() {
 
                         // Start Watchers for Existing Roots
                         if let Ok(roots) = db_arc.get_all_root_folders().await {
-                             println!("INFO: Starting watchers for {} roots", roots.len());
-                             for (_id, path) in roots {
-                                 let indexer = Indexer::new(handle.clone(), &db_arc, watcher_registry.clone());
-                                 let root_path = std::path::PathBuf::from(path);
-                                 indexer.start_scan(root_path).await;
-                             }
+                            println!("INFO: Starting watchers for {} roots", roots.len());
+                            for (_id, path) in roots {
+                                let indexer =
+                                    Indexer::new(handle.clone(), &db_arc, watcher_registry.clone());
+                                let root_path = std::path::PathBuf::from(path);
+                                indexer.start_scan(root_path).await;
+                            }
                         }
                     }
                     Err(e) => eprintln!("Failed to initialize database: {}", e),
@@ -123,10 +128,8 @@ pub fn run() {
             settings::commands::get_setting,
             settings::commands::set_setting,
             settings::commands::run_db_maintenance,
-
             library::commands::formats::get_library_supported_formats,
             media::commands::get_audio_waveform_data,
-
             // Transcoding commands
             transcoding::commands::needs_transcoding,
             transcoding::commands::is_native_format,

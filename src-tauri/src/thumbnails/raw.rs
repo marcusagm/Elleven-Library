@@ -12,7 +12,7 @@ pub fn generate_raw_thumbnail(
     // 1. Try robust LibRaw extraction first (standard market formats)
     if let Ok(data) = extract_raw_preview_data(input_path) {
         if let Ok(img) = image::load_from_memory(&data) {
-             return process_image(img, output_path, size_px);
+            return process_image(img, output_path, size_px);
         }
     }
 
@@ -22,18 +22,26 @@ pub fn generate_raw_thumbnail(
     }
 
     // 3. Last Resort: Broad Binary Extractor (handles PNG/TIFF/XMP)
-    if let Ok((data, _)) = crate::thumbnails::extractors::binary_jpeg::extract_any_embedded(input_path) {
+    if let Ok((data, _)) =
+        crate::thumbnails::extractors::binary_jpeg::extract_any_embedded(input_path)
+    {
         if let Ok(img) = image::load_from_memory(&data) {
-             return process_image(img, output_path, size_px);
+            return process_image(img, output_path, size_px);
         }
     }
 
-    Err(format!("Failed all RAW preview extraction methods for {:?}", input_path).into())
+    Err(format!(
+        "Failed all RAW preview extraction methods for {:?}",
+        input_path
+    )
+    .into())
 }
 
 /// Scans the file for JPEG SOI markers and attempts to decode them.
 /// This is very resilient to weird offsets and truncated files.
-pub(crate) fn brute_force_scan_jpeg(path: &Path) -> Result<image::DynamicImage, Box<dyn std::error::Error>> {
+pub(crate) fn brute_force_scan_jpeg(
+    path: &Path,
+) -> Result<image::DynamicImage, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(path)?;
     let mmap = unsafe { memmap2::MmapOptions::new().map(&file)? };
 
@@ -45,7 +53,7 @@ pub(crate) fn brute_force_scan_jpeg(path: &Path) -> Result<image::DynamicImage, 
     let mut i = 0;
     while i < scan_limit - 4 {
         // JPEG SOI: FF D8 FF
-        if mmap[i] == 0xFF && mmap[i+1] == 0xD8 && mmap[i+2] == 0xFF {
+        if mmap[i] == 0xFF && mmap[i + 1] == 0xD8 && mmap[i + 2] == 0xFF {
             if let Ok(img) = image::load_from_memory(&mmap[i..]) {
                 let s = img.width() * img.height();
                 if s > best_size {
@@ -82,10 +90,11 @@ pub fn extract_raw_preview_data(path: &Path) -> Result<Vec<u8>, Box<dyn std::err
     // Use memory mapping instead of reading entire file to heap
     let mmap = unsafe { memmap2::MmapOptions::new().map(&file)? };
 
-    let mut raw = rsraw::RawImage::open(&mmap)
-        .map_err(|e| format!("LibRaw open error: {:?}", e))?;
+    let mut raw =
+        rsraw::RawImage::open(&mmap).map_err(|e| format!("LibRaw open error: {:?}", e))?;
 
-    let thumbs = raw.extract_thumbs()
+    let thumbs = raw
+        .extract_thumbs()
         .map_err(|e| format!("LibRaw extract_thumbs error: {:?}", e))?;
 
     // Find the largest thumbnail
@@ -105,8 +114,8 @@ pub(crate) fn process_image(
     output_path: &Path,
     size_px: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use fast_image_resize as fr;
     use crate::thumbnails::native::encode_webp_native;
+    use fast_image_resize as fr;
 
     let width = img.width();
     let height = img.height();
@@ -131,7 +140,8 @@ pub(crate) fn process_image(
     // Resize
     let mut dst_image = fr::images::Image::new(new_w, new_h, fr::PixelType::U8x4);
     let mut resizer = fr::Resizer::new();
-    let options = fr::ResizeOptions::new().resize_alg(fr::ResizeAlg::Convolution(fr::FilterType::Bilinear));
+    let options =
+        fr::ResizeOptions::new().resize_alg(fr::ResizeAlg::Convolution(fr::FilterType::Bilinear));
 
     resizer
         .resize(&src_image, &mut dst_image, Some(&options))

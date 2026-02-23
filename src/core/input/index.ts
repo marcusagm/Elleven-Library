@@ -8,46 +8,46 @@
 // =============================================================================
 
 export type {
-  // Platform & Modifiers
-  Platform,
-  ModifierKey,
-  ModifierState,
+    // Platform & Modifiers
+    Platform,
+    ModifierKey,
+    ModifierState,
 
-  // Scopes
-  InputScopeName,
-  InputScope,
+    // Scopes
+    InputScopeName,
+    InputScope,
 
-  // Tokens
-  TokenKind,
-  InputToken,
-  KeyboardToken,
-  PointerToken,
-  WheelToken,
-  GestureToken,
+    // Tokens
+    TokenKind,
+    InputToken,
+    KeyboardToken,
+    PointerToken,
+    WheelToken,
+    GestureToken,
 
-  // Gestures
-  GestureType,
-  SwipeDirection,
-  GesturePayload,
+    // Gestures
+    GestureType,
+    SwipeDirection,
+    GesturePayload,
 
-  // Shortcuts
-  ShortcutDefinition,
-  RegisteredShortcut,
-  ShortcutPayload,
+    // Shortcuts
+    ShortcutDefinition,
+    RegisteredShortcut,
+    ShortcutPayload,
 
-  // State
-  InputState,
-  ShortcutState,
+    // State
+    InputState,
+    ShortcutState,
 
-  // Options
-  CreateShortcutOptions,
-  CreateGestureOptions,
-  CreateInputScopeOptions,
-  InputProviderConfig,
+    // Options
+    CreateShortcutOptions,
+    CreateGestureOptions,
+    CreateInputScopeOptions,
+    InputProviderConfig,
 
-  // Serialization
-  SerializedShortcut,
-  ShortcutPreferences,
+    // Serialization
+    SerializedShortcut,
+    ShortcutPreferences
 } from './types';
 
 export { SCOPE_PRIORITIES } from './types';
@@ -62,35 +62,28 @@ export { InputProvider, useInput, useInputOptional } from './context';
 // Primitives
 // =============================================================================
 
-export {
-  createShortcut,
-  useShortcut,
-  useShortcuts
-} from './primitives/createShortcut';
+export { createShortcut, useShortcut, useShortcuts } from './primitives/createShortcut';
+
+export { useCommand, useCommands } from './primitives/useCommand';
 
 export {
-  useCommand,
-  useCommands
-} from './primitives/useCommand';
-
-export {
-  createKeyState,
-  createPressedKeys,
-  createAnyKeyPressed,
-  createAllKeysPressed,
+    createKeyState,
+    createPressedKeys,
+    createAnyKeyPressed,
+    createAllKeysPressed
 } from './primitives/createKeyState';
 
 export {
-  createInputScope,
-  createConditionalScope,
-  useScopeOnMount,
+    createInputScope,
+    createConditionalScope,
+    useScopeOnMount
 } from './primitives/createInputScope';
 
 export {
-  createGesture,
-  usePinchGesture,
-  useSwipeGesture,
-  useRotateGesture,
+    createGesture,
+    usePinchGesture,
+    useSwipeGesture,
+    useRotateGesture
 } from './primitives/createGesture';
 
 // =============================================================================
@@ -98,18 +91,18 @@ export {
 // =============================================================================
 
 export {
-  // Platform detection
-  detectPlatform,
-  isMac,
+    // Platform detection
+    detectPlatform,
+    isMac,
 
-  // Normalization
-  canonicalizeShortcut,
-  parseShortcutString,
-  normalizeKeyCode,
+    // Normalization
+    canonicalizeShortcut,
+    parseShortcutString,
+    normalizeKeyCode,
 
-  // Display formatting
-  formatShortcutForDisplay,
-  getShortcutDisplayParts,
+    // Display formatting
+    formatShortcutForDisplay,
+    getShortcutDisplayParts
 } from './normalizer';
 
 // =============================================================================

@@ -3,8 +3,8 @@
 //! Sketch files are ZIP archives containing JSON metadata and assets.
 //! Previews are usually stored in `previews/preview.png`.
 
-use std::path::Path;
 use std::io::Read;
+use std::path::Path;
 // No custom error imports needed as we use Boxed error
 
 /// Extracts the preview image from a Sketch file.
@@ -19,16 +19,15 @@ use std::io::Read;
 /// ```rust
 /// let (data, mime) = extract_sketch_preview(path)?;
 /// ```
-pub fn extract_sketch_preview(sketch_file_path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_sketch_preview(
+    sketch_file_path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let sketch_file = std::fs::File::open(sketch_file_path)?;
     let mut zip_archive = zip::ZipArchive::new(sketch_file)?;
 
     // Sketch standard: previews/preview.png
     // We check both lowercase and uppercase variants just in case
-    let candidate_internal_paths = [
-        "previews/preview.png",
-        "Previews/preview.png",
-    ];
+    let candidate_internal_paths = ["previews/preview.png", "Previews/preview.png"];
 
     for internal_path in candidate_internal_paths {
         if let Ok(mut zip_entry) = zip_archive.by_name(internal_path) {
@@ -52,5 +51,9 @@ pub fn extract_sketch_preview(sketch_file_path: &Path) -> Result<(Vec<u8>, Strin
         }
     }
 
-    Err(format!("No preview found in Sketch file: {}", sketch_file_path.display()).into())
+    Err(format!(
+        "No preview found in Sketch file: {}",
+        sketch_file_path.display()
+    )
+    .into())
 }

@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect } from 'solid-js';
+import { Component, createSignal, createEffect, untrack } from 'solid-js';
 import { Info, FileText, Calendar, HardDrive } from 'lucide-solid';
 import { AccordionItem } from '../../../ui/Accordion';
 import { Input } from '../../../ui/Input';
@@ -23,13 +23,13 @@ const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     try {
         return new Date(dateStr).toLocaleDateString();
-    } catch (e) {
+    } catch {
         return '-';
     }
 };
 
 export const CommonMetadata: Component<CommonMetadataProps> = props => {
-    const [notes, setNotes] = createSignal(props.item?.notes || '');
+    const [notes, setNotes] = createSignal(untrack(() => props.item?.notes || ''));
     const lib = useLibrary();
 
     createEffect(() => {

@@ -7,24 +7,24 @@
 //! - /playlist/{path} - Generate M3U8 playlist dynamically
 //! - /segment/{path}/{index} - Transcode and serve video segments
 
+use axum::extract::Query;
 use axum::{
+    body::Body,
+    extract::{Path, State},
+    http::{header, StatusCode},
+    response::{IntoResponse, Response},
     routing::get,
     Router,
-    extract::{Path, State},
-    response::{IntoResponse, Response},
-    http::{StatusCode, header},
-    body::Body,
 };
-use axum::extract::Query;
 use std::collections::HashMap;
-use tower_http::cors::{CorsLayer, Any};
-use std::time::Duration;
-use std::sync::Arc;
 use std::path::PathBuf;
-use tokio::sync::RwLock;
+use std::sync::Arc;
+use std::time::Duration;
 use tauri::Manager;
+use tokio::sync::RwLock;
+use tower_http::cors::{Any, CorsLayer};
 
-use super::{probe, playlist, segment, process_manager::ProcessManager, linear::LinearManager};
+use super::{linear::LinearManager, playlist, probe, process_manager::ProcessManager, segment};
 use crate::transcoding::cache::TranscodeCache;
 
 /// Default port for the HLS streaming server
@@ -56,7 +56,8 @@ impl StreamingServer {
 
     /// Start the server on a background task
     pub async fn start(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let app_data = self.app_handle
+        let app_data = self
+            .app_handle
             .path()
             .app_local_data_dir()
             .map_err(|e| format!("Failed to get app data dir: {}", e))?;
@@ -126,16 +127,16 @@ async fn health_handler() -> impl IntoResponse {
 }
 
 /// Probe endpoint - returns video metadata
-async fn probe_handler(
-    State(state): State<AppState>,
-    Path(path): Path<String>,
-) -> Response {
+async fn probe_handler(State(state): State<AppState>, Path(path): Path<String>) -> Response {
     let file_path = decode_path(&path);
     println!("DEBUG: Probe request for: {:?}", file_path);
 
     match probe::get_video_info(&state.app_handle, &file_path).await {
         Ok(info) => {
-            println!("DEBUG: Probe success - native: {}, codec: {:?}", info.is_native, info.video_codec);
+            println!(
+                "DEBUG: Probe success - native: {}, codec: {:?}",
+                info.is_native, info.video_codec
+            );
             let json = serde_json::to_string(&info).unwrap_or_default();
             Response::builder()
                 .status(StatusCode::OK)
@@ -160,7 +161,10 @@ async fn playlist_handler(
     Query(params): Query<HashMap<String, String>>,
 ) -> Response {
     let file_path = decode_path(&path);
-    let quality = params.get("quality").map(|s| s.as_str()).unwrap_or("standard");
+    let quality = params
+        .get("quality")
+        .map(|s| s.as_str())
+        .unwrap_or("standard");
 
     // First, probe the video to get duration
     let info = match probe::get_video_info(&state.app_handle, &file_path).await {
@@ -189,7 +193,10 @@ async fn segment_handler(
     Path(path): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Response {
-    let quality = params.get("quality").map(|s| s.as_str()).unwrap_or("standard");
+    let quality = params
+        .get("quality")
+        .map(|s| s.as_str())
+        .unwrap_or("standard");
     // Path format: /segment/{encoded_file_path}/{index}
     // We need to parse out the index from the end
     let (file_path, index) = match parse_segment_path(&path) {
@@ -210,15 +217,15 @@ async fn segment_handler(
         index,
         SEGMENT_DURATION,
         quality,
-    ).await {
-        Ok(data) => {
-            Response::builder()
-                .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, "video/MP2T")
-                .header(header::CACHE_CONTROL, "max-age=3600")
-                .body(Body::from(data))
-                .unwrap()
-        }
+    )
+    .await
+    {
+        Ok(data) => Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "video/MP2T")
+            .header(header::CACHE_CONTROL, "max-age=3600")
+            .body(Body::from(data))
+            .unwrap(),
         Err(e) => {
             eprintln!("SEGMENT_ERROR: {}", e);
             Response::builder()
@@ -253,13 +260,16 @@ async fn linear_hls_handler(
 
         let file_path = PathBuf::from(decoded_path);
         if !file_path.exists() {
-             return Response::builder()
+            return Response::builder()
                 .status(StatusCode::NOT_FOUND)
                 .body(Body::from(format!("File not found: {:?}", file_path)))
                 .unwrap();
         }
 
-        let quality = params.get("quality").map(|s| s.as_str()).unwrap_or("standard");
+        let quality = params
+            .get("quality")
+            .map(|s| s.as_str())
+            .unwrap_or("standard");
 
         match state.linear_manager.get_or_start(&file_path, quality).await {
             Ok(temp_dir) => {
@@ -275,20 +285,16 @@ async fn linear_hls_handler(
 
                 if playlist_path.exists() {
                     match tokio::fs::read_to_string(&playlist_path).await {
-                         Ok(content) => {
-                            Response::builder()
-                                .status(StatusCode::OK)
-                                .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
-                                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                                .body(Body::from(content))
-                                .unwrap()
-                         }
-                         Err(e) => {
-                             Response::builder()
-                                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                                .body(Body::from(format!("Failed to read playlist: {}", e)))
-                                .unwrap()
-                         }
+                        Ok(content) => Response::builder()
+                            .status(StatusCode::OK)
+                            .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
+                            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                            .body(Body::from(content))
+                            .unwrap(),
+                        Err(e) => Response::builder()
+                            .status(StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(Body::from(format!("Failed to read playlist: {}", e)))
+                            .unwrap(),
                     }
                 } else {
                     Response::builder()
@@ -297,12 +303,10 @@ async fn linear_hls_handler(
                         .unwrap()
                 }
             }
-            Err(e) => {
-                Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Body::from(format!("Failed to start streaming: {}", e)))
-                    .unwrap()
-            }
+            Err(e) => Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(format!("Failed to start streaming: {}", e)))
+                .unwrap(),
         }
     }
     // 2. Handle Segment Request
@@ -320,31 +324,41 @@ async fn linear_hls_handler(
             let file_path = PathBuf::from(decoded_file_path);
 
             if let Some(temp_dir) = state.linear_manager.get_temp_dir(&file_path).await {
-                 let segment_path = temp_dir.join(segment_name);
-                 if segment_path.exists() {
-                     match tokio::fs::read(&segment_path).await {
-                         Ok(data) => {
-                             Response::builder()
-                                .status(StatusCode::OK)
-                                .header(header::CONTENT_TYPE, "video/MP2T")
-                                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                                .header(header::CACHE_CONTROL, "no-cache")
-                                .body(Body::from(data))
+                let segment_path = temp_dir.join(segment_name);
+                if segment_path.exists() {
+                    match tokio::fs::read(&segment_path).await {
+                        Ok(data) => Response::builder()
+                            .status(StatusCode::OK)
+                            .header(header::CONTENT_TYPE, "video/MP2T")
+                            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                            .header(header::CACHE_CONTROL, "no-cache")
+                            .body(Body::from(data))
+                            .unwrap(),
+                        Err(e) => {
+                            eprintln!("Error reading segment {:?}: {}", segment_path, e);
+                            Response::builder()
+                                .status(StatusCode::NOT_FOUND)
+                                .body(Body::empty())
                                 .unwrap()
-                         }
-                         Err(e) => {
-                             eprintln!("Error reading segment {:?}: {}", segment_path, e);
-                             Response::builder().status(StatusCode::NOT_FOUND).body(Body::empty()).unwrap()
-                         }
-                     }
-                 } else {
-                     Response::builder().status(StatusCode::NOT_FOUND).body(Body::from("Segment file not found")).unwrap()
-                 }
+                        }
+                    }
+                } else {
+                    Response::builder()
+                        .status(StatusCode::NOT_FOUND)
+                        .body(Body::from("Segment file not found"))
+                        .unwrap()
+                }
             } else {
-                 Response::builder().status(StatusCode::NOT_FOUND).body(Body::from("Session not active for this file")).unwrap()
+                Response::builder()
+                    .status(StatusCode::NOT_FOUND)
+                    .body(Body::from("Session not active for this file"))
+                    .unwrap()
             }
         } else {
-             Response::builder().status(StatusCode::BAD_REQUEST).body(Body::from("Invalid segment path")).unwrap()
+            Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Body::from("Invalid segment path"))
+                .unwrap()
         }
     } else {
         Response::builder()

@@ -33,7 +33,7 @@ export interface HlsPlayerState {
 const DEFAULT_OPTIONS: Required<HlsPlayerOptions> = {
     debug: false,
     autoStartLoad: true,
-    seekDebounceMs: 150,
+    seekDebounceMs: 150
 };
 
 /** HLS streaming server base URL */
@@ -95,7 +95,7 @@ export async function isHlsServerAvailable(): Promise<boolean> {
     try {
         console.log(`DEBUG: Checking HLS server at ${HLS_SERVER_URL}/health`);
         const response = await fetch(`${HLS_SERVER_URL}/health`, {
-            method: 'GET',
+            method: 'GET'
         });
         console.log(`DEBUG: HLS server response status: ${response.status}`);
         return response.ok;
@@ -167,7 +167,7 @@ export class HlsPlayerManager {
             // Retry configuration
             fragLoadingMaxRetry: 3,
             manifestLoadingMaxRetry: 3,
-            levelLoadingMaxRetry: 3,
+            levelLoadingMaxRetry: 3
         });
 
         this.hls.attachMedia(mediaElement);
@@ -315,7 +315,10 @@ export function createHlsPlayer(
         if (isHlsUrl(source)) {
             setIsHlsActive(true);
 
-            if (HlsPlayerManager.isSupported() || media.canPlayType('application/vnd.apple.mpegurl')) {
+            if (
+                HlsPlayerManager.isSupported() ||
+                media.canPlayType('application/vnd.apple.mpegurl')
+            ) {
                 manager = new HlsPlayerManager(options);
                 manager.attach(media, source);
 
@@ -381,6 +384,6 @@ export function createHlsPlayer(
         /**
          * Get the underlying manager instance
          */
-        getManager: () => manager,
+        getManager: () => manager
     };
 }

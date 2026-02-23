@@ -1,14 +1,14 @@
-import { ParentComponent } from "solid-js";
-import { X, ChevronLeft, ChevronRight } from "lucide-solid";
-import { useViewport, useLibrary } from "../../../../core/hooks";
-import { Button } from "../../../ui/Button";
-import { ButtonGroup } from "../../../ui/ButtonGroup";
-import { Tooltip } from "../../../ui/Tooltip";
-import { ShortcutHint } from "./ToolbarUtils";
-import "../item-view-toolbar.css";
+import { ParentComponent } from 'solid-js';
+import { X, ChevronLeft, ChevronRight } from 'lucide-solid';
+import { useViewport, useLibrary } from '../../../../core/hooks';
+import { Button } from '../../../ui/Button';
+import { ButtonGroup } from '../../../ui/ButtonGroup';
+import { Tooltip } from '../../../ui/Tooltip';
+import { ShortcutHint } from './ToolbarUtils';
+import '../item-view-toolbar.css';
 // import { useItemViewContext } from "../ItemViewContext";
 
-export const BaseToolbar: ParentComponent = (props) => {
+export const BaseToolbar: ParentComponent = props => {
     const viewport = useViewport();
     const lib = useLibrary();
     // We might need context later, but for now just viewport/lib for nav
@@ -18,7 +18,7 @@ export const BaseToolbar: ParentComponent = (props) => {
         const items = lib.items;
         const currentId = viewport.activeItemId();
         const currentIndex = items.findIndex(i => i.id.toString() === currentId);
-        
+
         if (currentIndex !== -1) {
             const nextIndex = (currentIndex + direction + items.length) % items.length;
             viewport.openItem(items[nextIndex].id.toString());

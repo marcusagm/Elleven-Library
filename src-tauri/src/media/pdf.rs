@@ -1,5 +1,5 @@
-use pdfium_render::prelude::*;
 use image::DynamicImage;
+use pdfium_render::prelude::*;
 use std::io::Cursor;
 use tauri::Manager;
 
@@ -10,19 +10,15 @@ use tauri::Manager;
 pub fn render_pdf_data_to_image<R: tauri::Runtime>(
     app_handle: Option<&tauri::AppHandle<R>>,
     pdf_data: &[u8],
-    size_px: u32
+    size_px: u32,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-
     // 1. Try to find the bundled library
     let mut bindings = None;
 
     if let Some(handle) = app_handle {
         if let Ok(resource_dir) = handle.path().resource_dir() {
             let lib_name = Pdfium::pdfium_platform_library_name_at_path("./");
-            let bundled_path = resource_dir
-                .join("binaries")
-                .join("pdfium")
-                .join(&lib_name);
+            let bundled_path = resource_dir.join("binaries").join("pdfium").join(&lib_name);
 
             if bundled_path.exists() {
                 bindings = Pdfium::bind_to_library(bundled_path).ok();
@@ -76,7 +72,7 @@ pub fn render_pdf_data_to_image<R: tauri::Runtime>(
 
     let img = DynamicImage::ImageRgba8(
         image::RgbaImage::from_raw(target_w, target_h, rgba_data)
-            .ok_or("Failed to create image from bitmap")?
+            .ok_or("Failed to create image from bitmap")?,
     );
 
     let mut output = Vec::new();

@@ -1,0 +1,56 @@
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/features/inspector/base/CommonMetadata.tsx
+  26:14  error  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/features/itemview/renderers/model/ModelViewer.tsx
+   8:5   error  ES2015 module syntax is preferred over namespaces                                                                    @typescript-eslint/no-namespace
+  79:18  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/features/search/SmartFoldersSidebarPanel.tsx
+  140:34  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/features/settings/GeneralPanel.tsx
+  66:18  error  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  77:22  error  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/features/tags/TagDeleteModal.tsx
+  52:30  error  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/features/viewport/AssetCard.tsx
+  45:1  error  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/features/viewport/VirtualGridView.tsx
+  32:12  error  '_containerWidth' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/features/viewport/VirtualMasonry.tsx
+  44:12  error  '_containerWidth' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/ui/AudioPlayer/useAudioPlayer.ts
+  173:17  error  Unexpected lexical declaration in case block  no-case-declarations
+  175:17  error  Unexpected lexical declaration in case block  no-case-declarations
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/ui/Select.tsx
+  202:17  error  Unexpected lexical declaration in case block  no-case-declarations
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/components/ui/TagInput.tsx
+  159:17  error  Unexpected lexical declaration in case block  no-case-declarations
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/core/dnd/assetDirective.ts
+   30:9  error  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  193:5  error  ES2015 module syntax is preferred over namespaces                      @typescript-eslint/no-namespace
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/core/dnd/assetDragSource.ts
+  113:5  error  ES2015 module syntax is preferred over namespaces  @typescript-eslint/no-namespace
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/core/dnd/strategies/TagDropStrategy.ts
+  148:18  error  '_item' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/core/viewport/ViewportController.ts
+  256:21  error  Unexpected lexical declaration in case block  no-case-declarations
+
+/Users/marcusmaia/Documents/Desenvolvimento/Mundam/src/core/viewport/layout.worker.ts
+  80:17  error  Unexpected lexical declaration in case block  no-case-declarations
+  81:17  error  Unexpected lexical declaration in case block  no-case-declarations
+
+✖ 21 problems (21 errors, 0 warnings)
+

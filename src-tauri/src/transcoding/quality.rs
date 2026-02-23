@@ -18,18 +18,18 @@ impl TranscodeQuality {
     /// Using CRF instead of bitrate for better quality-to-size ratio
     pub fn crf(&self) -> u8 {
         match self {
-            TranscodeQuality::Preview => 28,   // Fast, acceptable quality
-            TranscodeQuality::Standard => 23,  // Good quality (x264 default)
-            TranscodeQuality::High => 18,      // High quality
+            TranscodeQuality::Preview => 28,  // Fast, acceptable quality
+            TranscodeQuality::Standard => 23, // Good quality (x264 default)
+            TranscodeQuality::High => 18,     // High quality
         }
     }
 
     /// Video bitrate in bits per second (fallback for streams)
     pub fn video_bitrate(&self) -> u32 {
         match self {
-            TranscodeQuality::Preview => 4_000_000,   // 4 Mbps
-            TranscodeQuality::Standard => 8_000_000,  // 8 Mbps
-            TranscodeQuality::High => 15_000_000,     // 15 Mbps
+            TranscodeQuality::Preview => 4_000_000,  // 4 Mbps
+            TranscodeQuality::Standard => 8_000_000, // 8 Mbps
+            TranscodeQuality::High => 15_000_000,    // 15 Mbps
         }
     }
 
@@ -100,8 +100,14 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-        assert_eq!(TranscodeQuality::from_str("preview"), Some(TranscodeQuality::Preview));
-        assert_eq!(TranscodeQuality::from_str("HIGH"), Some(TranscodeQuality::High));
+        assert_eq!(
+            TranscodeQuality::from_str("preview"),
+            Some(TranscodeQuality::Preview)
+        );
+        assert_eq!(
+            TranscodeQuality::from_str("HIGH"),
+            Some(TranscodeQuality::High)
+        );
         assert_eq!(TranscodeQuality::from_str("invalid"), None);
     }
 }

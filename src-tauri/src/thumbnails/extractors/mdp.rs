@@ -8,13 +8,13 @@
 //!    tiles, and composites them with alpha blending for a high-resolution preview.
 //! 2. **Thumbnail Extraction** (fallback): Reads the embedded low-res thumbnail.
 
+use byteorder::{LittleEndian, ReadBytesExt};
+use flate2::read::ZlibDecoder;
+use image::ImageEncoder;
+use quick_xml::reader::Reader;
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
-use byteorder::{LittleEndian, ReadBytesExt};
-use quick_xml::reader::Reader;
-use flate2::read::ZlibDecoder;
-use image::ImageEncoder;
 
 /// Magic bytes at the start of every MDP file.
 const MDP_MAGIC: &[u8; 7] = b"mdipack";
@@ -129,7 +129,8 @@ fn render_mdp_canvas(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::erro
     }
 
     // Collect the PAC block names we need to find.
-    let needed_block_names: Vec<String> = header.visible_layers
+    let needed_block_names: Vec<String> = header
+        .visible_layers
         .iter()
         .map(|layer| layer.binary_block_name.clone())
         .collect();
@@ -160,13 +161,12 @@ fn render_mdp_canvas(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::erro
 
     // Convert RGBA buffer to PNG.
     let mut png_output = Vec::new();
-    image::codecs::png::PngEncoder::new(std::io::Cursor::new(&mut png_output))
-        .write_image(
-            &canvas_buffer,
-            header.canvas_width,
-            header.canvas_height,
-            image::ExtendedColorType::Rgba8,
-        )?;
+    image::codecs::png::PngEncoder::new(std::io::Cursor::new(&mut png_output)).write_image(
+        &canvas_buffer,
+        header.canvas_width,
+        header.canvas_height,
+        image::ExtendedColorType::Rgba8,
+    )?;
 
     Ok((png_output, "image/png".to_string()))
 }
@@ -181,11 +181,14 @@ fn extract_mdp_thumbnail(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::
 
     let header = parse_mdp_header(&mut reader)?;
 
-    let thumb_info = header.thumbnail
-        .ok_or(MdpError::NoPreview)?;
+    let thumb_info = header.thumbnail.ok_or(MdpError::NoPreview)?;
 
-    let blocks = read_pac_blocks(&mut reader, &[thumb_info.binary_block_name.clone()])?;
-    let thumb_data = blocks.get(&thumb_info.binary_block_name)
+    let blocks = read_pac_blocks(
+        &mut reader,
+        std::slice::from_ref(&thumb_info.binary_block_name),
+    )?;
+    let thumb_data = blocks
+        .get(&thumb_info.binary_block_name)
         .ok_or(MdpError::NoPreview)?;
 
     // Thumbnail is raw BGRA pixels. Swap to RGBA.
@@ -195,13 +198,12 @@ fn extract_mdp_thumbnail(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::
     }
 
     let mut png_output = Vec::new();
-    image::codecs::png::PngEncoder::new(std::io::Cursor::new(&mut png_output))
-        .write_image(
-            &rgba_pixels,
-            thumb_info.width,
-            thumb_info.height,
-            image::ExtendedColorType::Rgba8,
-        )?;
+    image::codecs::png::PngEncoder::new(std::io::Cursor::new(&mut png_output)).write_image(
+        &rgba_pixels,
+        thumb_info.width,
+        thumb_info.height,
+        image::ExtendedColorType::Rgba8,
+    )?;
 
     Ok((png_output, "image/png".to_string()))
 }
@@ -214,7 +216,9 @@ fn extract_mdp_thumbnail(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::
 ///
 /// # Errors
 /// Returns error if the file is not a valid MDP format.
-fn parse_mdp_header<R: Read + Seek>(reader: &mut R) -> Result<MdpHeader, Box<dyn std::error::Error>> {
+fn parse_mdp_header<R: Read + Seek>(
+    reader: &mut R,
+) -> Result<MdpHeader, Box<dyn std::error::Error>> {
     // 1. Validate Header Magic: "mdipack" (7 bytes).
     let mut magic = [0u8; 7];
     reader.read_exact(&mut magic)?;
@@ -232,8 +236,8 @@ fn parse_mdp_header<R: Read + Seek>(reader: &mut R) -> Result<MdpHeader, Box<dyn
     // 4. Extract XML Metadata.
     let mut xml_buffer = vec![0u8; xml_length as usize];
     reader.read_exact(&mut xml_buffer)?;
-    let xml_string = String::from_utf8(xml_buffer)
-        .map_err(|error| MdpError::Xml(error.to_string()))?;
+    let xml_string =
+        String::from_utf8(xml_buffer).map_err(|error| MdpError::Xml(error.to_string()))?;
 
     // 5. Parse XML to extract layer info and thumbnail info.
     let mut visible_layers = Vec::new();
@@ -247,7 +251,8 @@ fn parse_mdp_header<R: Read + Seek>(reader: &mut R) -> Result<MdpHeader, Box<dyn
 
     loop {
         match xml_parser.read_event_into(&mut event_buffer) {
-            Ok(quick_xml::events::Event::Start(element)) | Ok(quick_xml::events::Event::Empty(element)) => {
+            Ok(quick_xml::events::Event::Start(element))
+            | Ok(quick_xml::events::Event::Empty(element)) => {
                 match element.name().as_ref() {
                     b"Thumb" => {
                         let mut blob_name = String::new();
@@ -255,14 +260,33 @@ fn parse_mdp_header<R: Read + Seek>(reader: &mut R) -> Result<MdpHeader, Box<dyn
                         let mut height = 0u32;
                         for attribute in element.attributes().flatten() {
                             match attribute.key.as_ref() {
-                                b"bin" => blob_name = attribute.unescape_value().unwrap_or_default().into_owned(),
-                                b"width" => width = attribute.unescape_value().unwrap_or_default().parse().unwrap_or(0),
-                                b"height" => height = attribute.unescape_value().unwrap_or_default().parse().unwrap_or(0),
+                                b"bin" => {
+                                    blob_name =
+                                        attribute.unescape_value().unwrap_or_default().into_owned()
+                                }
+                                b"width" => {
+                                    width = attribute
+                                        .unescape_value()
+                                        .unwrap_or_default()
+                                        .parse()
+                                        .unwrap_or(0)
+                                }
+                                b"height" => {
+                                    height = attribute
+                                        .unescape_value()
+                                        .unwrap_or_default()
+                                        .parse()
+                                        .unwrap_or(0)
+                                }
                                 _ => {}
                             }
                         }
                         if !blob_name.is_empty() && width > 0 && height > 0 {
-                            thumbnail_info = Some(MdpThumbInfo { binary_block_name: blob_name, width, height });
+                            thumbnail_info = Some(MdpThumbInfo {
+                                binary_block_name: blob_name,
+                                width,
+                                height,
+                            });
                         }
                     }
                     b"Layer" => {
@@ -278,15 +302,59 @@ fn parse_mdp_header<R: Read + Seek>(reader: &mut R) -> Result<MdpHeader, Box<dyn
 
                         for attribute in element.attributes().flatten() {
                             match attribute.key.as_ref() {
-                                b"bin" => blob_name = attribute.unescape_value().unwrap_or_default().into_owned(),
-                                b"width" => width = attribute.unescape_value().unwrap_or_default().parse().unwrap_or(0),
-                                b"height" => height = attribute.unescape_value().unwrap_or_default().parse().unwrap_or(0),
-                                b"ofsx" => offset_x = attribute.unescape_value().unwrap_or_default().parse().unwrap_or(0),
-                                b"ofsy" => offset_y = attribute.unescape_value().unwrap_or_default().parse().unwrap_or(0),
-                                b"alpha" => alpha = attribute.unescape_value().unwrap_or_default().parse().unwrap_or(255),
-                                b"visible" => visible = attribute.unescape_value().unwrap_or_default().as_ref() == "true",
-                                b"type" => layer_type = attribute.unescape_value().unwrap_or_default().into_owned(),
-                                b"color" => color_hex = Some(attribute.unescape_value().unwrap_or_default().into_owned()),
+                                b"bin" => {
+                                    blob_name =
+                                        attribute.unescape_value().unwrap_or_default().into_owned()
+                                }
+                                b"width" => {
+                                    width = attribute
+                                        .unescape_value()
+                                        .unwrap_or_default()
+                                        .parse()
+                                        .unwrap_or(0)
+                                }
+                                b"height" => {
+                                    height = attribute
+                                        .unescape_value()
+                                        .unwrap_or_default()
+                                        .parse()
+                                        .unwrap_or(0)
+                                }
+                                b"ofsx" => {
+                                    offset_x = attribute
+                                        .unescape_value()
+                                        .unwrap_or_default()
+                                        .parse()
+                                        .unwrap_or(0)
+                                }
+                                b"ofsy" => {
+                                    offset_y = attribute
+                                        .unescape_value()
+                                        .unwrap_or_default()
+                                        .parse()
+                                        .unwrap_or(0)
+                                }
+                                b"alpha" => {
+                                    alpha = attribute
+                                        .unescape_value()
+                                        .unwrap_or_default()
+                                        .parse()
+                                        .unwrap_or(255)
+                                }
+                                b"visible" => {
+                                    visible =
+                                        attribute.unescape_value().unwrap_or_default().as_ref()
+                                            == "true"
+                                }
+                                b"type" => {
+                                    layer_type =
+                                        attribute.unescape_value().unwrap_or_default().into_owned()
+                                }
+                                b"color" => {
+                                    color_hex = Some(
+                                        attribute.unescape_value().unwrap_or_default().into_owned(),
+                                    )
+                                }
                                 _ => {}
                             }
                         }
@@ -429,10 +497,26 @@ fn composite_layer_onto_canvas(
             break;
         }
 
-        let tile_column = u32::from_le_bytes(block_data[offset..offset + 4].try_into().unwrap_or_default());
-        let tile_row = u32::from_le_bytes(block_data[offset + 4..offset + 8].try_into().unwrap_or_default());
-        let compression_type = u32::from_le_bytes(block_data[offset + 8..offset + 12].try_into().unwrap_or_default());
-        let compressed_data_size = u32::from_le_bytes(block_data[offset + 12..offset + 16].try_into().unwrap_or_default());
+        let tile_column = u32::from_le_bytes(
+            block_data[offset..offset + 4]
+                .try_into()
+                .unwrap_or_default(),
+        );
+        let tile_row = u32::from_le_bytes(
+            block_data[offset + 4..offset + 8]
+                .try_into()
+                .unwrap_or_default(),
+        );
+        let compression_type = u32::from_le_bytes(
+            block_data[offset + 8..offset + 12]
+                .try_into()
+                .unwrap_or_default(),
+        );
+        let compressed_data_size = u32::from_le_bytes(
+            block_data[offset + 12..offset + 16]
+                .try_into()
+                .unwrap_or_default(),
+        );
 
         offset += 16;
 
@@ -569,6 +653,7 @@ fn parse_layer_color(color_hex: &Option<String>) -> (u8, u8, u8) {
 ///
 /// Applies the layer-level opacity (`layer_alpha`) as a multiplier on top of
 /// each pixel's individual alpha channel.
+#[allow(clippy::too_many_arguments)]
 fn blit_tile_onto_canvas(
     canvas_buffer: &mut [u8],
     canvas_width: u32,
@@ -585,14 +670,20 @@ fn blit_tile_onto_canvas(
             let dest_x = global_x + local_x as i32;
             let dest_y = global_y + local_y as i32;
 
-            if dest_x < 0 || dest_y < 0 || dest_x >= canvas_width as i32 || dest_y >= canvas_height as i32 {
+            if dest_x < 0
+                || dest_y < 0
+                || dest_x >= canvas_width as i32
+                || dest_y >= canvas_height as i32
+            {
                 continue;
             }
 
             let tile_pixel_index = ((local_y * tile_width + local_x) * 4) as usize;
             let canvas_pixel_index = ((dest_y as u32 * canvas_width + dest_x as u32) * 4) as usize;
 
-            if tile_pixel_index + 3 >= tile_rgba.len() || canvas_pixel_index + 3 >= canvas_buffer.len() {
+            if tile_pixel_index + 3 >= tile_rgba.len()
+                || canvas_pixel_index + 3 >= canvas_buffer.len()
+            {
                 continue;
             }
 
@@ -600,7 +691,8 @@ fn blit_tile_onto_canvas(
             let source_green = tile_rgba[tile_pixel_index + 1] as u32;
             let source_blue = tile_rgba[tile_pixel_index + 2] as u32;
             // Apply layer-level opacity to the pixel's own alpha.
-            let source_alpha = ((tile_rgba[tile_pixel_index + 3] as u32) * (layer_alpha as u32)) / 255;
+            let source_alpha =
+                ((tile_rgba[tile_pixel_index + 3] as u32) * (layer_alpha as u32)) / 255;
 
             if source_alpha == 0 {
                 continue;
@@ -614,9 +706,15 @@ fn blit_tile_onto_canvas(
             // Porter-Duff "Over" operator.
             let output_alpha = source_alpha + (dest_alpha * (255 - source_alpha)) / 255;
             if output_alpha > 0 {
-                canvas_buffer[canvas_pixel_index] = ((source_red * source_alpha + dest_red * dest_alpha * (255 - source_alpha) / 255) / output_alpha) as u8;
-                canvas_buffer[canvas_pixel_index + 1] = ((source_green * source_alpha + dest_green * dest_alpha * (255 - source_alpha) / 255) / output_alpha) as u8;
-                canvas_buffer[canvas_pixel_index + 2] = ((source_blue * source_alpha + dest_blue * dest_alpha * (255 - source_alpha) / 255) / output_alpha) as u8;
+                canvas_buffer[canvas_pixel_index] = ((source_red * source_alpha
+                    + dest_red * dest_alpha * (255 - source_alpha) / 255)
+                    / output_alpha) as u8;
+                canvas_buffer[canvas_pixel_index + 1] = ((source_green * source_alpha
+                    + dest_green * dest_alpha * (255 - source_alpha) / 255)
+                    / output_alpha) as u8;
+                canvas_buffer[canvas_pixel_index + 2] = ((source_blue * source_alpha
+                    + dest_blue * dest_alpha * (255 - source_alpha) / 255)
+                    / output_alpha) as u8;
                 canvas_buffer[canvas_pixel_index + 3] = output_alpha as u8;
             }
         }
@@ -639,7 +737,9 @@ mod tests {
 
     #[test]
     fn test_extract_mdp_preview_full_render() {
-        let path = sample_path("file-samples/Imagens/Design/MediBang Paint - Firealpaca/aula_silhueta.mdp");
+        let path = sample_path(
+            "file-samples/Imagens/Design/MediBang Paint - Firealpaca/aula_silhueta.mdp",
+        );
         if !path.exists() {
             println!("Skipping: sample file not found at {:?}", path);
             return;
@@ -655,14 +755,20 @@ mod tests {
 
     #[test]
     fn test_extract_mdp_thumbnail_fallback() {
-        let path = sample_path("file-samples/Imagens/Design/MediBang Paint - Firealpaca/aula_silhueta.mdp");
+        let path = sample_path(
+            "file-samples/Imagens/Design/MediBang Paint - Firealpaca/aula_silhueta.mdp",
+        );
         if !path.exists() {
             println!("Skipping: sample file not found at {:?}", path);
             return;
         }
 
         let result = extract_mdp_thumbnail(&path);
-        assert!(result.is_ok(), "Thumbnail extraction failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Thumbnail extraction failed: {:?}",
+            result.err()
+        );
         let (data, mime) = result.unwrap();
         assert_eq!(mime, "image/png");
         assert!(!data.is_empty());
@@ -670,7 +776,9 @@ mod tests {
 
     #[test]
     fn test_render_small_mdp_file() {
-        let path = sample_path("file-samples/Imagens/Design/MediBang Paint - Firealpaca/checkerboard5.mdp");
+        let path = sample_path(
+            "file-samples/Imagens/Design/MediBang Paint - Firealpaca/checkerboard5.mdp",
+        );
         if !path.exists() {
             println!("Skipping: sample file not found at {:?}", path);
             return;
@@ -685,7 +793,9 @@ mod tests {
 
     #[test]
     fn test_render_yohaku_mdp_file() {
-        let path = sample_path("file-samples/Imagens/Design/MediBang Paint - Firealpaca/yohaku_370x320.mdp");
+        let path = sample_path(
+            "file-samples/Imagens/Design/MediBang Paint - Firealpaca/yohaku_370x320.mdp",
+        );
         if !path.exists() {
             println!("Skipping: sample file not found at {:?}", path);
             return;

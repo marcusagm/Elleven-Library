@@ -3,11 +3,11 @@
 //! This module implements a parser for the CLIP file format (CSFCHUNK) to locate
 //! the internal SQLite database (CHNKSQLi) and extract the rendered canvas preview.
 
+use byteorder::{BigEndian, ReadBytesExt};
+use sqlx::sqlite::SqlitePoolOptions;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
-use byteorder::{BigEndian, ReadBytesExt};
-use sqlx::sqlite::SqlitePoolOptions;
 
 /// Magic bytes for CLIP Studio Paint files.
 const CLIP_MAGIC: &[u8; 8] = b"CSFCHUNK";
@@ -94,7 +94,8 @@ pub fn extract_clip_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
     // 3. Query SQLite database for the preview
     // Since SQLx expects a file path, we write the chunk to a temporary file.
     let temporary_directory = std::env::temp_dir();
-    let temporary_database_path = temporary_directory.join(format!("mundam_clip_{}.sqlite", uuid::Uuid::new_v4()));
+    let temporary_database_path =
+        temporary_directory.join(format!("mundam_clip_{}.sqlite", uuid::Uuid::new_v4()));
     std::fs::write(&temporary_database_path, database_bytes)?;
 
     // Use block_on to execute the async SQL queries in the current thread.
@@ -110,7 +111,8 @@ pub fn extract_clip_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
 
 /// Connects to the temporary SQLite database and retrieves the ImageData PNG.
 async fn query_preview_from_sqlite(database_path: &Path) -> Result<(Vec<u8>, String), ClipError> {
-    let path_string = database_path.to_str()
+    let path_string = database_path
+        .to_str()
         .ok_or_else(|| ClipError::DatabaseError("Invalid temporary path".to_string()))?;
 
     // Use a single-connection pool for extraction.

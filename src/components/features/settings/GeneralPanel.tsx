@@ -63,7 +63,7 @@ export const GeneralPanel: Component = () => {
         try {
             await tauriService.setSetting('thumbnail_threads', parseInt(val));
             toast.success('Settings saved. Please restart the app for changes to take effect.');
-        } catch (e) {
+        } catch {
             toast.error('Failed to save settings.');
         }
     };
@@ -74,7 +74,7 @@ export const GeneralPanel: Component = () => {
         if (!isNaN(days) && days > 0) {
             try {
                 await tauriService.setSetting('cache_retention_days', days);
-            } catch (e) {
+            } catch {
                 toast.error('Failed to save settings.');
             }
         }

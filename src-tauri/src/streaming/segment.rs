@@ -10,9 +10,9 @@ use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio::sync::RwLock;
 
+use super::process_manager::ProcessManager;
 use crate::media::ffmpeg::get_ffmpeg_path;
 use crate::transcoding::cache::TranscodeCache;
-use super::process_manager::ProcessManager;
 
 /// Get or generate a video segment
 ///
@@ -45,7 +45,16 @@ pub async fn get_segment(
     }
 
     // Transcode the segment
-    let data = transcode_segment(app_handle, process_manager, &segment_key, file_path, segment_index, segment_duration, quality).await?;
+    let data = transcode_segment(
+        app_handle,
+        process_manager,
+        &segment_key,
+        file_path,
+        segment_index,
+        segment_duration,
+        quality,
+    )
+    .await?;
 
     // Cache the segment to disk
     if let Some(parent) = cache_path.parent() {
@@ -66,8 +75,7 @@ async fn transcode_segment(
     segment_duration: f64,
     quality: &str,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
-    let ffmpeg_path = get_ffmpeg_path(Some(app_handle))
-        .ok_or("FFmpeg not found")?;
+    let ffmpeg_path = get_ffmpeg_path(Some(app_handle)).ok_or("FFmpeg not found")?;
 
     let start_time = segment_index as f64 * segment_duration;
 
@@ -80,40 +88,51 @@ async fn transcode_segment(
     let mut cmd = Command::new(&ffmpeg_path);
     cmd.args([
         "-hide_banner",
-        "-loglevel", "warning",
+        "-loglevel",
+        "warning",
         // Robustness flags for seeking in TS/VOB
-        "-analyzeduration", "100M",
-        "-probesize", "50M",
+        "-analyzeduration",
+        "100M",
+        "-probesize",
+        "50M",
         "-ignore_unknown",
-        "-fflags", "+genpts",
+        "-fflags",
+        "+genpts",
         // Fast seek (before input)
-        "-ss", &format!("{:.3}", start_time),
+        "-ss",
+        &format!("{:.3}", start_time),
         // Input file
-        "-i", &file_path.to_string_lossy(),
+        "-i",
+        &file_path.to_string_lossy(),
         // Duration
-        "-t", &format!("{:.3}", segment_duration),
+        "-t",
+        &format!("{:.3}", segment_duration),
     ]);
 
     if is_audio {
         // Audio-only configuration
         cmd.args([
-            "-map", "0:a:0?",           // Map first audio stream
-            "-vn",                     // No video
-            "-c:a", "aac",             // AAC codec
-            "-b:a", "192k",            // Good quality audio
-            "-ar", "48000",            // Standard sample rate
-            "-ac", "2",                // Stereo
+            "-map", "0:a:0?", // Map first audio stream
+            "-vn",    // No video
+            "-c:a", "aac", // AAC codec
+            "-b:a", "192k", // Good quality audio
+            "-ar", "48000", // Standard sample rate
+            "-ac", "2", // Stereo
         ]);
     } else {
         // Video configuration
         cmd.args([
             // Stream mapping (first video, first audio if exists)
-            "-map", "0:v:0",
-            "-map", "0:a:0?",
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a:0?",
             "-sn", // Disable subtitles (source of many seek errors)
             // Video encoding
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
         ]);
 
         // Apply quality settings
@@ -124,26 +143,32 @@ async fn transcode_segment(
             "high" => {
                 cmd.args(["-crf", "18", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"]);
             }
-            _ => { // standard
+            _ => {
+                // standard
                 cmd.args(["-crf", "23", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"]);
             }
         }
 
         cmd.args([
-            "-profile:v", "high",
-            "-level", "4.1",
-            "-pix_fmt", "yuv420p",
+            "-profile:v",
+            "high",
+            "-level",
+            "4.1",
+            "-pix_fmt",
+            "yuv420p",
             // Audio encoding (for video files)
-            "-c:a", "aac",
-            "-b:a", "128k",
-            "-ar", "48000",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-ar",
+            "48000",
         ]);
     }
 
     cmd.args([
         // Output format
-        "-f", "mpegts",
-        // Output to stdout
+        "-f", "mpegts", // Output to stdout
         "-",
     ]);
 
@@ -182,7 +207,12 @@ async fn transcode_segment(
 }
 
 /// Get the cache path for a segment
-fn get_segment_cache_path(cache: &TranscodeCache, file_path: &Path, segment_index: u32, quality: &str) -> PathBuf {
+fn get_segment_cache_path(
+    cache: &TranscodeCache,
+    file_path: &Path,
+    segment_index: u32,
+    quality: &str,
+) -> PathBuf {
     // Use the cache directory from TranscodeCache
     // Create a subdirectory for HLS segments
     let cache_dir = cache.dir().join("hls_segments");
@@ -206,7 +236,10 @@ fn get_segment_cache_path(cache: &TranscodeCache, file_path: &Path, segment_inde
     let file_hash = format!("{:016x}", hasher.finish());
 
     // Include quality in filename
-    cache_dir.join(format!("{}-{}-seg{:05}.ts", file_hash, quality, segment_index))
+    cache_dir.join(format!(
+        "{}-{}-seg{:05}.ts",
+        file_hash, quality, segment_index
+    ))
 }
 
 #[cfg(test)]

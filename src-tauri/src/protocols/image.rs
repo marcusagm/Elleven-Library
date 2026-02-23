@@ -1,23 +1,26 @@
 use super::common::{decode_path, extract_path_part, serve_file};
-use tauri::http::{header, Response, StatusCode, Request};
 use std::path::PathBuf;
+use tauri::http::{header, Request, Response, StatusCode};
 use tauri::AppHandle;
 
-pub fn handler<R: tauri::Runtime>(app: &AppHandle<R>, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
+pub fn handler<R: tauri::Runtime>(
+    app: &AppHandle<R>,
+    request: &Request<Vec<u8>>,
+) -> Response<Vec<u8>> {
     let uri = request.uri().to_string();
     let path_part = extract_path_part(&uri, "image");
     let decoded_path = decode_path(&path_part);
     let mut full_path = PathBuf::from(&decoded_path);
 
-    if !full_path.is_absolute() && cfg!(unix) {
-        if !path_part.starts_with('/') {
-            full_path = PathBuf::from("/").join(full_path);
-        }
+    if !full_path.is_absolute() && cfg!(unix) && !path_part.starts_with('/') {
+        full_path = PathBuf::from("/").join(full_path);
     }
 
     // NATIVE EXTRACTORS: Handle formats the browser cannot render natively (RAW, etc)
     // We pass the app handle to allow extractors to find bundled binaries (like PDFium)
-    if let Ok((preview_data, mime)) = crate::thumbnails::extractors::extract_preview(Some(app), &full_path) {
+    if let Ok((preview_data, mime)) =
+        crate::thumbnails::extractors::extract_preview(Some(app), &full_path)
+    {
         let len = preview_data.len();
         return Response::builder()
             .status(StatusCode::OK)

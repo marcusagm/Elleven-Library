@@ -1,7 +1,7 @@
+use memmap2::Mmap;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use memmap2::Mmap;
 
 const JPEG_SOI: &[u8; 2] = b"\xff\xd8";
 const JPEG_EOI: &[u8; 2] = b"\xff\xd9";
@@ -23,22 +23,31 @@ pub fn extract_any_embedded(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
     }
 
     if let Ok(data) = scan_mmap_for_png(&mmap) {
-         if best.as_ref().map_or(true, |(old_data, _)| data.len() > old_data.len()) {
-             best = Some((data, "image/png".to_string()));
-         }
+        if best
+            .as_ref()
+            .is_none_or(|(old_data, _)| data.len() > old_data.len())
+        {
+            best = Some((data, "image/png".to_string()));
+        }
     }
 
     if let Ok(data) = scan_mmap_for_tiff(&mmap) {
-         if best.as_ref().map_or(true, |(old_data, _)| data.len() > old_data.len()) {
-             best = Some((data, "image/tiff".to_string()));
-         }
+        if best
+            .as_ref()
+            .is_none_or(|(old_data, _)| data.len() > old_data.len())
+        {
+            best = Some((data, "image/tiff".to_string()));
+        }
     }
 
     if let Ok(data) = extract_xmp_thumbnail(path) {
-         if best.as_ref().map_or(true, |(old_data, _)| data.len() > old_data.len()) {
-             // XMP thumbnails are almost always JPEG
-             best = Some((data, "image/jpeg".to_string()));
-         }
+        if best
+            .as_ref()
+            .is_none_or(|(old_data, _)| data.len() > old_data.len())
+        {
+            // XMP thumbnails are almost always JPEG
+            best = Some((data, "image/jpeg".to_string()));
+        }
     }
 
     best.ok_or_else(|| "No embedded image found".into())
@@ -66,7 +75,7 @@ fn scan_mmap_for_jpeg(mmap: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>
             if let Some(eoi_pos) = mmap[j..eoi_limit].windows(2).position(|w| w == JPEG_EOI) {
                 let end = j + eoi_pos + 2;
                 let length = end - start;
-                if best_jpeg.map_or(true, |(_, bl)| length > bl) {
+                if best_jpeg.is_none_or(|(_, bl)| length > bl) {
                     best_jpeg = Some((start, length));
                 }
                 i = end;
@@ -98,7 +107,7 @@ fn scan_mmap_for_png(mmap: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>
             if let Some(end_pos) = mmap[j..].windows(4).position(|w| w == PNG_FOOTER) {
                 let end = j + end_pos + 4 + 4; // IEND + 4 bytes CRC
                 let length = end - start;
-                if best_png.map_or(true, |(_, bl)| length > bl) {
+                if best_png.is_none_or(|(_, bl)| length > bl) {
                     best_png = Some((start, length));
                 }
                 i = end.min(mmap.len());
@@ -111,7 +120,7 @@ fn scan_mmap_for_png(mmap: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>>
     }
 
     if let Some((start, length)) = best_png {
-        Ok(mmap[start..start + length.min(mmap.len()-start)].to_vec())
+        Ok(mmap[start..start + length.min(mmap.len() - start)].to_vec())
     } else {
         Err("No PNG found".into())
     }
@@ -139,7 +148,9 @@ fn scan_mmap_for_tiff(mmap: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>
 }
 
 /// Extracts a preview from an EPS file specifically using the binary header pointers (if present).
-pub fn extract_eps_binary_pointer(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_eps_binary_pointer(
+    path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     use std::io::{Read, Seek};
     let mut file = File::open(path)?;
     let mut header = [0u8; 32];
@@ -148,7 +159,7 @@ pub fn extract_eps_binary_pointer(path: &Path) -> Result<(Vec<u8>, String), Box<
     }
 
     // Binary EPS signature: 0xC5 0xD0 0xD3 0xC6
-    if &header[0..4] == &[0xC5, 0xD0, 0xD3, 0xC6] {
+    if header[0..4] == [0xC5, 0xD0, 0xD3, 0xC6] {
         // TIFF part: offset at 20, length at 24
         let tiff_offset = u32::from_le_bytes(header[20..24].try_into()?) as u64;
         let tiff_len = u32::from_le_bytes(header[24..28].try_into()?) as u64;
@@ -177,7 +188,7 @@ pub fn extract_xmp_thumbnail(path: &Path) -> Result<Vec<u8>, Box<dyn std::error:
         if let Some(end_tag) = buffer[start..].find("</xmpGImg:image>") {
             let base64_data = buffer[start..start + end_tag].replace(['\n', '\r', ' '], "");
 
-            use base64::{Engine as _, engine::general_purpose};
+            use base64::{engine::general_purpose, Engine as _};
             let decoded = general_purpose::STANDARD.decode(base64_data)?;
             return Ok(decoded);
         }

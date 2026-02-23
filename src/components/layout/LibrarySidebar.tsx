@@ -1,14 +1,14 @@
-import { Component } from "solid-js";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/Resizable";
-import { LibrarySidebarPanel } from "../features/library/LibrarySidebarPanel";
-import { FolderTreeSidebarPanel } from "../features/library/FolderTreeSidebarPanel";
-import { TagTreeSidebarPanel } from "../features/tags/TagTreeSidebarPanel";
-import { SmartFoldersSidebarPanel } from "../features/search/SmartFoldersSidebarPanel";
-import "./library-sidebar.css";
+import { Component } from 'solid-js';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui/Resizable';
+import { LibrarySidebarPanel } from '../features/library/LibrarySidebarPanel';
+import { FolderTreeSidebarPanel } from '../features/library/FolderTreeSidebarPanel';
+import { TagTreeSidebarPanel } from '../features/tags/TagTreeSidebarPanel';
+import { SmartFoldersSidebarPanel } from '../features/search/SmartFoldersSidebarPanel';
+import './library-sidebar.css';
 // import LogoColor from "../../assets/logo-color.svg";
 
 export const LibrarySidebar: Component = () => {
-    const STORAGE_KEY = "sidebar-layout-v2"; // Increment version since we added a panel
+    const STORAGE_KEY = 'sidebar-layout-v2'; // Increment version since we added a panel
 
     // Get persisted sizes or use defaults
     const getPersistedLayout = () => {
@@ -36,29 +36,48 @@ export const LibrarySidebar: Component = () => {
                 <img src={LogoColor} alt="Mundam" />
             </div> */}
             <ResizablePanelGroup direction="vertical" onLayout={handleLayoutChange}>
-                <ResizablePanel id="sidebar-library" defaultSize={librarySize} minSize={10} class="panel-lib">
+                <ResizablePanel
+                    id="sidebar-library"
+                    defaultSize={librarySize}
+                    minSize={10}
+                    class="panel-lib"
+                >
                     <LibrarySidebarPanel />
                 </ResizablePanel>
-                
+
                 <ResizableHandle />
-                
-                <ResizablePanel id="sidebar-folders" defaultSize={foldersSize} minSize={15} class="panel-folders">
+
+                <ResizablePanel
+                    id="sidebar-folders"
+                    defaultSize={foldersSize}
+                    minSize={15}
+                    class="panel-folders"
+                >
                     <FolderTreeSidebarPanel />
                 </ResizablePanel>
-                
+
                 <ResizableHandle />
-                
-                <ResizablePanel id="sidebar-tags" defaultSize={tagsSize} minSize={15} class="panel-tags">
+
+                <ResizablePanel
+                    id="sidebar-tags"
+                    defaultSize={tagsSize}
+                    minSize={15}
+                    class="panel-tags"
+                >
                     <TagTreeSidebarPanel />
                 </ResizablePanel>
 
                 <ResizableHandle />
 
-                <ResizablePanel id="sidebar-smart" defaultSize={smartSize} minSize={10} class="panel-smart">
+                <ResizablePanel
+                    id="sidebar-smart"
+                    defaultSize={smartSize}
+                    minSize={10}
+                    class="panel-smart"
+                >
                     <SmartFoldersSidebarPanel />
                 </ResizablePanel>
             </ResizablePanelGroup>
         </aside>
     );
 };
-

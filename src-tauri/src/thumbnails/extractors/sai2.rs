@@ -115,15 +115,22 @@ struct Sai2Header {
 fn parse_sai2_header<R: Read + Seek>(reader: &mut R) -> Result<Sai2Header, Sai2Error> {
     let mut header_buffer = [0u8; HEADER_SIZE];
     reader.seek(SeekFrom::Start(0))?;
-    reader.read_exact(&mut header_buffer).map_err(|_| Sai2Error::HeaderTooShort)?;
+    reader
+        .read_exact(&mut header_buffer)
+        .map_err(|_| Sai2Error::HeaderTooShort)?;
 
     // Verify magic bytes (first 10 bytes)
     if &header_buffer[0..10] != SAI2_MAGIC {
         return Err(Sai2Error::InvalidMagic);
     }
 
-    println!("DEBUG: Header Dump (u32): {:?}",
-        header_buffer.chunks(4).map(|c| u32::from_le_bytes(c.try_into().unwrap_or([0; 4]))).enumerate().collect::<Vec<_>>()
+    println!(
+        "DEBUG: Header Dump (u32): {:?}",
+        header_buffer
+            .chunks(4)
+            .map(|c| u32::from_le_bytes(c.try_into().unwrap_or([0; 4])))
+            .enumerate()
+            .collect::<Vec<_>>()
     );
 
     // Scan for "thum" tag to reverse-engineer chunk layout
@@ -131,13 +138,13 @@ fn parse_sai2_header<R: Read + Seek>(reader: &mut R) -> Result<Sai2Header, Sai2E
     reader.seek(SeekFrom::Start(0))?;
     if let Ok(n) = reader.read(&mut scan_buffer) {
         for i in 0..n.saturating_sub(4) {
-            if &scan_buffer[i..i+4] == b"thum" {
+            if &scan_buffer[i..i + 4] == b"thum" {
                 println!("DEBUG: Found 'thum' at offset {}", i);
-                 // try to parse size
-                 if i + 16 <= n {
-                     let size_slice = &scan_buffer[i+8..i+16];
-                     let size = u64::from_le_bytes(size_slice.try_into().unwrap_or([0; 8]));
-                     println!("DEBUG: 'thum' size: {}", size);
+                // try to parse size
+                if i + 16 <= n {
+                    let size_slice = &scan_buffer[i + 8..i + 16];
+                    let size = u64::from_le_bytes(size_slice.try_into().unwrap_or([0; 8]));
+                    println!("DEBUG: 'thum' size: {}", size);
                 }
             }
         }
@@ -150,17 +157,29 @@ fn parse_sai2_header<R: Read + Seek>(reader: &mut R) -> Result<Sai2Header, Sai2E
     // 40-43: Chunk Count
 
     let canvas_width = u32::from_le_bytes([
-        header_buffer[32], header_buffer[33], header_buffer[34], header_buffer[35],
+        header_buffer[32],
+        header_buffer[33],
+        header_buffer[34],
+        header_buffer[35],
     ]);
     let canvas_height = u32::from_le_bytes([
-        header_buffer[36], header_buffer[37], header_buffer[38], header_buffer[39],
+        header_buffer[36],
+        header_buffer[37],
+        header_buffer[38],
+        header_buffer[39],
     ]);
     let chunk_count = u32::from_le_bytes([
-        header_buffer[40], header_buffer[41], header_buffer[42], header_buffer[43],
+        header_buffer[40],
+        header_buffer[41],
+        header_buffer[42],
+        header_buffer[43],
     ]);
 
     if chunk_count > 100_000 {
-        return Err(Sai2Error::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, "SAI2 chunk count too large")));
+        return Err(Sai2Error::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "SAI2 chunk count too large",
+        )));
     }
 
     Ok(Sai2Header {
@@ -218,10 +237,14 @@ fn parse_chunk_list<R: Read + Seek>(
 
         // Bytes 4-7 are typically padding/flags — ignored for now
         let data_size = u64::from_le_bytes([
-            descriptor_buffer[8], descriptor_buffer[9],
-            descriptor_buffer[10], descriptor_buffer[11],
-            descriptor_buffer[12], descriptor_buffer[13],
-            descriptor_buffer[14], descriptor_buffer[15],
+            descriptor_buffer[8],
+            descriptor_buffer[9],
+            descriptor_buffer[10],
+            descriptor_buffer[11],
+            descriptor_buffer[12],
+            descriptor_buffer[13],
+            descriptor_buffer[14],
+            descriptor_buffer[15],
         ]);
 
         descriptors.push(ChunkDescriptor {
@@ -230,9 +253,9 @@ fn parse_chunk_list<R: Read + Seek>(
             data_offset: running_offset,
         });
 
-        running_offset = running_offset
-            .checked_add(data_size)
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Chunk offset overflow"))?;
+        running_offset = running_offset.checked_add(data_size).ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::InvalidData, "Chunk offset overflow")
+        })?;
     }
 
     Ok(descriptors)
@@ -282,10 +305,16 @@ fn iterate_canvas_data<R: Read + Seek>(
         }
 
         let canvas_type = u32::from_le_bytes([
-            entry_header[0], entry_header[1], entry_header[2], entry_header[3],
+            entry_header[0],
+            entry_header[1],
+            entry_header[2],
+            entry_header[3],
         ]);
         let data_size = u32::from_le_bytes([
-            entry_header[4], entry_header[5], entry_header[6], entry_header[7],
+            entry_header[4],
+            entry_header[5],
+            entry_header[6],
+            entry_header[7],
         ]) as u64;
 
         let data_offset = cursor_position + 8;
@@ -342,7 +371,10 @@ fn extract_jpeg_from_jssf<R: Read + Seek>(
     }
 
     let jpeg_size = u32::from_le_bytes([
-        jssf_header[8], jssf_header[9], jssf_header[10], jssf_header[11],
+        jssf_header[8],
+        jssf_header[9],
+        jssf_header[10],
+        jssf_header[11],
     ]) as usize;
 
     // Read the actual JPEG data
@@ -370,18 +402,23 @@ fn scan_for_chunks<R: Read + Seek>(reader: &mut R) -> Result<Vec<ChunkDescriptor
 
     let signatures = [b"thum", b"view"];
     let start_offset = HEADER_SIZE;
-    if buffer.len() <= start_offset { return Ok(descriptors); }
+    if buffer.len() <= start_offset {
+        return Ok(descriptors);
+    }
 
     for i in start_offset..buffer.len().saturating_sub(16) {
-        let potential_tag = &buffer[i..i+4];
+        let potential_tag = &buffer[i..i + 4];
         if signatures.iter().any(|sig| sig == &potential_tag) {
-            let size_slice = &buffer[i+8..i+16];
+            let size_slice = &buffer[i + 8..i + 16];
             let data_size = u64::from_le_bytes(size_slice.try_into().unwrap_or_default());
             let data_offset = (i + 16) as u64;
 
             if data_offset + data_size <= buffer.len() as u64 {
                 let tag_str = String::from_utf8_lossy(potential_tag);
-                println!("DEBUG: Scanner found valid {:?} chunk at offset {} with size {}", tag_str, i, data_size);
+                println!(
+                    "DEBUG: Scanner found valid {:?} chunk at offset {} with size {}",
+                    tag_str, i, data_size
+                );
 
                 let mut type_tag = [0u8; 4];
                 type_tag.copy_from_slice(potential_tag);
@@ -394,7 +431,10 @@ fn scan_for_chunks<R: Read + Seek>(reader: &mut R) -> Result<Vec<ChunkDescriptor
             }
         }
     }
-    println!("DEBUG: Scanner finished. Found {} candidate chunks.", descriptors.len());
+    println!(
+        "DEBUG: Scanner finished. Found {} candidate chunks.",
+        descriptors.len()
+    );
     Ok(descriptors)
 }
 
@@ -419,24 +459,35 @@ fn scan_for_chunks<R: Read + Seek>(reader: &mut R) -> Result<Vec<ChunkDescriptor
 /// # Errors
 /// Returns `Err` if the file format is invalid, no thumbnail chunk exists,
 /// or the thumbnail uses DPCM encoding (not yet supported).
-pub fn extract_sai2_preview(sai2_file_path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_sai2_preview(
+    sai2_file_path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let mut file = File::open(sai2_file_path)?;
     let header = parse_sai2_header(&mut file)?;
 
     // Log the header to verify offsets are correct now
-    println!("DEBUG: SAI2 Header Parsed: {}x{}, chunks: {}", header.canvas_width, header.canvas_height, header.chunk_count);
+    println!(
+        "DEBUG: SAI2 Header Parsed: {}x{}, chunks: {}",
+        header.canvas_width, header.canvas_height, header.chunk_count
+    );
 
     // Strategy: Try standard parsing first (if count looks valid), otherwise Scan
     let mut chunk_descriptors = if header.chunk_count > 0 && header.chunk_count < 100_000 {
         match parse_chunk_list(&mut file, header.chunk_count) {
             Ok(d) => d,
             Err(e) => {
-                println!("DEBUG: Standard chunk parsing failed ({}). Falling back to scanner.", e);
+                println!(
+                    "DEBUG: Standard chunk parsing failed ({}). Falling back to scanner.",
+                    e
+                );
                 scan_for_chunks(&mut file)?
             }
         }
     } else {
-        println!("DEBUG: Invalid chunk count ({}). Using scanner.", header.chunk_count);
+        println!(
+            "DEBUG: Invalid chunk count ({}). Using scanner.",
+            header.chunk_count
+        );
         scan_for_chunks(&mut file)?
     };
 
@@ -449,9 +500,13 @@ pub fn extract_sai2_preview(sai2_file_path: &Path) -> Result<(Vec<u8>, String), 
     chunk_descriptors.sort_by(|a, b| {
         let ta = &a.type_tag;
         let tb = &b.type_tag;
-        if ta == b"view" && tb != b"view" { std::cmp::Ordering::Less }
-        else if ta != b"view" && tb == b"view" { std::cmp::Ordering::Greater }
-        else { std::cmp::Ordering::Equal }
+        if ta == b"view" && tb != b"view" {
+            std::cmp::Ordering::Less
+        } else if ta != b"view" && tb == b"view" {
+            std::cmp::Ordering::Greater
+        } else {
+            std::cmp::Ordering::Equal
+        }
     });
 
     for descriptor in &chunk_descriptors {
@@ -463,7 +518,10 @@ pub fn extract_sai2_preview(sai2_file_path: &Path) -> Result<(Vec<u8>, String), 
 
         let canvas_entries_result = iterate_canvas_data(&mut file, descriptor);
         if let Err(e) = canvas_entries_result {
-            println!("DEBUG: Failed to iterate canvas data for chunk {}: {}", type_string, e);
+            println!(
+                "DEBUG: Failed to iterate canvas data for chunk {}: {}",
+                type_string, e
+            );
             continue;
         }
         let canvas_entries = canvas_entries_result?;
@@ -473,14 +531,25 @@ pub fn extract_sai2_preview(sai2_file_path: &Path) -> Result<(Vec<u8>, String), 
                 CANVAS_TYPE_VIEW | CANVAS_TYPE_THUMBNAIL_LOSSY => {
                     match extract_jpeg_from_jssf(&mut file, entry) {
                         Ok(jpeg_data) => {
-                            println!("DEBUG: Extracted JPEG from {} chunk (type 0x{:X}, size: {})", type_string, entry.canvas_type, jpeg_data.len());
+                            println!(
+                                "DEBUG: Extracted JPEG from {} chunk (type 0x{:X}, size: {})",
+                                type_string,
+                                entry.canvas_type,
+                                jpeg_data.len()
+                            );
                             return Ok((jpeg_data, "image/jpeg".to_string()));
-                        },
-                        Err(e) => println!("DEBUG: Failed to extract JPEG from {} (type 0x{:X}): {}", type_string, entry.canvas_type, e),
+                        }
+                        Err(e) => println!(
+                            "DEBUG: Failed to extract JPEG from {} (type 0x{:X}): {}",
+                            type_string, entry.canvas_type, e
+                        ),
                     }
                 }
                 CANVAS_TYPE_THUMBNAIL_LOSSLESS => {
-                    println!("DEBUG: SAI2 Found DPCM thumbnail in {} chunk (unsupported). Skipping...", type_string);
+                    println!(
+                        "DEBUG: SAI2 Found DPCM thumbnail in {} chunk (unsupported). Skipping...",
+                        type_string
+                    );
                     // TODO: Implement DPCM decoding (Phase 2)
                     continue;
                 }

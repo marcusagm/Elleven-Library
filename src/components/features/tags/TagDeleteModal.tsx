@@ -1,9 +1,9 @@
-import { Component, Show } from "solid-js";
-import "./tag-delete-modal.css";
-import { ConfirmModal } from "../../ui/Modal";
-import { TreeNode } from "../../ui/TreeView";
-import { tagService } from "../../../lib/tags";
-import { useMetadata, useNotification } from "../../../core/hooks";
+import { Component, Show } from 'solid-js';
+import './tag-delete-modal.css';
+import { ConfirmModal } from '../../ui/Modal';
+import { TreeNode } from '../../ui/TreeView';
+import { tagService } from '../../../lib/tags';
+import { useMetadata, useNotification } from '../../../core/hooks';
 
 interface TagDeleteModalProps {
     isOpen: boolean;
@@ -11,7 +11,7 @@ interface TagDeleteModalProps {
     node: TreeNode | null;
 }
 
-export const TagDeleteModal: Component<TagDeleteModalProps> = (props) => {
+export const TagDeleteModal: Component<TagDeleteModalProps> = props => {
     const { loadTags } = useMetadata();
     const notification = useNotification();
 
@@ -31,8 +31,8 @@ export const TagDeleteModal: Component<TagDeleteModalProps> = (props) => {
         if (!node) return;
 
         const tagName = node.label;
-        const parentId = (node.data as any)?.parent_id;
-        const color = (node.data as any)?.color;
+        const parentId = (node.data as Record<string, unknown>)?.parent_id as number;
+        const color = (node.data as Record<string, unknown>)?.color as string;
 
         try {
             const descendantIds = getAllDescendants(node);
@@ -41,31 +41,31 @@ export const TagDeleteModal: Component<TagDeleteModalProps> = (props) => {
             }
             await tagService.deleteTag(Number(node.id));
             await loadTags();
-            
-            notification.success("Tag Deleted", `Removed "${tagName}"`, {
-                label: "Undo",
+
+            notification.success('Tag Deleted', `Removed "${tagName}"`, {
+                label: 'Undo',
                 onClick: async () => {
                     try {
                         await tagService.createTag(tagName, parentId, color);
                         await loadTags();
-                        notification.success("Restored", `Tag "${tagName}" restored`);
-                    } catch (e) {
-                        notification.error("Failed to restore tag");
+                        notification.success('Restored', `Tag "${tagName}" restored`);
+                    } catch {
+                        notification.error('Failed to restore tag');
                     }
                 }
             });
         } catch (err) {
-            console.error("Delete failed:", err);
-            notification.error("Failed to Delete Tag");
+            console.error('Delete failed:', err);
+            notification.error('Failed to Delete Tag');
         } finally {
             props.onClose();
         }
     };
 
-    const count = () => props.node ? getAllDescendants(props.node).length : 0;
+    const count = () => (props.node ? getAllDescendants(props.node).length : 0);
 
     return (
-        <ConfirmModal 
+        <ConfirmModal
             isOpen={props.isOpen}
             onClose={props.onClose}
             onConfirm={handleConfirm}
@@ -80,7 +80,8 @@ export const TagDeleteModal: Component<TagDeleteModalProps> = (props) => {
                 </p>
                 <Show when={count() > 0}>
                     <p class="tag-delete-warning">
-                        This will also delete <strong>{count()}</strong> child tags. This action cannot be undone.
+                        This will also delete <strong>{count()}</strong> child tags. This action
+                        cannot be undone.
                     </p>
                 </Show>
             </div>

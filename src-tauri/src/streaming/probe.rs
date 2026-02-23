@@ -6,7 +6,6 @@ use serde::Serialize;
 use std::path::Path;
 use std::process::Command;
 
-
 use crate::media::ffmpeg::get_ffmpeg_path;
 use crate::transcoding::detector;
 
@@ -40,13 +39,14 @@ pub async fn get_video_info(
     }
 
     // Get ffprobe path (same location as ffmpeg)
-    let ffmpeg_path = get_ffmpeg_path(Some(app_handle))
-        .ok_or("FFmpeg/FFprobe not found")?;
+    let ffmpeg_path = get_ffmpeg_path(Some(app_handle)).ok_or("FFmpeg/FFprobe not found")?;
 
     // ffprobe is usually next to ffmpeg
-    let ffprobe_path = ffmpeg_path.with_file_name(
-        if cfg!(target_os = "windows") { "ffprobe.exe" } else { "ffprobe" }
-    );
+    let ffprobe_path = ffmpeg_path.with_file_name(if cfg!(target_os = "windows") {
+        "ffprobe.exe"
+    } else {
+        "ffprobe"
+    });
 
     // If ffprobe doesn't exist, try system path
     let probe_cmd = if ffprobe_path.exists() {
@@ -58,8 +58,10 @@ pub async fn get_video_info(
     // Run ffprobe with JSON output
     let output = Command::new(&probe_cmd)
         .args([
-            "-v", "quiet",
-            "-print_format", "json",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
             "-show_format",
             "-show_streams",
             &path.to_string_lossy(),
@@ -114,7 +116,8 @@ pub async fn get_video_info(
     // Determine if native using existing detector (extension-based)
     // Plus additional codec-based check for better accuracy
     // Also mark HLS-problematic formats as "native" to use fallback transcoding
-    let is_native = (detector::is_native_format(path) && is_codec_native(&video_codec, &audio_codec))
+    let is_native = (detector::is_native_format(path)
+        && is_codec_native(&video_codec, &audio_codec))
         || is_hls_problematic(path, &container);
 
     Ok(VideoInfo {
@@ -135,7 +138,7 @@ fn is_codec_native(video_codec: &Option<String>, audio_codec: &Option<String>) -
         Some(codec) => matches!(
             codec.as_str(),
             "h264" | "avc1" | "avc" | // H.264
-            "vp8"                      // VP8 (limited support)
+            "vp8" // VP8 (limited support)
         ),
         None => true, // No video stream is OK
     };
@@ -147,7 +150,7 @@ fn is_codec_native(video_codec: &Option<String>, audio_codec: &Option<String>) -
             "aac" | "mp3" | "mp2" |    // Common web codecs
             "flac" |                    // FLAC
             "pcm_s16le" | "pcm_s24le" | "pcm_f32le" | // PCM variants (WAV)
-            "opus" | "vorbis"           // Modern open codecs (supported by WebKit/Blink)
+            "opus" | "vorbis" // Modern open codecs (supported by WebKit/Blink)
         ),
         None => true, // No audio stream is OK
     };
@@ -164,14 +167,24 @@ fn is_hls_problematic(path: &Path, container: &Option<String>) -> bool {
         // Flash formats - obsolete and problematic
         // Raw video streams without proper container
         // Some MPEG containers have seeking issues
-        if ext_lower == "swf" || ext_lower == "m2v" || ext_lower == "mpv" || ext_lower == "mpg" || ext_lower == "mpeg" {
+        if ext_lower == "swf"
+            || ext_lower == "m2v"
+            || ext_lower == "mpv"
+            || ext_lower == "mpg"
+            || ext_lower == "mpeg"
+        {
             return true;
         }
     }
 
     // Check by container format from ffprobe
     if let Some(fmt) = container {
-        if fmt == "swf" || fmt == "mpeg1video" || fmt == "mpegvideo" || fmt == "m2v" || fmt == "mpegps" {
+        if fmt == "swf"
+            || fmt == "mpeg1video"
+            || fmt == "mpegvideo"
+            || fmt == "m2v"
+            || fmt == "mpegps"
+        {
             return true;
         }
     }
@@ -185,9 +198,21 @@ mod tests {
 
     #[test]
     fn test_codec_native() {
-        assert!(is_codec_native(&Some("h264".to_string()), &Some("aac".to_string())));
-        assert!(!is_codec_native(&Some("hevc".to_string()), &Some("aac".to_string())));
-        assert!(is_codec_native(&Some("h264".to_string()), &Some("opus".to_string())));
-        assert!(!is_codec_native(&Some("vp9".to_string()), &Some("opus".to_string())));
+        assert!(is_codec_native(
+            &Some("h264".to_string()),
+            &Some("aac".to_string())
+        ));
+        assert!(!is_codec_native(
+            &Some("hevc".to_string()),
+            &Some("aac".to_string())
+        ));
+        assert!(is_codec_native(
+            &Some("h264".to_string()),
+            &Some("opus".to_string())
+        ));
+        assert!(!is_codec_native(
+            &Some("vp9".to_string()),
+            &Some("opus".to_string())
+        ));
     }
 }

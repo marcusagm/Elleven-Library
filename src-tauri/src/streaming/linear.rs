@@ -76,15 +76,18 @@ impl LinearManager {
         let temp_dir_base = std::env::temp_dir().join("mundam_linear");
         // Ensure base exists
         if !temp_dir_base.exists() {
-            tokio::fs::create_dir_all(&temp_dir_base).await.map_err(|e| e.to_string())?;
+            tokio::fs::create_dir_all(&temp_dir_base)
+                .await
+                .map_err(|e| e.to_string())?;
         }
 
         let session_id = uuid::Uuid::new_v4().to_string();
         let temp_dir = temp_dir_base.join(&session_id);
-        tokio::fs::create_dir_all(&temp_dir).await.map_err(|e| e.to_string())?;
+        tokio::fs::create_dir_all(&temp_dir)
+            .await
+            .map_err(|e| e.to_string())?;
 
-        let ffmpeg_path = get_ffmpeg_path(Some(&self.app_handle))
-            .ok_or("FFmpeg not found")?;
+        let ffmpeg_path = get_ffmpeg_path(Some(&self.app_handle)).ok_or("FFmpeg not found")?;
 
         // Detect media type
         let media_type = crate::transcoding::detector::get_media_type(file_path);
@@ -93,46 +96,49 @@ impl LinearManager {
         // Spawn FFmpeg
         let mut cmd = Command::new(ffmpeg_path);
 
-        cmd.args([
-            "-hide_banner",
-            "-loglevel", "error",
-            "-i", &key,
-        ]);
+        cmd.args(["-hide_banner", "-loglevel", "error", "-i", &key]);
 
         if is_audio {
             cmd.args([
-                "-c:a", "aac",
-                "-b:a", "192k",
-                "-ac", "2",
-                "-vn",
-                "-map", "0:a:0?",
+                "-c:a", "aac", "-b:a", "192k", "-ac", "2", "-vn", "-map", "0:a:0?",
             ]);
         } else {
-             // bitrate based on quality
+            // bitrate based on quality
             let video_bitrate = match quality {
                 "high" => "5000k",
                 "preview" => "1000k",
-                _ => "2500k"
+                _ => "2500k",
             };
 
             cmd.args([
-                "-c:v", "libx264",
-                "-pix_fmt", "yuv420p",
-                "-preset", "ultrafast",
-                "-tune", "zerolatency",
-                "-c:a", "aac",
-                "-b:a", "128k",
-                "-b:v", video_bitrate,
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-preset",
+                "ultrafast",
+                "-tune",
+                "zerolatency",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-b:v",
+                video_bitrate,
             ]);
         }
 
         cmd.args([
-            "-f", "hls",
-            "-hls_time", "4",
-            "-hls_list_size", "0",
-            "-hls_segment_filename", "segment_%05d.ts",
+            "-f",
+            "hls",
+            "-hls_time",
+            "4",
+            "-hls_list_size",
+            "0",
+            "-hls_segment_filename",
+            "segment_%05d.ts",
             // "-hls_flags", "delete_segments", // Don't delete, we might want to seek back
-            "index.m3u8"
+            "index.m3u8",
         ]);
 
         cmd.current_dir(&temp_dir);
@@ -142,11 +148,13 @@ impl LinearManager {
         if let Ok(log_file) = std::fs::File::create(&log_file_path) {
             cmd.stderr(log_file);
         } else {
-             // Fallback
-             // cmd.stderr(Stdio::null());
+            // Fallback
+            // cmd.stderr(Stdio::null());
         }
 
-        let child = cmd.spawn().map_err(|e| format!("Failed to spawn ffmpeg: {}", e))?;
+        let child = cmd
+            .spawn()
+            .map_err(|e| format!("Failed to spawn ffmpeg: {}", e))?;
         let pid = child.id();
 
         let session = LinearSession {

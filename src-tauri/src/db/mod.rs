@@ -3,17 +3,17 @@
 //! This module handles the connection pool, schema initialization, and
 //! provides a central entry point for all database operations.
 
-pub mod models;
-pub mod images;
 pub mod folders;
-pub mod tags;
-pub mod smart_folders;
-pub mod settings;
+pub mod images;
+pub mod models;
 pub mod search;
+pub mod settings;
+pub mod smart_folders;
+pub mod tags;
 
+use crate::error::AppResult;
 use sqlx::sqlite::SqlitePool;
 use std::path::PathBuf;
-use crate::error::AppResult;
 
 /// The main database handle, wrapping a SQLite connection pool.
 ///
@@ -37,7 +37,9 @@ impl Db {
     ///
     /// Returns a `sqlx::Error` if the connection fails or if migrations fail to run.
     pub async fn new(path: PathBuf) -> AppResult<Self> {
-        use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous, SqlitePoolOptions};
+        use sqlx::sqlite::{
+            SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous,
+        };
         use std::str::FromStr;
         use std::time::Duration;
 
@@ -50,12 +52,11 @@ impl Db {
 
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
-            .connect_with(options).await?;
+            .connect_with(options)
+            .await?;
 
         // Initialize schema and run migrations from the /migrations directory
-        sqlx::migrate!("./migrations")
-            .run(&pool)
-            .await?;
+        sqlx::migrate!("./migrations").run(&pool).await?;
 
         Ok(Self { pool })
     }

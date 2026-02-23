@@ -4,9 +4,12 @@
 //! Provides static PNG for single frames and Animated GIF for multi-frame animations.
 
 use asefile::AsepriteFile;
+use image::{
+    codecs::gif::{GifEncoder, Repeat},
+    Delay, DynamicImage, Frame,
+};
 use std::path::Path;
 use std::time::Duration;
-use image::{Frame, Delay, codecs::gif::{GifEncoder, Repeat}, DynamicImage};
 
 /// Extracts a preview from an Aseprite file.
 ///
@@ -16,7 +19,9 @@ use image::{Frame, Delay, codecs::gif::{GifEncoder, Repeat}, DynamicImage};
 ///
 /// # Errors
 /// Returns error if the file is corrupted or cannot be parsed.
-pub fn extract_aseprite_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_aseprite_preview(
+    path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let aseprite_file = AsepriteFile::read_file(path)?;
     let total_frames = aseprite_file.num_frames();
 
@@ -56,7 +61,9 @@ pub fn extract_aseprite_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dy
                     .ok_or("Failed to re-wrap Aseprite animation frame")?;
 
                 let frame_duration_ms = frame_data.duration();
-                let frame_delay = Delay::from_saturating_duration(Duration::from_millis(frame_duration_ms as u64));
+                let frame_delay = Delay::from_saturating_duration(Duration::from_millis(
+                    frame_duration_ms as u64,
+                ));
 
                 let gif_frame = Frame::from_parts(image_rgba_v25, 0, 0, frame_delay);
                 gif_encoder.encode_frame(gif_frame)?;

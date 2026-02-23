@@ -3,9 +3,9 @@
 //! Smart folders are essentially saved search queries that appear as
 //! virtual folders in the UI.
 
+use super::Db;
 use crate::db::models::SmartFolder;
 use chrono::{DateTime, Utc};
-use super::Db;
 
 impl Db {
     /// Retrieves all saved smart folders.
@@ -20,7 +20,11 @@ impl Db {
     }
 
     /// Saves a new smart folder.
-    pub async fn save_smart_folder(&self, name: &str, query_json: &str) -> Result<i64, sqlx::Error> {
+    pub async fn save_smart_folder(
+        &self,
+        name: &str,
+        query_json: &str,
+    ) -> Result<i64, sqlx::Error> {
         let res = sqlx::query!(
             "INSERT INTO smart_folders (name, query_json) VALUES (?, ?)",
             name,
@@ -32,7 +36,12 @@ impl Db {
     }
 
     /// Updates an existing smart folder.
-    pub async fn update_smart_folder(&self, id: i64, name: &str, query_json: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_smart_folder(
+        &self,
+        id: i64,
+        name: &str,
+        query_json: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "UPDATE smart_folders SET name = ?, query_json = ? WHERE id = ?",
             name,

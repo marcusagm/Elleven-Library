@@ -8,7 +8,9 @@ use std::path::Path;
 /// 1. Validates the file header (Version 2).
 /// 2. Scans the binary content for a standard JPEG signature (FF D8 FF E0).
 /// 3. Extracts the data until the JPEG EOI marker (FF D9).
-pub fn extract_corel_painter_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_corel_painter_preview(
+    path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let mut file = File::open(path)?;
     let mut header = [0u8; 8];
 
@@ -25,10 +27,10 @@ pub fn extract_corel_painter_preview(path: &Path) -> Result<(Vec<u8>, String), B
     // but the recommendation was to "Validate Header".
     // If stricly strictly following "Option A" recommendation: "Validate header... before scanning".
     if !is_modern_version {
-         // Check for legacy "RIFF" signature just in case
-         if &header[0..4] != b"RIFF" {
-             return Err("Invalid Corel Painter header (not Version 2 or RIFF)".into());
-         }
+        // Check for legacy "RIFF" signature just in case
+        if &header[0..4] != b"RIFF" {
+            return Err("Invalid Corel Painter header (not Version 2 or RIFF)".into());
+        }
     }
 
     // Read file content for scanning
@@ -59,7 +61,9 @@ pub fn extract_corel_painter_preview(path: &Path) -> Result<(Vec<u8>, String), B
 
 /// Simple O(N) search for a byte sequence.
 fn find_sequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack.windows(needle.len()).position(|window| window == needle)
+    haystack
+        .windows(needle.len())
+        .position(|window| window == needle)
 }
 
 #[cfg(test)]
@@ -76,7 +80,11 @@ mod tests {
         // This test only runs if the sample file exists locally (which it should in this environment)
         if path.exists() {
             let result = extract_corel_painter_preview(&path);
-            assert!(result.is_ok(), "Failed to extract preview from existing file: {:?}", result.err());
+            assert!(
+                result.is_ok(),
+                "Failed to extract preview from existing file: {:?}",
+                result.err()
+            );
 
             let (data, mime) = result.unwrap();
             assert_eq!(mime, "image/jpeg");
@@ -85,7 +93,10 @@ mod tests {
             // Check for JPEG header
             assert_eq!(&data[0..2], &[0xFF, 0xD8]);
         } else {
-            eprintln!("Skipping test_extract_corel_painter_preview: Sample file not found at {:?}", path);
+            eprintln!(
+                "Skipping test_extract_corel_painter_preview: Sample file not found at {:?}",
+                path
+            );
         }
     }
 }

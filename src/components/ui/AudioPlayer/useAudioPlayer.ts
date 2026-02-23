@@ -54,7 +54,7 @@ export function useAudioPlayer(props: AudioPlayerProps) {
     });
 
     // Reset state and Load Waveform Data when filePath changes
-    createEffect(async () => {
+    createEffect(() => {
         const path = props.filePath;
 
         // Reset state on path change
@@ -69,23 +69,25 @@ export function useAudioPlayer(props: AudioPlayerProps) {
             return;
         }
 
-        try {
-            const timeoutPromise = new Promise<number[]>((_, reject) => {
-                setTimeout(() => reject(new Error('timeout')), 15000);
-            });
+        void (async () => {
+            try {
+                const timeoutPromise = new Promise<number[]>((_, reject) => {
+                    setTimeout(() => reject(new Error('timeout')), 15000);
+                });
 
-            const data = await Promise.race([
-                invoke<number[]>('get_audio_waveform_data', { path }),
-                timeoutPromise
-            ]);
+                const data = await Promise.race([
+                    invoke<number[]>('get_audio_waveform_data', { path }),
+                    timeoutPromise
+                ]);
 
-            setWaveform(data);
-        } catch (e) {
-            console.error('AudioPlayer: Failed to load waveform:', e);
-            setWaveform([]);
-        } finally {
-            setIsWaveformLoading(false);
-        }
+                setWaveform(data);
+            } catch (e) {
+                console.error('AudioPlayer: Failed to load waveform:', e);
+                setWaveform([]);
+            } finally {
+                setIsWaveformLoading(false);
+            }
+        })();
     });
 
     // Methods
@@ -168,24 +170,30 @@ export function useAudioPlayer(props: AudioPlayerProps) {
                 e.preventDefault();
                 skip(5);
                 break;
-            case 'KeyM':
+            case 'KeyM': {
                 e.preventDefault();
                 const muted = !audioState.isMuted();
                 audioActions.setIsMuted(muted);
                 const ref = audioRef();
                 if (ref) ref.muted = muted;
                 break;
+            }
         }
     };
 
     return {
         playerId,
-        audioRef, setAudioRef,
-        isPlaying, setIsPlaying,
-        currentTime, duration, buffered,
+        audioRef,
+        setAudioRef,
+        isPlaying,
+        setIsPlaying,
+        currentTime,
+        duration,
+        buffered,
         displayWaveform,
         isActuallyLoading,
-        error, setNativeError,
+        error,
+        setNativeError,
         lastAction,
         togglePlay,
         handleRetry,

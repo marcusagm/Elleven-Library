@@ -1,32 +1,34 @@
-pub mod binary_jpeg;
+pub mod ai;
 pub mod aseprite;
-pub mod xcf;
-pub mod sketch;
+pub mod binary_jpeg;
 pub mod clip;
+pub mod corel_painter;
+pub mod coreldraw;
+pub mod eps;
 pub mod mdp;
+pub mod penpot;
+pub mod rebelle;
 pub mod sai;
 pub mod sai2;
-pub mod rebelle;
-pub mod ai;
-pub mod coreldraw;
-pub mod corel_painter;
-pub mod penpot;
-pub mod eps;
+pub mod sketch;
+pub mod xcf;
 
-use std::path::Path;
-use std::io::Read;
 use image::ImageEncoder;
+use std::io::Read;
+use std::path::Path;
 use tauri::{AppHandle, Runtime};
 
 /// Central registry for on-the-fly preview extraction.
-pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
-    let format = crate::formats::FileFormat::detect(path)
-        .ok_or_else(|| "Unsupported format")?;
+pub fn extract_preview<R: Runtime>(
+    app_handle: Option<&AppHandle<R>>,
+    path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+    let format = crate::formats::FileFormat::detect(path).ok_or("Unsupported format")?;
 
     match format.preview_strategy {
         crate::formats::PreviewStrategy::BrowserNative => {
-             Err("Browser native format - serve directly".into())
-        },
+            Err("Browser native format - serve directly".into())
+        }
 
         crate::formats::PreviewStrategy::Raw => {
             if let Ok((data, mime)) = extract_raw_preview(path) {
@@ -36,7 +38,7 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                 return Ok((data, "image/jpeg".to_string()));
             }
             Err("Failed all RAW preview extraction methods".into())
-        },
+        }
 
         crate::formats::PreviewStrategy::Ffmpeg => {
             if let Ok(data) = extract_ffmpeg_frame(app_handle, path) {
@@ -44,10 +46,11 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
             }
             let data = convert_to_png(path)?;
             Ok((data, "image/png".to_string()))
-        },
+        }
 
         crate::formats::PreviewStrategy::NativeExtractor => {
-            let ext = path.extension()
+            let ext = path
+                .extension()
                 .and_then(|e| e.to_str())
                 .unwrap_or("")
                 .to_lowercase();
@@ -57,7 +60,7 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                 "afphoto" | "afdesign" | "afpub" => {
                     let data = super::affinity::extract_largest_png(path)?;
                     Ok((data, "image/png".to_string()))
-                },
+                }
                 // Adobe Photoshop
                 "psd" | "psb" => {
                     if let Ok(data) = extract_psd_composite(path) {
@@ -66,11 +69,9 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                     // Fallback to binary scanner
                     let (data, mime) = binary_jpeg::extract_any_embedded(path)?;
                     Ok((data, mime))
-                },
+                }
                 // Adobe Illustrator (PDF-based)
-                "ai" => {
-                    ai::extract_ai_preview(path)
-                },
+                "ai" => ai::extract_ai_preview(path),
                 // Encapsulated PostScript / PostScript
                 "eps" | "ps" => {
                     if let Ok((data, mime)) = eps::extract_eps_ps_preview(path) {
@@ -89,46 +90,30 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                     }
 
                     Err("No preview found in EPS/PS".into())
-                },
+                }
                 // ZIP-based Project Previews
                 "xmind" => {
                     let data = extract_zip_preview(path)?;
                     Ok((data, "image/png".to_string()))
-                },
-                "clip" => {
-                    clip::extract_clip_preview(path)
-                },
-                "sketch" => {
-                    sketch::extract_sketch_preview(path)
-                },
+                }
+                "clip" => clip::extract_clip_preview(path),
+                "sketch" => sketch::extract_sketch_preview(path),
                 "kra" | "krz" | "kra~" => {
                     let data = extract_krita_preview(path)?;
                     Ok((data, "image/png".to_string()))
-                },
-                "aseprite" | "ase" => {
-                    aseprite::extract_aseprite_preview(path)
-                },
-                "xcf" => {
-                    xcf::extract_xcf_preview(path)
-                },
-                "mdp" => {
-                    mdp::extract_mdp_preview(path)
-                },
+                }
+                "aseprite" | "ase" => aseprite::extract_aseprite_preview(path),
+                "xcf" => xcf::extract_xcf_preview(path),
+                "mdp" => mdp::extract_mdp_preview(path),
                 // PaintTool SAI
-                "sai" => {
-                    sai::extract_sai_preview(path)
-                },
+                "sai" => sai::extract_sai_preview(path),
                 // PaintTool SAI v2
-                "sai2" => {
-                    sai2::extract_sai2_preview(path)
-                },
-                "reb" => {
-                    rebelle::extract_rebelle_preview(path)
-                },
+                "sai2" => sai2::extract_sai2_preview(path),
+                "reb" => rebelle::extract_rebelle_preview(path),
                 "blend" => {
                     let (data, mime) = binary_jpeg::extract_any_embedded(path)?;
                     Ok((data, mime))
-                },
+                }
                 "hdr" | "exr" | "dds" => {
                     if let Ok(data) = convert_to_png(path) {
                         return Ok((data, "image/png".to_string()));
@@ -138,30 +123,26 @@ pub fn extract_preview<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Pat
                     }
                     let (data, mime) = binary_jpeg::extract_any_embedded(path)?;
                     Ok((data, mime))
-                },
+                }
                 "fig" => {
                     let data = extract_figma_preview(path)?;
                     Ok((data, "image/png".to_string()))
-                },
-                "cdr" => {
-                    coreldraw::extract_coreldraw_preview(path)
-                },
-                "rif" | "riff" => {
-                    corel_painter::extract_corel_painter_preview(path)
-                },
+                }
+                "cdr" => coreldraw::extract_coreldraw_preview(path),
+                "rif" | "riff" => corel_painter::extract_corel_painter_preview(path),
                 "penpot" => {
                     let data = penpot::extract_penpot_preview(path)?;
                     Ok((data, "image/png".to_string()))
-                },
+                }
 
                 _ => Err("No native extractor for this extension".into()),
             }
-        },
+        }
 
         crate::formats::PreviewStrategy::Convert => {
             let data = convert_to_png(path)?;
             Ok((data, "image/png".to_string()))
-        },
+        }
 
         crate::formats::PreviewStrategy::None => Err("No preview strategy for this format".into()),
     }
@@ -261,8 +242,6 @@ fn convert_to_png(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     Ok(png_data)
 }
 
-
-
 fn extract_psd_composite(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let bytes = std::fs::read(path)?;
     let psd = psd::Psd::from_bytes(&bytes).map_err(|e| format!("PSD parse error: {}", e))?;
@@ -292,12 +271,14 @@ pub fn generate_thumbnail_extracted<R: Runtime>(
     // If it's a PDF (AI/EPS), we use PDFium for high-quality multiplatform rendering.
     if mime == "application/pdf" {
         // Try 1: Render Vector PDF (cleanest)
-        if let Ok(rendered_data) = crate::media::pdf::render_pdf_data_to_image(app_handle, &data, size_px) {
+        if let Ok(rendered_data) =
+            crate::media::pdf::render_pdf_data_to_image(app_handle, &data, size_px)
+        {
             data = rendered_data;
         }
         // Try 2: Extract XMP Thumbnail (high priority especially for AI/EPS)
         else if let Ok(embedded_data) = ai::extract_xmp_thumbnail_safe(input_path) {
-             data = embedded_data;
+            data = embedded_data;
         }
         // Try 3: General Binary Scanner (fallback for non-XMP embedded images)
         else if let Ok((embedded_data, _)) = binary_jpeg::extract_any_embedded(input_path) {
@@ -306,8 +287,7 @@ pub fn generate_thumbnail_extracted<R: Runtime>(
         // Try 4: FFmpeg Rasterization (slowest fallback)
         else if let Ok(rendered_data) = extract_ffmpeg_frame(app_handle, input_path) {
             data = rendered_data;
-        }
-        else {
+        } else {
             return Err("No PDF rendering or raster preview available for this file".into());
         }
     }
@@ -364,7 +344,8 @@ fn is_valid_image(data: &[u8]) -> bool {
         } else {
             false
         }
-    }).unwrap_or(false)
+    })
+    .unwrap_or(false)
 }
 
 fn extract_raw_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
@@ -374,7 +355,9 @@ fn extract_raw_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::er
             "image/jpeg"
         } else if data.starts_with(&[0x89, b'P', b'N', b'G']) {
             "image/png"
-        } else if data.starts_with(&[0x49, 0x49, 0x2A, 0x00]) || data.starts_with(&[0x4D, 0x4D, 0x00, 0x2A]) {
+        } else if data.starts_with(&[0x49, 0x49, 0x2A, 0x00])
+            || data.starts_with(&[0x4D, 0x4D, 0x00, 0x2A])
+        {
             "image/tiff"
         } else {
             "image/jpeg" // fallback guess
@@ -391,7 +374,8 @@ fn extract_raw_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::er
     }
 
     // 2. Fallback to broad binary scanner (safely extracts JPEG/TIFF without truncation)
-    if let Ok((data, mime)) = crate::thumbnails::extractors::binary_jpeg::extract_any_embedded(path) {
+    if let Ok((data, mime)) = crate::thumbnails::extractors::binary_jpeg::extract_any_embedded(path)
+    {
         if mime == "image/tiff" || mime == "image/x-tiff" {
             // Ensure browser compatibility
             if let Ok(png_data) = convert_to_png_from_memory(&data) {
@@ -412,16 +396,19 @@ fn extract_raw_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::er
     Err("Failed RAW preview extraction (No LibRaw thumb and no embedded binary found)".into())
 }
 
-fn extract_ffmpeg_frame<R: Runtime>(app_handle: Option<&AppHandle<R>>, path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    crate::media::ffmpeg::extract_frame_to_memory(app_handle, path)
-        .map_err(|e| e.into())
+fn extract_ffmpeg_frame<R: Runtime>(
+    app_handle: Option<&AppHandle<R>>,
+    path: &Path,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    crate::media::ffmpeg::extract_frame_to_memory(app_handle, path).map_err(|e| e.into())
 }
 
 fn convert_to_png_from_memory(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let img = image::load_from_memory(data)?;
     let mut png_data = Vec::new();
     let mut cursor = std::io::Cursor::new(&mut png_data);
-    img.to_rgb8().write_to(&mut cursor, image::ImageFormat::Png)?;
+    img.to_rgb8()
+        .write_to(&mut cursor, image::ImageFormat::Png)?;
     Ok(png_data)
 }
 
@@ -446,10 +433,16 @@ mod tests {
                         println!("\nTesting: {:?}", path);
                         match extract_raw_preview(&path) {
                             Ok((data, mime)) => {
-                                println!("  extract_raw_preview OK: {} bytes, mime: {}", data.len(), mime);
+                                println!(
+                                    "  extract_raw_preview OK: {} bytes, mime: {}",
+                                    data.len(),
+                                    mime
+                                );
                                 match image::load_from_memory(&data) {
                                     Ok(_) => println!("    -> image::load_from_memory SUCCESS"),
-                                    Err(e) => println!("    -> image::load_from_memory FAIL: {}", e),
+                                    Err(e) => {
+                                        println!("    -> image::load_from_memory FAIL: {}", e)
+                                    }
                                 }
                             }
                             Err(e) => println!("  extract_raw_preview ERR: {:?}", e),

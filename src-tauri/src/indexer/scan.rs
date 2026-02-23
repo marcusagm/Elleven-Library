@@ -1,7 +1,7 @@
-use super::types::{ProgressPayload, IndexedImage, WatcherRegistry};
+use super::types::{IndexedImage, ProgressPayload, WatcherRegistry};
 use super::watcher::start_watcher;
-use crate::db::Db;
 use crate::db::models::ImageMetadata;
+use crate::db::Db;
 use crate::indexer::metadata::get_image_metadata;
 use chrono::{DateTime, Utc};
 use std::collections::{HashMap, HashSet};
@@ -15,7 +15,7 @@ pub async fn run_scan(
     app: AppHandle,
     db: Arc<Db>,
     registry: Arc<tokio::sync::Mutex<WatcherRegistry>>,
-    root_path: PathBuf
+    root_path: PathBuf,
 ) {
     // Normalize root path (absolute and resolve symlinks)
     let root_path = root_path.canonicalize().unwrap_or(root_path);
@@ -25,7 +25,10 @@ pub async fn run_scan(
     let root_for_watcher = root_path.clone();
 
     // 1. Initial Quick Scan - Collect files and folders
-    let comparison_cache = db.get_all_files_comparison_data(&root_str).await.unwrap_or_default();
+    let comparison_cache = db
+        .get_all_files_comparison_data(&root_str)
+        .await
+        .unwrap_or_default();
     let mut files_to_process: Vec<(PathBuf, String)> = Vec::new();
     let mut clean_count: usize = 0;
     let mut unique_dirs: HashSet<String> = HashSet::new();
@@ -37,7 +40,8 @@ pub async fn run_scan(
         if entry.file_type().is_dir() {
             unique_dirs.insert(path_str);
         } else if entry.file_type().is_file() && is_image_file(path) {
-            let parent = path.parent()
+            let parent = path
+                .parent()
                 .map(|p| normalize_path(&p.to_string_lossy()))
                 .unwrap_or_default();
             unique_dirs.insert(parent.clone());
@@ -46,7 +50,8 @@ pub async fn run_scan(
             if let Some((db_size, db_mtime)) = comparison_cache.get(&path_str) {
                 if let Ok(m) = entry.metadata() {
                     let disk_size = m.len() as i64;
-                    let disk_mtime: DateTime<Utc> = m.modified().ok().map(|t| t.into()).unwrap_or_else(Utc::now);
+                    let disk_mtime: DateTime<Utc> =
+                        m.modified().ok().map(|t| t.into()).unwrap_or_else(Utc::now);
 
                     // Strict comparison: size must match and time difference < 1s
                     if disk_size == *db_size && (disk_mtime - *db_mtime).num_seconds().abs() < 1 {
@@ -64,19 +69,27 @@ pub async fn run_scan(
     }
 
     let total_files = files_to_process.len() + clean_count;
-    println!("DEBUG: Indexer found {} images ({} changed, {} unchanged) and {} folders",
-        total_files, files_to_process.len(), clean_count, unique_dirs.len());
+    println!(
+        "DEBUG: Indexer found {} images ({} changed, {} unchanged) and {} folders",
+        total_files,
+        files_to_process.len(),
+        clean_count,
+        unique_dirs.len()
+    );
 
     // Ensure root is in the set
     unique_dirs.insert(root_str.clone());
 
-    println!("DEBUG: Ensuring folder hierarchy for {} folders...", unique_dirs.len());
+    println!(
+        "DEBUG: Ensuring folder hierarchy for {} folders...",
+        unique_dirs.len()
+    );
     // 2. Ensure Hierarchy Exists
     let folder_map = match ensure_folder_hierarchy(&db, unique_dirs, &root_str).await {
         Ok(map) => {
             println!("DEBUG: Folder hierarchy ensured ({} entries)", map.len());
             map
-        },
+        }
         Err(e) => {
             eprintln!("Failed to ensure folder hierarchy: {}", e);
             HashMap::new()
@@ -85,20 +98,20 @@ pub async fn run_scan(
 
     // 3. Prune Orphaned Folders
     if !folder_map.is_empty() {
-            let db_folders = match db.get_folders_under_root(&root_str).await {
-                Ok(list) => list,
-                Err(_) => Vec::new()
-            };
+        let db_folders = db
+            .get_folders_under_root(&root_str)
+            .await
+            .unwrap_or_default();
 
-            let valid_paths: std::collections::HashSet<String> = folder_map.keys().cloned().collect();
+        let valid_paths: std::collections::HashSet<String> = folder_map.keys().cloned().collect();
 
-            for (id, path) in db_folders {
-                let normalized_db_path = normalize_path(&path);
-                if !valid_paths.contains(&normalized_db_path) {
-                    println!("DEBUG: Pruning orphaned folder: {}", normalized_db_path);
-                    let _ = db.delete_folder(id).await;
-                }
+        for (id, path) in db_folders {
+            let normalized_db_path = normalize_path(&path);
+            if !valid_paths.contains(&normalized_db_path) {
+                println!("DEBUG: Pruning orphaned folder: {}", normalized_db_path);
+                let _ = db.delete_folder(id).await;
             }
+        }
     }
 
     if total_files > 0 {
@@ -133,7 +146,7 @@ pub async fn run_scan(
                     batch.push((folder_id, indexed.metadata.clone()));
                 }
 
-                if processed % chunk_size == 0 || processed == total_files {
+                if processed.is_multiple_of(chunk_size) || processed == total_files {
                     let _ = app_worker.emit(
                         "indexer:progress",
                         ProgressPayload {
@@ -143,7 +156,10 @@ pub async fn run_scan(
                         },
                     );
 
-                    if let Err(e) = db_worker.save_images_batch(batch.drain(..).collect()).await {
+                    if let Err(e) = db_worker
+                        .save_images_batch(std::mem::take(&mut batch))
+                        .await
+                    {
                         eprintln!("Failed to save images batch: {}", e);
                     }
                 }
@@ -164,10 +180,12 @@ pub async fn run_scan(
             let tx_clone = tx.clone();
             tokio::spawn(async move {
                 if let Some(meta) = get_image_metadata(&path) {
-                    let _ = tx_clone.send(IndexedImage {
-                        metadata: meta,
-                        parent_dir,
-                    }).await;
+                    let _ = tx_clone
+                        .send(IndexedImage {
+                            metadata: meta,
+                            parent_dir,
+                        })
+                        .await;
                 }
             });
         }
@@ -191,8 +209,14 @@ async fn ensure_folder_hierarchy(
     for dir_path in sorted_dirs {
         let dir_path = normalize_path(&dir_path);
         let path_buf = PathBuf::from(&dir_path);
-        let name = path_buf.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string();
-        let parent_path_str = path_buf.parent().map(|p| normalize_path(&p.to_string_lossy()));
+        let name = path_buf
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+        let parent_path_str = path_buf
+            .parent()
+            .map(|p| normalize_path(&p.to_string_lossy()));
 
         let mut parent_id = None;
         if let Some(pp) = parent_path_str {
@@ -205,7 +229,9 @@ async fn ensure_folder_hierarchy(
 
         let is_root = dir_path == root_path;
         match db.upsert_folder(&dir_path, &name, parent_id, is_root).await {
-            Ok(id) => { path_to_id.insert(dir_path, id); }
+            Ok(id) => {
+                path_to_id.insert(dir_path, id);
+            }
             Err(e) => eprintln!("Failed to upsert folder '{}': {}", dir_path, e),
         }
     }
@@ -214,7 +240,9 @@ async fn ensure_folder_hierarchy(
 
 fn normalize_path(path: &str) -> String {
     let p = path.trim_end_matches('/');
-    if p.is_empty() { return "/".to_string(); }
+    if p.is_empty() {
+        return "/".to_string();
+    }
     p.to_string()
 }
 

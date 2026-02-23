@@ -38,9 +38,12 @@ impl Db {
             Ok(Some(r.id))
         } else {
             // Case-insensitive fallback for move detections on case-insensitive filesystems
-            let row_loose = sqlx::query!("SELECT id as \"id!\" FROM folders WHERE path = ? COLLATE NOCASE", path)
-                .fetch_optional(&mut *conn)
-                .await?;
+            let row_loose = sqlx::query!(
+                "SELECT id as \"id!\" FROM folders WHERE path = ? COLLATE NOCASE",
+                path
+            )
+            .fetch_optional(&mut *conn)
+            .await?;
             Ok(row_loose.map(|r| r.id))
         }
     }
@@ -57,7 +60,8 @@ impl Db {
         is_root: bool,
     ) -> Result<i64, sqlx::Error> {
         let mut conn = self.pool.acquire().await?;
-        self.upsert_folder_internal(&mut conn, path, name, parent_id, is_root).await
+        self.upsert_folder_internal(&mut conn, path, name, parent_id, is_root)
+            .await
     }
 
     /// Internal version of upsert_folder that accepts a connection.
@@ -73,10 +77,11 @@ impl Db {
 
         if let Some(id) = self.get_folder_id_internal(conn, path).await? {
             // Guard: Do not demote a root folder if it's already marked as such.
-            let existing: Option<(bool, Option<i64>)> = sqlx::query_as("SELECT is_root, parent_id FROM folders WHERE id = ?")
-                .bind(id)
-                .fetch_optional(&mut *conn)
-                .await?;
+            let existing: Option<(bool, Option<i64>)> =
+                sqlx::query_as("SELECT is_root, parent_id FROM folders WHERE id = ?")
+                    .bind(id)
+                    .fetch_optional(&mut *conn)
+                    .await?;
 
             if let Some((existing_is_root, _)) = existing {
                 if existing_is_root && !is_root {
@@ -133,7 +138,10 @@ impl Db {
     }
 
     /// Retrieves all thumbnail paths for images within a folder and all its descendants.
-    pub async fn get_location_thumbnails(&self, location_id: i64) -> Result<Vec<String>, sqlx::Error> {
+    pub async fn get_location_thumbnails(
+        &self,
+        location_id: i64,
+    ) -> Result<Vec<String>, sqlx::Error> {
         let rows: Vec<(String,)> = sqlx::query_as(
             "WITH RECURSIVE family AS (
                 SELECT id FROM folders WHERE id = ?
@@ -158,14 +166,18 @@ impl Db {
     }
 
     /// Finds unlinked root folders that should be children of a newly added parent folder.
-    pub async fn adopt_orphaned_children(&self, parent_id: i64, parent_path: &str) -> Result<(), sqlx::Error> {
+    pub async fn adopt_orphaned_children(
+        &self,
+        parent_id: i64,
+        parent_path: &str,
+    ) -> Result<(), sqlx::Error> {
         let path_pattern = format!("{}/%", parent_path);
 
         sqlx::query(
             "UPDATE folders
              SET parent_id = ?, is_root = 0
              WHERE is_root = 1
-             AND path LIKE ?"
+             AND path LIKE ?",
         )
         .bind(parent_id)
         .bind(path_pattern)
@@ -178,12 +190,13 @@ impl Db {
     /// Retrieves the entire folder hierarchy.
     ///
     /// Returns: Vec<(id, parent_id, path, name, is_root)>
-    pub async fn get_folder_hierarchy(&self) -> Result<Vec<(i64, Option<i64>, String, String, bool)>, sqlx::Error> {
-        let rows: Vec<(i64, Option<i64>, String, String, bool)> = sqlx::query_as(
-            "SELECT id, parent_id, path, name, is_root FROM folders ORDER BY path"
-        )
-        .fetch_all(&self.pool)
-        .await?;
+    pub async fn get_folder_hierarchy(
+        &self,
+    ) -> Result<Vec<(i64, Option<i64>, String, String, bool)>, sqlx::Error> {
+        let rows: Vec<(i64, Option<i64>, String, String, bool)> =
+            sqlx::query_as("SELECT id, parent_id, path, name, is_root FROM folders ORDER BY path")
+                .fetch_all(&self.pool)
+                .await?;
         Ok(rows)
     }
 
@@ -206,7 +219,7 @@ impl Db {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| (r.folder_id, r.count as i64)).collect())
+        Ok(rows.into_iter().map(|r| (r.folder_id, r.count)).collect())
     }
 
     /// Gets image counts for folders (direct children only).
@@ -216,7 +229,7 @@ impl Db {
         )
         .fetch_all(&self.pool)
         .await?;
-        Ok(rows.into_iter().map(|r| (r.folder_id, r.count as i64)).collect())
+        Ok(rows.into_iter().map(|r| (r.folder_id, r.count)).collect())
     }
 
     /// Ensures all parent folders exist for a given path.
@@ -263,7 +276,7 @@ impl Db {
 
             // We use the transaction for both existence check and insertion
             last_id = Some(
-                self.upsert_folder_internal(&mut *tx, &current_path, component, last_id, false)
+                self.upsert_folder_internal(&mut tx, &current_path, component, last_id, false)
                     .await?,
             );
         }
@@ -274,32 +287,66 @@ impl Db {
     }
 
     /// Renames a folder and recursively updates all paths for subfolders and images.
-    pub async fn rename_folder(&self, old_path: &str, new_path: &str, new_name: &str) -> Result<bool, sqlx::Error> {
+    pub async fn rename_folder(
+        &self,
+        old_path: &str,
+        new_path: &str,
+        new_name: &str,
+    ) -> Result<bool, sqlx::Error> {
         let old_path = old_path.trim_end_matches('/');
         let new_path = new_path.trim_end_matches('/');
 
         let folder = self.get_folder_by_path(old_path).await?;
 
         if let Some(id) = folder {
-            println!("DEBUG: DB - Renaming folder ID {} from '{}' to '{}'", id, old_path, new_path);
+            println!(
+                "DEBUG: DB - Renaming folder ID {} from '{}' to '{}'",
+                id, old_path, new_path
+            );
 
-            let res = sqlx::query!("UPDATE folders SET path = ?, name = ? WHERE id = ?", new_path, new_name, id)
-                .execute(&self.pool)
-                .await;
+            let res = sqlx::query!(
+                "UPDATE folders SET path = ?, name = ? WHERE id = ?",
+                new_path,
+                new_name,
+                id
+            )
+            .execute(&self.pool)
+            .await;
 
             match res {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => {
                     if let Some(db_err) = e.as_database_error() {
-                        if db_err.code().as_deref() == Some("2067") { // Unique conflict (Already exists)
+                        if db_err.code().as_deref() == Some("2067") {
+                            // Unique conflict (Already exists)
                             if let Some(target_id) = self.get_folder_by_path(new_path).await? {
                                 // Merge logic: Move children to target
-                                sqlx::query!("UPDATE images SET folder_id = ? WHERE folder_id = ?", target_id, id).execute(&self.pool).await?;
-                                sqlx::query!("UPDATE folders SET parent_id = ? WHERE parent_id = ?", target_id, id).execute(&self.pool).await?;
-                                sqlx::query!("DELETE FROM folders WHERE id = ?", id).execute(&self.pool).await?;
-                            } else { return Err(e); }
-                        } else { return Err(e); }
-                    } else { return Err(e); }
+                                sqlx::query!(
+                                    "UPDATE images SET folder_id = ? WHERE folder_id = ?",
+                                    target_id,
+                                    id
+                                )
+                                .execute(&self.pool)
+                                .await?;
+                                sqlx::query!(
+                                    "UPDATE folders SET parent_id = ? WHERE parent_id = ?",
+                                    target_id,
+                                    id
+                                )
+                                .execute(&self.pool)
+                                .await?;
+                                sqlx::query!("DELETE FROM folders WHERE id = ?", id)
+                                    .execute(&self.pool)
+                                    .await?;
+                            } else {
+                                return Err(e);
+                            }
+                        } else {
+                            return Err(e);
+                        }
+                    } else {
+                        return Err(e);
+                    }
                 }
             }
 
@@ -335,14 +382,19 @@ impl Db {
 
     /// Lists all top-level root folders (Locations).
     pub async fn get_all_root_folders(&self) -> Result<Vec<(i64, String)>, sqlx::Error> {
-        let rows = sqlx::query!("SELECT id as \"id!\", path FROM folders WHERE is_root = 1 OR parent_id IS NULL")
-            .fetch_all(&self.pool)
-            .await?;
+        let rows = sqlx::query!(
+            "SELECT id as \"id!\", path FROM folders WHERE is_root = 1 OR parent_id IS NULL"
+        )
+        .fetch_all(&self.pool)
+        .await?;
         Ok(rows.into_iter().map(|r| (r.id, r.path)).collect())
     }
 
     /// Finds all sub-folders belonging to a specific root location.
-    pub async fn get_folders_under_root(&self, root_path: &str) -> Result<Vec<(i64, String)>, sqlx::Error> {
+    pub async fn get_folders_under_root(
+        &self,
+        root_path: &str,
+    ) -> Result<Vec<(i64, String)>, sqlx::Error> {
         let root_path = root_path.trim_end_matches('/');
         let pattern = format!("{}/%", root_path);
         let rows = sqlx::query!(

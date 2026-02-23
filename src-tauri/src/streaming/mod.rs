@@ -3,9 +3,9 @@
 //! Provides real-time video transcoding via HLS protocol.
 //! Segments are generated on-demand and cached to disk.
 
-pub mod server;
-pub mod probe;
-pub mod playlist;
-pub mod segment;
-pub mod process_manager;
 pub mod linear;
+pub mod playlist;
+pub mod probe;
+pub mod process_manager;
+pub mod segment;
+pub mod server;

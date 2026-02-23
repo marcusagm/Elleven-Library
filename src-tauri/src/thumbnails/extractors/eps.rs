@@ -1,6 +1,6 @@
-use std::path::Path;
-use crate::thumbnails::extractors::binary_jpeg;
 use crate::thumbnails::extractors::ai;
+use crate::thumbnails::extractors::binary_jpeg;
+use std::path::Path;
 
 /// Main entry point for EPS and PS file preview extraction.
 /// Implements native extraction strategies for thumbnails and previews.
@@ -9,7 +9,9 @@ use crate::thumbnails::extractors::ai;
 ///
 /// # Errors
 /// Returns an error if no embedded imagery or PDF-wrapper can be found natively.
-pub fn extract_eps_ps_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_eps_ps_preview(
+    path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     // Priority 0: Official Binary EPS Header (Pointer-based TIFF)
     if let Ok((data, mime)) = binary_jpeg::extract_eps_binary_pointer(path) {
         return Ok((data, mime));
@@ -99,4 +101,3 @@ fn convert_postscript_to_pdf_bytes(path: &Path) -> Result<Vec<u8>, Box<dyn std::
     let _ = std::fs::remove_file(&temp_pdf);
     Err("Failed to convert PostScript to PDF via OS tools".into())
 }
-

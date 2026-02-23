@@ -1,5 +1,5 @@
-use serde::Serialize;
 use crate::db::models::ImageMetadata;
+use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Clone, Serialize)]

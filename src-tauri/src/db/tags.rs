@@ -1,7 +1,7 @@
 //! Tag management and image-tag relationship queries.
 
-use crate::db::models::{Tag, TagCount, LibraryStats, FolderCount};
 use super::Db;
+use crate::db::models::{FolderCount, LibraryStats, Tag, TagCount};
 
 impl Db {
     /// Creates a new tag in the database.
@@ -21,9 +21,14 @@ impl Db {
         parent_id: Option<i64>,
         color: Option<String>,
     ) -> Result<i64, sqlx::Error> {
-        let res = sqlx::query!("INSERT INTO tags (name, parent_id, color) VALUES (?, ?, ?)", name, parent_id, color)
-            .execute(&self.pool)
-            .await?;
+        let res = sqlx::query!(
+            "INSERT INTO tags (name, parent_id, color) VALUES (?, ?, ?)",
+            name,
+            parent_id,
+            color
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(res.last_insert_rowid())
     }
@@ -44,10 +49,18 @@ impl Db {
         let mut query = "UPDATE tags SET ".to_string();
         let mut updates = Vec::new();
 
-        if name.is_some() { updates.push("name = ?"); }
-        if color.is_some() { updates.push("color = ?"); }
-        if parent_id.is_some() { updates.push("parent_id = ?"); }
-        if order_index.is_some() { updates.push("order_index = ?"); }
+        if name.is_some() {
+            updates.push("name = ?");
+        }
+        if color.is_some() {
+            updates.push("color = ?");
+        }
+        if parent_id.is_some() {
+            updates.push("parent_id = ?");
+        }
+        if order_index.is_some() {
+            updates.push("order_index = ?");
+        }
 
         if updates.is_empty() {
             return Ok(());
@@ -58,12 +71,22 @@ impl Db {
 
         let mut q = sqlx::query(&query);
 
-        if let Some(n) = name { q = q.bind(n); }
-        if let Some(c) = color { q = q.bind(c); }
-        if let Some(p) = parent_id {
-            if p == 0 { q = q.bind(None::<i64>); } else { q = q.bind(p); }
+        if let Some(n) = name {
+            q = q.bind(n);
         }
-        if let Some(o) = order_index { q = q.bind(o); }
+        if let Some(c) = color {
+            q = q.bind(c);
+        }
+        if let Some(p) = parent_id {
+            if p == 0 {
+                q = q.bind(None::<i64>);
+            } else {
+                q = q.bind(p);
+            }
+        }
+        if let Some(o) = order_index {
+            q = q.bind(o);
+        }
 
         q = q.bind(id);
 
@@ -107,7 +130,11 @@ impl Db {
     }
 
     /// Removes an association between a tag and an image.
-    pub async fn remove_tag_from_image(&self, image_id: i64, tag_id: i64) -> Result<(), sqlx::Error> {
+    pub async fn remove_tag_from_image(
+        &self,
+        image_id: i64,
+        tag_id: i64,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "DELETE FROM image_tags WHERE image_id = ? AND tag_id = ?",
             image_id,
@@ -187,13 +214,15 @@ impl Db {
         .fetch_all(&self.pool)
         .await?;
 
-        let folder_counts = self.get_folder_counts_direct()
+        let folder_counts = self
+            .get_folder_counts_direct()
             .await?
             .into_iter()
             .map(|(folder_id, count)| FolderCount { folder_id, count })
             .collect();
 
-        let folder_counts_recursive = self.get_folder_counts_recursive()
+        let folder_counts_recursive = self
+            .get_folder_counts_recursive()
             .await?
             .into_iter()
             .map(|(folder_id, count)| FolderCount { folder_id, count })

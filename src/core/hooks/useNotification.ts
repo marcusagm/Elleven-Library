@@ -1,8 +1,12 @@
-import { toast } from "../../components/ui/Sonner";
+import { toast } from '../../components/ui/Sonner';
 
 export const useNotification = () => {
     return {
-        success: (title: string, description?: string, action?: { label: string; onClick: () => void }) => {
+        success: (
+            title: string,
+            description?: string,
+            action?: { label: string; onClick: () => void }
+        ) => {
             toast.success(title, { description, action });
         },
         error: (title: string, description?: string) => {

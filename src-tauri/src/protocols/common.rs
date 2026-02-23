@@ -31,30 +31,47 @@ pub fn decode_path(path: &str) -> String {
     percent_decode_str(path).decode_utf8_lossy().into_owned()
 }
 
-pub fn serve_file(path: &Path, range: Option<&header::HeaderValue>) -> Result<Response<Vec<u8>>, Response<Vec<u8>>> {
+#[allow(clippy::result_large_err)]
+pub fn serve_file(
+    path: &Path,
+    range: Option<&header::HeaderValue>,
+) -> Result<Response<Vec<u8>>, Response<Vec<u8>>> {
     use std::io::{Read, Seek};
-    
+
     if !path.exists() {
-        return Err(error_response(StatusCode::NOT_FOUND, b"File not found".to_vec()));
+        return Err(error_response(
+            StatusCode::NOT_FOUND,
+            b"File not found".to_vec(),
+        ));
     }
 
     if path.is_dir() {
-        return Err(error_response(StatusCode::FORBIDDEN, b"Cannot serve directory".to_vec()));
+        return Err(error_response(
+            StatusCode::FORBIDDEN,
+            b"Cannot serve directory".to_vec(),
+        ));
     }
 
     let mut file = std::fs::File::open(path).map_err(|e| {
-        error_response(StatusCode::INTERNAL_SERVER_ERROR, e.to_string().into_bytes())
+        error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string().into_bytes(),
+        )
     })?;
 
-    let metadata = file.metadata().map_err(|_| {
-        error_response(StatusCode::INTERNAL_SERVER_ERROR, Vec::new())
-    })?;
-    
+    let metadata = file
+        .metadata()
+        .map_err(|_| error_response(StatusCode::INTERNAL_SERVER_ERROR, Vec::new()))?;
+
     let file_size = metadata.len();
-    
+
     // Use the central format registry for MIME detection
     let mut mime = if let Some(format) = crate::formats::FileFormat::detect(path) {
-        format.mime_types.first().unwrap_or(&"application/octet-stream").to_string()
+        format
+            .mime_types
+            .first()
+            .unwrap_or(&"application/octet-stream")
+            .to_string()
     } else {
         from_path(path).first_or_octet_stream().to_string()
     };
@@ -68,17 +85,19 @@ pub fn serve_file(path: &Path, range: Option<&header::HeaderValue>) -> Result<Re
         .header(header::CONTENT_TYPE, mime)
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::ACCEPT_RANGES, "bytes")
-        .header(header::ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Range, Content-Length, Accept-Ranges");
+        .header(
+            header::ACCESS_CONTROL_EXPOSE_HEADERS,
+            "Content-Range, Content-Length, Accept-Ranges",
+        );
 
     if let Some(range_value) = range {
         if let Ok(range_str) = range_value.to_str() {
-            if range_str.starts_with("bytes=") {
-                let range_spec = &range_str["bytes=".len()..];
+            if let Some(range_spec) = range_str.strip_prefix("bytes=") {
                 let mut start: u64 = 0;
                 let mut end: u64 = file_size - 1;
 
                 let parts: Vec<&str> = range_spec.split('-').collect();
-                if parts.len() >= 1 && !parts[0].is_empty() {
+                if !parts.is_empty() && !parts[0].is_empty() {
                     if let Ok(s) = parts[0].parse::<u64>() {
                         start = s;
                     }
@@ -97,7 +116,10 @@ pub fn serve_file(path: &Path, range: Option<&header::HeaderValue>) -> Result<Re
 
                 // Sanitize range
                 if start >= file_size {
-                    return Err(error_response(StatusCode::RANGE_NOT_SATISFIABLE, format!("bytes */{}", file_size).into_bytes()));
+                    return Err(error_response(
+                        StatusCode::RANGE_NOT_SATISFIABLE,
+                        format!("bytes */{}", file_size).into_bytes(),
+                    ));
                 }
                 if end >= file_size {
                     end = file_size - 1;
@@ -112,10 +134,15 @@ pub fn serve_file(path: &Path, range: Option<&header::HeaderValue>) -> Result<Re
                 let real_end = start + chunk_size - 1;
 
                 let mut buffer = vec![0u8; chunk_size as usize];
-                if file.seek(std::io::SeekFrom::Start(start)).is_ok() && file.read_exact(&mut buffer).is_ok() {
+                if file.seek(std::io::SeekFrom::Start(start)).is_ok()
+                    && file.read_exact(&mut buffer).is_ok()
+                {
                     return Ok(builder
                         .status(StatusCode::PARTIAL_CONTENT)
-                        .header(header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, real_end, file_size))
+                        .header(
+                            header::CONTENT_RANGE,
+                            format!("bytes {}-{}/{}", start, real_end, file_size),
+                        )
                         .header(header::CONTENT_LENGTH, chunk_size)
                         .body(buffer)
                         .unwrap_or_else(|_| Response::default()));
@@ -127,16 +154,23 @@ pub fn serve_file(path: &Path, range: Option<&header::HeaderValue>) -> Result<Re
     // Default: Serve entire file (for non-range requests)
     // If the file is very large and no range was requested, we might be in an initial "probe" request.
     // For videos, instead of returning 413, we serve the first chunk as 206 to encourage the browser to use Ranges.
-    let is_video = path.extension().and_then(|e| e.to_str()).map(|e| ["mp4", "webm", "mov", "m4v", "mkv", "m2ts"].contains(&e)).unwrap_or(false);
+    let is_video = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| ["mp4", "webm", "mov", "m4v", "mkv", "m2ts"].contains(&e))
+        .unwrap_or(false);
 
     if file_size > 500 * 1024 * 1024 && is_video {
         // Automatic Range fallthrough for large videos
         let chunk_size = std::cmp::min(file_size, 10 * 1024 * 1024);
         let mut buffer = vec![0u8; chunk_size as usize];
         if file.seek(std::io::SeekFrom::Start(0)).is_ok() && file.read_exact(&mut buffer).is_ok() {
-             return Ok(builder
+            return Ok(builder
                 .status(StatusCode::PARTIAL_CONTENT)
-                .header(header::CONTENT_RANGE, format!("bytes 0-{}/{}", chunk_size - 1, file_size))
+                .header(
+                    header::CONTENT_RANGE,
+                    format!("bytes 0-{}/{}", chunk_size - 1, file_size),
+                )
                 .header(header::CONTENT_LENGTH, chunk_size)
                 .body(buffer)
                 .unwrap_or_else(|_| Response::default()));
@@ -145,12 +179,18 @@ pub fn serve_file(path: &Path, range: Option<&header::HeaderValue>) -> Result<Re
 
     // High Memory Limit for full download (Images, Fonts, small Videos)
     if file_size > 1024 * 1024 * 1024 {
-        return Err(error_response(StatusCode::PAYLOAD_TOO_LARGE, b"File too large".to_vec()));
+        return Err(error_response(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            b"File too large".to_vec(),
+        ));
     }
 
     let mut all_data = Vec::with_capacity(file_size as usize);
     if file.read_to_end(&mut all_data).is_err() {
-        return Err(error_response(StatusCode::INTERNAL_SERVER_ERROR, b"Read error".to_vec()));
+        return Err(error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            b"Read error".to_vec(),
+        ));
     }
 
     Ok(builder

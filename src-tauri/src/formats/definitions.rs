@@ -1,5 +1,5 @@
+use super::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 use super::FileFormat;
-use super::types::{MediaType, ThumbnailStrategy, PlaybackStrategy, PreviewStrategy};
 
 // THE MASTER REGISTRY
 pub const SUPPORTED_FORMATS: &[FileFormat] = &[
@@ -85,7 +85,6 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::Convert,
         playback: PlaybackStrategy::None,
     },
-
     // --- RAW PHOTOS ---
     FileFormat {
         name: "Canon Raw",
@@ -285,7 +284,6 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::Raw,
         playback: PlaybackStrategy::None,
     },
-
     // --- MODERN FORMATS ---
     FileFormat {
         name: "High Efficiency Image",
@@ -341,7 +339,6 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::None,
         playback: PlaybackStrategy::None,
     },
-
     // --- DESIGN & VECTORS ---
     FileFormat {
         name: "Scalable Vector Graphics",
@@ -418,7 +415,10 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
     FileFormat {
         name: "Adobe InDesign",
         extensions: &["indd", "idml"],
-        mime_types: &["application/x-indesign", "application/vnd.adobe.indesign-idml-package"],
+        mime_types: &[
+            "application/x-indesign",
+            "application/vnd.adobe.indesign-idml-package",
+        ],
         type_category: MediaType::Project,
         strategy: ThumbnailStrategy::Icon,
         preview_strategy: PreviewStrategy::None,
@@ -514,7 +514,6 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::BrowserNative,
         playback: PlaybackStrategy::None,
     },
-
     // --- 3D MODELS ---
     FileFormat {
         name: "Blender Project",
@@ -651,7 +650,6 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::None,
         playback: PlaybackStrategy::None,
     },
-
     // --- FONTS ---
     FileFormat {
         name: "TrueType Font",
@@ -707,7 +705,6 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::None,
         playback: PlaybackStrategy::None,
     },
-
     // --- ZIP PREVIEW FORMATS ---
     FileFormat {
         name: "Affinity Design",
@@ -727,7 +724,7 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::NativeExtractor,
         playback: PlaybackStrategy::None,
     },
-     FileFormat {
+    FileFormat {
         name: "Affinity Publisher",
         extensions: &["afpub"],
         mime_types: &["application/x-affinity-publisher"],
@@ -790,7 +787,6 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::None,
         playback: PlaybackStrategy::None,
     },
-
     // --- VIDEOS ---
     FileFormat {
         name: "OpenEXR Image",
@@ -822,13 +818,17 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
     FileFormat {
         name: "Netpbm Formats",
         extensions: &["pbm", "pgm", "ppm", "pnm", "pam"],
-        mime_types: &["image/x-portable-bitmap", "image/x-portable-graymap", "image/x-portable-pixmap", "image/x-portable-anymap"],
+        mime_types: &[
+            "image/x-portable-bitmap",
+            "image/x-portable-graymap",
+            "image/x-portable-pixmap",
+            "image/x-portable-anymap",
+        ],
         type_category: MediaType::Image,
         strategy: ThumbnailStrategy::NativeExtractor,
         preview_strategy: PreviewStrategy::Convert, // Browsers don't support these reliably, convert to PNG
         playback: PlaybackStrategy::None,
     },
-
     // --- VIDEOS (FFMPEG) ---
     FileFormat {
         name: "MPEG-4 Video",
@@ -866,7 +866,7 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::None,
         playback: PlaybackStrategy::Hls, // USER LIST: mkv -> HLS
     },
-     FileFormat {
+    FileFormat {
         name: "Matroska Audio",
         extensions: &["mka"],
         mime_types: &["audio/x-matroska"],
@@ -956,7 +956,7 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::None,
         playback: PlaybackStrategy::Hls, // USER LIST: rm -> HLS
     },
-     FileFormat {
+    FileFormat {
         name: "RealAudio",
         extensions: &["ra"],
         mime_types: &["audio/vnd.rn-realaudio"],
@@ -1028,7 +1028,6 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::None,
         playback: PlaybackStrategy::LinearHls,
     },
-
     // --- AUDIO ---
     FileFormat {
         name: "MP3 Audio",
@@ -1039,7 +1038,7 @@ pub const SUPPORTED_FORMATS: &[FileFormat] = &[
         preview_strategy: PreviewStrategy::None,
         playback: PlaybackStrategy::Native, // USER LIST: mp3 -> Native
     },
-     FileFormat {
+    FileFormat {
         name: "MPEG-1 Audio Layer II",
         extensions: &["mp2"],
         mime_types: &["audio/mpeg"],

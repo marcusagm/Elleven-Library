@@ -9,7 +9,12 @@
 /// * `duration_secs` - Total duration of the video in seconds
 /// * `segment_duration` - Duration of each segment in seconds
 /// * `quality` - Transcoding quality (preview, standard, high)
-pub fn generate_m3u8(file_path: &str, duration_secs: f64, segment_duration: f64, quality: &str) -> String {
+pub fn generate_m3u8(
+    file_path: &str,
+    duration_secs: f64,
+    segment_duration: f64,
+    quality: &str,
+) -> String {
     let num_segments = (duration_secs / segment_duration).ceil() as u32;
 
     let mut playlist = String::new();
@@ -17,7 +22,10 @@ pub fn generate_m3u8(file_path: &str, duration_secs: f64, segment_duration: f64,
     // Header
     playlist.push_str("#EXTM3U\n");
     playlist.push_str("#EXT-X-VERSION:3\n");
-    playlist.push_str(&format!("#EXT-X-TARGETDURATION:{}\n", segment_duration.ceil() as u32));
+    playlist.push_str(&format!(
+        "#EXT-X-TARGETDURATION:{}\n",
+        segment_duration.ceil() as u32
+    ));
     playlist.push_str("#EXT-X-MEDIA-SEQUENCE:0\n");
     playlist.push_str("#EXT-X-PLAYLIST-TYPE:VOD\n");
 
@@ -27,7 +35,10 @@ pub fn generate_m3u8(file_path: &str, duration_secs: f64, segment_duration: f64,
         let seg_duration = (duration_secs - seg_start).min(segment_duration);
 
         playlist.push_str(&format!("#EXTINF:{:.3},\n", seg_duration));
-        playlist.push_str(&format!("/segment/{}/{}.ts?quality={}\n", file_path, i, quality));
+        playlist.push_str(&format!(
+            "/segment/{}/{}.ts?quality={}\n",
+            file_path, i, quality
+        ));
     }
 
     // End marker

@@ -1,8 +1,8 @@
 use std::path::PathBuf;
-use tauri::http::{header, Response, StatusCode, Request};
+use tauri::http::{header, Request, Response, StatusCode};
 use tauri::{AppHandle, Manager};
 
-use super::common::{decode_path, extract_path_part, error_response};
+use super::common::{decode_path, error_response, extract_path_part};
 use crate::transcoding::cache::TranscodeCache;
 use crate::transcoding::detector;
 use crate::transcoding::ffmpeg_pipe::FfmpegTranscoder;
@@ -10,19 +10,20 @@ use crate::transcoding::quality::TranscodeQuality;
 
 /// Handler for video-stream:// protocol
 /// Transcodes unsupported video formats to MP4 (H.264) on-the-fly or serves from cache
-pub fn handler<R: tauri::Runtime>(app: &AppHandle<R>, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
+pub fn handler<R: tauri::Runtime>(
+    app: &AppHandle<R>,
+    request: &Request<Vec<u8>>,
+) -> Response<Vec<u8>> {
     let uri = request.uri().to_string();
-    
+
     // Parse path and quality from URI
     // Format: video-stream://localhost/path/to/file.mkv?quality=preview
     let (path_str, quality) = parse_stream_uri(&uri, "video-stream");
     let decoded_path = decode_path(&path_str);
     let mut full_path = PathBuf::from(&decoded_path);
 
-    if !full_path.is_absolute() && cfg!(unix) {
-        if !path_str.starts_with('/') {
-            full_path = PathBuf::from("/").join(full_path);
-        }
+    if !full_path.is_absolute() && cfg!(unix) && !path_str.starts_with('/') {
+        full_path = PathBuf::from("/").join(full_path);
     }
 
     // Verify file exists
@@ -98,7 +99,7 @@ pub fn handler<R: tauri::Runtime>(app: &AppHandle<R>, request: &Request<Vec<u8>>
 fn parse_stream_uri(uri: &str, scheme: &str) -> (String, TranscodeQuality) {
     // First, extract the path part using the common function
     let path_with_query = extract_path_part(uri, scheme);
-    
+
     // Split path and query string
     let (path, query) = if let Some(pos) = path_with_query.find('?') {
         (&path_with_query[..pos], Some(&path_with_query[pos + 1..]))

@@ -33,9 +33,9 @@ function setQuality(newQuality: TranscodeQuality) {
 }
 
 export const transcodeState = {
-    quality,
+    quality
 };
 
 export const transcodeActions = {
-    setQuality,
+    setQuality
 };

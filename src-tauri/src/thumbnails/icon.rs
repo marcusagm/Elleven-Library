@@ -1,5 +1,5 @@
-use std::path::Path;
 use resvg::usvg;
+use std::path::Path;
 use tiny_skia::Pixmap;
 
 /// Icon category for unsupported file types
@@ -26,45 +26,32 @@ fn get_icon_category(path: &Path) -> IconCategory {
 
     match ext.as_str() {
         // 3D formats
-        "c4d" | "3ds" | "obj" | "fbx" | "blend" | "stl" | "dae" |
-        "skp" | "dwg" | "dxf" | "max" | "lwo" | "lws" | "ma" | "mb" | "gltf" | "glb" => {
-            IconCategory::File3D
-        }
+        "c4d" | "3ds" | "obj" | "fbx" | "blend" | "stl" | "dae" | "skp" | "dwg" | "dxf" | "max"
+        | "lwo" | "lws" | "ma" | "mb" | "gltf" | "glb" => IconCategory::File3D,
 
         // Font formats
-        "ttf" | "otf" | "ttc" | "woff" | "woff2" | "eot" | "fon" | "fnt" => {
-            IconCategory::Font
-        }
+        "ttf" | "otf" | "ttc" | "woff" | "woff2" | "eot" | "fon" | "fnt" => IconCategory::Font,
 
         // Design formats
-        "cdr" | "indd" | "xd" | "fig" | "sketch" | "ai" | "eps" | "psd" | "afdesign" | "afphoto" | "afpub" => {
-            IconCategory::Design
-        }
+        "cdr" | "indd" | "xd" | "fig" | "sketch" | "ai" | "eps" | "psd" | "afdesign"
+        | "afphoto" | "afpub" => IconCategory::Design,
 
         // Code/Web
-        "html" | "css" | "js" | "ts" | "jsx" | "tsx" | "json" | "xml" | "svg" | "py" | "rs" | "go" | "c" | "cpp" | "java" => {
-            IconCategory::Code
-        }
+        "html" | "css" | "js" | "ts" | "jsx" | "tsx" | "json" | "xml" | "svg" | "py" | "rs"
+        | "go" | "c" | "cpp" | "java" => IconCategory::Code,
 
         // Video
-        "mp4" | "mov" | "avi" | "mkv" | "webm" | "flv" | "wmv" => {
-            IconCategory::Video
-        }
+        "mp4" | "mov" | "avi" | "mkv" | "webm" | "flv" | "wmv" => IconCategory::Video,
 
         // Audio
-        "mp3" | "wav" | "ogg" | "flac" | "aac" | "m4a" => {
-            IconCategory::Audio
-        }
+        "mp3" | "wav" | "ogg" | "flac" | "aac" | "m4a" => IconCategory::Audio,
 
         // Archive
-        "zip" | "rar" | "7z" | "tar" | "gz" | "bz2" => {
-            IconCategory::Archive
-        }
+        "zip" | "rar" | "7z" | "tar" | "gz" | "bz2" => IconCategory::Archive,
 
         // Images (that fell back to icon)
-        "jpg" | "jpeg" | "png" | "gif" | "bmp" | "webp" | "tiff" | "tif" | "heic" | "heif" | "raw" | "cr2" | "nef" | "arw" => {
-            IconCategory::Image
-        }
+        "jpg" | "jpeg" | "png" | "gif" | "bmp" | "webp" | "tiff" | "tif" | "heic" | "heif"
+        | "raw" | "cr2" | "nef" | "arw" => IconCategory::Image,
 
         _ => IconCategory::Generic,
     }
@@ -73,12 +60,12 @@ fn get_icon_category(path: &Path) -> IconCategory {
 fn get_category_color(category: IconCategory) -> String {
     match category {
         IconCategory::Design => "rgb(234, 76, 137)".to_string(), // Dribbble pinkish
-        IconCategory::File3D => "rgb(50, 50, 180)".to_string(), // Deep Blue-Purple
-        IconCategory::Code => "rgb(44, 62, 80)".to_string(),    // Dark Slate
-        IconCategory::Video => "rgb(229, 9, 20)".to_string(),   // Netflix Red-ish
-        IconCategory::Audio => "rgb(30, 215, 96)".to_string(),  // Spotify Green-ish
-        IconCategory::Image => "rgb(0, 160, 169)".to_string(),  // Teal (Default)
-        IconCategory::Font => "rgb(80, 80, 80)".to_string(),    // Dark Gray
+        IconCategory::File3D => "rgb(50, 50, 180)".to_string(),  // Deep Blue-Purple
+        IconCategory::Code => "rgb(44, 62, 80)".to_string(),     // Dark Slate
+        IconCategory::Video => "rgb(229, 9, 20)".to_string(),    // Netflix Red-ish
+        IconCategory::Audio => "rgb(30, 215, 96)".to_string(),   // Spotify Green-ish
+        IconCategory::Image => "rgb(0, 160, 169)".to_string(),   // Teal (Default)
+        IconCategory::Font => "rgb(80, 80, 80)".to_string(),     // Dark Gray
         IconCategory::Archive => "rgb(255, 165, 0)".to_string(), // Orange
         IconCategory::Generic => "rgb(120, 120, 120)".to_string(), // Grey
     }
@@ -173,32 +160,26 @@ pub fn get_or_generate_icon(
         size_px as f32 / height
     };
 
-    let mut pixmap = Pixmap::new(size_px, size_px)
-        .ok_or("Failed to create pixmap buffer")?;
+    let mut pixmap = Pixmap::new(size_px, size_px).ok_or("Failed to create pixmap buffer")?;
 
     let scaled_width = width * scale;
     let scaled_height = height * scale;
     let x_offset = (size_px as f32 - scaled_width) / 2.0;
     let y_offset = (size_px as f32 - scaled_height) / 2.0;
 
-    let transform = tiny_skia::Transform::from_scale(scale, scale)
-        .post_translate(x_offset, y_offset);
+    let transform =
+        tiny_skia::Transform::from_scale(scale, scale).post_translate(x_offset, y_offset);
 
-    resvg::render(
-        &tree,
-        transform,
-        &mut pixmap.as_mut()
-    );
+    resvg::render(&tree, transform, &mut pixmap.as_mut());
 
     // Encode to WebP
-    let encoder = webp::Encoder::from_rgba(
-        pixmap.data(),
-        size_px,
-        size_px,
-    );
+    let encoder = webp::Encoder::from_rgba(pixmap.data(), size_px, size_px);
     let webp_data = encoder.encode(85.0);
     std::fs::write(&icon_path, &*webp_data)?;
 
-    println!("DEBUG: Icon fallback Total took: {:?}", start_total.elapsed());
+    println!(
+        "DEBUG: Icon fallback Total took: {:?}",
+        start_total.elapsed()
+    );
     Ok(relative_path_string)
 }

@@ -1,7 +1,7 @@
 //! Image management and metadata queries.
 
-use crate::db::models::ImageMetadata;
 use super::Db;
+use crate::db::models::ImageMetadata;
 
 impl Db {
     /// Updates the star rating for a specific image.
@@ -59,7 +59,11 @@ impl Db {
     }
 
     /// Increments the thumbnail failure count and records the last error message.
-    pub async fn record_thumbnail_error(&self, image_id: i64, error: String) -> Result<(), sqlx::Error> {
+    pub async fn record_thumbnail_error(
+        &self,
+        image_id: i64,
+        error: String,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "UPDATE images SET thumbnail_attempts = thumbnail_attempts + 1, thumbnail_last_error = ? WHERE id = ?",
             error,
@@ -76,17 +80,24 @@ impl Db {
         image_id: i64,
         path: &str,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query!("UPDATE images SET thumbnail_path = ? WHERE id = ?", path, image_id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE images SET thumbnail_path = ? WHERE id = ?",
+            path,
+            image_id
+        )
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 
     /// Clears the thumbnail path, effectively flagging it for regeneration.
     pub async fn clear_thumbnail_path(&self, image_id: i64) -> Result<(), sqlx::Error> {
-        sqlx::query!("UPDATE images SET thumbnail_path = NULL WHERE id = ?", image_id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE images SET thumbnail_path = NULL WHERE id = ?",
+            image_id
+        )
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 
@@ -99,7 +110,7 @@ impl Db {
         img: &crate::db::models::ImageMetadata,
     ) -> Result<(i64, Option<i64>, bool), sqlx::Error> {
         let mut conn = self.pool.acquire().await?;
-        self.save_image_internal(&mut *conn, folder_id, img).await
+        self.save_image_internal(&mut conn, folder_id, img).await
     }
 
     /// Batch saves multiple image records within a transaction.
@@ -116,7 +127,7 @@ impl Db {
             .ok();
 
         for (folder_id, img) in items {
-            if let Err(e) = self.save_image_internal(&mut *tx, folder_id, &img).await {
+            if let Err(e) = self.save_image_internal(&mut tx, folder_id, &img).await {
                 eprintln!("Failed to save image in batch: {}", e);
             }
         }
@@ -132,10 +143,11 @@ impl Db {
         img: &crate::db::models::ImageMetadata,
     ) -> Result<(i64, Option<i64>, bool), sqlx::Error> {
         // 1. Check if path already exists
-        let existing: Option<(i64, i64)> = sqlx::query_as("SELECT id, folder_id FROM images WHERE path = ?")
-            .bind(&img.path)
-            .fetch_optional(&mut *conn)
-            .await?;
+        let existing: Option<(i64, i64)> =
+            sqlx::query_as("SELECT id, folder_id FROM images WHERE path = ?")
+                .bind(&img.path)
+                .fetch_optional(&mut *conn)
+                .await?;
 
         if let Some((id, old_fid)) = existing {
             sqlx::query!(
@@ -147,13 +159,17 @@ impl Db {
             .execute(&mut *conn)
             .await?;
 
-            let old_fid_if_changed = if old_fid != folder_id { Some(old_fid) } else { None };
+            let old_fid_if_changed = if old_fid != folder_id {
+                Some(old_fid)
+            } else {
+                None
+            };
             return Ok((id, old_fid_if_changed, false));
         }
 
         // 2. Cross-root MOVE detection (fuzzy match by size and creation time if path is gone)
         let candidates: Vec<(i64, i64, String)> = sqlx::query_as(
-            "SELECT id, folder_id, path FROM images WHERE size = ? AND created_at = ?"
+            "SELECT id, folder_id, path FROM images WHERE size = ? AND created_at = ?",
         )
         .bind(img.size)
         .bind(img.created_at)
@@ -166,7 +182,12 @@ impl Db {
                     "UPDATE images SET
                         path = ?, folder_id = ?, filename = ?, format = ?, modified_at = ?
                      WHERE id = ?",
-                    img.path, folder_id, img.filename, img.format, img.modified_at, id
+                    img.path,
+                    folder_id,
+                    img.filename,
+                    img.format,
+                    img.modified_at,
+                    id
                 )
                 .execute(&mut *conn)
                 .await?;
@@ -197,16 +218,22 @@ impl Db {
     /// Retrieve context (image ID, folder ID, tags) for an image.
     pub async fn get_image_context(
         &self,
-        path: &str
+        path: &str,
     ) -> Result<Option<(i64, i64, Vec<i64>)>, sqlx::Error> {
-        let row = sqlx::query!("SELECT id as \"id!\", folder_id as \"folder_id!\" FROM images WHERE path = ?", path)
-            .fetch_optional(&self.pool)
-            .await?;
+        let row = sqlx::query!(
+            "SELECT id as \"id!\", folder_id as \"folder_id!\" FROM images WHERE path = ?",
+            path
+        )
+        .fetch_optional(&self.pool)
+        .await?;
 
         if let Some(r) = row {
-            let tags = sqlx::query!("SELECT tag_id as \"tag_id!\" FROM image_tags WHERE image_id = ?", r.id)
-                .fetch_all(&self.pool)
-                .await?;
+            let tags = sqlx::query!(
+                "SELECT tag_id as \"tag_id!\" FROM image_tags WHERE image_id = ?",
+                r.id
+            )
+            .fetch_all(&self.pool)
+            .await?;
 
             let tag_ids = tags.into_iter().map(|t| t.tag_id).collect();
             Ok(Some((r.id, r.folder_id, tag_ids)))
@@ -218,19 +245,20 @@ impl Db {
     /// Get size and creation date for comparison to detect file changes.
     pub async fn get_file_comparison_data(
         &self,
-        path: &str
+        path: &str,
     ) -> Result<Option<(i64, chrono::DateTime<chrono::Utc>)>, sqlx::Error> {
         // Using explicit strings for cross-compatibility if needed, though Sqlite datetime usually maps well.
-        let row: Option<(i64, String)> = sqlx::query_as("SELECT size, created_at FROM images WHERE path = ?")
-            .bind(path)
-            .fetch_optional(&self.pool)
-            .await?;
+        let row: Option<(i64, String)> =
+            sqlx::query_as("SELECT size, created_at FROM images WHERE path = ?")
+                .bind(path)
+                .fetch_optional(&self.pool)
+                .await?;
 
         if let Some((s, c_at)) = row {
-             let created_dt = chrono::DateTime::parse_from_rfc3339(&c_at)
+            let created_dt = chrono::DateTime::parse_from_rfc3339(&c_at)
                 .map(|dt| dt.with_timezone(&chrono::Utc))
                 .unwrap_or_else(|_| chrono::Utc::now());
-             Ok(Some((s, created_dt)))
+            Ok(Some((s, created_dt)))
         } else {
             Ok(None)
         }
@@ -238,17 +266,18 @@ impl Db {
 
     /// Retrieves comparison data (size, modified_at) for all images under a root path.
     /// Used for fast initial scanning.
+    #[allow(clippy::type_complexity)]
     pub async fn get_all_files_comparison_data(
         &self,
         root_path: &str,
-    ) -> Result<std::collections::HashMap<String, (i64, chrono::DateTime<chrono::Utc>)>, sqlx::Error> {
+    ) -> Result<std::collections::HashMap<String, (i64, chrono::DateTime<chrono::Utc>)>, sqlx::Error>
+    {
         let pattern = format!("{}%", root_path);
-        let rows: Vec<(String, i64, String)> = sqlx::query_as(
-            "SELECT path, size, modified_at FROM images WHERE path LIKE ?"
-        )
-        .bind(pattern)
-        .fetch_all(&self.pool)
-        .await?;
+        let rows: Vec<(String, i64, String)> =
+            sqlx::query_as("SELECT path, size, modified_at FROM images WHERE path LIKE ?")
+                .bind(pattern)
+                .fetch_all(&self.pool)
+                .await?;
 
         let mut map = std::collections::HashMap::with_capacity(rows.len());
         for (path, size, m_at) in rows {
@@ -263,7 +292,7 @@ impl Db {
     /// Deletes an image record and returns its metadata context.
     pub async fn delete_image_by_path_returning_context(
         &self,
-        path: &str
+        path: &str,
     ) -> Result<Option<(i64, i64, Vec<i64>)>, sqlx::Error> {
         let context = self.get_image_context(path).await?;
 
@@ -282,7 +311,7 @@ impl Db {
         old_path: &str,
         new_path: &str,
         new_filename: &str,
-        new_folder_id: i64
+        new_folder_id: i64,
     ) -> Result<Option<(ImageMetadata, i64)>, sqlx::Error> {
         let row: Option<(i64, i64, i32, i32, i64, String, String, String, Option<String>, i32, Option<String>)> = sqlx::query_as(
             "SELECT id, folder_id, width, height, size, format, created_at, modified_at, thumbnail_path, rating, notes FROM images WHERE path = ?"
@@ -300,24 +329,29 @@ impl Db {
             .execute(&self.pool)
             .await?;
 
-            let created_dt = chrono::DateTime::parse_from_rfc3339(&c_at).map(|dt| dt.with_timezone(&chrono::Utc)).unwrap_or_else(|_| chrono::Utc::now());
+            let created_dt = chrono::DateTime::parse_from_rfc3339(&c_at)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .unwrap_or_else(|_| chrono::Utc::now());
             let modified_dt = chrono::Utc::now();
 
-            Ok(Some((ImageMetadata {
-                id,
-                path: new_path.to_string(),
-                filename: new_filename.to_string(),
-                width: Some(w),
-                height: Some(h),
-                size: s,
-                created_at: created_dt,
-                modified_at: modified_dt,
-                thumbnail_path: thumb,
-                rating,
-                notes,
-                format: f,
-                added_at: None,
-            }, old_folder_id)))
+            Ok(Some((
+                ImageMetadata {
+                    id,
+                    path: new_path.to_string(),
+                    filename: new_filename.to_string(),
+                    width: Some(w),
+                    height: Some(h),
+                    size: s,
+                    created_at: created_dt,
+                    modified_at: modified_dt,
+                    thumbnail_path: thumb,
+                    rating,
+                    notes,
+                    format: f,
+                    added_at: None,
+                },
+                old_folder_id,
+            )))
         } else {
             Ok(None)
         }

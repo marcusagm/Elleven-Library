@@ -1,14 +1,14 @@
-import { Component, For, Show, createSignal } from "solid-js";
-import { FolderHeart } from "lucide-solid";
-import { useMetadata, useFilters, useNotification } from "../../../core/hooks";
-import { SidebarPanel } from "../../ui/SidebarPanel";
-import { SmartFolderContextMenu } from "./SmartFolderContextMenu";
-import { AdvancedSearchModal } from "./AdvancedSearchModal";
-import { SmartFolderDeleteModal } from "./SmartFolderDeleteModal";
-import { SearchGroup } from "../../../core/store/filterStore";
-import { SmartFolder } from "../../../core/store/metadataStore";
-import { cn } from "../../../lib/utils";
-import "./smart-folders.css";
+import { Component, For, Show, createSignal } from 'solid-js';
+import { FolderHeart } from 'lucide-solid';
+import { useMetadata, useFilters, useNotification } from '../../../core/hooks';
+import { SidebarPanel } from '../../ui/SidebarPanel';
+import { SmartFolderContextMenu } from './SmartFolderContextMenu';
+import { AdvancedSearchModal } from './AdvancedSearchModal';
+import { SmartFolderDeleteModal } from './SmartFolderDeleteModal';
+import { SearchGroup } from '../../../core/store/filterStore';
+import { SmartFolder } from '../../../core/store/metadataStore';
+import { cn } from '../../../lib/utils';
+import './smart-folders.css';
 
 export const SmartFoldersSidebarPanel: Component = () => {
     const metadata = useMetadata();
@@ -38,7 +38,7 @@ export const SmartFoldersSidebarPanel: Component = () => {
             const query = JSON.parse(json) as SearchGroup;
             filters.setAdvancedSearch(query);
         } catch (e) {
-            console.error("Failed to parse smart folder query", e);
+            console.error('Failed to parse smart folder query', e);
         }
     };
 
@@ -81,17 +81,20 @@ export const SmartFoldersSidebarPanel: Component = () => {
                     </div>
                 </Show>
                 <For each={metadata.smartFolders}>
-                    {(folder) => (
-                        <div 
-                            class={cn("nav-item smart-folder-item", isActive(folder.query_json) && "active")}
+                    {folder => (
+                        <div
+                            class={cn(
+                                'nav-item smart-folder-item',
+                                isActive(folder.query_json) && 'active'
+                            )}
                             onClick={() => handleSelect(folder.query_json)}
-                            onContextMenu={(e) => handleContextMenu(e, folder)}
+                            onContextMenu={e => handleContextMenu(e, folder)}
                         >
                             <FolderHeart size={16} />
                             <span class="folder-name">{folder.name}</span>
-                            
-                            {/* <button 
-                                class="icon-btn mini-btn" 
+
+                            {/* <button
+                                class="icon-btn mini-btn"
                                 onClick={(e) => handleOpenContextMenuBtn(e, folder)}
                             >
                                 <MoreVertical size={14} />
@@ -101,41 +104,47 @@ export const SmartFoldersSidebarPanel: Component = () => {
                 </For>
             </div>
 
-            <SmartFolderContextMenu 
-                x={contextMenuPos().x} 
-                y={contextMenuPos().y} 
-                isOpen={contextMenuOpen()} 
+            <SmartFolderContextMenu
+                x={contextMenuPos().x}
+                y={contextMenuPos().y}
+                isOpen={contextMenuOpen()}
                 folder={selectedFolder()}
                 onClose={() => setContextMenuOpen(false)}
                 onEdit={handleEdit}
                 onDelete={handleDeleteClick}
             />
 
-            <SmartFolderDeleteModal 
+            <SmartFolderDeleteModal
                 isOpen={isDeleteModalOpen()}
                 onClose={() => setIsDeleteModalOpen(false)}
                 folder={folderToDelete()}
             />
 
             <Show when={isEditModalOpen()}>
-                <AdvancedSearchModal 
-                    isOpen={isEditModalOpen()} 
+                <AdvancedSearchModal
+                    isOpen={isEditModalOpen()}
                     onClose={() => setIsEditModalOpen(false)}
                     isSmartFolderMode={true}
                     initialId={folderToEdit()?.id}
                     initialName={folderToEdit()?.name}
-                    initialQuery={folderToEdit() ? JSON.parse(folderToEdit()!.query_json) : undefined}
-                    onSave={async (name, query, id) => {
-                        try {
-                            await metadata.saveSmartFolder(name, query, id);
-                            notification.success(id ? "Smart Folder Updated" : "Smart Folder Created", `Saved "${name}"`);
-                        } catch (err) {
-                            notification.error("Failed to Save Smart Folder");
-                        }
+                    initialQuery={
+                        folderToEdit() ? JSON.parse(folderToEdit()!.query_json) : undefined
+                    }
+                    onSave={(name, query, id) => {
+                        void (async () => {
+                            try {
+                                await metadata.saveSmartFolder(name, query, id);
+                                notification.success(
+                                    id ? 'Smart Folder Updated' : 'Smart Folder Created',
+                                    `Saved "${name}"`
+                                );
+                            } catch {
+                                notification.error('Failed to Save Smart Folder');
+                            }
+                        })();
                     }}
                 />
             </Show>
         </SidebarPanel>
     );
 };
-

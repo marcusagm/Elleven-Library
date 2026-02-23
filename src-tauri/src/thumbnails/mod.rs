@@ -123,13 +123,15 @@ pub fn generate_thumbnail<R: tauri::Runtime>(
                 | ThumbnailStrategy::NativeExtractor
         )
     {
-        if let Ok(_) = crate::media::ffmpeg::generate_thumbnail_ffmpeg_full(
+        if crate::media::ffmpeg::generate_thumbnail_ffmpeg_full(
             app_handle,
             input_path,
             &output_path,
             size_px,
             is_video,
-        ) {
+        )
+        .is_ok()
+        {
             let elapsed = start.elapsed();
             println!(
                 "THUMB (FFmpeg Priority): SUCCESS | {:?} | {:?}",

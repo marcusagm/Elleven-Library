@@ -1,17 +1,17 @@
-import { createSignal, createRoot } from "solid-js";
+import { createSignal, createRoot } from 'solid-js';
 
-export type ViewportMode = "list" | "item";
+export type ViewportMode = 'list' | 'item';
 
 function createViewportState() {
-    const [mode, setMode] = createSignal<ViewportMode>("list");
+    const [mode, setMode] = createSignal<ViewportMode>('list');
     const [activeItemId, setActiveItemId] = createSignal<string | null>(null);
     const [history, setHistory] = createSignal<string[]>([]);
     const [historyIndex, setHistoryIndex] = createSignal(-1);
 
     const openItem = (id: string) => {
         setActiveItemId(id);
-        setMode("item");
-        
+        setMode('item');
+
         // Simple history tracking
         const newHistory = history().slice(0, historyIndex() + 1);
         newHistory.push(id);
@@ -20,7 +20,7 @@ function createViewportState() {
     };
 
     const closeItem = () => {
-        setMode("list");
+        setMode('list');
         setActiveItemId(null);
     };
 
@@ -28,7 +28,7 @@ function createViewportState() {
         if (historyIndex() > 0) {
             setHistoryIndex(prev => prev - 1);
             setActiveItemId(history()[historyIndex()]);
-        } else if (mode() === "item") {
+        } else if (mode() === 'item') {
             closeItem();
         }
     };
@@ -37,7 +37,7 @@ function createViewportState() {
         if (historyIndex() < history().length - 1) {
             setHistoryIndex(prev => prev + 1);
             setActiveItemId(history()[historyIndex()]);
-            setMode("item");
+            setMode('item');
         }
     };
 
@@ -48,7 +48,7 @@ function createViewportState() {
         closeItem,
         goBack,
         goForward,
-        canGoBack: () => historyIndex() > 0 || mode() === "item",
+        canGoBack: () => historyIndex() > 0 || mode() === 'item',
         canGoForward: () => historyIndex() < history().length - 1
     };
 }

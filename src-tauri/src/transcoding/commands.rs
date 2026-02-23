@@ -1,11 +1,11 @@
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
-use crate::error::{AppError, AppResult};
 use super::cache::TranscodeCache;
 use super::detector;
 use super::ffmpeg_pipe::FfmpegTranscoder;
 use super::quality::TranscodeQuality;
+use crate::error::{AppError, AppResult};
 
 /// Check if a file needs transcoding for playback
 #[tauri::command]
@@ -32,12 +32,18 @@ pub fn get_stream_url(path: String, quality: Option<String>) -> String {
         let media_type = detector::get_media_type(file_path);
         match media_type {
             detector::MediaType::Audio => {
-                format!("audio-stream://localhost/{}?quality={}",
-                    urlencoding::encode(&path), quality_param)
+                format!(
+                    "audio-stream://localhost/{}?quality={}",
+                    urlencoding::encode(&path),
+                    quality_param
+                )
             }
             detector::MediaType::Video | detector::MediaType::Unknown => {
-                format!("video-stream://localhost/{}?quality={}",
-                    urlencoding::encode(&path), quality_param)
+                format!(
+                    "video-stream://localhost/{}?quality={}",
+                    urlencoding::encode(&path),
+                    quality_param
+                )
             }
         }
     } else {
@@ -82,24 +88,23 @@ pub async fn transcode_file(
         .unwrap_or_default();
 
     // Get app data dir for cache
-    let app_data = app
-        .path()
-        .app_local_data_dir()?;
+    let app_data = app.path().app_local_data_dir()?;
 
     let cache = TranscodeCache::new(&app_data);
     let transcoder = FfmpegTranscoder::new_with_app(cache, &app);
 
     // Check if FFmpeg is available
     if !transcoder.is_available() {
-        return Err(AppError::Transcoding("FFmpeg is not installed or not found in PATH".to_string()));
+        return Err(AppError::Transcoding(
+            "FFmpeg is not installed or not found in PATH".to_string(),
+        ));
     }
 
     // Transcode synchronously (in background thread)
-    let result = tokio::task::spawn_blocking(move || {
-        transcoder.transcode_sync(&file_path, quality)
-    })
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let result =
+        tokio::task::spawn_blocking(move || transcoder.transcode_sync(&file_path, quality))
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     match result {
         Ok(output_path) => Ok(output_path.to_string_lossy().to_string()),

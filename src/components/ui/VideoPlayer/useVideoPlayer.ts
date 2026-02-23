@@ -15,7 +15,9 @@ import { VideoPlayerProps } from './types';
 
 export function useVideoPlayer(props: VideoPlayerProps) {
     const [videoElement, setVideoElement] = createSignal<HTMLVideoElement | undefined>(undefined);
-    const [containerElement, setContainerElement] = createSignal<HTMLDivElement | undefined>(undefined);
+    const [containerElement, setContainerElement] = createSignal<HTMLDivElement | undefined>(
+        undefined
+    );
     const playerId = createUniqueId();
 
     const [isPlaying, setIsPlaying] = createSignal(false);
@@ -96,34 +98,31 @@ export function useVideoPlayer(props: VideoPlayerProps) {
 
     // Handle HLS source attachment
     createEffect(
-        on(
-            [() => props.src, videoElement],
-            ([src, video]) => {
-                // Cleanup previous HLS instance
-                if (hlsManager) {
-                    hlsManager.destroy();
-                    hlsManager = null;
-                }
-
-                if (!video || !src) return;
-
-                // If it's an HLS URL, use hls.js
-                if (isHlsUrl(src)) {
-                    // Check native HLS support (Safari)
-                    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                        // Safari has native support, just set src
-                        video.src = src;
-                    } else if (HlsPlayerManager.isSupported()) {
-                        // Use hls.js
-                        hlsManager = new HlsPlayerManager({ debug: false });
-                        hlsManager.attach(video, src);
-                    } else {
-                        setError('HLS playback not supported in this browser');
-                    }
-                }
-                // For non-HLS sources, the video element handles it via src attribute
+        on([() => props.src, videoElement], ([src, video]) => {
+            // Cleanup previous HLS instance
+            if (hlsManager) {
+                hlsManager.destroy();
+                hlsManager = null;
             }
-        )
+
+            if (!video || !src) return;
+
+            // If it's an HLS URL, use hls.js
+            if (isHlsUrl(src)) {
+                // Check native HLS support (Safari)
+                if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Safari has native support, just set src
+                    video.src = src;
+                } else if (HlsPlayerManager.isSupported()) {
+                    // Use hls.js
+                    hlsManager = new HlsPlayerManager({ debug: false });
+                    hlsManager.attach(video, src);
+                } else {
+                    setError('HLS playback not supported in this browser');
+                }
+            }
+            // For non-HLS sources, the video element handles it via src attribute
+        })
     );
 
     const resetControlsTimeout = () => {
@@ -365,6 +364,6 @@ export function useVideoPlayer(props: VideoPlayerProps) {
         handleError,
         handlePlayParams,
         handlePause,
-        resetControlsTimeout,
+        resetControlsTimeout
     };
 }

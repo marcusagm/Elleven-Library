@@ -1,8 +1,8 @@
+use crate::thumbnails::extractors::binary_jpeg;
+use base64::{engine::general_purpose, Engine as _};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use base64::{Engine as _, engine::general_purpose};
-use crate::thumbnails::extractors::binary_jpeg;
 
 /// Main entry point for AI file preview extraction.
 /// Implements a hybrid strategy: XMP -> PDF -> Binary Fallback.
@@ -48,10 +48,16 @@ pub fn extract_xmp_thumbnail_safe(path: &Path) -> Result<Vec<u8>, Box<dyn std::e
     let start_marker = b"<xmpGImg:image>";
     let end_marker = b"</xmpGImg:image>";
 
-    if let Some(start_pos) = buffer.windows(start_marker.len()).position(|w| w == start_marker) {
+    if let Some(start_pos) = buffer
+        .windows(start_marker.len())
+        .position(|w| w == start_marker)
+    {
         let content_start = start_pos + start_marker.len();
 
-        if let Some(end_rel) = buffer[content_start..].windows(end_marker.len()).position(|w| w == end_marker) {
+        if let Some(end_rel) = buffer[content_start..]
+            .windows(end_marker.len())
+            .position(|w| w == end_marker)
+        {
             let content_end = content_start + end_rel;
             let raw_bytes = &buffer[content_start..content_end];
 
@@ -66,9 +72,7 @@ pub fn extract_xmp_thumbnail_safe(path: &Path) -> Result<Vec<u8>, Box<dyn std::e
                 .replace("&#xA;", "")
                 .replace("&#xD;", "")
                 .chars()
-                .filter(|c| {
-                    c.is_alphanumeric() || *c == '+' || *c == '/' || *c == '='
-                })
+                .filter(|c| c.is_alphanumeric() || *c == '+' || *c == '/' || *c == '=')
                 .collect();
 
             // Decode

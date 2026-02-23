@@ -1,4 +1,4 @@
-import { Component } from "solid-js";
+import { Component } from 'solid-js';
 
 interface InfoTabProps {
     fontFamily: string;
@@ -6,11 +6,11 @@ interface InfoTabProps {
     name: string;
 }
 
-export const InfoTab: Component<InfoTabProps> = (props) => {
+export const InfoTab: Component<InfoTabProps> = props => {
     return (
         <div class="font-info-container">
             <h3 class="font-info-title">Font Information</h3>
-            
+
             <div class="font-info-content">
                 <div class="font-info-row">
                     <span class="font-info-label">File Name</span>
@@ -22,7 +22,9 @@ export const InfoTab: Component<InfoTabProps> = (props) => {
                 </div>
                 <div class="font-info-row">
                     <span class="font-info-label">Family Name</span>
-                    <span class="font-info-value">{props.fontFamily.split('-')[2] || 'Unknown'}</span>
+                    <span class="font-info-value">
+                        {props.fontFamily.split('-')[2] || 'Unknown'}
+                    </span>
                 </div>
                 {/* 
                   To get real metadata (copyright, etc.) we'd need to parse the binary.

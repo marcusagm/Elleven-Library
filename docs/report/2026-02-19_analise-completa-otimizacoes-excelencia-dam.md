@@ -6,7 +6,7 @@
 
 ---
 
-## 1) Resumo Executivo
+## 1. Resumo Executivo
 
 O projeto já apresenta uma base técnica forte (TypeScript estrito, separação frontend/backend, uso de workers, streaming dedicado, arquitetura modular no backend). Porém, ainda há lacunas relevantes para atingir **excelência arquitetural e usabilidade “state of the art” em DAM**:
 
@@ -20,7 +20,7 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 
 ---
 
-## 2) Metodologia e Evidências
+## 2. Metodologia e Evidências
 
 ### 2.1 Verificações executadas
 - Build frontend com Vite.
@@ -41,7 +41,7 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 
 ---
 
-## 3) Aderência aos Guias (`docs/guidelines`)
+## 3. Aderência aos Guias (`docs/guidelines`)
 
 ### 3.1 Frontend (Solid + TS)
 Principais desvios em relação ao guia:
@@ -58,16 +58,16 @@ Principais desvios:
 
 ---
 
-## 4) Diagnóstico Técnico Detalhado
+## 4. Diagnóstico Técnico Detalhado
 
-## 4.1 Arquitetura
+### 4.1 Arquitetura
 
-### Pontos fortes
+#### Pontos fortes
 - Separação clara frontend/backend.
 - Domínios no backend relativamente bem organizados (`db`, `indexer`, `thumbnails`, `streaming`, `formats`).
 - Presença de workers e operações assíncronas.
 
-### Oportunidades de melhoria
+#### Oportunidades de melhoria
 1. **Isolamento de domínios no frontend ainda incompleto**  
    Stores com muito acoplamento via imports dinâmicos cruzados (`systemStore`, `metadataStore`, `libraryStore`) dificultam raciocínio e favorecem dependências cíclicas implícitas.
 
@@ -82,7 +82,7 @@ Principais desvios:
 
 ---
 
-## 4.2 Code Smells e Legibilidade
+### 4.2 Code Smells e Legibilidade
 
 1. **`any` disseminado (TS)**  
    Reduz segurança de tipos e dificulta refatorações seguras.
@@ -101,7 +101,7 @@ Principais desvios:
 
 ---
 
-## 4.3 Confiabilidade, Erros e Possíveis Vazamentos
+### 4.3 Confiabilidade, Erros e Possíveis Vazamentos
 
 > Não foi encontrado vazamento de memória comprovado por profiling neste ciclo (heap snapshots/flamegraphs). Entretanto, existem **riscos reais** de vazamento/retenção e falhas por lifecycle.
 
@@ -122,9 +122,9 @@ Principais desvios:
 
 ---
 
-## 4.4 Performance
+### 4.4 Performance
 
-### Frontend
+#### Frontend
 1. **Bundle grande (JS principal ~1.9MB minificado no build atual)**  
    Impacta startup e TTI, especialmente em máquinas medianas.
 
@@ -134,7 +134,7 @@ Principais desvios:
 3. **Componentes pesados e “all-in-one”**  
    Aumentam custo de render/hidratação e dificultam lazy boundaries por feature.
 
-### Backend
+#### Backend
 1. **Rotas de streaming com construção repetitiva de `Response`**  
    Código extenso e sujeito a erros; oportunidade para helpers padronizados.
 
@@ -146,7 +146,7 @@ Principais desvios:
 
 ---
 
-## 4.5 Segurança
+### 4.5 Segurança
 
 1. **Servidor local com CORS permissivo (`Any`)**  
    Mesmo em `127.0.0.1`, permitir qualquer origem amplia superfície para abuso via browser de terceiros.
@@ -159,7 +159,7 @@ Principais desvios:
 
 ---
 
-## 4.6 Usabilidade (DAM)
+### 4.6 Usabilidade (DAM)
 
 Para chegar ao nível “state of the art”, além de engenharia interna, faltam pilares de produto:
 
@@ -171,35 +171,35 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 
 ---
 
-## 5) Backlog Priorizado
+## 5. Backlog Priorizado
 
-## Fase 0 — Correções críticas (1–2 semanas)
+### Fase 0 — Correções críticas (1–2 semanas)
 1. [x] Remover `unwrap/expect` de runtime backend e substituir por `AppResult` + contexto.
-2. Introduzir política formal de lifecycle para listeners e tasks periódicas (start/stop idempotente).
-3. Restringir CORS e adicionar mecanismo de autorização por sessão/token no streaming.
-4. Adicionar scripts de qualidade no frontend (`lint`, `typecheck`, `test`) e gate mínimo em CI.
+2. [ ] Introduzir política formal de lifecycle para listeners e tasks periódicas (start/stop idempotente).
+3. [ ] Restringir CORS e adicionar mecanismo de autorização por sessão/token no streaming.
+4. [ ] Adicionar scripts de qualidade no frontend (`lint`, `typecheck`, `test`) e gate mínimo em CI.
 
-## Fase 1 — Estruturação arquitetural (2–4 semanas)
-1. Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos.
-2. Quebrar arquivos >300 linhas em módulos por responsabilidade.
-3. Eliminar `any` em fluxos principais (busca, metadata, eventos).
-4. Padronizar logging estruturado (níveis, contexto, correlação).
+### Fase 1 — Estruturação arquitetural (2–4 semanas)
+1. [ ] Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos.
+2. [ ] Quebrar arquivos >300 linhas em módulos por responsabilidade.
+3. [ ] Eliminar `any` em fluxos principais (busca, metadata, eventos).
+4. [ ] Padronizar logging estruturado (níveis, contexto, correlação).
 
-## Fase 2 — Performance e escala DAM (4–8 semanas)
-1. Estratégia de chunking/lazy loading por domínio de tela.
-2. Pipeline de indexação observável com métricas e tracing.
-3. Cache inteligente por formato e priorização adaptativa de thumbnails.
-4. Banco: revisar índices para consultas de filtro/ordenação mais frequentes (p95/p99).
+### Fase 2 — Performance e escala DAM (4–8 semanas)
+1. [ ] Estratégia de chunking/lazy loading por domínio de tela.
+2. [ ] Pipeline de indexação observável com métricas e tracing.
+3. [ ] Cache inteligente por formato e priorização adaptativa de thumbnails.
+4. [ ] Banco: revisar índices para consultas de filtro/ordenação mais frequentes (p95/p99).
 
-## Fase 3 — Diferenciação “state of the art” (8+ semanas)
-1. Busca semântica (embeddings) híbrida com filtros estruturados.
-2. Recomendação inteligente de tags/metadados.
-3. Workflows colaborativos e trilha de auditoria de mudanças.
-4. Governança de qualidade de acervo (score de completude e consistência).
+### Fase 3 — Diferenciação “state of the art” (8+ semanas)
+1. [ ] Busca semântica (embeddings) híbrida com filtros estruturados.
+2. [ ] Recomendação inteligente de tags/metadados.
+3. [ ] Workflows colaborativos e trilha de auditoria de mudanças.
+4. [ ] Governança de qualidade de acervo (score de completude e consistência).
 
 ---
 
-## 6) Recomendações de Implementação (Práticas)
+## 6. Recomendações de Implementação (Práticas)
 
 1. **Frontend Quality Gate**
    - Adicionar ESLint + Prettier + Typecheck + testes unitários em pipeline.
@@ -223,7 +223,7 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 
 ---
 
-## 7) KPIs de Excelência Recomendados
+## 7. KPIs de Excelência Recomendados
 
 ### Engenharia
 - Crash-free sessions > 99.9%.
@@ -239,7 +239,7 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 
 ---
 
-## 8) Conclusão
+## 8. Conclusão
 
 O MUNDAM tem potencial técnico para evoluir rapidamente para um patamar de referência em DAM, mas a aceleração sustentável exige foco imediato em:
 

@@ -12,9 +12,9 @@
 //!
 //! Reference: <https://github.com/Wunkolo/libsai>
 
+use image::ImageEncoder;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
-use image::ImageEncoder;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -237,7 +237,10 @@ fn parse_fat_entries(page_bytes: &[u8; PAGE_SIZE]) -> Vec<FatEntry> {
         let entry_slice = &page_bytes[offset..offset + FAT_ENTRY_SIZE];
 
         let flags = u32::from_le_bytes([
-            entry_slice[0], entry_slice[1], entry_slice[2], entry_slice[3],
+            entry_slice[0],
+            entry_slice[1],
+            entry_slice[2],
+            entry_slice[3],
         ]);
 
         // An entry with flags == 0 is unused; stop iterating.
@@ -258,10 +261,16 @@ fn parse_fat_entries(page_bytes: &[u8; PAGE_SIZE]) -> Vec<FatEntry> {
         };
 
         let page_index = u32::from_le_bytes([
-            entry_slice[40], entry_slice[41], entry_slice[42], entry_slice[43],
+            entry_slice[40],
+            entry_slice[41],
+            entry_slice[42],
+            entry_slice[43],
         ]);
         let size = u32::from_le_bytes([
-            entry_slice[44], entry_slice[45], entry_slice[46], entry_slice[47],
+            entry_slice[44],
+            entry_slice[45],
+            entry_slice[46],
+            entry_slice[47],
         ]);
 
         entries.push(FatEntry {
@@ -301,7 +310,7 @@ impl<R: Read + Seek> SaiPageReader<R> {
     /// Returns `SaiError::InvalidFileSize` if the file size is not a multiple of 4096.
     fn new(mut reader: R) -> Result<Self, SaiError> {
         let file_size = reader.seek(SeekFrom::End(0))? as usize;
-        if file_size % PAGE_SIZE != 0 || file_size == 0 {
+        if !file_size.is_multiple_of(PAGE_SIZE) || file_size == 0 {
             return Err(SaiError::InvalidFileSize);
         }
 
@@ -319,7 +328,7 @@ impl<R: Read + Seek> SaiPageReader<R> {
 
     /// Returns `true` if the given page index is a table page.
     fn is_table_index(page_index: usize) -> bool {
-        page_index % TABLE_SPAN == 0
+        page_index.is_multiple_of(TABLE_SPAN)
     }
 
     /// Reads and decrypts a raw page from the file, returning it as a u32 array.
@@ -327,11 +336,15 @@ impl<R: Read + Seek> SaiPageReader<R> {
         if page_index >= self.page_count {
             return Err(SaiError::Io(std::io::Error::new(
                 std::io::ErrorKind::UnexpectedEof,
-                format!("Page index {} exceeds file page count {}", page_index, self.page_count),
+                format!(
+                    "Page index {} exceeds file page count {}",
+                    page_index, self.page_count
+                ),
             )));
         }
 
-        self.reader.seek(SeekFrom::Start((page_index * PAGE_SIZE) as u64))?;
+        self.reader
+            .seek(SeekFrom::Start((page_index * PAGE_SIZE) as u64))?;
         let mut raw_bytes = [0u8; PAGE_SIZE];
         self.reader.read_exact(&mut raw_bytes)?;
 
@@ -348,7 +361,10 @@ impl<R: Read + Seek> SaiPageReader<R> {
     ///
     /// # Errors
     /// Returns `SaiError::Io` if the page cannot be read.
-    fn fetch_table_page(&mut self, table_page_index: usize) -> Result<[u32; PAGE_U32_COUNT], SaiError> {
+    fn fetch_table_page(
+        &mut self,
+        table_page_index: usize,
+    ) -> Result<[u32; PAGE_U32_COUNT], SaiError> {
         // Cache hit
         if let Some((cached_index, cached_data)) = &self.cached_table {
             if *cached_index == table_page_index {
@@ -551,11 +567,7 @@ fn convert_bgra_to_rgba(pixel_data: &mut [u8]) {
 }
 
 /// Encodes raw RGBA pixel data into a PNG byte buffer.
-fn encode_rgba_to_png(
-    pixel_data: &[u8],
-    width: u32,
-    height: u32,
-) -> Result<Vec<u8>, SaiError> {
+fn encode_rgba_to_png(pixel_data: &[u8], width: u32, height: u32) -> Result<Vec<u8>, SaiError> {
     let mut png_buffer = Vec::new();
     let cursor = std::io::Cursor::new(&mut png_buffer);
 
@@ -585,13 +597,15 @@ fn encode_rgba_to_png(
 /// # Errors
 /// Returns `Err` if the file cannot be opened, decryption fails, the VFS
 /// structure is corrupt, or no thumbnail entry exists.
-pub fn extract_sai_preview(sai_file_path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_sai_preview(
+    sai_file_path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let file = std::fs::File::open(sai_file_path)?;
     let mut page_reader = SaiPageReader::new(file)?;
 
     // Locate the "thumbnail" entry in the root directory
-    let thumbnail_entry = find_root_entry(&mut page_reader, "thumbnail")?
-        .ok_or(SaiError::ThumbnailNotFound)?;
+    let thumbnail_entry =
+        find_root_entry(&mut page_reader, "thumbnail")?.ok_or(SaiError::ThumbnailNotFound)?;
 
     // Read the full thumbnail file data through the page chain
     let thumbnail_raw_data = page_reader.read_file_data(
@@ -611,11 +625,13 @@ pub fn extract_sai_preview(sai_file_path: &Path) -> Result<(Vec<u8>, String), Bo
             "SAI thumbnail data too short: expected {} bytes of pixel data, got {}",
             expected_pixel_data_size,
             thumbnail_raw_data.len() - header_size,
-        ).into());
+        )
+        .into());
     }
 
     // Extract pixel data (after the 12-byte header) and convert BGRA → RGBA
-    let mut pixel_data = thumbnail_raw_data[header_size..header_size + expected_pixel_data_size].to_vec();
+    let mut pixel_data =
+        thumbnail_raw_data[header_size..header_size + expected_pixel_data_size].to_vec();
     convert_bgra_to_rgba(&mut pixel_data);
 
     let png_data = encode_rgba_to_png(&pixel_data, header.width, header.height)?;

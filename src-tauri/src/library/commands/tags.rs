@@ -1,5 +1,5 @@
+use crate::db::models::{ImageMetadata, LibraryStats, Tag};
 use crate::db::Db;
-use crate::db::models::{Tag, ImageMetadata, LibraryStats};
 use crate::error::AppResult;
 use std::sync::Arc;
 use tauri::State;
@@ -23,7 +23,9 @@ pub async fn update_tag(
     parent_id: Option<i64>,
     order_index: Option<i64>,
 ) -> AppResult<()> {
-    Ok(db.update_tag(id, name, color, parent_id, order_index).await?)
+    Ok(db
+        .update_tag(id, name, color, parent_id, order_index)
+        .await?)
 }
 
 #[tauri::command]
@@ -37,18 +39,12 @@ pub async fn get_all_tags(db: State<'_, Arc<Db>>) -> AppResult<Vec<Tag>> {
 }
 
 #[tauri::command]
-pub async fn get_library_stats(
-    db: State<'_, Arc<Db>>,
-) -> AppResult<LibraryStats> {
+pub async fn get_library_stats(db: State<'_, Arc<Db>>) -> AppResult<LibraryStats> {
     Ok(db.get_library_stats().await?)
 }
 
 #[tauri::command]
-pub async fn add_tag_to_image(
-    db: State<'_, Arc<Db>>,
-    image_id: i64,
-    tag_id: i64,
-) -> AppResult<()> {
+pub async fn add_tag_to_image(db: State<'_, Arc<Db>>, image_id: i64, tag_id: i64) -> AppResult<()> {
     Ok(db.add_tag_to_image(image_id, tag_id).await?)
 }
 
@@ -76,6 +72,7 @@ pub async fn add_tags_to_images_batch(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn get_images_filtered(
     db: State<'_, Arc<Db>>,
     limit: i32,
@@ -90,10 +87,25 @@ pub async fn get_images_filtered(
     advanced_query: Option<String>,
     search_query: Option<String>,
 ) -> AppResult<Vec<ImageMetadata>> {
-    Ok(db.get_images_filtered(limit, offset, tag_ids, match_all, untagged, folder_id, recursive, sort_by, sort_order, advanced_query, search_query).await?)
+    Ok(db
+        .get_images_filtered(
+            limit,
+            offset,
+            tag_ids,
+            match_all,
+            untagged,
+            folder_id,
+            recursive,
+            sort_by,
+            sort_order,
+            advanced_query,
+            search_query,
+        )
+        .await?)
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn get_image_count_filtered(
     db: State<'_, Arc<Db>>,
     tag_ids: Vec<i64>,
@@ -104,23 +116,25 @@ pub async fn get_image_count_filtered(
     advanced_query: Option<String>,
     search_query: Option<String>,
 ) -> AppResult<i64> {
-    Ok(db.get_image_count_filtered(tag_ids, match_all, untagged, folder_id, recursive, advanced_query, search_query).await?)
+    Ok(db
+        .get_image_count_filtered(
+            tag_ids,
+            match_all,
+            untagged,
+            folder_id,
+            recursive,
+            advanced_query,
+            search_query,
+        )
+        .await?)
 }
 
 #[tauri::command]
-pub async fn update_image_rating(
-    db: State<'_, Arc<Db>>,
-    id: i64,
-    rating: i32,
-) -> AppResult<()> {
+pub async fn update_image_rating(db: State<'_, Arc<Db>>, id: i64, rating: i32) -> AppResult<()> {
     Ok(db.update_image_rating(id, rating).await?)
 }
 
 #[tauri::command]
-pub async fn update_image_notes(
-    db: State<'_, Arc<Db>>,
-    id: i64,
-    notes: String,
-) -> AppResult<()> {
+pub async fn update_image_notes(db: State<'_, Arc<Db>>, id: i64, notes: String) -> AppResult<()> {
     Ok(db.update_image_notes(id, notes).await?)
 }

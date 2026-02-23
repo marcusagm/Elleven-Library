@@ -1,12 +1,14 @@
-use std::path::Path;
-use std::io::Read;
 use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 
 /// Extracts the preview image from a Rebelle (.reb) file.
 ///
 /// Rebelle files are ZIP archives containing a `canvas.png` file which represents
 /// the full composite image of the artwork.
-pub fn extract_rebelle_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_rebelle_preview(
+    path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
 

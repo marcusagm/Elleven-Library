@@ -3,8 +3,8 @@
 //! this module defines the data transfer objects (DTOs) and database entities
 //! used across the backend and returned to the frontend.
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 /// Represents a single image record in the database.
 #[derive(Debug, Serialize, Deserialize, Clone, sqlx::FromRow)]
