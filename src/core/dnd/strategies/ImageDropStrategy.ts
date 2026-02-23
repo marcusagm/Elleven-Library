@@ -26,8 +26,6 @@ export const ImageDropStrategy: DropStrategy = {
                     targetIds = [...selectionState.selectedIds];
                 }
 
-                console.log(`Assigning tag ${tagId} to images [${targetIds.join(', ')}]`);
-
                 await tagService.addTagsToImagesBatch(targetIds, [tagId]);
                 metadataActions.notifyTagUpdate();
 

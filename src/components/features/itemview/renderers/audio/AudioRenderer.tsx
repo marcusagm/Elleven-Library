@@ -16,7 +16,7 @@ export const AudioRenderer: Component<AudioRendererProps> = props => {
     const { audioUrl } = useAudioSource(() => props.path);
 
     const item = createMemo(() =>
-        lib.items.find((i: any) => i.id.toString() === viewport.activeItemId())
+        lib.items.find(libraryItem => libraryItem.id.toString() === viewport.activeItemId())
     );
 
     return (

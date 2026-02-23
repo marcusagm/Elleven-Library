@@ -49,7 +49,6 @@ export function ReferenceImage(props: ReferenceImageProps) {
     // Subscribe to thumbnail ready events for this specific image
     onMount(() => {
         unsubscribe = subscribeThumbnailReady(props.id, (_id, path) => {
-            console.log(`Thumbnail ready for image ID: ${props.id}, path: ${path}`);
             setLocalThumbnail(path);
             setLocalError(false);
         });
@@ -147,9 +146,8 @@ export function ReferenceImage(props: ReferenceImageProps) {
         // Mark as pending in centralized store (persists across unmount)
         markPendingRegeneration(props.id);
 
-        console.log(`Requesting thumbnail regeneration for image ID: ${props.id}`);
-        invoke('request_thumbnail_regenerate', { imageId: props.id }).catch(err =>
-            console.error(`Failed to request regeneration:`, err)
+        invoke('request_thumbnail_regenerate', { imageId: props.id }).catch(error =>
+            console.error(`Failed to request regeneration:`, error)
         );
     };
 

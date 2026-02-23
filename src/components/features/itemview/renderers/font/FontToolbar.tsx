@@ -11,7 +11,7 @@ import './font-view.css';
 export const FontToolbar: Component = () => {
     const { fontSettings, setFontSettings } = useItemViewContext();
 
-    const updateSetting = (key: keyof FontSettings, value: any) => {
+    const updateSetting = (key: keyof FontSettings, value: FontSettings[keyof FontSettings]) => {
         setFontSettings(prev => ({ ...prev, [key]: value }));
     };
 

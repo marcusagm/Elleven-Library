@@ -7,6 +7,10 @@ import type { InputToken, RegisteredShortcut, ShortcutPayload } from './types';
 import { inputStore } from './store/inputStore';
 import { shortcutStore } from './store/shortcutStore';
 import { tokensEqual } from './normalizer';
+import { emitCommand } from './commandBus';
+
+// Re-export for backward API compatibility
+export { onCommand, clearCommandHandlers } from './commandBus';
 
 // =============================================================================
 // Focus Detection
@@ -246,14 +250,8 @@ export function dispatchToken(token: InputToken, event: Event | null): boolean {
 
         // Dispatch!
         try {
-            // Prevent default if configured
-            if (
-                shortcut.preventDefault &&
-                event &&
-                typeof (event as any).preventDefault === 'function'
-            ) {
-                (event as any).preventDefault();
-            }
+            if (shortcut.preventDefault && event && 'preventDefault' in event)
+                event.preventDefault();
 
             const payload: ShortcutPayload = {
                 shortcutDef: shortcut,
@@ -290,50 +288,4 @@ export function dispatchToken(token: InputToken, event: Event | null): boolean {
  */
 export function handleKeyUp(keyId: string): void {
     inputStore.keyUp(keyId);
-}
-
-// =============================================================================
-// Command Event System
-// =============================================================================
-
-type CommandHandler = (payload: ShortcutPayload) => void;
-const commandHandlers = new Map<string, Set<CommandHandler>>();
-
-/**
- * Subscribe to a command
- */
-export function onCommand(command: string, handler: CommandHandler): () => void {
-    if (!commandHandlers.has(command)) {
-        commandHandlers.set(command, new Set());
-    }
-
-    commandHandlers.get(command)!.add(handler);
-
-    // Return unsubscribe function
-    return () => {
-        commandHandlers.get(command)?.delete(handler);
-    };
-}
-
-/**
- * Emit a command event
- */
-function emitCommand(command: string, payload: ShortcutPayload): void {
-    const handlers = commandHandlers.get(command);
-    if (!handlers) return;
-
-    for (const handler of handlers) {
-        try {
-            handler(payload);
-        } catch (err) {
-            console.error(`[InputDispatcher] Error in command handler for ${command}:`, err);
-        }
-    }
-}
-
-/**
- * Clear all command handlers (for cleanup)
- */
-export function clearCommandHandlers(): void {
-    commandHandlers.clear();
 }

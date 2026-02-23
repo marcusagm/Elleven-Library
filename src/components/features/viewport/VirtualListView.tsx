@@ -1,6 +1,7 @@
 import { Component, createMemo, Show } from 'solid-js';
 import { Table, Column } from '../../ui/Table';
 import { useLibrary, useSelection, useViewport, useFilters } from '../../../core/hooks';
+import { type SortField } from '../../../core/store/filterStore';
 import { ImageItem } from '../../../types';
 import { formatFileSize, formatDate } from '../../../utils/format';
 import { assetDnD } from '../../../core/dnd';
@@ -127,7 +128,7 @@ export const VirtualListView: Component = () => {
             const nextOrder = filters.sortOrder === 'asc' ? 'desc' : 'asc';
             filters.setSortOrder(nextOrder);
         } else {
-            filters.setSortBy(key as any);
+            filters.setSortBy(key as SortField);
             filters.setSortOrder('desc'); // Default to desc for new columns (usually more useful for dates/size)
         }
     };
@@ -182,7 +183,7 @@ export const VirtualListView: Component = () => {
                     emptyDescription="Try adjusting your filters or add images to your library."
                     emptyIcon={ImageOff}
                     onVisibleItemsChange={items => {
-                        const ids = items.map(i => i.id);
+                        const ids = items.map(item => item.id);
                         lib.setThumbnailPriority(ids);
                     }}
                 />

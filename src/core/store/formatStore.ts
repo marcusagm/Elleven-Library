@@ -62,7 +62,6 @@ export const formatActions = {
                 extensionMap: map,
                 initialized: true
             });
-            console.log(`Format registry initialized with ${formats.length} formats.`);
         } catch (err) {
             console.error('Failed to load formats from backend:', err);
         }

@@ -112,7 +112,6 @@ export const FolderTreeSidebarPanel: Component = () => {
             });
 
             if (selected) {
-                console.log('Adding folder:', selected);
                 await invoke('add_location', { path: selected });
                 await metadata.loadLocations();
                 await metadata.loadStats();

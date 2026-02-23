@@ -15,7 +15,9 @@
 
 import { createSignal, createEffect, on, Accessor } from 'solid-js';
 import { useCommands, createConditionalScope } from '../input';
+import type { ShortcutPayload } from '../input/types';
 import type { ItemPosition } from '../viewport';
+import { findByIndex, findBestCandidate, extractMultiFlag } from './gridNavHelpers';
 
 export interface GridKeyboardNavOptions {
     /** Array of visible items with positions */
@@ -69,83 +71,16 @@ export function useGridKeyboardNav(options: GridKeyboardNavOptions): GridKeyboar
         direction: 'up' | 'down' | 'left' | 'right'
     ): number | null => {
         const visibleItems = options.visibleItems();
-        const currentPos = visibleItems.find(p => p.id === currentId);
+        const currentPos = visibleItems.find(position => position.id === currentId);
 
         if (!currentPos) {
-            // Current item not visible, try to find by index
-            const allItems = options.allItems();
-            const currentIndex = getItemIndex(currentId);
-
-            if (direction === 'up' || direction === 'left') {
-                return currentIndex > 0 ? allItems[currentIndex - 1].id : null;
-            } else {
-                return currentIndex < allItems.length - 1 ? allItems[currentIndex + 1].id : null;
-            }
+            return findByIndex(currentId, direction, options.allItems());
         }
 
-        // Find the best candidate based on position
-        let bestCandidate: ItemPosition | null = null;
-        let bestScore = Infinity;
+        const bestCandidate = findBestCandidate(currentPos, direction, visibleItems);
 
-        const centerX = currentPos.x + currentPos.width / 2;
-        const centerY = currentPos.y + currentPos.height / 2;
-
-        for (const pos of visibleItems) {
-            if (pos.id === currentId) continue;
-
-            const posCenterX = pos.x + pos.width / 2;
-            const posCenterY = pos.y + pos.height / 2;
-
-            let isValidDirection = false;
-            let score = 0;
-
-            switch (direction) {
-                case 'up':
-                    if (posCenterY < centerY - 10) {
-                        isValidDirection = true;
-                        // Primary score: strictly geometric distance
-                        // Weight Y distance more heavily for column retention
-                        score = Math.abs(posCenterX - centerX) * 2 + Math.abs(centerY - posCenterY);
-                    }
-                    break;
-                case 'down':
-                    if (posCenterY > centerY + 10) {
-                        isValidDirection = true;
-                        score = Math.abs(posCenterX - centerX) * 2 + Math.abs(posCenterY - centerY);
-                    }
-                    break;
-                case 'left':
-                    if (posCenterX < centerX - 10) {
-                        isValidDirection = true;
-                        score = Math.abs(posCenterY - centerY) * 2 + Math.abs(centerX - posCenterX);
-                    }
-                    break;
-                case 'right':
-                    if (posCenterX > centerX + 10) {
-                        isValidDirection = true;
-                        score = Math.abs(posCenterY - centerY) * 2 + Math.abs(posCenterX - centerX);
-                    }
-                    break;
-            }
-
-            if (isValidDirection) {
-                if (score < bestScore) {
-                    bestScore = score;
-                    bestCandidate = pos;
-                }
-            }
-        }
-
-        // If no candidate found in visible items, try adjacent index
         if (!bestCandidate) {
-            const allItems = options.allItems();
-            const currentIndex = getItemIndex(currentId);
-
-            if (direction === 'up' || direction === 'left') {
-                return currentIndex > 0 ? allItems[currentIndex - 1].id : null;
-            } else {
-                return currentIndex < allItems.length - 1 ? allItems[currentIndex + 1].id : null;
-            }
+            return findByIndex(currentId, direction, options.allItems());
         }
 
         return bestCandidate.id;
@@ -262,19 +197,10 @@ export function useGridKeyboardNav(options: GridKeyboardNavOptions): GridKeyboar
             if (current !== null) options.onOpen(current);
         },
 
-        toggleSelect: (arg?: Event | any) => {
+        toggleSelect: (argument?: Event | ShortcutPayload) => {
             const current = focusedId();
             if (current !== null) {
-                let multi = false;
-
-                if (arg && 'shiftKey' in arg) {
-                    // Standard DOM Event
-                    multi = arg.shiftKey;
-                } else if (arg && arg.meta && Array.isArray(arg.meta.modifiers)) {
-                    // ShortcutPayload
-                    multi = arg.meta.modifiers.includes('Shift');
-                }
-
+                const multi = extractMultiFlag(argument);
                 options.onSelect(current, multi);
             }
         }

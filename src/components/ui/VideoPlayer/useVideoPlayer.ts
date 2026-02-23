@@ -245,14 +245,18 @@ export function useVideoPlayer(props: VideoPlayerProps) {
         if (!document.fullscreenElement) {
             if (container.requestFullscreen) {
                 container.requestFullscreen();
-            } else if ((container as any).webkitRequestFullscreen) {
-                (container as any).webkitRequestFullscreen();
+            } else if ('webkitRequestFullscreen' in container) {
+                (
+                    container as HTMLElement & { webkitRequestFullscreen: () => void }
+                ).webkitRequestFullscreen();
             }
         } else {
             if (document.exitFullscreen) {
                 document.exitFullscreen();
-            } else if ((document as any).webkitExitFullscreen) {
-                (document as any).webkitExitFullscreen();
+            } else if ('webkitExitFullscreen' in document) {
+                (
+                    document as Document & { webkitExitFullscreen: () => void }
+                ).webkitExitFullscreen();
             }
         }
     };

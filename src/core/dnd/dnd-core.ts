@@ -1,7 +1,12 @@
 // Define types for Draggable Items
+export interface TagDragPayload {
+    id: number;
+    name?: string;
+}
+
 export interface DragItem {
     type: 'IMAGE' | 'TAG';
-    payload: any;
+    payload: TagDragPayload | Record<string, unknown>;
 }
 
 // Strategy Interface

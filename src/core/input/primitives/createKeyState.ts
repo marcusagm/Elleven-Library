@@ -21,9 +21,10 @@ import { canonicalizeShortcut } from '../normalizer';
 export function createKeyState(key: string): Accessor<boolean> {
     const normalizedKey = canonicalizeShortcut(key);
 
-    return createMemo(() => {
+    const isKeyPressed = createMemo(() => {
         return inputStore.pressedKeys().has(normalizedKey);
     });
+    return isKeyPressed;
 }
 
 /**
@@ -37,7 +38,8 @@ export function createKeyState(key: string): Accessor<boolean> {
  *   pressed().has('Meta') || pressed().has('Ctrl') || pressed().has('Shift');
  */
 export function createPressedKeys(): Accessor<Set<string>> {
-    return createMemo(() => inputStore.pressedKeys());
+    const pressedKeysMemo = createMemo(() => inputStore.pressedKeys());
+    return pressedKeysMemo;
 }
 
 /**
@@ -47,12 +49,13 @@ export function createPressedKeys(): Accessor<Set<string>> {
  * const isModifierPressed = createAnyKeyPressed(['Meta', 'Ctrl']);
  */
 export function createAnyKeyPressed(keys: string[]): Accessor<boolean> {
-    const normalizedKeys = keys.map(k => canonicalizeShortcut(k));
+    const normalizedKeys = keys.map(keyName => canonicalizeShortcut(keyName));
 
-    return createMemo(() => {
+    const anyPressed = createMemo(() => {
         const pressed = inputStore.pressedKeys();
-        return normalizedKeys.some(k => pressed.has(k));
+        return normalizedKeys.some(keyName => pressed.has(keyName));
     });
+    return anyPressed;
 }
 
 /**
@@ -62,10 +65,11 @@ export function createAnyKeyPressed(keys: string[]): Accessor<boolean> {
  * const isCtrlShiftPressed = createAllKeysPressed(['Ctrl', 'Shift']);
  */
 export function createAllKeysPressed(keys: string[]): Accessor<boolean> {
-    const normalizedKeys = keys.map(k => canonicalizeShortcut(k));
+    const normalizedKeys = keys.map(keyName => canonicalizeShortcut(keyName));
 
-    return createMemo(() => {
+    const allPressed = createMemo(() => {
         const pressed = inputStore.pressedKeys();
-        return normalizedKeys.every(k => pressed.has(k));
+        return normalizedKeys.every(keyName => pressed.has(keyName));
     });
+    return allPressed;
 }

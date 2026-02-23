@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { type FileFormat } from '../store/formatStore';
 
 // Define strict types for Tauri commands
 export interface StartIndexingArgs {
@@ -24,7 +25,7 @@ export const tauriService = {
      */
     // stopIndexing: async () => invoke("stop_indexing"),
 
-    getLibrarySupportedFormats: async (): Promise<any[]> => {
+    getLibrarySupportedFormats: async (): Promise<FileFormat[]> => {
         try {
             return await invoke('get_library_supported_formats');
         } catch (error) {
@@ -42,7 +43,7 @@ export const tauriService = {
         }
     },
 
-    getSetting: async (key: string): Promise<any> => {
+    getSetting: async (key: string): Promise<string | null> => {
         try {
             return await invoke('get_setting', { key });
         } catch (error) {
@@ -51,7 +52,7 @@ export const tauriService = {
         }
     },
 
-    setSetting: async (key: string, value: any): Promise<void> => {
+    setSetting: async (key: string, value: string): Promise<void> => {
         try {
             await invoke('set_setting', { key, value });
         } catch (error) {

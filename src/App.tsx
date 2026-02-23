@@ -149,7 +149,7 @@ function App() {
             });
 
             if (selected) {
-                const path = typeof selected === 'string' ? selected : (selected as any).path;
+                const path = typeof selected === 'string' ? selected : String(selected);
                 if (path) {
                     notification.info(
                         'Indexing Started',

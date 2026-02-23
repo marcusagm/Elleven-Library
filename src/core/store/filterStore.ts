@@ -19,7 +19,7 @@ export interface SearchCriterion {
     id: string;
     key: string;
     operator: string;
-    value: any;
+    value: string | number | boolean | null;
     unitMultiplier?: string;
     displayValue?: string;
 }
@@ -110,7 +110,7 @@ const persist = (newState: Partial<FilterState>) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
 };
 
-let searchDebounceTimer: any;
+let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 const filterActions = {
     pushHistory: () => {

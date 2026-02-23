@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { type ImageItem } from '../types';
 
 export interface Tag {
     id: number;
@@ -77,7 +78,7 @@ export const tagService = {
         sort_order?: string,
         advanced_query?: string,
         search_query?: string
-    ): Promise<any[]> => {
+    ): Promise<ImageItem[]> => {
         return await invoke('get_images_filtered', {
             limit,
             offset,

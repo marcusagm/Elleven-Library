@@ -56,7 +56,7 @@ export function createShortcut(options: CreateShortcutOptions): ShortcutHandle {
     // Check if shortcut already exists (to reuse definition/customization)
     // Type assertion since getByNameAndScope is newly added and TS might not see it yet in inference or if interface wasn't updated fully
     const existing = options.name
-        ? (shortcutStore.getByNameAndScope(options.name, options.scope) as any)
+        ? shortcutStore.getByNameAndScope(options.name, options.scope)
         : undefined;
 
     let commandName: string;

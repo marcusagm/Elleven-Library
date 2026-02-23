@@ -2,12 +2,12 @@ import { filterState, filterActions } from '../store/filterStore';
 import { libraryActions } from '../store/libraryStore';
 
 export const useFilters = () => {
-    const withRefresh =
-        (action: (...args: any[]) => void) =>
-        (...args: any[]) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const withRefresh = <T extends (...args: any[]) => void>(action: T) =>
+        ((...args: Parameters<T>) => {
             action(...args);
             libraryActions.refreshImages(true);
-        };
+        }) as T;
 
     return {
         // State (Read-only proxies)

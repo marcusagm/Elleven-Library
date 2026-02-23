@@ -17,14 +17,14 @@ import './advanced-search-modal.css';
 
 // --- Helpers ---
 
-const formatToISO = (val: any) => {
+const formatToISO = (val: Date | string): string => {
     if (val instanceof Date) {
-        const y = val.getFullYear();
-        const m = (val.getMonth() + 1).toString().padStart(2, '0');
-        const d = val.getDate().toString().padStart(2, '0');
-        return `${y}-${m}-${d}`;
+        const year = val.getFullYear();
+        const month = (val.getMonth() + 1).toString().padStart(2, '0');
+        const day = val.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
-    return val;
+    return String(val);
 };
 
 const formatToDisplay = (iso: string) => {
@@ -59,7 +59,10 @@ const SIZE_UNITS = [
     { value: '1073741824', label: 'GB' }
 ];
 
-const computeDisplayValue = (item: Partial<SearchCriterion>, metadata: any): string => {
+const computeDisplayValue = (
+    item: Partial<SearchCriterion>,
+    metadata: { locations: { id: number; name: string }[]; tags: { id: number; name: string }[] }
+): string => {
     if (item.displayValue) return item.displayValue;
     if (item.value === null || item.value === undefined) return '';
 
@@ -67,29 +70,30 @@ const computeDisplayValue = (item: Partial<SearchCriterion>, metadata: any): str
     const val = item.value;
 
     if (key === 'size') {
-        const m = Number(item.unitMultiplier || '1048576');
-        const label = SIZE_UNITS.find(u => u.value === String(m))?.label || 'MB';
+        const multiplier = Number(item.unitMultiplier || '1048576');
+        const label = SIZE_UNITS.find(unit => unit.value === String(multiplier))?.label || 'MB';
         if (Array.isArray(val)) {
-            return `${val[0] / m} ${label} to ${val[1] / m} ${label}`;
+            return `${Number(val[0]) / multiplier} ${label} to ${Number(val[1]) / multiplier} ${label}`;
         }
-        return `${val / m} ${label}`;
+        return `${Number(val) / multiplier} ${label}`;
     }
 
     if (['added_at', 'created_at', 'modified_at'].includes(key)) {
         if (Array.isArray(val)) {
-            return `${formatToDisplay(val[0])} to ${formatToDisplay(val[1])}`;
+            return `${formatToDisplay(String(val[0]))} to ${formatToDisplay(String(val[1]))}`;
         }
         return formatToDisplay(String(val));
     }
 
     if (key === 'folder') {
         return (
-            metadata.locations.find((l: any) => String(l.id) === String(val))?.name || String(val)
+            metadata.locations.find(location => String(location.id) === String(val))?.name ||
+            String(val)
         );
     }
 
     if (key === 'tags') {
-        return metadata.tags.find((t: any) => String(t.id) === String(val))?.name || String(val);
+        return metadata.tags.find(tag => String(tag.id) === String(val))?.name || String(val);
     }
 
     if (Array.isArray(val)) {

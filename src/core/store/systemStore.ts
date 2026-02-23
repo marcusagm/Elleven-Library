@@ -1,9 +1,10 @@
 import { createSignal } from 'solid-js';
-import { FileFormat } from '../../types';
+import { type FileFormat } from './formatStore';
 import { listen } from '@tauri-apps/api/event';
 import { addLocation, initDb } from '../../lib/db';
 import { tauriService } from '../tauri/services';
 import { metadataActions } from './metadataStore';
+import { type BatchChangePayload } from './libraryStore';
 
 export interface ProgressPayload {
     total: number;
@@ -30,7 +31,6 @@ export const systemActions = {
 
             const formats = await tauriService.getLibrarySupportedFormats();
             setSupportedFormats(formats);
-            console.log(`[System] Loaded ${formats.length} supported formats.`);
 
             // Auto-select root path if locations exist
             import('./metadataStore').then(({ metadataState }) => {
@@ -74,9 +74,8 @@ export const systemActions = {
                 });
             });
 
-            listen<any>('library:batch-change', e => {
+            listen<BatchChangePayload>('library:batch-change', e => {
                 const payload = e.payload;
-                console.log('Batch Change:', payload);
 
                 import('./libraryStore').then(({ libraryActions }) => {
                     libraryActions.handleBatchChange(payload);

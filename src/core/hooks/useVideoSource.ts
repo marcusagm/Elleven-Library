@@ -28,7 +28,6 @@ export function useVideoSource(
                 // First check if HLS server is available
                 const serverAvailable = await isHlsServerAvailable();
                 if (!serverAvailable) {
-                    console.log('VideoSourceHook: HLS server not available, using fallback');
                     setProbeError(null);
                     return null;
                 }
@@ -66,6 +65,8 @@ export function useVideoSource(
         videoUrl,
         probeResult,
         probeError,
-        isLoading: probeResult.loading
+        get isLoading() {
+            return probeResult.loading;
+        }
     };
 }

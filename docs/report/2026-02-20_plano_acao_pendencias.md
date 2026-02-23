@@ -1,11 +1,11 @@
 # Plano de Ação: Otimizações e Funcionalidades Pendentes (Mundam)
 
 **Data:** 20 de Fevereiro de 2026
-**Status:** Planejamento  
-**Última atualização:** 2026-02-23 — Nenhuma pendência deste documento foi implementada ainda.
+**Status:** Planejamento (parcialmente em andamento)  
+**Última atualização:** 2026-02-23 — Progresso parcial na seção 5.1 (tipagem e modularização) via sprint de qualidade frontend. Ver `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`.
 **Baseado em:** `pendencias_consolidadas.md`
 
-Este documento elabora um plano detalhado de implementação para todas as pendências ativas mapeadas nos relatórios recentes do projeto **Mundam**. Para manter a manutenibilidade, o plano foi segmentado em partes menores, de modo que cada tópico representa uma evolução lógica, focada em recursos específicos, melhorias de arquitetura e otimizações de performance. Nenhuma das pendências abaixo possui código correspondente finalizado na base de código atual.
+Este documento elabora um plano detalhado de implementação para todas as pendências ativas mapeadas nos relatórios recentes do projeto **Mundam**. Para manter a manutenibilidade, o plano foi segmentado em partes menores, de modo que cada tópico representa uma evolução lógica, focada em recursos específicos, melhorias de arquitetura e otimizações de performance.
 
 ---
 
@@ -65,8 +65,10 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 
 **Motivação:** Interfaces inchadas podem dificultar a injeção reativa do Solid e as melhorias visuais do portfólio.
 
-### [ ] 5.1 Refatoração Reativa: Actions e Store
-*   **Ação:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI.  
+### [~] 5.1 Refatoração Reativa: Actions e Store *(progresso parcial — 2026-02-23)*
+*   **Concluído:** Eliminação de `any` em stores críticos (`filterStore`, `metadataStore`, `shortcutStore`), modularização de god files (`hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`), remoção de `console.log` de debug, rewrite do `TagDropStrategy.ts`. Build TypeScript com 0 erros.
+*   **Pendente:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI. Restam `any` em `AdvancedSearchModal.tsx`, `DropdownMenu.tsx`, `Input.tsx`, `TreeView.tsx`, `Table.tsx`.
+*   *Detalhes: `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`*
 
 
 

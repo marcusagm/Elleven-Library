@@ -53,7 +53,7 @@ export const appearanceActions = {
         setAppearance({
             mode: (mode as ThemeMode) ?? DEFAULT_STATE.mode,
             theme: (theme as ThemeColor) ?? DEFAULT_STATE.theme,
-            radius: (radius as number) ?? DEFAULT_STATE.radius,
+            radius: radius !== null ? Number(radius) : DEFAULT_STATE.radius,
             fontSize: (fontSize as ThemeFontSize) ?? DEFAULT_STATE.fontSize
         });
 
@@ -65,7 +65,7 @@ export const appearanceActions = {
             unlistenSyncEvent();
             unlistenSyncEvent = null;
         }
-        listen(SYNC_EVENT, (event: any) => {
+        listen<AppearanceState>(SYNC_EVENT, event => {
             setAppearance(event.payload);
             appearanceActions.apply();
         }).then(unlisten => {
@@ -84,7 +84,7 @@ export const appearanceActions = {
         if (updates.theme)
             promises.push(tauriService.setSetting('appearance_theme', updates.theme));
         if (updates.radius !== undefined)
-            promises.push(tauriService.setSetting('appearance_radius', updates.radius));
+            promises.push(tauriService.setSetting('appearance_radius', String(updates.radius)));
         if (updates.fontSize)
             promises.push(tauriService.setSetting('appearance_font_size', updates.fontSize));
 

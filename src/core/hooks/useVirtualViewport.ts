@@ -104,7 +104,7 @@ export function useVirtualViewport(
 
     /* Priority Thumbnail Generation */
     const lib = useLibrary();
-    let priorityDebounce: any;
+    let priorityDebounce: ReturnType<typeof setTimeout> | undefined;
 
     createEffect(() => {
         const visible = controller.visibleItems();

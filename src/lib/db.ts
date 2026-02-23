@@ -1,10 +1,19 @@
 import { invoke } from '@tauri-apps/api/core';
+import { type ImageItem } from '../types';
 
 // We primarily use the Rust backend for DB operations now.
 // This file wraps those invocations or provides legacy support where needed.
 
+interface FolderNode {
+    id: number;
+    path: string;
+    name: string;
+    parent_id: number | null;
+    is_root: boolean;
+}
+
 export async function initDb() {
-    console.log('Database management is handled by the Backend (Rust).');
+    // Database management is handled by the Backend (Rust).
     // No-op or perform specific frontend-only inits if needed
 }
 
@@ -13,7 +22,7 @@ export async function addLocation(path: string) {
 }
 
 export async function getLocations() {
-    return await invoke<any[]>('get_locations');
+    return await invoke<FolderNode[]>('get_locations');
 }
 
 export async function getImages(
@@ -23,14 +32,14 @@ export async function getImages(
     sortOrder?: string
 ) {
     // Use the backend command which now handles the unified logic
-    return await invoke<any[]>('get_images_filtered', {
+    return await invoke<ImageItem[]>('get_images_filtered', {
         limit,
         offset,
         tagIds: [],
         matchAll: true,
-        untagged: false, // optional
-        folderId: null, // was locationId
-        recursive: true, // default to recursive or not? context implies simple "get recent"
+        untagged: false,
+        folderId: null,
+        recursive: true,
         sortBy,
         sortOrder
     });

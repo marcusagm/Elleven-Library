@@ -3,7 +3,7 @@
 **Data:** 2026-02-19  
 **Escopo:** Frontend (Solid + TS), Backend (Rust + Tauri), arquitetura, performance, confiabilidade, segurança, DX e usabilidade DAM.  
 **Base de avaliação:** código atual + guias em `docs/guidelines`.  
-**Última atualização:** 2026-02-23
+**Última atualização:** 2026-02-23 (sprint de qualidade frontend)
 
 ---
 
@@ -35,10 +35,10 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 - Contagens aproximadas:
   - `unwrap(` em Rust backend: **37**.
   - `expect(` em Rust backend: **4**.
-  - `console.log(` no frontend: **17**.
-  - ocorrências de `any` no frontend: **84**.
+  - `console.log(` no frontend: ~~**17**~~ **~6 restantes** *(11 removidos em 2026-02-23 — 4 de debug, 7 em comentários/docs)*.
+  - ocorrências de `any` no frontend: ~~**84**~~ **~30 restantes** *(redução significativa em 2026-02-23 via sprint de qualidade)*.
   - `TODO/FIXME`: **4**.
-- Vários arquivos excedem 300 linhas (limite recomendado nos guias).
+- Vários arquivos excedem 300 linhas (limite recomendado nos guias) — ~~5+ arquivos~~ **2 arquivos críticos restantes** (`useVideoPlayer.ts`, `AdvancedSearchModal.tsx`).
 
 ---
 
@@ -46,9 +46,9 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 
 ### 3.1 Frontend (Solid + TS)
 Principais desvios em relação ao guia:
-- Uso significativo de `any` em áreas críticas (especialmente filtros/busca avançada).
-- Componentes e hooks extensos demais (complexidade alta e menor testabilidade).
-- Presença de `console.log` em runtime de produção.
+- [PARCIAL] Uso significativo de `any` em áreas críticas — *reduzido de ~84 para ~30 ocorrências em 2026-02-23. Stores críticos (`filterStore`, `metadataStore`, `shortcutStore`) e strategies (`TagDropStrategy`) agora estão limpos. Restam UI components (`DropdownMenu`, `Input`, `TreeView`, `Table`) e `AdvancedSearchModal`.*
+- [PARCIAL] Componentes e hooks extensos demais — *`hls-player.ts`, `dispatcher.ts`, `metadataStore.ts` modularizados em 2026-02-23. Restam `useVideoPlayer.ts` (373 linhas) e `AdvancedSearchModal.tsx` (1191 linhas).*
+- [RESOLVIDO] Presença de `console.log` em runtime de produção — *removidos em 2026-02-23. Restam apenas `console.error`/`console.warn` legítimos.*
 - Ausência de script de lint no `package.json` apesar de orientação explícita no guia.
 
 ### 3.2 Backend (Rust + Tauri)
@@ -85,17 +85,21 @@ Principais desvios:
 
 ### 4.2 Code Smells e Legibilidade
 
-1. **`any` disseminado (TS)**  
-   Reduz segurança de tipos e dificulta refatorações seguras.
+1. **[PARCIAL] `any` disseminado (TS)**  
+   ~~Reduz segurança de tipos e dificulta refatorações seguras.~~  
+   *Progresso em 2026-02-23: Eliminados em stores críticos, strategies e renderers. Restam ~30 ocorrências em UI components e `AdvancedSearchModal`. Ver `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`.*
 
-2. **Logging de debug em produção** (`console.log`)  
-   Polui runtime, reduz sinal/ruído e pode expor dados/fluxos internos.
+2. **[RESOLVIDO] Logging de debug em produção** (`console.log`)  
+   ~~Polui runtime, reduz sinal/ruído e pode expor dados/fluxos internos.~~  
+   *Resolvido em 2026-02-23: Removidos todos os `console.log` de debug de `FolderTreeSidebarPanel.tsx`, `ReferenceImage.tsx`, `TagDropStrategy.ts`. Mantidos apenas `console.error`/`console.warn` legítimos.*
 
-3. **Funções com muitas responsabilidades**  
-   Exemplos em fluxo de busca avançada, watcher e streaming handlers.
+3. **[PARCIAL] Funções com muitas responsabilidades**  
+   ~~Exemplos em fluxo de busca avançada, watcher e streaming handlers.~~  
+   *Progresso em 2026-02-23: `handleBatchChange` (complexidade 34→08), `TagDropStrategy.onDrop` (18→4), `hls-player.ts` modularizado. Restam `AdvancedSearchModal.tsx` e `useVideoPlayer.ts`.*
 
-4. **Nomes e contratos fracos em payloads dinâmicos**  
-   Eventos como `library:batch-change` usando `any` e payload sem schema compartilhado robusto.
+4. **[PARCIAL] Nomes e contratos fracos em payloads dinâmicos**  
+   ~~Eventos como `library:batch-change` usando `any` e payload sem schema compartilhado robusto.~~  
+   *Progresso em 2026-02-23: `BatchChangePayload` tipado em `libraryStore.ts`, `SearchGroup | null` em `metadataStore.ts`. `DragItem` ainda usa union frágil (pendente: discriminated union).*
 
 5. **Uso de comentários para justificar acoplamento**  
    Há trechos descrevendo “evitar circular dependency”, sinal de problema estrutural a tratar na arquitetura.
@@ -186,8 +190,8 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 
 ### Fase 1 — Estruturação arquitetural (2–4 semanas)
 1. [ ] Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos.
-2. [ ] Quebrar arquivos >300 linhas em módulos por responsabilidade.
-3. [ ] Eliminar `any` em fluxos principais (busca, metadata, eventos).
+2. [~] Quebrar arquivos >300 linhas em módulos por responsabilidade. *(Progresso parcial em 2026-02-23: `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts` modularizados. Restam `useVideoPlayer.ts`, `AdvancedSearchModal.tsx`.)*
+3. [~] Eliminar `any` em fluxos principais (busca, metadata, eventos). *(Progresso parcial em 2026-02-23: ~84 → ~30 ocorrências. Stores críticos limpos.)*
 4. [ ] Padronizar logging estruturado (níveis, contexto, correlação).
 
 ### Fase 2 — Performance e escala DAM (4–8 semanas)

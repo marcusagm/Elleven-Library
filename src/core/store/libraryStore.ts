@@ -3,8 +3,25 @@ import { getImages } from '../../lib/db';
 import { invoke } from '@tauri-apps/api/core';
 import { tagService } from '../../lib/tags';
 import { filterState, filterActions } from './filterStore';
-
 import { type ImageItem } from '../../types';
+
+export interface BatchChangeAddedItem extends ImageItem {
+    folder_id: number;
+    old_folder_id?: number;
+}
+
+export interface BatchChangeRemovedItem {
+    id: number;
+    folder_id: number;
+    tag_ids: number[];
+}
+
+export interface BatchChangePayload {
+    added?: BatchChangeAddedItem[];
+    removed?: BatchChangeRemovedItem[];
+    updated?: BatchChangeAddedItem[];
+    needs_refresh?: boolean;
+}
 
 interface LibraryState {
     items: ImageItem[];
@@ -35,17 +52,6 @@ export const libraryActions = {
         const advancedQuery = filterState.advancedSearch
             ? JSON.stringify(filterState.advancedSearch)
             : undefined;
-
-        console.log('libraryStore.refreshImages', {
-            reset,
-            isUntagged,
-            folderId,
-            recursive,
-            anyFilter,
-            sortBy,
-            sortOrder,
-            advancedQuery
-        });
 
         if (reset) {
             currentOffset = 0;
@@ -183,11 +189,11 @@ export const libraryActions = {
         setLibraryState('items', item => item.id === id, 'thumbnail_path', path);
     },
 
-    handleBatchChange: (payload: any) => {
+    handleBatchChange: (payload: BatchChangePayload) => {
         // 1. Handle Removals
         if (payload.removed && payload.removed.length > 0) {
-            const removedIds = new Set(payload.removed.map((r: any) => r.id));
-            setLibraryState('items', items => items.filter(i => !removedIds.has(i.id)));
+            const removedIds = new Set(payload.removed.map(removedItem => removedItem.id));
+            setLibraryState('items', items => items.filter(item => !removedIds.has(item.id)));
         }
 
         // 2. Handle Additions
@@ -199,12 +205,15 @@ export const libraryActions = {
 
         // 3. Handle Updates (Moves and Renames)
         if (payload.updated && payload.updated.length > 0) {
+            const updatedItems = payload.updated;
             import('./metadataStore').then(({ metadataState }) => {
                 const selectedFolderId = filterState.selectedFolderId;
                 const recursive = filterState.folderRecursiveView;
 
                 // Optimization: Create a Map for O(1) parent lookup instead of Array.find O(N)
-                const locationMap = new Map(metadataState.locations.map(l => [l.id, l]));
+                const locationMap = new Map(
+                    metadataState.locations.map(location => [location.id, location])
+                );
 
                 const isChildOf = (childId: number, rootId: number): boolean => {
                     let current: number | null = childId;
@@ -222,7 +231,7 @@ export const libraryActions = {
                 let someMovedIn = false;
                 const toRemoveIDs: number[] = [];
 
-                for (const item of payload.updated) {
+                for (const item of updatedItems) {
                     const isNowInView =
                         !selectedFolderId ||
                         (recursive

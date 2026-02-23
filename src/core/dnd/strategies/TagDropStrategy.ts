@@ -1,8 +1,126 @@
-/* eslint-disable no-console, complexity, @typescript-eslint/no-explicit-any, max-lines */
 import { DropStrategy, DragItem } from '../dnd-core';
 import { tagService } from '../../../lib/tags';
+import { type Tag } from '../../../lib/tags';
 import { metadataActions, metadataState } from '../../store/metadataStore';
 import { toast } from '../../../components/ui/Sonner';
+
+/** Handle dropping images onto a tag (batch assignment) */
+async function handleImageDrop(imageIds: number[], targetTagId: number | null): Promise<void> {
+    if (targetTagId === null) {
+        console.warn('Cannot assign images to root tag container');
+        return;
+    }
+    try {
+        await tagService.addTagsToImagesBatch(imageIds, [targetTagId]);
+        metadataActions.notifyTagUpdate();
+
+        const tagName = metadataState.tags.find(tag => tag.id === targetTagId)?.name || 'Tag';
+        toast.success('Tag Applied', {
+            description: `Added "${tagName}" to ${imageIds.length} item(s)`
+        });
+    } catch (error) {
+        console.error('Failed to assign tag:', error);
+        toast.error('Failed to Apply Tag');
+    }
+}
+
+/** Determine the new parent ID based on drop position */
+function resolveNewParentId(
+    targetTagId: number | null,
+    position: 'before' | 'inside' | 'after'
+): number | null {
+    if (position === 'inside') return targetTagId;
+    if (targetTagId === null) return null;
+    const targetTag = metadataState.tags.find(tag => tag.id === targetTagId);
+    return targetTag ? targetTag.parent_id : null;
+}
+
+/** Build the ordered sibling list with the dragged tag inserted at the correct position */
+function buildReorderedSiblings(
+    allTags: Tag[],
+    draggedTagId: number,
+    newParentId: number | null,
+    targetTagId: number | null,
+    position: 'before' | 'inside' | 'after'
+): Tag[] | null {
+    const siblings = allTags
+        .filter(tag => tag.parent_id === newParentId && tag.id !== draggedTagId)
+        .sort(
+            (tagA, tagB) =>
+                tagA.order_index - tagB.order_index || tagA.name.localeCompare(tagB.name)
+        );
+
+    let insertIndex = siblings.length;
+
+    if (position !== 'inside') {
+        const targetIndex = siblings.findIndex(tag => tag.id === targetTagId);
+        if (targetIndex !== -1) {
+            insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
+        }
+    }
+
+    const draggedTag = allTags.find(tag => tag.id === draggedTagId);
+    if (!draggedTag) return null;
+
+    siblings.splice(insertIndex, 0, draggedTag);
+    return siblings;
+}
+
+/** Emit update calls for reordered siblings */
+function createReorderUpdates(
+    siblings: Tag[],
+    draggedTagId: number,
+    newParentId: number | null
+): Promise<void>[] {
+    return siblings.map((tag, index) => {
+        const newOrder = index * 100;
+        const isDragged = tag.id === draggedTagId;
+
+        if (isDragged) {
+            return tagService.updateTag(
+                tag.id,
+                undefined,
+                undefined,
+                newParentId === null ? 0 : newParentId,
+                newOrder
+            );
+        } else if (tag.order_index !== newOrder) {
+            return tagService.updateTag(
+                tag.id,
+                undefined,
+                undefined,
+                tag.parent_id === null ? 0 : tag.parent_id,
+                newOrder
+            );
+        }
+        return Promise.resolve();
+    });
+}
+
+/** Handle dropping a tag to reorder or nest it */
+async function handleTagDrop(
+    draggedTagId: number,
+    targetTagId: number | null,
+    position: 'before' | 'inside' | 'after'
+): Promise<void> {
+    try {
+        const newParentId = resolveNewParentId(targetTagId, position);
+        const siblings = buildReorderedSiblings(
+            metadataState.tags,
+            draggedTagId,
+            newParentId,
+            targetTagId,
+            position
+        );
+        if (!siblings) return;
+
+        const updates = createReorderUpdates(siblings, draggedTagId, newParentId);
+        await Promise.all(updates);
+        metadataActions.loadTags();
+    } catch (error) {
+        console.error('Failed to move tag:', error);
+    }
+}
 
 // Strategy: Dropping anything ONTO a Tag
 export const TagDropStrategy: DropStrategy = {
@@ -17,132 +135,19 @@ export const TagDropStrategy: DropStrategy = {
     ) => {
         let targetTagId: number | null = Number(targetId);
 
-        // Handle "root" target (from placeholder)
         if (targetId === 'root' || isNaN(targetTagId)) {
             targetTagId = null;
-            // If target is root, position usually "inside" (dropping into root zone)
-            if (position !== 'inside') {
-                // Determine if we should treat before/after root item as root?
-                // For now, map to null parent.
-                targetTagId = null;
-            }
         }
 
-        // Case 1: Image dropped on Tag (Assignment)
         if (item.type === 'IMAGE') {
-            // ... existing image logic ...
-            const imageIds = item.payload.ids as number[];
-            if (targetTagId === null) {
-                console.warn('Cannot assign images to root tag container');
-                return;
-            }
-            console.log(`Assigning images [${imageIds}] to tag ${targetTagId}`);
-            try {
-                await tagService.addTagsToImagesBatch(imageIds, [targetTagId]);
-                metadataActions.notifyTagUpdate();
-
-                const tagName = metadataState.tags.find(t => t.id === targetTagId)?.name || 'Tag';
-                toast.success('Tag Applied', {
-                    description: `Added "${tagName}" to ${imageIds.length} item(s)`
-                });
-            } catch (err) {
-                console.error('Failed to assign tag:', err);
-                toast.error('Failed to Apply Tag');
-            }
+            const imagePayload = item.payload as Record<string, unknown>;
+            const imageIds = imagePayload.ids as number[];
+            await handleImageDrop(imageIds, targetTagId);
         }
 
-        // Case 2: Tag dropped on Tag (Nesting / Reordering)
         if (item.type === 'TAG') {
             const draggedTagId = Number(item.payload.id);
-            // Self check already done in UI but good to have
-            // if (draggedTagId === targetTagId) return; // Only if inside
-
-            console.log(`Moving tag ${draggedTagId} relative to ${targetId} (${position})`);
-
-            try {
-                let newParentId: number | null = null;
-
-                if (position === 'inside') {
-                    newParentId = targetTagId; // Nesting
-                } else {
-                    if (targetTagId !== null) {
-                        const targetTag = metadataState.tags.find((t: any) => t.id === targetTagId);
-                        newParentId = targetTag ? targetTag.parent_id : null;
-                    } else {
-                        // Root
-                        newParentId = null;
-                    }
-                }
-
-                // Perform the Move + Reorder
-                // 1. Update Parent ID first (this conceptually moves it)
-                // 2. Then recalculate orders for the destination siblings
-
-                // Get fresh state after parent update? Or just calculate now using current state?
-                // Using current state is risky if we don't account for the move.
-                // Better approach: Construct the desired order list in memory.
-
-                const allTags = metadataState.tags;
-
-                // Filter siblings of the destination parent, excluding the dragged tag (it's coming here)
-                const siblings = allTags
-                    .filter((t: any) => t.parent_id === newParentId && t.id !== draggedTagId)
-                    .sort(
-                        (a: any, b: any) =>
-                            a.order_index - b.order_index || a.name.localeCompare(b.name)
-                    );
-
-                // Insert dragged tag into siblings array
-                let insertIndex = siblings.length; // Default append (inside)
-
-                if (position !== 'inside') {
-                    const targetIndex = siblings.findIndex((t: any) => t.id === targetTagId);
-                    if (targetIndex !== -1) {
-                        insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
-                    }
-                }
-
-                // Construct new list
-                // We represent the dragged item with just its ID for now, or fetch it
-                const draggedTag = allTags.find((t: any) => t.id === draggedTagId);
-                if (!draggedTag) return; // Should not happen
-
-                siblings.splice(insertIndex, 0, draggedTag);
-
-                // Update all affected items
-                // We'll update order_index for everyone to enforce spacing (0, 100, 200...)
-                const updates = siblings.map((t: any, index: number) => {
-                    const newOrder = index * 100;
-                    // Optimisation: only update if changed?
-                    // But for the dragged item, we MUST update parent_id too.
-                    const isDragged = t.id === draggedTagId;
-
-                    if (isDragged) {
-                        return tagService.updateTag(
-                            t.id,
-                            undefined,
-                            undefined,
-                            newParentId === null ? 0 : newParentId,
-                            newOrder
-                        );
-                    } else if (t.order_index !== newOrder) {
-                        // Only update order
-                        return tagService.updateTag(
-                            t.id,
-                            undefined,
-                            undefined,
-                            t.parent_id === null ? 0 : t.parent_id,
-                            newOrder
-                        );
-                    }
-                    return Promise.resolve();
-                });
-
-                await Promise.all(updates);
-                metadataActions.loadTags();
-            } catch (err) {
-                console.error('Failed to move tag:', err);
-            }
+            await handleTagDrop(draggedTagId, targetTagId, position);
         }
     },
 

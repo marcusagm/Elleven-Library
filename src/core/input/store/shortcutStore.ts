@@ -350,8 +350,8 @@ function createShortcutStore() {
             priority: definition.priority ?? 0,
             ignoreInputs:
                 definition.ignoreInputs ??
-                (tokens.some(t => {
-                    const mods = (t.meta as any)?.modifiers;
+                (tokens.some(token => {
+                    const mods = token.meta?.modifiers;
                     return Array.isArray(mods) && mods.length > 0;
                 })
                     ? false
