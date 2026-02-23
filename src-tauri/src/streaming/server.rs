@@ -6,12 +6,20 @@
 //! - /probe/{path} - Get video metadata and native format detection
 //! - /playlist/{path} - Generate M3U8 playlist dynamically
 //! - /segment/{path}/{index} - Transcode and serve video segments
+//!
+//! # Security
+//!
+//! Three layers of defense-in-depth:
+//! 1. **CORS Restriction** — Only Tauri webview origins are allowed.
+//! 2. **Session Token** — A UUID v4 token generated at boot, required on every request.
+//! 3. **Path Scope Validation** — Only files within user-authorized library folders are served.
 
 use axum::extract::Query;
 use axum::{
     body::Body,
     extract::{Path, State},
-    http::{header, StatusCode},
+    http::{header, HeaderValue, Method, StatusCode},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::get,
     Router,
@@ -24,9 +32,10 @@ use tauri::async_runtime::JoinHandle;
 use tauri::Manager;
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 
 use super::{linear::LinearManager, playlist, probe, process_manager::ProcessManager, segment};
+use crate::db::Db;
 use crate::transcoding::cache::TranscodeCache;
 
 /// Default port for the HLS streaming server
@@ -46,6 +55,10 @@ pub struct AppState {
     pub linear_manager: LinearManager,
     /// Handle to the Tauri application.
     pub app_handle: tauri::AppHandle,
+    /// Database handle for path scope validation.
+    pub database: Arc<Db>,
+    /// Session token for request authentication.
+    pub session_token: String,
 }
 
 /// The HLS Streaming Server
@@ -54,12 +67,26 @@ pub struct StreamingServer {
     port: u16,
     /// Handle to the Tauri application.
     app_handle: tauri::AppHandle,
+    /// Database handle for path scope validation.
+    database: Arc<Db>,
+    /// Session token for request authentication.
+    session_token: String,
 }
 
 impl StreamingServer {
     /// Create a new streaming server instance
-    pub fn new(port: u16, app_handle: tauri::AppHandle) -> Self {
-        Self { port, app_handle }
+    pub fn new(
+        port: u16,
+        app_handle: tauri::AppHandle,
+        database: Arc<Db>,
+        session_token: String,
+    ) -> Self {
+        Self {
+            port,
+            app_handle,
+            database,
+            session_token,
+        }
     }
 
     /// Start the server on a background task.
@@ -86,6 +113,8 @@ impl StreamingServer {
             process_manager: process_manager.clone(),
             linear_manager: linear_manager.clone(),
             app_handle: self.app_handle.clone(),
+            database: self.database.clone(),
+            session_token: self.session_token.clone(),
         };
 
         // Spawn cleanup task for stale processes (child token for cancellation)
@@ -126,10 +155,7 @@ impl StreamingServer {
             }
         });
 
-        let cors = CorsLayer::new()
-            .allow_origin(Any)
-            .allow_methods(Any)
-            .allow_headers(Any);
+        let cors = build_cors_layer();
 
         let app = Router::new()
             .route("/health", get(health_handler))
@@ -138,6 +164,10 @@ impl StreamingServer {
             .route("/segment/*path", get(segment_handler))
             // New routes for linear HLS
             .route("/hls-live/*path", get(linear_hls_handler))
+            .layer(middleware::from_fn_with_state(
+                state.clone(),
+                validate_session_token,
+            ))
             .layer(cors)
             .with_state(state);
 
@@ -160,6 +190,125 @@ impl StreamingServer {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Security: CORS, Token Validation, Path Scope
+// ---------------------------------------------------------------------------
+
+/// Build a restricted CORS layer that only allows Tauri webview origins.
+///
+/// In production, Tauri uses `tauri://localhost` (macOS/Linux) or
+/// `https://tauri.localhost` (Windows). During development, the Vite dev
+/// server runs on `http://localhost:1420`.
+fn build_cors_layer() -> CorsLayer {
+    let allowed_origins = [
+        // Tauri production origins
+        "tauri://localhost",
+        "https://tauri.localhost",
+        // Vite dev server
+        "http://localhost:1420",
+    ];
+
+    let parsed_origins: Vec<HeaderValue> = allowed_origins
+        .iter()
+        .filter_map(|origin| origin.parse::<HeaderValue>().ok())
+        .collect();
+
+    CorsLayer::new()
+        .allow_origin(parsed_origins)
+        .allow_methods([Method::GET, Method::OPTIONS])
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::RANGE,
+            header::ACCEPT,
+            header::ORIGIN,
+        ])
+}
+
+/// Middleware that validates the session token on every request except `/health`.
+///
+/// The token must be provided as a `?token=xxx` query parameter.
+/// Returns 401 Unauthorized if the token is missing or invalid.
+async fn validate_session_token(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+    next: Next,
+) -> Response {
+    // Allow health checks without authentication
+    if request.uri().path() == "/health" {
+        return next.run(request).await;
+    }
+
+    let query_string = request.uri().query().unwrap_or("");
+
+    // Simple query parameter extraction without external crate dependency.
+    // We only need the "token" parameter, so a basic split-based approach suffices.
+    let provided_token = query_string.split('&').find_map(|pair| {
+        let mut parts = pair.splitn(2, '=');
+        match (parts.next(), parts.next()) {
+            (Some("token"), Some(value)) => Some(value),
+            _ => None,
+        }
+    });
+
+    match provided_token {
+        Some(token_value) if token_value == state.session_token => next.run(request).await,
+        _ => Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Body::from("Invalid or missing session token"))
+            .unwrap_or_default(),
+    }
+}
+
+/// Validates that a file path is within one of the user's authorized library folders.
+///
+/// Uses `canonicalize()` to resolve symlinks and `..` traversal, then checks
+/// that the resolved path starts with at least one registered root folder.
+///
+/// # Errors
+///
+/// Returns an error message if the path is outside the authorized scope
+/// or if canonicalization fails.
+async fn validate_path_scope(database: &Db, file_path: &std::path::Path) -> Result<(), String> {
+    let path_to_check = file_path.to_path_buf();
+
+    // Canonicalize in a blocking context since it performs filesystem I/O
+    let canonical_path = tokio::task::spawn_blocking(move || path_to_check.canonicalize())
+        .await
+        .map_err(|join_error| format!("Path validation failed: {}", join_error))?
+        .map_err(|io_error| format!("Cannot resolve path: {}", io_error))?;
+
+    let root_folders = database
+        .get_all_root_folders()
+        .await
+        .map_err(|db_error| format!("Failed to query authorized folders: {}", db_error))?;
+
+    let is_within_authorized_scope = root_folders.iter().any(|(_id, root_path)| {
+        let root = std::path::Path::new(root_path);
+        canonical_path.starts_with(root)
+    });
+
+    if is_within_authorized_scope {
+        Ok(())
+    } else {
+        Err(format!(
+            "Access denied: path {:?} is outside authorized library folders",
+            file_path
+        ))
+    }
+}
+
+/// Helper that builds a 403 Forbidden response for path scope violations.
+fn forbidden_response(message: String) -> Response {
+    Response::builder()
+        .status(StatusCode::FORBIDDEN)
+        .body(Body::from(message))
+        .unwrap_or_default()
+}
+
+// ---------------------------------------------------------------------------
+// Route Handlers
+// ---------------------------------------------------------------------------
+
 /// Health check endpoint
 async fn health_handler() -> impl IntoResponse {
     (StatusCode::OK, "OK")
@@ -168,14 +317,14 @@ async fn health_handler() -> impl IntoResponse {
 /// Probe endpoint - returns video metadata
 async fn probe_handler(State(state): State<AppState>, Path(path): Path<String>) -> Response {
     let file_path = decode_path(&path);
-    println!("DEBUG: Probe request for: {:?}", file_path);
+
+    // Validate path is within authorized library folders
+    if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
+        return forbidden_response(scope_error);
+    }
 
     match probe::get_video_info(&state.app_handle, &file_path).await {
         Ok(info) => {
-            println!(
-                "DEBUG: Probe success - native: {}, codec: {:?}",
-                info.is_native, info.video_codec
-            );
             let json = serde_json::to_string(&info).unwrap_or_default();
             Response::builder()
                 .status(StatusCode::OK)
@@ -200,10 +349,22 @@ async fn playlist_handler(
     Query(params): Query<HashMap<String, String>>,
 ) -> Response {
     let file_path = decode_path(&path);
+
+    // Validate path is within authorized library folders
+    if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
+        return forbidden_response(scope_error);
+    }
+
     let quality = params
         .get("quality")
         .map(|s| s.as_str())
         .unwrap_or("standard");
+
+    // Preserve the token in segment URLs so HLS.js can authenticate each segment request
+    let token_param = params
+        .get("token")
+        .map(|token| format!("&token={}", token))
+        .unwrap_or_default();
 
     // First, probe the video to get duration
     let info = match probe::get_video_info(&state.app_handle, &file_path).await {
@@ -219,7 +380,13 @@ async fn playlist_handler(
         }
     };
 
-    let m3u8 = playlist::generate_m3u8(&path, info.duration_secs, SEGMENT_DURATION, quality);
+    let m3u8 = playlist::generate_m3u8_with_token(
+        &path,
+        info.duration_secs,
+        SEGMENT_DURATION,
+        quality,
+        &token_param,
+    );
 
     Response::builder()
         .status(StatusCode::OK)
@@ -250,6 +417,11 @@ async fn segment_handler(
                 .unwrap();
         }
     };
+
+    // Validate path is within authorized library folders
+    if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
+        return forbidden_response(scope_error);
+    }
 
     match segment::get_segment(
         &state.app_handle,
@@ -297,6 +469,12 @@ async fn linear_hls_handler(
             .unwrap_or_else(|_| raw_path.to_string());
 
         let file_path = PathBuf::from(decoded_path);
+
+        // Validate path is within authorized library folders
+        if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
+            return forbidden_response(scope_error);
+        }
+
         if !file_path.exists() {
             return Response::builder()
                 .status(StatusCode::NOT_FOUND)
@@ -323,12 +501,26 @@ async fn linear_hls_handler(
 
                 if playlist_path.exists() {
                     match tokio::fs::read_to_string(&playlist_path).await {
-                        Ok(content) => Response::builder()
-                            .status(StatusCode::OK)
-                            .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
-                            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                            .body(Body::from(content))
-                            .unwrap(),
+                        Ok(content) => {
+                            // Inject the session token into all segment URLs
+                            let tokenized_content = content
+                                .lines()
+                                .map(|line| {
+                                    if line.ends_with(".ts") {
+                                        format!("{}?token={}\n", line, state.session_token)
+                                    } else {
+                                        format!("{}\n", line)
+                                    }
+                                })
+                                .collect::<String>();
+
+                            Response::builder()
+                                .status(StatusCode::OK)
+                                .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
+                                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                                .body(Body::from(tokenized_content))
+                                .unwrap()
+                        }
                         Err(read_error) => Response::builder()
                             .status(StatusCode::INTERNAL_SERVER_ERROR)
                             .body(Body::from(format!(
@@ -366,6 +558,11 @@ async fn linear_hls_handler(
                 .unwrap_or_else(|_| file_part_raw.to_string());
 
             let file_path = PathBuf::from(decoded_file_path);
+
+            // Validate path is within authorized library folders
+            if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
+                return forbidden_response(scope_error);
+            }
 
             if let Some(temp_dir) = state.linear_manager.get_temp_dir(&file_path).await {
                 let segment_path = temp_dir.join(segment_name);
@@ -465,9 +662,21 @@ fn parse_segment_path(path: &str) -> Option<(PathBuf, u32)> {
 ///
 /// Returns the `JoinHandle` so it can be registered in the `LifecycleRegistry`.
 /// The server shuts down gracefully when the provided `CancellationToken` is cancelled.
-pub fn spawn_server(app_handle: tauri::AppHandle, token: CancellationToken) -> JoinHandle<()> {
+///
+/// # Arguments
+///
+/// * `app_handle` - Handle to the Tauri application.
+/// * `token` - Cancellation token for graceful shutdown.
+/// * `database` - Shared database handle for path scope validation.
+/// * `session_token` - UUID v4 session token for request authentication.
+pub fn spawn_server(
+    app_handle: tauri::AppHandle,
+    token: CancellationToken,
+    database: Arc<Db>,
+    session_token: String,
+) -> JoinHandle<()> {
     tauri::async_runtime::spawn(async move {
-        let server = StreamingServer::new(DEFAULT_PORT, app_handle);
+        let server = StreamingServer::new(DEFAULT_PORT, app_handle, database, session_token);
         if let Err(server_error) = server.start(token).await {
             eprintln!("ERROR: HLS streaming server failed: {}", server_error);
         }

@@ -4,8 +4,12 @@
  * Types, constants, and utility functions for HLS streaming integration.
  * For the player manager class, see hls-manager.ts
  * For the SolidJS hook, see createHlsPlayer.ts
+ *
+ * Security: All streaming URLs include a session token generated at app boot.
+ * The token is fetched once via Tauri IPC and cached for the session lifetime.
  */
 
+import { invoke } from '@tauri-apps/api/core';
 import { fetch } from '@tauri-apps/plugin-http';
 
 export interface HlsPlayerOptions {
@@ -31,24 +35,65 @@ export interface HlsPlayerState {
 /** HLS streaming server base URL */
 export const HLS_SERVER_URL = 'http://127.0.0.1:9876';
 
+// ---------------------------------------------------------------------------
+// Streaming Session Token
+// ---------------------------------------------------------------------------
+
+/** Cached session token for streaming server authentication */
+let cachedStreamingToken: string | null = null;
+
+/**
+ * Initialize the streaming session token by fetching it from the backend.
+ *
+ * Must be called once during app initialization before any streaming URLs
+ * are constructed. The token is cached for the lifetime of the session.
+ */
+export async function initStreamingToken(): Promise<void> {
+    if (cachedStreamingToken) return;
+    cachedStreamingToken = await invoke<string>('get_streaming_token');
+}
+
+/**
+ * Get the current streaming token, or empty string if not yet initialized.
+ *
+ * Prefer calling `initStreamingToken()` during app boot to ensure
+ * the token is available before any streaming requests.
+ */
+export function getStreamingToken(): string {
+    return cachedStreamingToken ?? '';
+}
+
+/**
+ * Build a query string suffix with the session token.
+ * Returns `&token=xxx` if the token is available, or empty string otherwise.
+ */
+function buildTokenSuffix(): string {
+    const token = getStreamingToken();
+    return token ? `&token=${token}` : '';
+}
+
+// ---------------------------------------------------------------------------
+// URL Builders
+// ---------------------------------------------------------------------------
+
 /**
  * Get the HLS playlist URL for a video file
  * @param filePath - Absolute path to the video file
- * @returns The M3U8 playlist URL
+ * @returns The M3U8 playlist URL with authentication token
  */
 export function getHlsPlaylistUrl(filePath: string, quality: string = 'standard'): string {
     const encodedPath = encodeURIComponent(filePath);
-    return `${HLS_SERVER_URL}/playlist/${encodedPath}?quality=${quality}`;
+    return `${HLS_SERVER_URL}/playlist/${encodedPath}?quality=${quality}${buildTokenSuffix()}`;
 }
 
 /**
  * Get the probe URL for a video file
  * @param filePath - Absolute path to the video file
- * @returns The probe endpoint URL
+ * @returns The probe endpoint URL with authentication token
  */
 export function getHlsProbeUrl(filePath: string): string {
     const encodedPath = encodeURIComponent(filePath);
-    return `${HLS_SERVER_URL}/probe/${encodedPath}`;
+    return `${HLS_SERVER_URL}/probe/${encodedPath}?_=1${buildTokenSuffix()}`;
 }
 
 /**

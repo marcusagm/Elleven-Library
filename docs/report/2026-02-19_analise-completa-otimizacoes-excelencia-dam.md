@@ -15,7 +15,7 @@ O projeto já apresenta uma base técnica forte (TypeScript estrito, separação
 - **Manutenibilidade:** múltiplos arquivos muito extensos e componentes com excesso de responsabilidade (violando SRP e limites dos guias).
 - **Performance frontend:** bundle principal elevado e chunking ineficiente (imports dinâmicos e estáticos sobre os mesmos módulos).
 - **Qualidade de código:** uso recorrente de `any`, `console.log` e ausência de scripts formais de lint/check no `package.json`.
-- **Segurança do servidor local de streaming:** CORS permissivo com rotas de arquivo, sem controles adicionais de origem/token/sessão.
+- **[RESOLVIDO] Segurança do servidor local de streaming:** ~~CORS permissivo com rotas de arquivo, sem controles adicionais de origem/token/sessão.~~ *(Resolvido em 2026-02-23)*
 
 Para chegar no nível de excelência, a recomendação é executar um plano em 3 ondas: **(1) robustez e segurança**, **(2) modularização e performance**, **(3) diferenciação DAM avançada (busca semântica, governance, observabilidade de produto)**.
 
@@ -157,14 +157,17 @@ Principais desvios:
 
 ### 4.5 Segurança
 
-1. **Servidor local com CORS permissivo (`Any`)**  
-   Mesmo em `127.0.0.1`, permitir qualquer origem amplia superfície para abuso via browser de terceiros.
+1. **[RESOLVIDO] Servidor local com CORS permissivo (`Any`)**  
+   ~~Mesmo em `127.0.0.1`, permitir qualquer origem amplia superfície para abuso via browser de terceiros.~~
+   *Resolvido em 2026-02-23: Implementado allowlist para CORS. Ver `docs/plans/2026-02-23_16:43-streaming-security-isolation.md`.*
 
-2. **Rotas baseadas em caminho de arquivo**  
-   Exigem validação rigorosa de escopo de diretórios autorizados para evitar exposição indevida de arquivos locais.
+2. **[RESOLVIDO] Rotas baseadas em caminho de arquivo**  
+   ~~Exigem validação rigorosa de escopo de diretórios autorizados para evitar exposição indevida de arquivos locais.~~
+   *Resolvido em 2026-02-23: Sandbox de path checks aplicado (Path Scope Validation).*
 
-3. **Ausência de token de sessão curto para streaming**  
-   Recomendado para impedir acesso arbitrário por URL direta.
+3. **[RESOLVIDO] Ausência de token de sessão curto para streaming**  
+   ~~Recomendado para impedir acesso arbitrário por URL direta.~~
+   *Resolvido em 2026-02-23: Middleware de token instanciado e consumido.*
 
 ---
 

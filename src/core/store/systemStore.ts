@@ -5,6 +5,7 @@ import { addLocation, initDb } from '../../lib/db';
 import { tauriService } from '../tauri/services';
 import { metadataActions } from './metadataStore';
 import { type BatchChangePayload } from './libraryStore';
+import { initStreamingToken } from '../../lib/hls-player';
 
 export interface ProgressPayload {
     total: number;
@@ -25,6 +26,7 @@ export const systemActions = {
         try {
             setLoading(true);
             await initDb();
+            await initStreamingToken();
             await metadataActions.loadLocations();
             await metadataActions.loadTags();
             await metadataActions.loadSmartFolders();

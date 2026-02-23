@@ -22,6 +22,21 @@ use crate::indexer::Indexer;
 use crate::lifecycle::LifecycleRegistry;
 use tauri::Manager;
 
+/// Holds the session token used to authenticate streaming server requests.
+///
+/// This token is generated once at app boot (UUID v4) and shared with
+/// the frontend via the `get_streaming_token` Tauri command.
+pub struct StreamingSessionToken(pub String);
+
+/// Returns the streaming session token to the frontend.
+///
+/// The frontend must include this token as a `?token=xxx` query parameter
+/// on every request to the embedded HLS streaming server.
+#[tauri::command]
+fn get_streaming_token(token_state: tauri::State<'_, StreamingSessionToken>) -> String {
+    token_state.0.clone()
+}
+
 #[allow(clippy::expect_used)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -43,9 +58,14 @@ pub fn run() {
             let lifecycle = std::sync::Arc::new(LifecycleRegistry::new());
             app.manage(lifecycle.clone());
 
+            // Generate a session token for streaming server authentication
+            let session_token = uuid::Uuid::new_v4().to_string();
+            app.manage(StreamingSessionToken(session_token.clone()));
+
             // Initialize DB and Worker
             let handle = app.handle().clone();
             let lifecycle_for_setup = lifecycle.clone();
+            let streaming_session_token = session_token;
             tauri::async_runtime::spawn(async move {
                 match Db::new(db_path).await {
                     Ok(db) => {
@@ -99,22 +119,25 @@ pub fn run() {
                                 indexer.start_scan(root_path).await;
                             }
                         }
+
+                        // Start HLS Streaming Server with lifecycle token
+                        // Started after DB init because it needs Arc<Db> for path scope validation
+                        let streaming_token = lifecycle_for_setup.child_token();
+                        let streaming_handle = crate::streaming::server::spawn_server(
+                            handle.clone(),
+                            streaming_token.clone(),
+                            db_arc.clone(),
+                            streaming_session_token,
+                        );
+                        lifecycle_for_setup.register(
+                            "streaming_server".to_string(),
+                            streaming_token,
+                            streaming_handle,
+                        );
                     }
                     Err(db_error) => eprintln!("Failed to initialize database: {}", db_error),
                 }
             });
-
-            // Start HLS Streaming Server with lifecycle token
-            let streaming_token = lifecycle.child_token();
-            let streaming_handle = crate::streaming::server::spawn_server(
-                app.handle().clone(),
-                streaming_token.clone(),
-            );
-            lifecycle.register(
-                "streaming_server".to_string(),
-                streaming_token,
-                streaming_handle,
-            );
 
             Ok(())
         })
@@ -167,7 +190,9 @@ pub fn run() {
             transcoding::commands::get_cache_stats,
             transcoding::commands::cleanup_cache,
             transcoding::commands::clear_cache,
-            transcoding::commands::ffmpeg_available
+            transcoding::commands::ffmpeg_available,
+            // Streaming security
+            get_streaming_token
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -206,3 +206,9 @@ commands.allow = ["is_cached"]
 identifier = "allow-set-thumbnail-priority"
 description = "Enables set_thumbnail_priority for prioritization"
 commands.allow = ["set_thumbnail_priority"]
+
+# Streaming Security
+[[permission]]
+identifier = "allow-get-streaming-token"
+description = "Enables get_streaming_token for streaming server authentication"
+commands.allow = ["get_streaming_token"]

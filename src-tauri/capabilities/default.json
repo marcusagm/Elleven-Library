@@ -49,6 +49,7 @@
     "allow-cleanup-cache",
     "allow-clear-cache",
     "allow-set-thumbnail-priority",
+    "allow-get-streaming-token",
     {
       "identifier": "http:default",
       "allow": [

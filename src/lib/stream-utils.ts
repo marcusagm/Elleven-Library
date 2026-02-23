@@ -6,7 +6,12 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { formatActions } from '../core/store/formatStore';
-import { HLS_SERVER_URL, getHlsPlaylistUrl, type VideoProbeResult } from './hls-player';
+import {
+    HLS_SERVER_URL,
+    getHlsPlaylistUrl,
+    getStreamingToken,
+    type VideoProbeResult
+} from './hls-player';
 
 export { HLS_SERVER_URL };
 
@@ -17,6 +22,7 @@ export {
     probeVideo,
     isHlsServerAvailable,
     isHlsUrl,
+    getStreamingToken,
     type VideoProbeResult
 } from './hls-player';
 
@@ -125,7 +131,8 @@ export function getAudioUrl(path: string, quality: TranscodeQuality = 'standard'
 
     if (needsLinearAudio(path)) {
         // Linear HLS (Live/Async)
-        return `${HLS_SERVER_URL}/hls-live/${encodedPath}/index.m3u8?quality=${quality}&mode=audio`;
+        const tokenSuffix = getStreamingToken() ? `&token=${getStreamingToken()}` : '';
+        return `${HLS_SERVER_URL}/hls-live/${encodedPath}/index.m3u8?quality=${quality}&mode=audio${tokenSuffix}`;
     }
 
     if (needsStandardHlsAudio(path)) {
@@ -140,6 +147,16 @@ export function getAudioUrl(path: string, quality: TranscodeQuality = 'standard'
     return `audio://localhost/${encodedPath}`;
 }
 
+function requiresLinearHls(path: string, probe?: VideoProbeResult | null): boolean {
+    if (needsLinearTranscoding(path)) return true;
+    if (!probe || !probe.video_codec) return false;
+    return ['mjpeg', 'flv1', 'vp6f'].includes(probe.video_codec);
+}
+
+function requiresStandardHls(path: string, probe?: VideoProbeResult | null): boolean {
+    return needsHlsTranscoding(path) || (probe !== undefined && probe !== null && !probe.is_native);
+}
+
 /**
  * Get the appropriate video URL for a file path.
  * Optionally accepts a probe result to check for specific codecs that require linear transcoding.
@@ -151,21 +168,13 @@ export function getVideoUrl(
 ): string {
     const encodedPath = encodeURIComponent(path);
 
-    // Determine if we need linear HLS (live transcoding)
-    // Check extension-based requirement OR probe-based codec requirement
-    const isLinear =
-        needsLinearTranscoding(path) ||
-        (probe &&
-            (probe.video_codec === 'mjpeg' ||
-                probe.video_codec === 'flv1' ||
-                probe.video_codec === 'vp6f'));
-
-    if (isLinear) {
+    if (requiresLinearHls(path, probe)) {
         // Linear HLS (Live) - e.g. SWF or MJPEG
-        return `${HLS_SERVER_URL}/hls-live/${encodedPath}/index.m3u8?quality=${quality}&mode=live`;
+        const tokenSuffix = getStreamingToken() ? `&token=${getStreamingToken()}` : '';
+        return `${HLS_SERVER_URL}/hls-live/${encodedPath}/index.m3u8?quality=${quality}&mode=live${tokenSuffix}`;
     }
 
-    if (needsHlsTranscoding(path) || (probe && !probe.is_native)) {
+    if (requiresStandardHls(path, probe)) {
         // Standard HLS (VOD) - e.g. MKV, AVI or non-native codec found via probe
         return getHlsPlaylistUrl(path, quality);
     }
