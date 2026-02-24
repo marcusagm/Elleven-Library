@@ -1,6 +1,11 @@
 import { filterState, filterActions } from '../store/filterStore';
 import { libraryActions } from '../store/libraryStore';
 
+/**
+ * Hook providing access to filter state and actions for the application content.
+ *
+ * @returns {Object} Accessors and methods for filtering and sorting items.
+ */
 export const useFilters = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const withRefresh = <T extends (...args: any[]) => void>(action: T) =>
@@ -10,7 +15,6 @@ export const useFilters = () => {
         }) as T;
 
     return {
-        // State (Read-only proxies)
         get selectedTags() {
             return filterState.selectedTags;
         },
@@ -42,7 +46,6 @@ export const useFilters = () => {
             return filterState.advancedSearch;
         },
 
-        // History State
         get canGoBack() {
             return filterActions.canGoBack();
         },
@@ -50,7 +53,6 @@ export const useFilters = () => {
             return filterActions.canGoForward();
         },
 
-        // Actions
         toggleTag: withRefresh(filterActions.toggleTag),
         setUntagged: withRefresh(filterActions.setUntagged),
         toggleUntagged: withRefresh(filterActions.toggleUntagged),
@@ -59,13 +61,11 @@ export const useFilters = () => {
         setSearch: withRefresh(filterActions.setSearch),
         setSortBy: withRefresh(filterActions.setSortBy),
         setSortOrder: withRefresh(filterActions.setSortOrder),
-        // UI-only settings - don't trigger data refresh
         setLayout: filterActions.setLayout,
         setThumbSize: filterActions.setThumbSize,
         setAdvancedSearch: withRefresh(filterActions.setAdvancedSearch),
         clearAll: withRefresh(filterActions.clearAll),
 
-        // History Actions
         goBack: withRefresh(filterActions.goBack),
         goForward: withRefresh(filterActions.goForward),
 

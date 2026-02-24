@@ -12,17 +12,23 @@ export type BadgeVariant =
     | 'info';
 export type BadgeSize = 'sm' | 'md';
 
+/**
+ * Properties for the Badge component.
+ */
 export interface BadgeProps extends JSX.HTMLAttributes<HTMLSpanElement> {
-    /** Visual variant */
+    /** Visual variant style of the badge */
     variant?: BadgeVariant;
-    /** Size variant */
+    /** Size variant indicator */
     size?: BadgeSize;
-    /** Additional content (e.g., icon) */
+    /** Additional content inside the badge, usually an icon or text */
     children?: JSX.Element;
 }
 
 /**
  * Badge component for highlighting status or metadata.
+ *
+ * @param {BadgeProps} props - Component properties.
+ * @returns {JSX.Element} The rendered solid-js component.
  *
  * @example
  * <Badge>New</Badge>

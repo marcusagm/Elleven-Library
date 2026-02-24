@@ -15,6 +15,7 @@ Use the following prefixes for your branches:
 - **`chore/`**: Maintenance tasks, dependency updates (e.g., `chore/bump-tauri-version`)
 
 **Example:**
+
 ```bash
 git checkout -b feat/improved-search-algorithm
 ```
@@ -29,6 +30,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/). This allows
 `<type>(<scope>): <subject>`
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation only
@@ -39,6 +41,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/). This allows
 - `chore`: Build tools, auxiliary files
 
 **Example:**
+
 ```
 feat(video): add support for .mkv playback
 fix(ui): resolve overlap in sidebar items

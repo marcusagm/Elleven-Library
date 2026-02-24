@@ -7,17 +7,20 @@ This document outlines the coding standards, patterns, and best practices for th
 ## 🏗️ Architecture
 
 ### Command Pattern & Organization
+
 - **Thin Commands**: Tauri commands (`#[tauri::command]`) should be thin wrappers. They should validate input, call business logic functions, and handle errors. They should rarely contain complex business logic themselves.
 - **Domain Modules**: Commands must be organized into semantic domain modules. Avoid putting commands in the root `src-tauri/src/`.
-  - **`library/commands/`**: Core assets management (tags, folders, metadata).
-  - **`media/commands.rs`**: Audio/Video processing and metadata extraction commands.
-  - **`thumbnails/commands.rs`**: Thumbnail generation and priority management.
-  - **`settings/commands.rs`**: Configuration and maintenance.
-  - **`transcoding/commands.rs`**: Streaming and transcoding logic.
+    - **`library/commands/`**: Core assets management (tags, folders, metadata).
+    - **`media/commands.rs`**: Audio/Video processing and metadata extraction commands.
+    - **`thumbnails/commands.rs`**: Thumbnail generation and priority management.
+    - **`settings/commands.rs`**: Configuration and maintenance.
+    - **`transcoding/commands.rs`**: Streaming and transcoding logic.
 - **State Management**: Use `app.manage()` to inject state. Access state in commands using `tauri::State<T>`.
 
 #### 🛡️ Tauri Permissions
+
 Whenever a new command is created, you **MUST** update the Tauri permissions:
+
 1.  **`src-tauri/permissions/main.toml`**: Define a new permission for the command.
 2.  **`src-tauri/capabilities/default.json`**: Add the new permission to the default visibility list (or appropriate capability set).
 
@@ -38,13 +41,14 @@ pub async fn create_tag(
 ## 📝 Coding Standards
 
 ### Naming Conventions
+
 - **Never abbreviate variable names.** Each variable name must describe **exactly** its responsibility.
-  ```rust
-  // ✅ Correct
-  let processed_image_buffer = ...;
-  // ❌ Avoid
-  let buf = ...;
-  ```
+    ```rust
+    // ✅ Correct
+    let processed_image_buffer = ...;
+    // ❌ Avoid
+    let buf = ...;
+    ```
 - **Variables & Functions**: snake_case (e.g., `process_image`, `user_id`)
 - **Types & Traits**: PascalCase (e.g., `ThumbnailStrategy`, `AppState`)
 - **Constants**: SCREAMING_SNAKE_CASE (e.g., `MAX_RETRY_ATTEMPTS`)
@@ -56,7 +60,7 @@ pub async fn create_tag(
 
 - **Readability over cleverness:**
   Favor code that is **easy to understand** over complex iterator chains or macros unless necessary for performance.
-  - **Avoid deeply nested `match` statements**: Break them into functions.
+    - **Avoid deeply nested `match` statements**: Break them into functions.
 
 - **Explicit Error Handling:**
   Always handle errors. Never swallow them without logging or context.
@@ -75,7 +79,7 @@ We use a centralized error management system to ensure consistency, tipability, 
 #[tauri::command]
 pub async fn get_data(db: State<'_, Arc<Db>>) -> AppResult<Vec<Data>> {
     // Automatic conversion from sqlx::Error to AppError via ?
-    let result = db.fetch_all().await?; 
+    let result = db.fetch_all().await?;
     Ok(result)
 }
 
@@ -88,6 +92,7 @@ if !path.exists() {
 - **Logging**: Errors should be logged at the point of origin or in the command handler if they indicate critical failures.
 
 ### Async/Await
+
 - Use `.await` responsibly. Avoid blocking the async runtime (Tokio) with heavy CPU-bound tasks. Use `tokio::task::spawn_blocking` for heavy synchronous operations like image processing or file I/O.
 
 ```rust
@@ -97,7 +102,7 @@ pub async fn heavy_processing() -> Result<(), String> {
         // CPU intensive work here
         compute_hash()
     }).await.map_err(|e| e.to_string())?;
-    
+
     Ok(result)
 }
 ```
@@ -107,19 +112,23 @@ pub async fn heavy_processing() -> Result<(), String> {
 ## 🛠️ Tooling & Quality
 
 ### Clippy
+
 We adhere to **Clippy** lints. Warnings should be treated as errors.
 Run strict checks locally:
+
 ```bash
 cargo clippy -- -D warnings
 ```
 
 ### Formatting
+
 - Follow standard `rustfmt` rules.
 - Run `cargo fmt` before every commit.
 
 ## 📖 Documentation Patterns
 
 ### Mandatory Documentation
+
 Every item, including **functions, methods, structs, enums, traits, and their respective fields (properties)**, whether public or private, **MUST** have documentation via `///`. The goal is for any developer to understand the intent and risks without having to read the implementation.
 
 - **Summary**: A short, direct line describing the purpose.
@@ -127,7 +136,7 @@ Every item, including **functions, methods, structs, enums, traits, and their re
 - **`# Panics` Section**: Mandatory if the function contains `unwrap()`, `expect()`, or could logically panic.
 - **`# Examples` Section**: Highly recommended for complex modules or global utilities.
 
-```rust
+````rust
 /// Processes image resizing while maintaining aspect ratio.
 ///
 /// # Arguments
@@ -142,12 +151,14 @@ Every item, including **functions, methods, structs, enums, traits, and their re
 /// let resized = processor::resize(my_bytes, (300, 300)).await?;
 /// ```
 pub async fn resize(buffer: Vec<u8>, dimensions: (u32, u32)) -> Result<Vec<u8>, Error> { ... }
-```
+````
 
 ### Module Documentation
+
 Use `//!` at the top of files to describe the module's responsibility and how it integrates into the system. This provides the "Big Picture" necessary before diving into specific functions.
 
 ### Implementation Comments (Clean Code)
+
 Comments within functions must follow the **"Why, not What"** rule. Code should be self-explanatory (What); comments should explain business logic or technical constraints (Why).
 
 - **What to COMMENT**:
@@ -177,11 +188,13 @@ let mut transaction = pool.begin().await?;
 The application relies on a centralized registry of supported file formats to consistently handle detection, thumbnail generation, and playback strategies.
 
 ### 📍 Registry Location
+
 - **Definitions**: `src-tauri/src/formats/definitions.rs`
 - **Types**: `src-tauri/src/formats/types.rs`
 - **Logic**: `src-tauri/src/formats/mod.rs`
 
 ### 🔍 How to Use
+
 Use the `crate::formats::FileFormat` struct for all format-related logic.
 
 ```rust
@@ -204,15 +217,16 @@ if FileFormat::is_supported_extension(path) {
 ```
 
 ### ➕ How to Add a New Format
+
 1.  Open `src-tauri/src/formats/definitions.rs`.
 2.  Add a new `FileFormat` entry to the `SUPPORTED_FORMATS` array.
 3.  Specify the properties:
-    -   **`name`**: Human-readable name (e.g., "WebP Image").
-    -   **`extensions`**: List of lowercase extensions (e.g., `&["webp"]`).
-    -   **`mime_types`**: Standard MIME types.
-    -   **`type_category`**: `MediaType::Image`, `Video`, `Audio`, `Project`, etc.
-    -   **`strategy`**: How thumbnails are generated (`NativeImage`, `Ffmpeg`, `NativeExtractor`, etc.).
-    -   **`playback`**: How it is played in the UI (`Native`, `Hls`, `LinearHls`, `None`).
+    - **`name`**: Human-readable name (e.g., "WebP Image").
+    - **`extensions`**: List of lowercase extensions (e.g., `&["webp"]`).
+    - **`mime_types`**: Standard MIME types.
+    - **`type_category`**: `MediaType::Image`, `Video`, `Audio`, `Project`, etc.
+    - **`strategy`**: How thumbnails are generated (`NativeImage`, `Ffmpeg`, `NativeExtractor`, etc.).
+    - **`playback`**: How it is played in the UI (`Native`, `Hls`, `LinearHls`, `None`).
 
 ```rust
 FileFormat {
@@ -226,6 +240,7 @@ FileFormat {
 ```
 
 ### 🌐 Frontend Usage
+
 To retrieve the list of supported formats in the frontend, invoke the `get_library_supported_formats` command:
 
 ```typescript
@@ -235,50 +250,71 @@ interface FileFormat {
     name: string;
     extensions: string[];
     mimeTypes: string[];
-    typeCategory: 'Image' | 'Video' | 'Audio' | 'Project' | 'Archive' | 'Model3D' | 'Font' | 'Unknown';
-    playback: 'Native' | 'Hls' | 'LinearHls' | 'AudioHls' | 'AudioLinearHls' | 'Transcode' | 'AudioTranscode' | 'None';
+    typeCategory:
+        | 'Image'
+        | 'Video'
+        | 'Audio'
+        | 'Project'
+        | 'Archive'
+        | 'Model3D'
+        | 'Font'
+        | 'Unknown';
+    playback:
+        | 'Native'
+        | 'Hls'
+        | 'LinearHls'
+        | 'AudioHls'
+        | 'AudioLinearHls'
+        | 'Transcode'
+        | 'AudioTranscode'
+        | 'None';
 }
 
 const formats = await invoke<FileFormat[]>('get_library_supported_formats');
 ```
 
 ---
- 
+
 ## 🗄️ Database & SQLx
- 
+
 ### Modular Database Architecture
+
 The database layer is organized into the `src/db/` module. **NEVER** place database logic in commands or multiple flat files. Follow the domain-driven modular structure:
- 
+
 - **`db/mod.rs`**: Entry point, `Db` struct, initialization, and maintenance.
 - **`db/models.rs`**: **Single source of truth** for all database-related structs (DTOs). No duplication across the system.
 - **`db/images.rs`**: Image/File persistence.
 - **`db/folders.rs`**: Hierarchy and location management.
 - **`db/tags.rs`**: Taxonomy and relationships.
 - **`db/search.rs`**: Dynamic query building with `QueryBuilder`.
- 
+
 ### SQLx Macro Safety
+
 - **Use `sqlx::query!` and `sqlx::query_as!`**: Favor macros for compile-time validation.
 - **Non-Null Indicators**: SQLite nullability detection can fail. Use the "force non-null" syntax for columns you know are `NOT NULL`:
-  ```sql
-  SELECT id AS "id!", name FROM tags
-  ```
+    ```sql
+    SELECT id AS "id!", name FROM tags
+    ```
 - **Type Overrides**: For custom types (like `chrono::DateTime`), use explicit type hints in the query if detection fails:
-  ```sql
-  SELECT created_at AS "created_at: DateTime<Utc>" FROM images
-  ```
+    ```sql
+    SELECT created_at AS "created_at: DateTime<Utc>" FROM images
+    ```
 - **Case Consistency**: Backend models should **avoid** `#[serde(rename_all = "camelCase")]` unless strictly required, to maintain consistency with the SQL schema and existing frontend property expectations (which often use `snake_case` from the API).
- 
+
 ### 🚀 CI / Offline Compilation (SQLx Prepare)
+
 Because we use `sqlx` macros (`query!`, `query_as!`), the Rust compiler requires an active database connection to verify queries during type-checking. To ensure our CI pipelines (GitHub Actions) succeed without spinning up a live database:
+
 1. **Always run `cargo sqlx prepare`** inside the `src-tauri/` directory whenever you **add, modify, or delete** any SQL query.
 2. **Commit the `.sqlx/` folder**: This command generates/updates the `src-tauri/.sqlx/` directory, which acts as an offline cache. This folder **must** be committed.
 3. The CI workflow uses `SQLX_OFFLINE=true` to consume this cache instead of a live connection.
 
 ### Performance & Transactions
+
 - **Batch Operations**: Use dedicated `batch` functions for high-volume operations (indexing).
 - **Transactions**: Wrap multi-step logic in `pool.begin()`. Reusable helpers should accept `&mut SqliteConnection` or `&mut SqliteTransaction`.
 - **Wal Mode**: Optimized for concurrent reads and single writer.
- 
+
 ```rust
 // ✅ Implementation pattern in db/domain.rs
 impl Db {

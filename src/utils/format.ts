@@ -1,3 +1,12 @@
+/**
+ * Formats a file size in bytes to a human-readable string.
+ *
+ * @param {number} bytes - The size of the file in bytes.
+ * @returns {string} The formatted file size.
+ *
+ * @example
+ * const readableSize = formatFileSize(1024); // Returns "1 KB"
+ */
 export function formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -6,6 +15,12 @@ export function formatFileSize(bytes: number): string {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+/**
+ * Formats a date string or object to a localized alphanumeric string.
+ *
+ * @param {string | Date} dateStr - The date to format.
+ * @returns {string} The formatted date.
+ */
 export function formatDate(dateStr: string | Date): string {
     if (!dateStr) return '-';
     const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
@@ -18,6 +33,12 @@ export function formatDate(dateStr: string | Date): string {
     }).format(date);
 }
 
+/**
+ * Formats a date to a short numeric representation.
+ *
+ * @param {string | Date} dateStr - The date to format.
+ * @returns {string} The short formatted date.
+ */
 export function formatShortDate(dateStr: string | Date): string {
     if (!dateStr) return '-';
     const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
@@ -28,6 +49,12 @@ export function formatShortDate(dateStr: string | Date): string {
     }).format(date);
 }
 
+/**
+ * Formats a Date object or string to an ISO standard date string (YYYY-MM-DD).
+ *
+ * @param {Date | string} val - The date to convert to ISO string.
+ * @returns {string} The formatted ISO date string.
+ */
 export const formatToISO = (val: Date | string): string => {
     if (val instanceof Date) {
         const year = val.getFullYear();
@@ -38,6 +65,12 @@ export const formatToISO = (val: Date | string): string => {
     return String(val);
 };
 
+/**
+ * Formats an ISO standard date string to a localized display format (DD/MM/YYYY).
+ *
+ * @param {string} iso - The ISO string to format.
+ * @returns {string} The formatted display date string.
+ */
 export const formatToDisplay = (iso: string) => {
     if (!iso || typeof iso !== 'string') return iso;
     const parts = iso.split('-');
@@ -53,6 +86,12 @@ export const formatToDisplay = (iso: string) => {
     return iso;
 };
 
+/**
+ * Prepares a Date object from an ISO standard date string.
+ *
+ * @param {string} iso - The ISO standard date string.
+ * @returns {Date | null} The corresponding date object, or null if invalid.
+ */
 export const fromISO = (iso: string) => {
     if (!iso || typeof iso !== 'string') return null;
     const parts = iso.split('-');

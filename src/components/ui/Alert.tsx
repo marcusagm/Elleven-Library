@@ -6,12 +6,21 @@ import './alert.css';
 
 type AlertVariant = 'default' | 'info' | 'success' | 'warning' | 'destructive';
 
+/**
+ * Properties for the Alert component.
+ */
 export interface AlertProps extends JSX.HTMLAttributes<HTMLDivElement> {
+    /** The visual variant of the alert */
     variant?: AlertVariant;
+    /** Optional custom icon to display */
     icon?: Component<{ size?: number | string }>;
+    /** Title of the alert */
     title?: string;
+    /** Whether the alert can be dismissed by the user */
     dismissible?: boolean;
+    /** Callback triggered when the alert is dismissed */
     onDismiss?: () => void;
+    /** Content to display inside the alert */
     children?: JSX.Element;
 }
 
@@ -26,6 +35,9 @@ const variantIcons: Record<AlertVariant, Component<{ size?: number | string }>> 
 /**
  * Alert component for displaying important messages.
  * Supports multiple variants and optional dismissal.
+ *
+ * @param {AlertProps} props - Component properties.
+ * @returns {JSX.Element} The rendered solid-js component.
  *
  * @example
  * <Alert variant="success" title="Success!">

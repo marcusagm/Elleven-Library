@@ -14,7 +14,9 @@ import { createControllableSignal } from '../../lib/primitives';
 import { createId } from '../../lib/primitives/createId';
 import './accordion.css';
 
-// Context for Accordion
+/**
+ * Internal context value structure for the Accordion.
+ */
 interface AccordionContextValue {
     type: 'single' | 'multiple';
     expandedItems: Accessor<string[]>;
@@ -25,7 +27,9 @@ const AccordionContext = createContext<AccordionContextValue>();
 
 const useAccordion = () => useContext(AccordionContext);
 
-// Accordion Root
+/**
+ * Properties for the Accordion root component.
+ */
 export interface AccordionProps {
     /** Type of accordion: single or multiple items can be expanded */
     type?: 'single' | 'multiple';
@@ -44,6 +48,9 @@ export interface AccordionProps {
 
 /**
  * Accordion component for expandable content sections.
+ *
+ * @param {AccordionProps} props - Component properties.
+ * @returns {JSX.Element} The rendered solid-js component.
  *
  * @example
  * // Single (only one item open at a time)
@@ -119,7 +126,9 @@ export const Accordion: Component<AccordionProps> = props => {
     );
 };
 
-// Accordion Item
+/**
+ * Properties for individual accordion items.
+ */
 export interface AccordionItemProps {
     /** Unique identifier for this item */
     value: string;
@@ -137,6 +146,12 @@ export interface AccordionItemProps {
     class?: string;
 }
 
+/**
+ * Individual item component for the Accordion.
+ *
+ * @param {AccordionItemProps} props - Component properties.
+ * @returns {JSX.Element} The rendered solid-js component.
+ */
 export const AccordionItem: Component<AccordionItemProps> = props => {
     const [local] = splitProps(props, [
         'value',

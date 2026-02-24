@@ -12,6 +12,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { fetch } from '@tauri-apps/plugin-http';
 
+/**
+ * Configuration options for the HLS player.
+ */
 export interface HlsPlayerOptions {
     /** Enable debug logging */
     debug?: boolean;
@@ -34,10 +37,6 @@ export interface HlsPlayerState {
 
 /** HLS streaming server base URL */
 export const HLS_SERVER_URL = 'http://127.0.0.1:9876';
-
-// ---------------------------------------------------------------------------
-// Streaming Session Token
-// ---------------------------------------------------------------------------
 
 /** Cached session token for streaming server authentication */
 let cachedStreamingToken: string | null = null;
@@ -72,14 +71,11 @@ function buildTokenSuffix(): string {
     return token ? `&token=${token}` : '';
 }
 
-// ---------------------------------------------------------------------------
-// URL Builders
-// ---------------------------------------------------------------------------
-
 /**
  * Get the HLS playlist URL for a video file
- * @param filePath - Absolute path to the video file
- * @returns The M3U8 playlist URL with authentication token
+ * @param {string} filePath - Absolute path to the video file
+ * @param {string} [quality='standard'] - Quality string parameter
+ * @returns {string} The M3U8 playlist URL with authentication token
  */
 export function getHlsPlaylistUrl(filePath: string, quality: string = 'standard'): string {
     const encodedPath = encodeURIComponent(filePath);
@@ -88,8 +84,8 @@ export function getHlsPlaylistUrl(filePath: string, quality: string = 'standard'
 
 /**
  * Get the probe URL for a video file
- * @param filePath - Absolute path to the video file
- * @returns The probe endpoint URL with authentication token
+ * @param {string} filePath - Absolute path to the video file
+ * @returns {string} The probe endpoint URL with authentication token
  */
 export function getHlsProbeUrl(filePath: string): string {
     const encodedPath = encodeURIComponent(filePath);
@@ -111,8 +107,9 @@ export interface VideoProbeResult {
 
 /**
  * Probe a video file for metadata
- * @param filePath - Absolute path to the video file
- * @returns Video metadata including duration and native format detection
+ * @param {string} filePath - Absolute path to the video file
+ * @returns {Promise<VideoProbeResult>} Video metadata including duration and native format detection
+ * @throws {Error} Throw if probe request fails
  */
 export async function probeVideo(filePath: string): Promise<VideoProbeResult> {
     const url = getHlsProbeUrl(filePath);

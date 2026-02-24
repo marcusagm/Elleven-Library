@@ -1,5 +1,10 @@
 import { toast } from '../../components/ui/Sonner';
 
+/**
+ * Hook providing utility methods for dispatching application notifications across various levels.
+ *
+ * @returns {Object} Notification dispatch methods.
+ */
 export const useNotification = () => {
     return {
         success: (
