@@ -1,28 +1,37 @@
 import { createShortcut, createConditionalScope, SCOPE_PRIORITIES } from '../../../../core/input';
 import { TreeNode } from '../types';
 
+/**
+ * Options for configuring the tree navigation behavior.
+ */
 interface UseTreeNavigationOptions {
-    /** Accessor for the node being navigated */
+    /** Accessor function that returns the node currently being navigated. */
     node: () => TreeNode<unknown>;
-    /** Whether the node is currently in edit mode */
+    /** Accessor function that returns whether the node is currently in rename/edit mode. */
     isEditing: () => boolean;
-    /** Whether the node has children */
+    /** Accessor function that returns whether the node has one or more child nodes. */
     hasChildren: () => boolean;
-    /** Current expansion state */
+    /** Accessor function that returns the current visual expansion state of the node. */
     isExpanded: () => boolean;
-    /** Callback to select the node */
+    /** Optional callback invoked when the node should be selected (e.g., via Enter key). */
     onSelect?: () => void;
-    /** Callback to toggle expansion */
+    /** Optional callback invoked when the node expansion state should be toggled. */
     onToggle?: (expanded: boolean) => void;
-    /** Callback to cancel editing */
+    /** Optional callback invoked to exit the rename/edit mode without saving changes. */
     onEditCancel?: () => void;
-    /** Component focus state */
+    /** Accessor function that returns whether the node currently holds keyboard focus. */
     isFocused: () => boolean;
 }
 
 /**
- * Hook for managing keyboard navigation and focus scopes for a tree item.
- * Aligns with the global input system.
+ * Custom hook for managing keyboard navigation and focus scopes for a tree item.
+ *
+ * This hook integrates with the global input system to handle shortcuts like Enter for selection,
+ * ArrowRight/Left for expansion, and Escape for canceling edits. It also manages a conditional
+ * 'editing' scope to prevent global shortcuts from conflicting with inline text input.
+ *
+ * @param {UseTreeNavigationOptions} options - The navigation and state accessors for the tree node.
+ * @returns {Record<string, never>} An empty object as this hook primarily registers side-effect shortcuts.
  */
 export const useTreeNavigation = (options: UseTreeNavigationOptions) => {
     // Automatically manage 'editing' scope based on editing state and focus

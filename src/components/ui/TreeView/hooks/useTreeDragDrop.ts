@@ -2,30 +2,42 @@ import { createSignal, createMemo } from 'solid-js';
 import { currentDragItem, setDragItem, dndRegistry, DragItem } from '../../../../core/dnd';
 import { TreeNode, TreeDropPosition } from '../types';
 
-interface UseTreeDragDropOptions {
-    /** Accessor for the node being focused for drag/drop */
+/**
+ * Options for configuring the drag-and-drop behavior for a tree node.
+ */
+interface TreeDragDropOptions {
+    /** Accessor function that returns the node currently being targeted for drag/drop operations. */
     node: () => TreeNode<unknown>;
-    /** Whether drag and drop is enabled */
+    /** Accessor function that returns whether drag-and-drop interactions are enabled for this node. */
     isEnabled: () => boolean;
-    /** Whether the node is currently in edit mode (disables drag) */
+    /** Accessor function that returns whether the node is in rename/edit mode, which disables dragging. */
     isEditing: () => boolean;
-    /** Accessor for the drag type identifier of this tree */
+    /** Accessor function that returns the specific drag type identifier for this tree (e.g., 'TAG'). */
     dragType: () => string | undefined;
-    /** Accessor for the list of drag types this tree accepts */
+    /** Accessor function that returns the list of external drag types this node accepts. */
     acceptedDragTypes: () => string[] | undefined;
-    /** Function to perform custom validation for drop operations */
+    /** Function to perform custom business logic validation for a specific drop operation. */
     isValidDrop: (dragged: DragItem, target: TreeNode<unknown>) => boolean;
 }
 
 /**
- * Hook for managing generic drag-and-drop state and operations for a tree item.
- * Fully decoupled from specific domain types.
+ * Custom hook for managing generic drag-and-drop state and event handlers for a tree item.
+ *
+ * This hook encapsulates the browser Drag-and-Drop API logic, including identifying valid
+ * drop positions ('before', 'inside', 'after') and coordinating with the global DnD registry.
+ * It is fully decoupled from specific domain types like tags or folders.
+ *
+ * @param {TreeDragDropOptions} dragDropOptions - The configuration and state accessors for the tree node.
+ * @returns {GenericDropState} Accessors and handlers for managing the item's drag-and-drop lifecycle.
  */
-export const useTreeDragDrop = (options: UseTreeDragDropOptions) => {
+export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
     const [dropPosition, setDropPosition] = createSignal<TreeDropPosition | null>(null);
 
     /**
-     * Validation memo to track if current drag-over is valid.
+     * Reactive memo that evaluates the validity of the current drag-and-drop operation.
+     * It checks for type compatibility, prevents self-dropping, and respects custom domain rules.
+     *
+     * @returns {Object} An object containing the current validation status.
      */
     const validationStatus = createMemo(() => {
         const draggingItem = currentDragItem();
@@ -34,15 +46,15 @@ export const useTreeDragDrop = (options: UseTreeDragDropOptions) => {
         }
 
         // 1. Type validation
-        const acceptedTypes = options.acceptedDragTypes();
+        const acceptedTypes = dragDropOptions.acceptedDragTypes();
         const isTypeAccepted = acceptedTypes ? acceptedTypes.includes(draggingItem.type) : true;
 
         if (!isTypeAccepted) {
             return { isValid: false };
         }
 
-        const targetNode = options.node();
-        const selfDragType = options.dragType();
+        const targetNode = dragDropOptions.node();
+        const selfDragType = dragDropOptions.dragType();
 
         // 2. Self-drop prevention
         const isSelfDrop =
@@ -54,56 +66,85 @@ export const useTreeDragDrop = (options: UseTreeDragDropOptions) => {
         }
 
         // 3. Custom external validation (Domain rules)
-        if (!options.isValidDrop(draggingItem, targetNode)) {
+        if (!dragDropOptions.isValidDrop(draggingItem, targetNode)) {
             return { isValid: false };
         }
 
         return { isValid: true };
     });
 
+    /**
+     * Accessor function that determines if the node managed by this hook is the current source of a drag operation.
+     *
+     * @returns {boolean} True if this specific node is currently being dragged.
+     */
     const isDraggingSource = () => {
-        const item = currentDragItem();
-        const selfDragType = options.dragType();
+        const activeDragItem = currentDragItem();
+        const selfDragType = dragDropOptions.dragType();
         return (
-            item?.type === selfDragType && String(item?.payload?.id) === String(options.node().id)
+            activeDragItem?.type === selfDragType &&
+            String(activeDragItem?.payload?.id) === String(dragDropOptions.node().id)
         );
     };
 
+    /**
+     * Accessor function that determines if a drop operation on this node is currently disallowed.
+     * Returns true only if there is an active drag and its validation status is false.
+     *
+     * @returns {boolean} True if the current drop target is invalid.
+     */
     const isDropInvalid = () => {
-        const item = currentDragItem();
-        return item && !validationStatus().isValid;
+        const activeDragItem = currentDragItem();
+        return activeDragItem && !validationStatus().isValid;
     };
 
+    /**
+     * Event handler for the 'dragstart' event.
+     * Initializes the global drag-and-drop state with the node's data.
+     *
+     * @param {DragEvent} event - The native browser drag event.
+     */
     const handleDragStart = (event: DragEvent) => {
-        const selfDragType = options.dragType();
-        if (!options.isEnabled() || options.isEditing() || !selfDragType) {
+        const selfDragType = dragDropOptions.dragType();
+        if (!dragDropOptions.isEnabled() || dragDropOptions.isEditing() || !selfDragType) {
             return;
         }
 
         event.stopPropagation();
         if (event.dataTransfer) {
-            const dragData: DragItem = {
+            const currentDragData: DragItem = {
                 // We trust the provided dragType matches our system's DragItem identifiers
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 type: selfDragType as any,
-                payload: { id: options.node().id }
+                payload: { id: dragDropOptions.node().id }
             };
 
-            setDragItem(dragData);
+            setDragItem(currentDragData);
             event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('application/json', JSON.stringify(dragData));
+            event.dataTransfer.setData('application/json', JSON.stringify(currentDragData));
         }
     };
 
+    /**
+     * Event handler for the 'dragend' event.
+     * Clears the global drag-and-drop state and visual indicators.
+     */
     const handleDragEnd = () => {
         setDragItem(null);
         setDropPosition(null);
     };
 
+    /**
+     * Event handler for the 'dragover' event.
+     * Calculates the exact drop position ('before', 'after', or 'inside') based on mouse coordinates.
+     * Also updates the native 'dropEffect' based on whether it's an internal move or external copy.
+     *
+     * @param {DragEvent} event - The native browser drag event.
+     */
     const handleDragOver = (event: DragEvent) => {
         event.preventDefault();
 
-        if (!options.isEnabled() || !validationStatus().isValid) {
+        if (!dragDropOptions.isEnabled() || !validationStatus().isValid) {
             if (event.dataTransfer) {
                 event.dataTransfer.dropEffect = 'none';
             }
@@ -111,36 +152,47 @@ export const useTreeDragDrop = (options: UseTreeDragDropOptions) => {
             return;
         }
 
-        const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-        const mouseYPosition = event.clientY - rect.top;
-        const totalElementHeight = rect.height;
+        const boundingClientRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+        const mouseYPosition = event.clientY - boundingClientRect.top;
+        const totalElementHeight = boundingClientRect.height;
         const edgeThresholdDistance = totalElementHeight * 0.25;
 
-        let position: TreeDropPosition = 'inside';
+        let calculatedDropPosition: TreeDropPosition = 'inside';
 
         const draggingItem = currentDragItem();
-        const selfDragType = options.dragType();
+        const selfDragType = dragDropOptions.dragType();
         const isSiblingDragMatch = draggingItem?.type === selfDragType;
 
         // Position indicators ('before'/'after') only for sibling moves
         if (isSiblingDragMatch) {
             if (mouseYPosition < edgeThresholdDistance) {
-                position = 'before';
+                calculatedDropPosition = 'before';
             } else if (mouseYPosition > totalElementHeight - edgeThresholdDistance) {
-                position = 'after';
+                calculatedDropPosition = 'after';
             }
         }
 
-        setDropPosition(position);
+        setDropPosition(calculatedDropPosition);
         if (event.dataTransfer) {
             event.dataTransfer.dropEffect = isSiblingDragMatch ? 'move' : 'copy';
         }
     };
 
+    /**
+     * Event handler for the 'dragleave' event.
+     * Clears the visual drop indicators as the cursor moves away from the node.
+     */
     const handleDragLeave = () => {
         setDropPosition(null);
     };
 
+    /**
+     * Event handler for the 'drop' event.
+     * Resolves the dropped data, selects the appropriate DnD strategy from the registry,
+     * and performs the actual drop operation (reorder or assignment).
+     *
+     * @param {DragEvent} event - The native browser drop event.
+     */
     const handleDrop = async (event: DragEvent) => {
         event.preventDefault();
         event.stopPropagation();
@@ -153,9 +205,9 @@ export const useTreeDragDrop = (options: UseTreeDragDropOptions) => {
         }
 
         try {
-            const rawJson = event.dataTransfer?.getData('application/json');
-            if (rawJson) {
-                const droppedItem: DragItem = JSON.parse(rawJson);
+            const rawJsonData = event.dataTransfer?.getData('application/json');
+            if (rawJsonData) {
+                const droppedItem: DragItem = JSON.parse(rawJsonData);
                 const dropStrategy = dndRegistry.get(droppedItem.type);
 
                 if (dropStrategy && dropStrategy.accepts(droppedItem)) {
@@ -163,7 +215,7 @@ export const useTreeDragDrop = (options: UseTreeDragDropOptions) => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     await (dropStrategy as any).onDrop(
                         droppedItem,
-                        options.node().id,
+                        dragDropOptions.node().id,
                         finalDropPosition || 'inside'
                     );
                 }

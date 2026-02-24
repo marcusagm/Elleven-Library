@@ -42,58 +42,63 @@ export interface TreeNode<T = unknown> {
 
 /**
  * Shared properties for the TreeView system.
- * @template T - Type of the business data in nodes.
+ *
+ * This interface defines the contract for initializing and controlling the TreeView components.
+ * It follows a generic pattern to allow nodes to hold arbitrary business data.
+ *
+ * @template T - The type of business data stored within each tree node.
  */
 export interface TreeViewProps<T = unknown> {
-    /** Hierarchical list of nodes to display */
+    /** The hierarchical list of nodes to be displayed in the tree. */
     items: TreeNode<T>[];
-    /** CSS class for the root container */
+    /** Optional CSS class to be applied to the root tree container. */
     class?: string;
-    /** Indentation distance for each nesting level (default: 16) */
+    /** The indentation distance in pixels for each nesting level. Defaults to 16. */
     indentSize?: number;
-    /** IDs of nodes that are currently expanded */
+    /** A set of node IDs that are currently expanded in the UI. */
     expandedIds?: Set<string | number>;
-    /** IDs of nodes that are currently selected */
+    /** An array of node IDs that are currently visually selected. */
     selectedIds?: (string | number)[];
-    /** ID of the node currently in rename mode */
+    /** The unique identifier of the node currently undergoing a rename/edit operation. */
     editingId?: string | number | null;
-    /** Default icon to use if a node doesn't specify one */
+    /** The fallback icon component to use if a node does not provide its own specific icon. */
     defaultIcon?: Component;
-    /** Whether nodes can be dragged */
+    /** Whether nodes within the tree are interactive and can be dragged. */
     draggable?: boolean;
-    /** The specific drag-and-drop type identifier for this tree instance (e.g., 'TAG', 'FOLDER') */
+    /** The specific drag-and-drop type identifier used for the nodes of this tree (e.g., 'TAG'). */
     dragType?: string;
-    /** List of drag types this tree accepts (e.g., ['TAG', 'IMAGE']) */
+    /** The list of drag-and-drop type identifiers that this tree considers valid targets for dropping. */
     acceptedDragTypes?: string[];
 
-    // Callbacks
-    /** Triggered when a node is clicked */
+    /** Callback function invoked when a node is clicked or selected. */
     onSelect?: (node: TreeNode<T>) => void;
-    /** Triggered when a node is toggled (expanded/collapsed) */
+    /** Callback function invoked when a node expansion state is toggled. */
     onToggle?: (id: string | number) => void;
-    /** Triggered when right-clicking a node */
+    /** Callback function invoked when a context menu is requested for a specific node. */
     onContextMenu?: (event: MouseEvent, node: TreeNode<T>) => void;
-    /** Triggered when a rename operation is committed */
+    /** Callback function invoked when a rename/edit operation is successfully committed. */
     onRename?: (node: TreeNode<T>, newLabel: string) => void;
-    /** Triggered when rename mode is exited without saving */
+    /** Callback function invoked when rename/edit mode is exited without saving. */
     onEditCancel?: () => void;
-    /** Triggered when a node is moved via drag-and-drop */
+    /** Callback function invoked when a node is moved to a new position via drag-and-drop. */
     onMove?: (node: TreeNode<T>, target: TreeNode<T> | 'root', position: TreeDropPosition) => void;
-    /** Optional custom validation for drop operations */
+    /** Optional custom validation function to determine if a specific drop operation is valid. */
     isValidDrop?: (dragged: DragItem, target: TreeNode<T>) => boolean;
 }
 
 /**
- * Internal properties for the TreeViewItem component,
- * including depth tracking and layout context.
+ * Internal properties used by the TreeViewItem component.
+ * Extends the base TreeViewProps with depth tracking and unique DOM context.
+ *
+ * @template T - The type of business data in nodes.
  */
 export interface TreeViewItemProps<T = unknown> extends TreeViewProps<T> {
-    /** The specific node instance to render */
+    /** The specific node instance to render in this item. */
     node: TreeNode<T>;
-    /** Nesting depth (0-indexed) */
+    /** The nesting depth of the node (0 for root level). */
     depth: number;
-    /** Reference ID for the parent tree container */
+    /** The unique identifier of the parent tree container for DOM association. */
     treeId: string;
-    /** Whether this is the last sibling in its group (for guide lines) */
+    /** Whether this node is the last sibling in its parent's group (used for rendering guide lines). */
     isLast: boolean;
 }

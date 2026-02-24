@@ -8,15 +8,27 @@ import './tree-view.css';
 
 /**
  * TreeView component for displaying hierarchical navigation structures.
- * Supports deep nesting, selection, keyboard navigation, drag-and-drop,
- * and inline editing.
+ *
+ * This component provides a specialized UI for traversing deep hierarchies, supporting
+ * single selection, custom indentation, and integrated drag-and-drop orchestration.
+ * It manages root-level drop operations and delegates individual node rendering
+ * to the TreeViewItem component.
+ *
+ * @template T - The type of business data associated with each tree node.
+ * @param {TreeViewProps<T>} props - The properties for configuring the tree view.
+ * @returns {JSX.Element} A reactive container element representing the hierarchical tree.
  *
  * @example
  * const itemHierarchyList = [
  *   { id: '1', label: 'Main Box', children: [{ id: '2', label: 'Inner Item' }] }
  * ];
  *
- * <TreeView items={itemHierarchyList} onSelect={(node) => console.log(node.id)} />
+ * <TreeView
+ *   items={itemHierarchyList}
+ *   onSelect={(node) => console.log(node.label)}
+ *   dragType="TAG"
+ *   acceptedDragTypes={['TAG', 'IMAGE']}
+ * />
  */
 export const TreeView: Component<TreeViewProps<unknown>> = props => {
     // Separate core tree data from props for clean attribute passing

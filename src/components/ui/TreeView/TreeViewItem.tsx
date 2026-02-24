@@ -10,8 +10,14 @@ import { TreeViewBadge } from './components/TreeViewBadge';
 import { TreeViewInput } from './components/TreeViewInput';
 
 /**
- * Functional component for the interactive row of a tree item.
- * Encapsulates the visual state and event handlers for the individual node.
+ * Internal presentational component for an individual tree row.
+ *
+ * This component handles the visual rendering of a node's content, including indentation,
+ * drag-and-drop visual indicators (drop lines), icons, labels, and state indicators (selection, expansion).
+ * It delegates all complex logic to the orchestrator via props.
+ *
+ * @param {Object} props - The row's presentational properties and event handlers.
+ * @returns {JSX.Element} The rendered tree item row.
  */
 const TreeViewItemRow: Component<{
     node: TreeNode<unknown>;
@@ -107,14 +113,20 @@ const TreeViewItemRow: Component<{
 };
 
 /**
- * Internal component for rendering individual nodes in the tree.
- * Orchestrates navigation, drag-and-drop, and nested child rendering.
+ * Functional component for rendering an individual node and its nested children within a TreeView.
+ *
+ * This component acts as an orchestrator, managing the node's internal state (expansion, focus),
+ * registering keyboard navigation via the `useTreeNavigation` hook, and configuring
+ * drag-and-drop logic via the `useTreeDragDrop` hook. It recursively renders child nodes
+ * when expanded.
+ *
+ * @template T - The type of business data associated with the tree node.
+ * @param {TreeViewItemProps<T>} props - The properties for the tree item.
+ * @returns {JSX.Element} The rendered tree item and its potential nested group.
  */
 export const TreeViewItem: Component<TreeViewItemProps<unknown>> = props => {
     const [localExpansionState, setLocalExpansionState] = createSignal(false);
     const [isFocused, setIsFocused] = createSignal(false);
-
-    // --- State Accessors ---
     const isExpanded = createMemo(() =>
         props.expandedIds ? props.expandedIds.has(props.node.id) : localExpansionState()
     );
@@ -125,8 +137,6 @@ export const TreeViewItem: Component<TreeViewItemProps<unknown>> = props => {
     );
     const indentationPixelSize = () => props.indentSize ?? 16;
     const indentationOffset = () => props.depth * indentationPixelSize();
-
-    // --- Logic Hooks ---
     const navigationOptions = {
         node: () => props.node,
         isEditing,
