@@ -1,6 +1,7 @@
 import { Component, Show } from 'solid-js';
 import { DateInput } from '../../../ui/DateInput';
 import { CriterionFieldRendererProps } from './types';
+import { formatToISO } from '../../../../utils/format';
 
 export const DateCriterionField: Component<CriterionFieldRendererProps> = props => {
     const isRange = () => props.operator === 'between';
@@ -28,4 +29,31 @@ export const DateCriterionField: Component<CriterionFieldRendererProps> = props 
             </Show>
         </div>
     );
+};
+
+export const dateHandler: import('./types').SearchFieldHandler = {
+    component: DateCriterionField,
+    validate: (val, val2, op) => {
+        const errors: Record<string, string> = {};
+        if (val === null || val === '') errors.value = 'Date is required';
+
+        if (op === 'between') {
+            if (val2 === null || val2 === '') {
+                errors.value2 = 'End date is required';
+            } else if (val !== null && val !== '') {
+                const d1 = new Date(val as string | Date);
+                const d2 = new Date(val2 as string | Date);
+                if (d1 > d2) errors.value2 = 'End date must be after start date';
+            }
+        }
+        return errors;
+    },
+    process: (val, val2, op) => {
+        if (op === 'between') {
+            const v1 = formatToISO(val as Date | string);
+            const v2 = formatToISO(val2 as Date | string);
+            return { finalValue: [v1, v2] };
+        }
+        return { finalValue: formatToISO(val as Date | string) };
+    }
 };

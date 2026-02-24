@@ -31,3 +31,37 @@ export interface CriterionFieldRendererProps {
 }
 
 export type CriterionFieldRendererComponent = Component<CriterionFieldRendererProps>;
+
+export type StoreMetadata = {
+    locations: { id: number; name: string }[];
+    tags: { id: number; name: string }[];
+    supportedFormats?: { name: string; extensions: string[] }[];
+};
+
+export interface SearchFieldHandler {
+    component: CriterionFieldRendererComponent;
+
+    validate: (
+        value: SearchValue,
+        value2: SearchValue,
+        operator: string,
+        unit?: string
+    ) => Record<string, string>;
+
+    process: (
+        value: SearchValue,
+        value2: SearchValue,
+        operator: string,
+        unit?: string
+    ) => {
+        finalValue: unknown;
+        unitMultiplier?: string;
+    };
+
+    formatDisplay?: (
+        value: unknown,
+        operator: string,
+        unitMultiplier?: string,
+        metadata?: StoreMetadata
+    ) => string;
+}

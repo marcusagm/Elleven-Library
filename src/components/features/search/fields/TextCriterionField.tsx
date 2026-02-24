@@ -14,3 +14,13 @@ export const TextCriterionField: Component<CriterionFieldRendererProps> = props 
         />
     );
 };
+
+export const textHandler: import('./types').SearchFieldHandler = {
+    component: TextCriterionField,
+    validate: val => {
+        const errors: Record<string, string> = {};
+        if (val === null || val === '') errors.value = 'Value is required';
+        return errors;
+    },
+    process: val => ({ finalValue: val })
+};

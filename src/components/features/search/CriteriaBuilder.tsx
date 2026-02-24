@@ -5,7 +5,7 @@ import { Select } from '../../ui/Select';
 import { Button } from '../../ui/Button';
 import { Tooltip } from '../../ui/Tooltip';
 import { SEARCH_FIELDS } from './searchConstants';
-import { criterionFieldRegistry } from './fields';
+import { criterionHandlerRegistry } from './fields';
 import { useAdvancedSearch, SearchValue } from './useAdvancedSearch';
 
 export interface CriteriaBuilderProps {
@@ -17,7 +17,9 @@ export const CriteriaBuilder: Component<CriteriaBuilderProps> = props => {
         const key = props.search.currentKey();
         const type = props.search.selectedField()?.type;
         const resolvedType = key === 'size' ? 'size' : type;
-        return criterionFieldRegistry[resolvedType || 'text'] || criterionFieldRegistry.text;
+        const handler =
+            criterionHandlerRegistry[resolvedType || 'text'] || criterionHandlerRegistry.text;
+        return handler.component;
     });
 
     return (

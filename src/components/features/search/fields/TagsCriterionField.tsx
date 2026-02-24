@@ -21,3 +21,17 @@ export const TagsCriterionField: Component<CriterionFieldRendererProps> = props 
         />
     );
 };
+
+export const tagsHandler: import('./types').SearchFieldHandler = {
+    component: TagsCriterionField,
+    validate: val => {
+        const errors: Record<string, string> = {};
+        if (val === null || val === '') errors.value = 'Value is required';
+        return errors;
+    },
+    process: val => ({ finalValue: val }),
+    formatDisplay: (val, _op, _unit, metadata) => {
+        const found = metadata?.tags.find(t => String(t.id) === String(val));
+        return found?.name || String(val);
+    }
+};

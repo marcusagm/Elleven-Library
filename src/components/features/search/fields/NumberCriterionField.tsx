@@ -29,3 +29,28 @@ export const NumberCriterionField: Component<CriterionFieldRendererProps> = prop
         </div>
     );
 };
+
+export const numberHandler: import('./types').SearchFieldHandler = {
+    component: NumberCriterionField,
+    validate: (val, val2, op) => {
+        const errors: Record<string, string> = {};
+        if (val === null || val === '') errors.value = 'Value is required';
+
+        if (op === 'between') {
+            if (val2 === null || val2 === '') {
+                errors.value2 = 'End value is required';
+            } else if (val !== null && val !== '') {
+                if (Number(val) > Number(val2)) {
+                    errors.value2 = 'End value must be greater than start';
+                }
+            }
+        }
+        return errors;
+    },
+    process: (val, val2, op) => {
+        if (op === 'between') {
+            return { finalValue: [val, val2] };
+        }
+        return { finalValue: val };
+    }
+};

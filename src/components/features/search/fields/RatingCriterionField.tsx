@@ -17,3 +17,14 @@ export const RatingCriterionField: Component<CriterionFieldRendererProps> = prop
         />
     );
 };
+
+export const ratingHandler: import('./types').SearchFieldHandler = {
+    component: RatingCriterionField,
+    validate: val => {
+        const errors: Record<string, string> = {};
+        if (val === null || val === '') errors.value = 'Value is required';
+        return errors;
+    },
+    process: val => ({ finalValue: val }),
+    formatDisplay: val => `${val} Stars`
+};

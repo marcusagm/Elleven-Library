@@ -24,3 +24,19 @@ export const SelectCriterionField: Component<CriterionFieldRendererProps> = prop
         />
     );
 };
+
+export const selectHandler: import('./types').SearchFieldHandler = {
+    component: SelectCriterionField,
+    validate: val => {
+        const errors: Record<string, string> = {};
+        if (val === null || val === '') errors.value = 'Value is required';
+        return errors;
+    },
+    process: val => ({ finalValue: val }),
+    formatDisplay: (val, _op, _unit, metadata) => {
+        const foundFormat = metadata?.supportedFormats?.find(sf =>
+            sf.extensions.includes(String(val))
+        );
+        return foundFormat ? `.${String(val).toUpperCase()} (${foundFormat.name})` : String(val);
+    }
+};

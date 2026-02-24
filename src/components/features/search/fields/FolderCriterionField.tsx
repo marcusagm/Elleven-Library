@@ -21,3 +21,17 @@ export const FolderCriterionField: Component<CriterionFieldRendererProps> = prop
         />
     );
 };
+
+export const folderHandler: import('./types').SearchFieldHandler = {
+    component: FolderCriterionField,
+    validate: val => {
+        const errors: Record<string, string> = {};
+        if (val === null || val === '') errors.value = 'Value is required';
+        return errors;
+    },
+    process: val => ({ finalValue: val }),
+    formatDisplay: (val, _op, _unit, metadata) => {
+        const found = metadata?.locations.find(l => String(l.id) === String(val));
+        return found?.name || String(val);
+    }
+};

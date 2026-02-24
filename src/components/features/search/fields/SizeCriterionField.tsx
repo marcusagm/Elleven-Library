@@ -42,3 +42,44 @@ export const SizeCriterionField: Component<CriterionFieldRendererProps> = props 
         </div>
     );
 };
+
+const isEmpty = (v: unknown) => v === null || v === '';
+
+export const sizeHandler: import('./types').SearchFieldHandler = {
+    component: SizeCriterionField,
+    validate: (val, val2, op, unit) => {
+        const errors: Record<string, string> = {};
+
+        if (isEmpty(val)) {
+            errors.value = 'Value is required';
+        }
+
+        if (op === 'between') {
+            if (isEmpty(val2)) {
+                errors.value2 = 'End value is required';
+            } else if (!isEmpty(val) && Number(val) > Number(val2)) {
+                errors.value2 = 'End value must be greater than start';
+            }
+        }
+
+        if (!SIZE_UNITS.find(u => u.value === unit)) {
+            errors.unit = 'Unit is required';
+        }
+
+        return errors;
+    },
+    process: (val, val2, op, unit) => {
+        const multiplier = Number(unit);
+        let finalValue: unknown;
+
+        if (op === 'between') {
+            const v1 = Math.round(Number(val) * multiplier);
+            const v2 = Math.round(Number(val2) * multiplier);
+            finalValue = [v1, v2];
+        } else {
+            finalValue = Math.round(Number(val) * multiplier);
+        }
+
+        return { finalValue, unitMultiplier: unit };
+    }
+};

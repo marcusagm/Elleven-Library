@@ -121,5 +121,6 @@ O `CriteriaBuilder.tsx` e `QueryEditor.tsx` passarão a funcionar como adaptador
 
 - **[x] Passo 8:** Limpeza das armadilhas da reatividade em edição e refatoração estrita da interface nativa `CriterionFieldRendererProps` removendo as atribuições arbitrárias `any` que poluíam a inferência.
 - **[x] Passo 9:** Refatoramento dos `displayValue` garantindo fallbacks consistentes para visualização exata de "Ratings (Stars)" e "Formatos Extensão (Name)".
+- **[x] Passo 10:** Evolução do Component Registry para o padrão **Handler Registry**, transferindo toda a lógica de `validate`, processamento dinâmico de chaves e o formatação reversa de visualização (`formatDisplay`) totalmente para o escopo interno de cada campo. Isso derrubou a complexidade ciclomática do `searchHelpers.ts` e do `useAdvancedSearch.ts` de >25 para níveis aceitáveis pelo linter (<10).
 
-Os resultados foram verificados através de auditoria do linter (`npm run lint`) e checagem forte de tipagem Typescript (`tsc --noEmit`), e ambas verificações apontaram `0 Errors` garantindo a coesão arquitetural desejada.
+Os resultados foram verificados através de auditoria do linter (`npm run lint`) e checagem forte de tipagem Typescript (`tsc --noEmit`). Todas as validações apontaram sucesso com redução drástica na complexidade funcional e remoção de redundâncias de código.

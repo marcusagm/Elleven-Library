@@ -7,7 +7,7 @@ import { Tooltip } from '../../ui/Tooltip';
 import { SEARCH_FIELDS, OPERATORS_FOR_TYPE } from './searchConstants';
 import { LogicalOperator, SearchCriterion } from '../../../core/store/filterStore';
 import { cn } from '../../../lib/utils';
-import { criterionFieldRegistry } from './fields';
+import { criterionHandlerRegistry } from './fields';
 import { CriterionFieldRendererProps } from './fields/types';
 import { useAdvancedSearch, SearchValue } from './useAdvancedSearch';
 
@@ -27,7 +27,9 @@ const CriterionItem: Component<{
         const key = props.item.key;
         const type = field()?.type;
         const resolvedType = key === 'size' ? 'size' : type;
-        return criterionFieldRegistry[resolvedType || 'text'] || criterionFieldRegistry.text;
+        const handler =
+            criterionHandlerRegistry[resolvedType || 'text'] || criterionHandlerRegistry.text;
+        return handler.component;
     });
 
     return (

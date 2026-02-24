@@ -1,10 +1,11 @@
 import { createSignal, createMemo, createEffect } from 'solid-js';
 import { SearchCriterion, LogicalOperator, SearchGroup } from '../../../core/store/filterStore';
 import { createId } from '../../../lib/primitives/createId';
-import { SEARCH_FIELDS, OPERATORS_FOR_TYPE, SIZE_UNITS } from './searchConstants';
+import { SEARCH_FIELDS, OPERATORS_FOR_TYPE } from './searchConstants';
 import { computeDisplayValue } from './searchHelpers';
-import { formatToISO, fromISO, formatToDisplay } from '../../../utils/format';
+import { fromISO } from '../../../utils/format';
 import { supportedFormats } from '../../../core/store/systemStore';
+import { criterionHandlerRegistry } from './fields';
 
 export type SearchValue = string | number | null | Date;
 
@@ -105,42 +106,11 @@ export const useAdvancedSearch = (
         val2: SearchValue,
         unit?: string
     ) => {
-        const errors: Record<string, string> = {};
-
-        if (val === null || val === '') {
-            errors.value = 'Value is required';
-        }
-
-        if (op === 'between') {
-            if (val2 === null || val2 === '') {
-                errors.value2 = 'End value is required';
-            } else if (val !== null && val !== '') {
-                if (field?.type === 'number' || field?.value === 'size') {
-                    if (Number(val) > Number(val2)) {
-                        errors.value2 = 'End value must be greater than start';
-                    }
-                } else if (field?.type === 'date') {
-                    const d1 = new Date(val as string | Date);
-                    const d2 = new Date(val2 as string | Date);
-                    if (d1 > d2) {
-                        errors.value2 = 'End date must be after start date';
-                    }
-                }
-            }
-        }
-
-        if (field?.type === 'date') {
-            if (val === null) errors.value = 'Date is required';
-            if (op === 'between' && val2 === null) errors.value2 = 'End date is required';
-        }
-
-        if (field?.value === 'size') {
-            if (!unit || isNaN(Number(unit)) || !SIZE_UNITS.some(u => u.value === unit)) {
-                errors.unit = 'Unit is required';
-            }
-        }
-
-        return errors;
+        if (!field) return { value: 'Invalid field' };
+        const handlerName = field.value === 'size' ? 'size' : field.type || 'text';
+        const handler = criterionHandlerRegistry[handlerName];
+        if (!handler) return {};
+        return handler.validate(val, val2, op, unit);
     };
 
     const validateCurrent = () => {
@@ -196,11 +166,13 @@ export const useAdvancedSearch = (
         if (!currentItem) return;
 
         const field = SEARCH_FIELDS.find(f => f.value === currentItem.key);
-        const errors = validateCriterion(
-            field,
-            currentItem.operator,
+        const handlerName = currentItem.key === 'size' ? 'size' : field?.type || 'text';
+        const handler = criterionHandlerRegistry[handlerName];
+
+        const errors = handler.validate(
             editingValue(),
             editingValue2(),
+            currentItem.operator,
             editingUnit()
         );
 
@@ -209,75 +181,32 @@ export const useAdvancedSearch = (
             return;
         }
 
+        const { finalValue, unitMultiplier } = handler.process(
+            editingValue(),
+            editingValue2(),
+            currentItem.operator,
+            editingUnit()
+        );
+
         setCriteria(prev =>
             prev.map(c => {
                 if (c.id === id) {
-                    let finalValue:
-                        | string
-                        | number
-                        | boolean
-                        | null
-                        | (string | number | boolean | null)[] =
-                        editingValue() instanceof Date
-                            ? formatToISO(editingValue() as Date)
-                            : (editingValue() as string | number | null);
-                    let displayValue: string | undefined;
-
-                    // Handle size conversion
-                    if (c.key === 'size') {
-                        const multiplier = Number(editingUnit());
-                        const label =
-                            SIZE_UNITS.find(u => u.value === editingUnit())?.label || 'MB';
-                        if (c.operator === 'between') {
-                            const v1 = Math.round(Number(editingValue()) * multiplier);
-                            const v2 = Math.round(Number(editingValue2()) * multiplier);
-                            finalValue = [v1, v2];
-                            displayValue = `${editingValue()} ${label} to ${editingValue2()} ${label}`;
-                        } else {
-                            finalValue = Math.round(Number(editingValue()) * multiplier);
-                            displayValue = `${editingValue()} ${label}`;
+                    const displayValue = handler.formatDisplay?.(
+                        editingValue(),
+                        currentItem.operator,
+                        unitMultiplier,
+                        {
+                            locations: metadata.locations,
+                            tags: metadata.tags,
+                            supportedFormats: supportedFormats()
                         }
-                    } else if (c.operator === 'between') {
-                        if (['added_at', 'created_at', 'modified_at'].includes(c.key)) {
-                            const v1 = formatToISO(editingValue() as Date | string);
-                            const v2 = formatToISO(editingValue2() as Date | string);
-                            finalValue = [v1, v2];
-                            displayValue = `${formatToDisplay(v1)} to ${formatToDisplay(v2)}`;
-                        } else {
-                            finalValue = [
-                                editingValue() as string | number | null,
-                                editingValue2() as string | number | null
-                            ];
-                            displayValue = `${editingValue()} to ${editingValue2()}`;
-                        }
-                    } else if (['added_at', 'created_at', 'modified_at'].includes(c.key)) {
-                        finalValue = formatToISO(editingValue() as Date | string);
-                        displayValue = formatToDisplay(finalValue);
-                    } else if (c.key === 'folder') {
-                        displayValue =
-                            metadata.locations.find(l => String(l.id) === String(editingValue()))
-                                ?.name || String(editingValue());
-                    } else if (c.key === 'tags') {
-                        displayValue =
-                            metadata.tags.find(t => String(t.id) === String(editingValue()))
-                                ?.name || String(editingValue());
-                    } else if (c.key === 'format') {
-                        // For generic extension labels
-                        const foundFormat = supportedFormats().find(sf =>
-                            sf.extensions.includes(String(editingValue()))
-                        );
-                        displayValue = foundFormat
-                            ? `.${String(editingValue()).toUpperCase()} (${foundFormat.name})`
-                            : String(editingValue());
-                    } else if (c.key === 'rating') {
-                        displayValue = `${editingValue()} Stars`;
-                    }
+                    );
 
                     const updatedCriterion = {
                         ...c,
-                        value: finalValue,
-                        unitMultiplier: c.key === 'size' ? editingUnit() : undefined,
-                        displayValue: undefined // Previne que o helper use a string cacheada antiga!
+                        value: finalValue as SearchCriterion['value'],
+                        unitMultiplier,
+                        displayValue: undefined // force new calculation
                     };
 
                     return {
@@ -297,76 +226,44 @@ export const useAdvancedSearch = (
     const handleAddCriteria = () => {
         if (!validateCurrent()) return;
 
-        let finalValue: string | number | boolean | null | (string | number | boolean | null)[] =
-            currentValue() instanceof Date
-                ? formatToISO(currentValue() as Date)
-                : (currentValue() as string | number | null);
-        let displayValue: string | undefined;
+        const field = selectedField();
+        const handlerName = currentKey() === 'size' ? 'size' : field?.type || 'text';
+        const handler = criterionHandlerRegistry[handlerName];
 
-        const label = SIZE_UNITS.find(u => u.value === currentUnit())?.label || 'MB';
+        const { finalValue, unitMultiplier } = handler.process(
+            currentValue(),
+            currentValue2(),
+            currentOperator(),
+            currentUnit()
+        );
 
-        if (currentKey() === 'size' && finalValue !== null) {
-            const multiplier = Number(currentUnit());
-            if (currentOperator() === 'between') {
-                const v1 = Math.round(Number(finalValue) * multiplier);
-                const v2 = Math.round(Number(currentValue2()) * multiplier);
-                finalValue = [v1, v2];
-                displayValue = `${currentValue()} ${label} to ${currentValue2()} ${label}`;
-            } else {
-                finalValue = Math.round(Number(finalValue) * multiplier);
-                displayValue = `${currentValue()} ${label}`;
+        const internalDisplayValue = handler.formatDisplay?.(
+            currentValue(),
+            currentOperator(),
+            unitMultiplier,
+            {
+                locations: metadata.locations,
+                tags: metadata.tags,
+                supportedFormats: supportedFormats()
             }
-        } else if (currentOperator() === 'between') {
-            if (selectedField()?.type === 'date') {
-                const v1 = formatToISO(currentValue() as Date | string);
-                const v2 = formatToISO(currentValue2() as Date | string);
-                finalValue = [v1, v2];
-                displayValue = `${formatToDisplay(v1)} to ${formatToDisplay(v2)}`;
-            } else {
-                finalValue = [
-                    currentValue() as string | number | null,
-                    currentValue2() as string | number | null
-                ];
-                displayValue = `${currentValue()} to ${currentValue2()}`;
-            }
-        } else if (selectedField()?.type === 'date') {
-            finalValue = formatToISO(currentValue() as Date | string);
-            displayValue = formatToDisplay(finalValue);
-        } else if (currentKey() === 'folder') {
-            displayValue =
-                metadata.locations.find(l => String(l.id) === String(currentValue()))?.name ||
-                String(currentValue());
-        } else if (currentKey() === 'tags') {
-            displayValue =
-                metadata.tags.find(t => String(t.id) === String(currentValue()))?.name ||
-                String(currentValue());
-        } else if (currentKey() === 'format') {
-            const foundFormat = supportedFormats().find(sf =>
-                sf.extensions.includes(String(currentValue()))
-            );
-            displayValue = foundFormat
-                ? `.${String(currentValue()).toUpperCase()} (${foundFormat.name})`
-                : String(currentValue());
-        } else if (currentKey() === 'rating') {
-            displayValue = `${currentValue()} Stars`;
-        }
+        );
 
         const newCriterion: SearchCriterion = {
             id: createId('criterion'),
             key: currentKey(),
             operator: currentOperator(),
-            value: finalValue,
+            value: finalValue as SearchCriterion['value'],
+            unitMultiplier,
             displayValue:
-                displayValue ||
+                internalDisplayValue ||
                 computeDisplayValue(
                     {
                         key: currentKey(),
-                        value: finalValue,
-                        unitMultiplier: currentKey() === 'size' ? currentUnit() : undefined
+                        value: finalValue as SearchCriterion['value'],
+                        unitMultiplier
                     },
                     metadata
-                ),
-            unitMultiplier: currentKey() === 'size' ? currentUnit() : undefined
+                )
         };
 
         setCriteria([...criteria(), newCriterion]);

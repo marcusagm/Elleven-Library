@@ -1,49 +1,56 @@
 import { SearchCriterion } from '../../../core/store/filterStore';
-import { formatToDisplay } from '../../../utils/format';
-import { SIZE_UNITS } from './searchConstants';
+import { criterionHandlerRegistry } from './fields';
+import { supportedFormats } from '../../../core/store/systemStore';
+import { SearchFieldHandler, StoreMetadata } from './fields/types';
+import { SEARCH_FIELDS } from './searchConstants';
+
+const isEmpty = (v: unknown) => v === null || v === undefined || v === '';
+
+const formatWithHandler = (
+    handler: SearchFieldHandler | undefined,
+    value: unknown,
+    op: string,
+    unit: string | undefined,
+    meta: StoreMetadata,
+    isArray: boolean
+) => {
+    if (!handler?.formatDisplay) return null;
+    if (isArray) {
+        const arr = value as unknown[];
+        const v1 = handler.formatDisplay(arr[0], op, unit, meta);
+        const v2 = handler.formatDisplay(arr[1], op, unit, meta);
+        return `${v1} to ${v2}`;
+    }
+    return handler.formatDisplay(value, op, unit, meta);
+};
 
 export const computeDisplayValue = (
     item: Partial<SearchCriterion>,
     metadata: { locations: { id: number; name: string }[]; tags: { id: number; name: string }[] }
 ): string => {
     if (item.displayValue) return item.displayValue;
-    if (item.value === null || item.value === undefined || item.value === '') return '';
+    if (isEmpty(item.value)) return '';
 
-    const key = item.key || '';
-    const val = item.value;
+    const key = item.key ?? '';
+    const fieldObj = SEARCH_FIELDS.find(f => f.value === key);
+    const handlerName = key === 'size' ? 'size' : (fieldObj?.type ?? 'text');
+    const handler = criterionHandlerRegistry[handlerName];
+    const isArrayType = Array.isArray(item.value);
 
-    if (key === 'size') {
-        const multiplier = Number(item.unitMultiplier || '1048576');
-        const label = SIZE_UNITS.find(unit => unit.value === String(multiplier))?.label || 'MB';
-        if (Array.isArray(val)) {
-            return `${Number(val[0]) / multiplier} ${label} to ${Number(val[1]) / multiplier} ${label}`;
-        }
-        return `${Number(val) / multiplier} ${label}`;
-    }
+    const meta = { ...metadata, supportedFormats: supportedFormats() };
+    const formatted = formatWithHandler(
+        handler,
+        item.value,
+        item.operator ?? '',
+        item.unitMultiplier,
+        meta,
+        isArrayType
+    );
 
-    if (['added_at', 'created_at', 'modified_at'].includes(key)) {
-        if (Array.isArray(val)) {
-            return `${formatToDisplay(String(val[0]))} to ${formatToDisplay(String(val[1]))}`;
-        }
-        return formatToDisplay(String(val));
-    }
+    if (formatted) return formatted;
 
-    if (key === 'folder') {
-        return (
-            metadata.locations.find(location => String(location.id) === String(val))?.name ||
-            String(val)
-        );
-    }
-
-    if (key === 'tags') {
-        return metadata.tags.find(tag => String(tag.id) === String(val))?.name || String(val);
-    }
-
-    if (Array.isArray(val)) {
-        return `${val[0]} to ${val[1]}`;
-    }
-
-    return String(val);
+    const arr = item.value as unknown[];
+    return isArrayType ? `${arr[0]} to ${arr[1]}` : String(item.value);
 };
 
 export const getHierarchicalTags = (
