@@ -1,5 +1,5 @@
 import { Component, createMemo, createSignal, onMount } from 'solid-js';
-import { Folder, FolderOpen, Plus } from 'lucide-solid';
+import { Folder as FolderIcon, FolderOpen as FolderOpenIcon, Plus } from 'lucide-solid';
 import { useMetadata, useFilters, useNotification } from '../../../core/hooks';
 import { TreeView, TreeNode } from '../../ui/TreeView';
 import { SidebarPanel } from '../../ui/SidebarPanel';
@@ -9,9 +9,11 @@ import { FolderDeleteModal } from './FolderDeleteModal';
 import { FolderContextMenu } from './FolderContextMenu';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-// import { libraryActions } from "../../../core/store/libraryStore";
 import './folder-tree-sidebar-panel.css';
 
+/**
+ * Metadata for folder nodes to facilitate domain operations.
+ */
 interface FolderNodeData {
     folderId: number;
     path: string;
@@ -19,109 +21,118 @@ interface FolderNodeData {
     isRoot: boolean;
 }
 
+/**
+ * Sidebar panel for browsing the file system hierarchy linked to the library.
+ */
 export const FolderTreeSidebarPanel: Component = () => {
     const metadata = useMetadata();
     const filters = useFilters();
     const notification = useNotification();
 
+    // --- Component State ---
     const [expandedIds, setExpandedIds] = createSignal<Set<string | number>>(new Set());
     const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
     const [folderToDelete, setFolderToDelete] = createSignal<FolderNodeData | null>(null);
     const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
     const [contextMenuPos, setContextMenuPos] = createSignal({ x: 0, y: 0 });
     const [contextMenuNode, setContextMenuNode] = createSignal<TreeNode | null>(null);
-    const [isDragOver] = createSignal(false);
 
-    // Load/Save expansion state
+    // --- Lifecycle: Persistence ---
     onMount(() => {
-        const saved = localStorage.getItem('mundam_folder_expanded');
-        if (saved) {
+        const savedExpansionState = localStorage.getItem('mundam_folder_expanded');
+        if (savedExpansionState) {
             try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) setExpandedIds(new Set(parsed));
-            } catch (e) {
-                console.error(e);
+                const parsedIds = JSON.parse(savedExpansionState);
+                if (Array.isArray(parsedIds)) {
+                    setExpandedIds(new Set(parsedIds));
+                }
+            } catch (error) {
+                console.error('Failed to parse saved folder expansion state:', error);
             }
         }
     });
 
-    const toggleExpansion = (id: string | number) => {
-        setExpandedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            localStorage.setItem('mundam_folder_expanded', JSON.stringify(Array.from(next)));
-            return next;
-        });
+    const persistExpansionState = (nextSet: Set<string | number>) => {
+        setExpandedIds(nextSet);
+        localStorage.setItem('mundam_folder_expanded', JSON.stringify(Array.from(nextSet)));
     };
 
-    // Build tree structure
-    const folderTree = createMemo(() => {
+    const toggleExpansion = (id: string | number) => {
+        const next = new Set(expandedIds());
+        if (next.has(id)) {
+            next.delete(id);
+        } else {
+            next.add(id);
+        }
+        persistExpansionState(next);
+    };
+
+    // --- Tree Construction ---
+    const folderTreeHierarchy = createMemo(() => {
         const allFolders = metadata.locations || [];
-        const isRecursive = filters.folderRecursiveView;
-        const counts = isRecursive
+        const isRecursiveMode = filters.folderRecursiveView;
+        const counts = isRecursiveMode
             ? metadata.stats.folder_counts_recursive
             : metadata.stats.folder_counts;
 
-        // Map ID -> TreeNode
         const nodeMap = new Map<number, TreeNode>();
-        const roots: TreeNode[] = [];
+        const rootNodes: TreeNode[] = [];
 
-        // 1. Create all nodes
-        for (const f of allFolders) {
-            nodeMap.set(f.id, {
-                id: `folder-${f.id}`,
-                label: f.name,
+        // Phase 1: Create all nodes
+        for (const folder of allFolders) {
+            nodeMap.set(folder.id, {
+                id: `folder-${folder.id}`,
+                label: folder.name,
                 children: [],
                 data: {
-                    folderId: f.id,
-                    path: f.path,
-                    name: f.name,
-                    isRoot: f.is_root
+                    folderId: folder.id,
+                    path: folder.path,
+                    name: folder.name,
+                    isRoot: folder.is_root
                 } as FolderNodeData,
-                icon: f.is_root ? FolderOpen : Folder,
+                icon: folder.is_root ? FolderOpenIcon : FolderIcon,
                 badge: (
-                    <CountBadge showZero={true} count={counts.get(f.id) || 0} variant="secondary" />
+                    <CountBadge
+                        showZero={true}
+                        count={counts.get(folder.id) || 0}
+                        variant="secondary"
+                    />
                 )
             });
         }
 
-        // 2. Build Hierarchy
-        for (const f of allFolders) {
-            const node = nodeMap.get(f.id)!;
-            if (f.parent_id && nodeMap.has(f.parent_id)) {
-                nodeMap.get(f.parent_id)!.children!.push(node);
+        // Phase 2: Build hierarchy
+        for (const folder of allFolders) {
+            const node = nodeMap.get(folder.id)!;
+            if (folder.parent_id && nodeMap.has(folder.parent_id)) {
+                nodeMap.get(folder.parent_id)!.children!.push(node);
             } else {
-                // No parent (or parent not found/loaded) -> treat as root for display
-                roots.push(node);
+                rootNodes.push(node);
             }
         }
 
-        // Sort roots?
-        roots.sort((a, b) => a.label.localeCompare(b.label));
-
-        return roots;
+        return rootNodes.sort((a, b) => a.label.localeCompare(b.label));
     });
 
     const handleAddFolder = async () => {
         try {
-            const selected = await open({
+            const selectedPath = await open({
                 directory: true,
                 multiple: false,
                 title: 'Select folder to add to library'
             });
 
-            if (selected) {
-                await invoke('add_location', { path: selected });
+            if (selectedPath) {
+                await invoke('add_location', { path: selectedPath });
                 await metadata.loadLocations();
                 await metadata.loadStats();
                 notification.success(
                     'Folder Linked',
-                    `Monitoring "${selected.split(/[\\/]/).pop()}"`
+                    `Monitoring "${selectedPath.split(/[\\/]/).pop()}"`
                 );
             }
-        } catch (err) {
-            console.error('Failed to add folder:', err);
+        } catch (error) {
+            console.error('Failed to add folder:', error);
             notification.error('Failed to Link Folder');
         }
     };
@@ -131,24 +142,14 @@ export const FolderTreeSidebarPanel: Component = () => {
         filters.setFolder(data.folderId);
     };
 
-    const handleContextMenu = (e: MouseEvent, node: TreeNode) => {
-        e.preventDefault();
+    const handleContextMenu = (event: MouseEvent, node: TreeNode) => {
         setContextMenuNode(node);
-        setContextMenuPos({ x: e.clientX, y: e.clientY });
+        setContextMenuPos({ x: event.clientX, y: event.clientY });
         setContextMenuOpen(true);
     };
 
-    // const handleDeleted = async () => {
-    //     await metadata.loadLocations();
-    //     await metadata.loadStats();
-    //     if (filters.selectedFolderId === folderToDelete()?.folderId) {
-    //         filters.setFolder(null);
-    //     }
-    //     libraryActions.refreshImages(true);
-    // };
-
-    // Get selected IDs for tree
-    const selectedIds = createMemo(() => {
+    // --- Selection State ---
+    const activeSelectionIds = createMemo(() => {
         const ids: (string | number)[] = [];
         if (filters.selectedFolderId) {
             ids.push(`folder-${filters.selectedFolderId}`);
@@ -160,7 +161,7 @@ export const FolderTreeSidebarPanel: Component = () => {
         <>
             <SidebarPanel
                 title="Folders"
-                class={`panel-fluid ${isDragOver() ? 'drag-over' : ''}`}
+                class="panel-fluid"
                 actions={
                     <Button
                         variant="ghost"
@@ -172,15 +173,17 @@ export const FolderTreeSidebarPanel: Component = () => {
                     </Button>
                 }
             >
-                {folderTree().length > 0 ? (
+                {folderTreeHierarchy().length > 0 ? (
                     <TreeView
-                        items={folderTree()}
+                        items={folderTreeHierarchy()}
                         onSelect={handleSelect}
-                        selectedIds={selectedIds()}
+                        selectedIds={activeSelectionIds()}
                         onContextMenu={handleContextMenu}
                         expandedIds={expandedIds()}
                         onToggle={toggleExpansion}
                         draggable={false}
+                        dragType="FOLDER"
+                        acceptedDragTypes={[]}
                     />
                 ) : (
                     <div class="sidebar-empty-state">

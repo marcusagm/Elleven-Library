@@ -1,103 +1,116 @@
 import { Component, createMemo, createSignal, onMount } from 'solid-js';
-import { Tag, Plus } from 'lucide-solid';
+import { Tag as TagIcon, Plus } from 'lucide-solid';
 import { useMetadata, useFilters, useNotification } from '../../../core/hooks';
 import { TreeView, TreeNode } from '../../ui/TreeView';
 import { SidebarPanel } from '../../ui/SidebarPanel';
 import { Button } from '../../ui/Button';
 import { CountBadge } from '../../ui/CountBadge';
-import { dndRegistry, setDragItem } from '../../../core/dnd';
+import { dndRegistry, setDragItem, DragItem } from '../../../core/dnd';
 import { tagService } from '../../../lib/tags';
 import { TagContextMenu } from './TagContextMenu';
 import { TagDeleteModal } from './TagDeleteModal';
 
+/**
+ * Sidebar panel for managing the hierarchical tag system.
+ * Integrates metadata state with the pure TreeView component.
+ */
 export const TagTreeSidebarPanel: Component = () => {
     const metadata = useMetadata();
     const filters = useFilters();
     const notification = useNotification();
     const [isTagHeaderDragOver, setIsTagHeaderDragOver] = createSignal(false);
 
-    // Context Menu State
+    // --- Component State ---
     const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
     const [contextMenuPos, setContextMenuPos] = createSignal({ x: 0, y: 0 });
     const [contextMenuNode, setContextMenuNode] = createSignal<TreeNode | null>(null);
 
-    // Selection & Editing State
     const [editingId, setEditingId] = createSignal<number | null>(null);
     const [expandedIds, setExpandedIds] = createSignal<Set<string | number>>(new Set());
 
-    // Delete Modal State
     const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
     const [nodeToDelete, setNodeToDelete] = createSignal<TreeNode | null>(null);
 
-    // Load/Save expansion state
+    // --- Lifecycle: Persistence ---
     onMount(() => {
-        const saved = localStorage.getItem('mundam_tree_expanded');
-        if (saved) {
+        const savedExpansionState = localStorage.getItem('mundam_tree_expanded');
+        if (savedExpansionState) {
             try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) setExpandedIds(new Set(parsed));
-            } catch (e) {
-                console.error(e);
+                const parsedIds = JSON.parse(savedExpansionState);
+                if (Array.isArray(parsedIds)) {
+                    setExpandedIds(new Set(parsedIds));
+                }
+            } catch (error) {
+                console.error('Failed to parse saved expansion state:', error);
             }
         }
     });
 
+    const persistExpansionState = (nextSet: Set<string | number>) => {
+        setExpandedIds(nextSet);
+        localStorage.setItem('mundam_tree_expanded', JSON.stringify(Array.from(nextSet)));
+    };
+
     const toggleExpansion = (id: string | number) => {
-        setExpandedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            localStorage.setItem('mundam_tree_expanded', JSON.stringify(Array.from(next)));
-            return next;
-        });
+        const next = new Set(expandedIds());
+        if (next.has(id)) {
+            next.delete(id);
+        } else {
+            next.add(id);
+        }
+        persistExpansionState(next);
     };
 
     const expandNode = (id: string | number) => {
-        setExpandedIds(prev => {
-            if (prev.has(id)) return prev;
-            const next = new Set(prev);
-            next.add(id);
-            localStorage.setItem('mundam_tree_expanded', JSON.stringify(Array.from(next)));
-            return next;
-        });
+        if (expandedIds().has(id)) return;
+        const next = new Set(expandedIds());
+        next.add(id);
+        persistExpansionState(next);
     };
 
-    // Tree building
-    const tagTree = createMemo(() => {
-        const tags = metadata.tags || [];
-        const map = new Map<number, TreeNode>();
-        const roots: TreeNode[] = [];
+    // --- Tree Construction ---
+    const tagTreeHierarchy = createMemo(() => {
+        const allTags = metadata.tags || [];
+        const nodeMap = new Map<number, TreeNode>();
+        const rootNodes: TreeNode[] = [];
 
-        tags.forEach(t => {
-            map.set(t.id, {
-                id: t.id,
-                label: t.name,
+        // Phase 1: Create all nodes
+        allTags.forEach(tag => {
+            nodeMap.set(tag.id, {
+                id: tag.id,
+                label: tag.name,
                 children: [],
-                data: t,
-                icon: Tag,
-                iconColor: t.color || undefined,
+                data: tag,
+                icon: TagIcon,
+                iconColor: tag.color || undefined,
                 badge: (
-                    <CountBadge showZero={true} count={metadata.stats.tag_counts.get(t.id) || 0} />
+                    <CountBadge
+                        showZero={true}
+                        count={metadata.stats.tag_counts.get(tag.id) || 0}
+                    />
                 )
             });
         });
 
-        tags.forEach(t => {
-            if (t.parent_id && map.has(t.parent_id)) {
-                map.get(t.parent_id)!.children!.push(map.get(t.id)!);
+        // Phase 2: Build hierarchy relationships
+        allTags.forEach(tag => {
+            if (tag.parent_id && nodeMap.has(tag.parent_id)) {
+                nodeMap.get(tag.parent_id)!.children!.push(nodeMap.get(tag.id)!);
             } else {
-                roots.push(map.get(t.id)!);
+                rootNodes.push(nodeMap.get(tag.id)!);
             }
         });
-        return roots;
+
+        return rootNodes;
     });
 
-    const getUniqueName = (baseStats: string) => {
-        const tags = metadata.tags || [];
-        let name = baseStats;
+    // --- Domain Logic Handlers ---
+    const getUniqueTagName = (baseName: string) => {
+        const existingTags = metadata.tags || [];
+        let name = baseName;
         let counter = 1;
-        while (tags.some(t => t.name === name)) {
-            name = `${baseStats} (${counter})`;
+        while (existingTags.some(tag => tag.name === name)) {
+            name = `${baseName} (${counter})`;
             counter++;
         }
         return name;
@@ -106,12 +119,12 @@ export const TagTreeSidebarPanel: Component = () => {
     const handleCreateTag = async () => {
         if (editingId() !== null) return;
         try {
-            const name = getUniqueName('New Tag');
-            const id = await tagService.createTag(name);
+            const name = getUniqueTagName('New Tag');
+            const newTagId = await tagService.createTag(name);
             await metadata.loadTags();
-            setEditingId(id);
-        } catch (err) {
-            console.error(err);
+            setEditingId(newTagId);
+        } catch (error) {
+            console.error('Failed to create tag:', error);
             notification.error('Failed to Create Tag');
         }
     };
@@ -119,23 +132,25 @@ export const TagTreeSidebarPanel: Component = () => {
     const handleCreateChildTag = async (parentId: number) => {
         try {
             expandNode(parentId);
-            const name = getUniqueName('New Tag');
-            const id = await tagService.createTag(name, parentId);
+            const name = getUniqueTagName('New Tag');
+            const newTagId = await tagService.createTag(name, parentId);
             await metadata.loadTags();
-            setEditingId(id);
-        } catch (err) {
-            console.error(err);
+            setEditingId(newTagId);
+        } catch (error) {
+            console.error('Failed to create child tag:', error);
             notification.error('Failed to Create Child Tag');
         }
     };
 
-    const handleRename = async (node: TreeNode, newName: string) => {
+    const handleRenameTag = async (node: TreeNode, newName: string) => {
         if (!newName || !newName.trim() || newName === node.label) {
             setEditingId(null);
             return;
         }
+
         const oldName = node.label;
         const isPlaceholder = /^New Tag( \(\d+\))?$/.test(oldName);
+
         try {
             await tagService.updateTag(Number(node.id), newName);
             await metadata.loadTags();
@@ -145,62 +160,73 @@ export const TagTreeSidebarPanel: Component = () => {
             } else {
                 notification.success('Tag Renamed', `Changed "${oldName}" to "${newName}"`);
             }
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            console.error('Failed to rename tag:', error);
             notification.error('Failed to Rename Tag');
+        } finally {
+            setEditingId(null);
         }
-        setEditingId(null);
     };
 
-    const getAllDescendants = (node: TreeNode): number[] => {
-        let ids: number[] = [];
-        if (node.children) {
-            node.children.forEach(child => {
-                ids.push(Number(child.id));
-                ids = [...ids, ...getAllDescendants(child)];
-            });
-        }
-        return ids;
-    };
-
-    const handleContextMenu = (e: MouseEvent, node: TreeNode) => {
-        e.preventDefault();
-        setContextMenuPos({ x: e.clientX, y: e.clientY });
+    const handleContextMenu = (event: MouseEvent, node: TreeNode) => {
+        setContextMenuPos({ x: event.clientX, y: event.clientY });
         setContextMenuNode(node);
         setContextMenuOpen(true);
     };
 
-    const handleOpenDeleteModal = (node: TreeNode) => {
-        setNodeToDelete(node);
-        setDeleteModalOpen(true);
-    };
+    /**
+     * Domain-specific validation for tag drops.
+     * Prevents dropping a tag into its own descendant hierarchy.
+     */
+    const isValidTagDrop = (draggedItem: DragItem, targetNode: TreeNode): boolean => {
+        if (draggedItem.type !== 'TAG') return true; // Images can be dropped anywhere
 
-    const handleMoveTag = async (draggedIdStr: string | number, targetIdStr: string | number) => {
-        const draggedId = Number(draggedIdStr);
-        const targetId = Number(targetIdStr);
-        if (draggedId === targetId) return;
+        const draggedId = Number(draggedItem.payload.id);
+        const targetId = Number(targetNode.id);
 
-        const findNodeLocal = (nodes: TreeNode[], id: number): TreeNode | null => {
+        /** Recursive check for descendants */
+        const isDescendant = (node: TreeNode, searchId: number): boolean => {
+            if (node.children) {
+                for (const child of node.children) {
+                    if (Number(child.id) === searchId) return true;
+                    if (isDescendant(child, searchId)) return true;
+                }
+            }
+            return false;
+        };
+
+        // Find the dragged node in our local tree to check its children
+        const findDraggedNode = (nodes: TreeNode[]): TreeNode | null => {
             for (const node of nodes) {
-                if (Number(node.id) === id) return node;
+                if (Number(node.id) === draggedId) return node;
                 if (node.children) {
-                    const found = findNodeLocal(node.children, id);
+                    const found = findDraggedNode(node.children);
                     if (found) return found;
                 }
             }
             return null;
         };
 
-        const draggedNode = findNodeLocal(tagTree(), draggedId);
-        if (draggedNode && getAllDescendants(draggedNode).includes(targetId)) return;
+        const node = findDraggedNode(tagTreeHierarchy());
+        return !node || !isDescendant(node, targetId);
+    };
 
+    const handleRootDrop = async (event: DragEvent) => {
+        event.preventDefault();
+        setIsTagHeaderDragOver(false);
         try {
-            await tagService.updateTag(draggedId, undefined, undefined, Number(targetId) || null);
-            await metadata.loadTags();
-            expandNode(targetId);
-        } catch (err) {
-            console.error('Failed to move tag:', err);
+            const jsonData = event.dataTransfer?.getData('application/json');
+            if (jsonData) {
+                const item = JSON.parse(jsonData);
+                const strategy = dndRegistry.get('TAG');
+                if (strategy && item.type === 'TAG') {
+                    await strategy.onDrop(item, 'root');
+                }
+            }
+        } catch (error) {
+            console.error('Root tag drop failed:', error);
         }
+        setDragItem(null);
     };
 
     return (
@@ -213,42 +239,31 @@ export const TagTreeSidebarPanel: Component = () => {
                 </Button>
             }
             contentClass={isTagHeaderDragOver() ? 'drag-over' : ''}
-            onDragOver={(e: DragEvent) => {
+            onDragOver={(event: DragEvent) => {
                 const strategy = dndRegistry.get('TAG');
-                if (strategy && strategy.onDragOver) {
-                    e.preventDefault();
-                    (e.dataTransfer as DataTransfer).dropEffect = 'move';
+                if (strategy) {
+                    event.preventDefault();
+                    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
                     setIsTagHeaderDragOver(true);
                 }
             }}
             onDragLeave={() => setIsTagHeaderDragOver(false)}
-            onDrop={async (e: DragEvent) => {
-                e.preventDefault();
-                setIsTagHeaderDragOver(false);
-                try {
-                    const json = e.dataTransfer?.getData('application/json');
-                    if (json) {
-                        const item = JSON.parse(json);
-                        const strategy = dndRegistry.get('TAG');
-                        if (strategy && item.type === 'TAG') await strategy.onDrop(item, 'root');
-                    }
-                } catch (err) {
-                    console.error(err);
-                }
-                setDragItem(null);
-            }}
+            onDrop={handleRootDrop}
         >
             <TreeView
-                items={tagTree()}
+                items={tagTreeHierarchy()}
                 onSelect={node => filters.toggleTag(Number(node.id))}
                 selectedIds={filters.selectedTags}
                 onContextMenu={handleContextMenu}
                 editingId={editingId()}
-                onRename={handleRename}
+                onRename={handleRenameTag}
                 onEditCancel={() => setEditingId(null)}
                 expandedIds={expandedIds()}
                 onToggle={toggleExpansion}
-                onMove={handleMoveTag}
+                draggable={true}
+                dragType="TAG"
+                acceptedDragTypes={['TAG', 'IMAGE']}
+                isValidDrop={isValidTagDrop}
             />
 
             <TagContextMenu
@@ -259,7 +274,10 @@ export const TagTreeSidebarPanel: Component = () => {
                 onClose={() => setContextMenuOpen(false)}
                 onAddChild={handleCreateChildTag}
                 onRename={id => setEditingId(id)}
-                onDelete={handleOpenDeleteModal}
+                onDelete={node => {
+                    setNodeToDelete(node);
+                    setDeleteModalOpen(true);
+                }}
             />
 
             <TagDeleteModal

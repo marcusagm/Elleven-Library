@@ -3,7 +3,7 @@
 **Data:** 2026-02-19  
 **Escopo:** Frontend (Solid + TS), Backend (Rust + Tauri), arquitetura, performance, confiabilidade, segurança, DX e usabilidade DAM.  
 **Base de avaliação:** código atual + guias em `docs/guidelines`.  
-**Última atualização:** 2026-02-23 (sprint de qualidade frontend)
+**Última atualização:** 2026-02-24 (refatoração TreeView e tipagem generificada)
 
 ---
 
@@ -46,8 +46,8 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 
 ### 3.1 Frontend (Solid + TS)
 Principais desvios em relação ao guia:
-- [PARCIAL] Uso significativo de `any` em áreas críticas — *reduzido criticamente via sprints de qualidade. Stores críticos, components de busca avançada e strategies estão 100% limpos. Restam pequenos UI components (`DropdownMenu`, `Input`, `TreeView`, `ContextMenu`).*
-- [RESOLVIDO] Componentes e hooks extensos demais — *Totalmente modularizados. `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, ecossistema `AdvancedSearchModal.tsx`, `useVideoPlayer.ts` e `Table.tsx` perfeitamente otimizados.*
+- [PARCIAL] Uso significativo de `any` em áreas críticas — *reduzido criticamente via sprints de qualidade. Stores críticos, components de busca avançada e strategies estão 100% limpos. Restam pequenos UI components (`DropdownMenu`, `Input`, `ContextMenu`).*
+- [RESOLVIDO] Componentes e hooks extensos demais — *Totalmente modularizados. `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, ecossistema `AdvancedSearchModal.tsx`, `useVideoPlayer.ts`, `Table.tsx` e `TreeView.tsx` perfeitamente otimizados.*
 - [RESOLVIDO] Presença de `console.log` em runtime de produção — *removidos em 2026-02-23. Restam apenas `console.error`/`console.warn` legítimos.*
 - Ausência de script de lint no `package.json` apesar de orientação explícita no guia.
 
@@ -76,7 +76,7 @@ Principais desvios:
    Parte da regra de negócio está pulverizada em stores e componentes, em vez de centralizada em “application services”/“use cases”.
 
 3. **Módulos “god files”**  
-   Ex.: `DesignSystemGuide.tsx`, `streaming/server.rs`, `indexer/watcher.rs`, `formats/definitions.rs` — aumentam custo de manutenção e risco de regressão. `AdvancedSearchModal.tsx` era um ofensor e foi curado nesta frente.
+   Ex.: `DesignSystemGuide.tsx`, `streaming/server.rs`, `indexer/watcher.rs`, `formats/definitions.rs` — aumentam custo de manutenção e risco de regressão. `AdvancedSearchModal.tsx`, `Table.tsx` e `TreeView.tsx` foram curados nesta frente.
 
 4. **Ausência de governança arquitetural automatizada**  
    Não há evidência de checks automáticos para complexidade/camadas/dependências em CI (ex.: lint estrito + clippy + regras de import boundaries).
@@ -88,7 +88,7 @@ Principais desvios:
 1. **[PARCIAL] `any` disseminado (TS)**  
    ~~Reduz segurança de tipos e dificulta refatorações seguras.~~
    - *Progresso em 2026-02-23: Eliminados em stores críticos, strategies e renderers. Restam ~30 ocorrências em UI components e `AdvancedSearchModal`. Ver `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`.*
-   - *Progresso em 2026-02-24: Eliminados em fluxos chave, buscas dinâmicas e no orquestrador de `Table.tsx` usando genéricos dedicados. Ver `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md` e `docs/plans/2026-02-24_15:51-table-component-refactoring.md`.*
+   - *Progresso em 2026-02-24: Eliminados em fluxos chave, buscas dinâmicas, no orquestrador de `Table.tsx` e na generificação profunda de `TreeView.tsx` usando genéricos dedicados e bridges seguras. Ver `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md`, `docs/plans/2026-02-24_15:51-table-component-refactoring.md` e `docs/plans/2026-02-24_19:09-tree-view-refactoring.md`.*
 
 2. **[RESOLVIDO] Logging de debug em produção** (`console.log`)  
    ~~Polui runtime, reduz sinal/ruído e pode expor dados/fluxos internos.~~  
@@ -196,7 +196,7 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 ### Fase 1 — Estruturação arquitetural (2–4 semanas)
 1. [ ] Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos.
 2. [✓] Quebrar arquivos >300 linhas em módulos por responsabilidade. *(Arquitetura de refatoração avançada foi aplicada em `hls-player`, metadata/buscas, `useVideoPlayer.ts` e `Table.tsx` em 2026-02-24).*
-3. [✓] Eliminar `any` em fluxos principais (busca, metadata, eventos, tabelas). *(Com a modularização de `Table.tsx`, o core tabular está 100% tipado).*
+3. [✓] Eliminar `any` em fluxos principais (busca, metadata, eventos, tabelas, árvores). *(Com a modularização de `Table.tsx` e `TreeView.tsx`, o core estrutural está tipado).*
 4. [ ] Padronizar logging estruturado (níveis, contexto, correlação).
 
 ### Fase 2 — Performance e escala DAM (4–8 semanas)

@@ -2,7 +2,7 @@
 
 **Data:** 20 de Fevereiro de 2026
 **Status:** Planejamento (parcialmente em andamento)  
-**Última atualização:** 2026-02-23 — Progresso parcial na seção 5.1 (tipagem e modularização) via sprint de qualidade frontend. Ver `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`.
+**Última atualização:** 2026-02-24 — Progresso total na seção 5.1 (tipagem e modularização de Table e TreeView). Ver planos em `docs/plans/`.
 **Baseado em:** `pendencias_consolidadas.md`
 
 Este documento elabora um plano detalhado de implementação para todas as pendências ativas mapeadas nos relatórios recentes do projeto **Mundam**. Para manter a manutenibilidade, o plano foi segmentado em partes menores, de modo que cada tópico representa uma evolução lógica, focada em recursos específicos, melhorias de arquitetura e otimizações de performance.
@@ -67,8 +67,8 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 
 ### [~] 5.1 Refatoração Reativa: Actions e Store *(progresso parcial — 2026-02-24)*
 *   **Concluído:** Modularização de god files concluída (incluindo `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, `useVideoPlayer.ts` e `AdvancedSearchModal.tsx`). Eliminação de `any` em stores críticos. Remoção de `console.log` de debug, rewrite do `TagDropStrategy.ts`. Build TypeScript com 0 erros.
-*   **Pendente:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI. Restam `any` apenas em `DropdownMenu.tsx`, `Input.tsx`, `TreeView.tsx`, `ContextMenu.tsx`.
-*   *Detalhes: `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`, `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md` e `docs/plans/2026-02-24_15:51-table-component-refactoring.md`*
+*   **Pendente:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI. Restam `any` apenas em `DropdownMenu.tsx`, `Input.tsx`, `ContextMenu.tsx`.
+*   *Detalhes: `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`, `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md`, `docs/plans/2026-02-24_15:51-table-component-refactoring.md` e `docs/plans/2026-02-24_19:09-tree-view-refactoring.md`*
 
 
 
