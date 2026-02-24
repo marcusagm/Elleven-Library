@@ -1,28 +1,44 @@
-import { For } from 'solid-js';
+import { For, JSX } from 'solid-js';
 import { cn } from '../../../lib/utils';
 import type { Column } from './types';
 
-interface TableRowProps<T extends Record<string, unknown>> {
+/**
+ * Properties for the TableRow component.
+ */
+interface TableRowProps<T> {
+    /** The actual data item representing this row */
     item: T;
+    /** The index of this item in the full data collection */
     realIndex: number;
+    /** Whether this specific row is selected */
     isSelected: boolean;
+    /** Whether this specific row is currently focused via keyboard or click */
     isFocused: boolean;
+    /** Fixed height of the row in pixels */
     rowHeight: number;
+    /** Total height of the table header to offset positioning */
     headerHeight: number;
+    /** Set of column definitions used to render cells */
     columns: Column<T>[];
-    onClick: (e: MouseEvent) => void;
+    /** Triggered when the row is clicked (single click) */
+    onClick: (event: MouseEvent) => void;
+    /** Triggered when the row is double-clicked */
     onDblClick: () => void;
-    onMount?: (el: HTMLElement, item: T) => void;
+    /** Callback triggered when the row DOM element is first mounted */
+    onMount?: (element: HTMLElement, item: T) => void;
 }
 
 /**
  * Renders a single virtualized row within the table grid.
- * Handles row-level positioning, selection/focus states, and cell rendering.
+ *
+ * Handles row-level positioning using absolute transforms, selection/focus states,
+ * and iterates through column definitions to render individual cells.
  *
  * @template T - The record type for the table row data.
  * @param {TableRowProps<T>} props - Row configuration and data.
+ * @returns {JSX.Element} The rendered table row container.
  */
-export function TableRow<T extends Record<string, unknown>>(props: TableRowProps<T>) {
+export function TableRow<T>(props: TableRowProps<T>) {
     return (
         <div
             ref={element => props.onMount?.(element, props.item)}
@@ -35,10 +51,10 @@ export function TableRow<T extends Record<string, unknown>>(props: TableRowProps
                 height: `${props.rowHeight}px`,
                 transform: `translate3d(0, ${props.headerHeight + props.realIndex * props.rowHeight}px, 0)`
             }}
-            onClick={e => props.onClick(e)}
+            onClick={event => props.onClick(event)}
             onDblClick={() => props.onDblClick()}
             role="row"
-            aria-rowindex={props.realIndex + 2} // +1 for index and +1 for header
+            aria-rowindex={props.realIndex + 2} // +1 for 1-based index and +1 for header offset
             aria-selected={props.isSelected}
         >
             <For each={props.columns}>
@@ -64,7 +80,7 @@ export function TableRow<T extends Record<string, unknown>>(props: TableRowProps
                         <div class="ui-table-grid-cell-content">
                             {column.cell
                                 ? column.cell(props.item)
-                                : (props.item[column.accessorKey as keyof T] as never)}
+                                : (props.item[column.accessorKey as keyof T] as JSX.Element)}
                         </div>
                     </div>
                 )}

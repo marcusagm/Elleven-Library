@@ -7,17 +7,25 @@ import type { LucideProps } from 'lucide-solid';
  *
  * @template T - The record type for the table row.
  */
-export interface Column<T extends Record<string, unknown>> {
+export interface Column<T> {
     /** The text or element to display in the header */
     header: string | JSX.Element;
     /** The key in the data object to access the value */
     accessorKey: keyof T | string;
     /** Optional width (e.g. '100px', '20%', or 150) */
     width?: string | number;
+    /** Minimum width allowed when resizing */
+    minWidth?: number;
+    /** Maximum width allowed when resizing */
+    maxWidth?: number;
     /** Optional custom cell renderer */
     cell?: (item: T) => JSX.Element;
     /** Whether the column is sortable */
     sortable?: boolean;
+    /** Whether the column is resizable */
+    resizable?: boolean;
+    /** Whether the user can toggle the visibility of this column (default: true) */
+    toggleable?: boolean;
     /** Whether the column is currently hidden */
     hidden?: boolean;
     /** Optional alignment of cell content */
@@ -37,7 +45,7 @@ export type SortOrder = 'asc' | 'desc' | null;
  *
  * @template T - The record type for the table data.
  */
-export interface TableProps<T extends Record<string, unknown>> {
+export interface TableProps<T> {
     /** Array of data items to display */
     data: T[];
     /** Column definitions */
@@ -54,6 +62,10 @@ export interface TableProps<T extends Record<string, unknown>> {
     selectedIds?: (string | number)[];
     /** Callback when column sort state changes */
     onSort?: (key: string, order: SortOrder) => void;
+    /** Callback when a column is resized */
+    onColumnResize?: (key: string, width: number) => void;
+    /** Callback when a column visibility is toggled */
+    onColumnVisibilityChange?: (key: string, visible: boolean) => void;
     /**
      * Callback when a row is clicked.
      * @param item - The clicked data item.

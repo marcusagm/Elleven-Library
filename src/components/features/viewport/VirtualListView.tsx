@@ -1,13 +1,19 @@
-import { Component, createMemo, Show } from 'solid-js';
+import { Component, createMemo, Show, createSignal, createEffect } from 'solid-js';
 import { Table, Column } from '../../ui/Table';
 import { useLibrary, useSelection, useViewport, useFilters } from '../../../core/hooks';
 import { type SortField } from '../../../core/store/filterStore';
 import { ImageItem } from '../../../types';
 import { formatFileSize, formatDate } from '../../../utils/format';
 import { assetDnD } from '../../../core/dnd';
-import { ImageOff } from 'lucide-solid';
 import { EmptyState } from './EmptyState';
 import { createConditionalScope } from '../../../core/input';
+
+const COLUMN_STORAGE_KEY = 'mundam-viewport-columns-v1';
+
+interface ColumnConfig {
+    width: number;
+    hidden: boolean;
+}
 
 export const VirtualListView: Component = () => {
     const lib = useLibrary();
@@ -25,6 +31,44 @@ export const VirtualListView: Component = () => {
         return `thumb://localhost/${normalizedPath}`;
     };
 
+    const [columnConfigs, setColumnConfigs] = createSignal<Record<string, ColumnConfig>>(
+        (() => {
+            const saved = localStorage.getItem(COLUMN_STORAGE_KEY);
+            try {
+                return saved ? JSON.parse(saved) : {};
+            } catch {
+                return {};
+            }
+        })()
+    );
+
+    createEffect(() => {
+        localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(columnConfigs()));
+    });
+
+    const updateColumnConfig = (key: string, updates: Partial<ColumnConfig>) => {
+        setColumnConfigs(prev => {
+            const current =
+                prev[key] ||
+                ({
+                    width: columns().find(col => col.accessorKey === key)?.width || 150,
+                    hidden: false
+                } as ColumnConfig);
+            return {
+                ...prev,
+                [key]: { ...current, ...updates }
+            };
+        });
+    };
+
+    const getColumnWidth = (key: string, defaultWidth: number) => {
+        return columnConfigs()[key]?.width ?? defaultWidth;
+    };
+
+    const isColumnHidden = (key: string, defaultHidden: boolean) => {
+        return columnConfigs()[key]?.hidden ?? defaultHidden;
+    };
+
     const listThumbWidth = createMemo(() => Math.floor(filters.thumbSize / 5));
     const listThumbHeight = createMemo(() => Math.floor(listThumbWidth() * 0.75));
     const rowHeight = createMemo(() => Math.max(32, listThumbHeight() + 8));
@@ -33,8 +77,10 @@ export const VirtualListView: Component = () => {
         {
             header: '',
             accessorKey: 'thumbnail_path',
-            width: listThumbWidth() + 16,
+            width: getColumnWidth('thumbnail_path', listThumbWidth() + 16),
             align: 'center',
+            resizable: true,
+            toggleable: false,
             cell: item => (
                 <div
                     class="list-view-thumbnail-container"
@@ -58,13 +104,17 @@ export const VirtualListView: Component = () => {
             header: 'Name',
             accessorKey: 'filename',
             sortable: true,
-            width: 300
+            resizable: true,
+            toggleable: false,
+            width: getColumnWidth('filename', 300)
         },
         {
             header: 'Rating',
             accessorKey: 'rating',
             sortable: true,
-            width: 100,
+            resizable: true,
+            width: getColumnWidth('rating', 100),
+            hidden: isColumnHidden('rating', false),
             align: 'center',
             cell: item => (
                 <span class="list-view-rating-cell">
@@ -76,7 +126,9 @@ export const VirtualListView: Component = () => {
             header: 'Type',
             accessorKey: 'format',
             sortable: true,
-            width: 80,
+            resizable: true,
+            width: getColumnWidth('format', 80),
+            hidden: isColumnHidden('format', false),
             align: 'center',
             cell: item => (
                 <span class="list-view-type-cell">{item.format?.toUpperCase() || 'N/A'}</span>
@@ -86,14 +138,18 @@ export const VirtualListView: Component = () => {
             header: 'Size',
             accessorKey: 'size',
             sortable: true,
-            width: 100,
+            resizable: true,
+            width: getColumnWidth('size', 100),
+            hidden: isColumnHidden('size', false),
             align: 'right',
             cell: item => <span>{formatFileSize(item.size)}</span>
         },
         {
             header: 'Dimensions',
             accessorKey: 'width',
-            width: 120,
+            resizable: true,
+            width: getColumnWidth('width', 120),
+            hidden: isColumnHidden('width', false),
             align: 'center',
             cell: item => (
                 <span>{item.width && item.height ? `${item.width} × ${item.height}` : '-'}</span>
@@ -103,21 +159,27 @@ export const VirtualListView: Component = () => {
             header: 'Created',
             accessorKey: 'created_at',
             sortable: true,
-            width: 160,
+            resizable: true,
+            width: getColumnWidth('created_at', 160),
+            hidden: isColumnHidden('created_at', true),
             cell: item => <span class="list-view-date-cell">{formatDate(item.created_at)}</span>
         },
         {
             header: 'Modified',
             accessorKey: 'modified_at',
             sortable: true,
-            width: 160,
+            resizable: true,
+            width: getColumnWidth('modified_at', 160),
+            hidden: isColumnHidden('modified_at', true),
             cell: item => <span class="list-view-date-cell">{formatDate(item.modified_at)}</span>
         },
         {
             header: 'Added',
             accessorKey: 'added_at',
             sortable: true,
-            width: 160,
+            resizable: true,
+            width: getColumnWidth('added_at', 160),
+            hidden: isColumnHidden('added_at', true),
             cell: item => <span class="list-view-date-cell">{formatDate(item.added_at)}</span>
         }
     ]);
@@ -133,8 +195,8 @@ export const VirtualListView: Component = () => {
         }
     };
 
-    const handleScroll = (e: Event) => {
-        const target = e.currentTarget as HTMLDivElement;
+    const handleScroll = (event: Event) => {
+        const target = event.currentTarget as HTMLDivElement;
         if (target.scrollTop + target.clientHeight >= target.scrollHeight - 500) {
             lib.loadMore();
         }
@@ -148,40 +210,35 @@ export const VirtualListView: Component = () => {
 
     return (
         <div class="virtual-list-view">
-            <Show
-                when={lib.items.length > 0}
-                fallback={
-                    <EmptyState
-                        title="No images found"
-                        description="Try adjusting your filters or add images to your library."
-                    />
-                }
-            >
+            <Show when={lib.items.length > 0} fallback={<EmptyState />}>
                 <Table
                     data={lib.items}
                     columns={columns()}
-                    height="100%"
                     rowHeight={rowHeight()}
-                    selectedIds={selection.selectedIds}
+                    height="100%"
                     sortKey={filters.sortBy}
-                    sortOrder={filters.sortOrder as 'asc' | 'desc'}
+                    sortOrder={filters.sortOrder}
+                    selectedIds={selection.selectedIds}
                     onSort={handleSort}
+                    onColumnResize={(key, width) => updateColumnConfig(key, { width })}
+                    onColumnVisibilityChange={(key, visible) =>
+                        updateColumnConfig(key, { hidden: !visible })
+                    }
+                    onRowClick={(item, multi) => {
+                        selection.toggle(item.id, multi);
+                    }}
+                    onRowDoubleClick={item => {
+                        viewport.openItem(item.id.toString());
+                    }}
                     onScroll={handleScroll}
-                    onRowClick={(item, multi) => selection.toggle(item.id, multi)}
-                    onRowDoubleClick={item => viewport.openItem(item.id.toString())}
-                    onRowMount={(el, item) =>
-                        assetDnD(el, () => ({
+                    onRowMount={(element, item) => {
+                        assetDnD(element, () => ({
                             item,
-                            selected: selection.selectedIds.includes(item.id),
+                            selected: selection.isSelected(item.id),
                             selectedIds: selection.selectedIds,
                             allItems: lib.items
-                        }))
-                    }
-                    keyField="id"
-                    label="Image library list view"
-                    emptyMessage="No images found"
-                    emptyDescription="Try adjusting your filters or add images to your library."
-                    emptyIcon={ImageOff}
+                        }));
+                    }}
                     onVisibleItemsChange={items => {
                         const ids = items.map(item => item.id);
                         lib.setThumbnailPriority(ids);

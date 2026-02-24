@@ -42,6 +42,23 @@
     transition:
         background-color var(--transition-fast),
         color var(--transition-fast);
+    position: relative;
+}
+
+.ui-table-column-resizer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: col-resize;
+    z-index: 11;
+    transition: background-color var(--transition-fast);
+}
+
+.ui-table-column-resizer:hover,
+.ui-table-column-resizer.is-resizing {
+    background-color: var(--action-primary-bg);
 }
 
 .ui-table-grid-th-sortable {
@@ -174,4 +191,8 @@
     font-size: var(--p-font-size-xs);
     color: var(--text-secondary);
     max-width: 300px;
+}
+
+.ui-table-grid-menu-item {
+    padding: var(--p-space-xs) var(--p-space-s);
 }
