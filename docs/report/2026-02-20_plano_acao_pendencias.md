@@ -67,8 +67,8 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 
 ### [~] 5.1 Refatoração Reativa: Actions e Store *(progresso parcial — 2026-02-24)*
 *   **Concluído:** Modularização de god files concluída (incluindo `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, `useVideoPlayer.ts` e `AdvancedSearchModal.tsx`). Eliminação de `any` em stores críticos. Remoção de `console.log` de debug, rewrite do `TagDropStrategy.ts`. Build TypeScript com 0 erros.
-*   **Pendente:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI. Restam `any` apenas em `DropdownMenu.tsx`, `Input.tsx`, `TreeView.tsx`, `Table.tsx`.
-*   *Detalhes: `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md` e `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md`*
+*   **Pendente:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI. Restam `any` apenas em `DropdownMenu.tsx`, `Input.tsx`, `TreeView.tsx`, `ContextMenu.tsx`.
+*   *Detalhes: `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`, `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md` e `docs/plans/2026-02-24_15:51-table-component-refactoring.md`*
 
 
 

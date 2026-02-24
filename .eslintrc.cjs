@@ -21,7 +21,6 @@ module.exports = {
          * Format & basic style
          */
         semi: ['error', 'always'], // require semicolons
-        indent: ['error', 4, { SwitchCase: 1 }], // 4 spaces
         quotes: ['error', 'single', { avoidEscape: true }], // prefer single quotes
         'comma-dangle': ['error', 'never'], // no trailing commas
         'no-trailing-spaces': 'error', // no trailing spaces
@@ -34,14 +33,6 @@ module.exports = {
         'prefer-const': ['error', { destructuring: 'all' }], // prefer const
         'no-global-assign': 'error', // prevent assignment to globals
         'no-implicit-globals': 'error', // prevent implicit globals (browser)
-        // 'no-unused-vars': [
-        //     'warn',
-        //     {
-        //         argsIgnorePattern: '^_',
-        //         ignoreRestSiblings: true,
-        //         caughtErrors: 'none'
-        //     }
-        // ], // warn unused vars
 
         /*
          * Equality & coercion
@@ -81,6 +72,5 @@ module.exports = {
          */
         'object-curly-spacing': ['error', 'always'],
         'array-bracket-spacing': ['error', 'never']
-        // 'space-before-function-paren': ['error', 'never']
     }
 };

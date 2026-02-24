@@ -46,8 +46,8 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 
 ### 3.1 Frontend (Solid + TS)
 Principais desvios em relação ao guia:
-- [PARCIAL] Uso significativo de `any` em áreas críticas — *reduzido criticamente via sprints de qualidade. Stores críticos, components de busca avançada e strategies estão 100% limpos. Restam pequenos UI components (`DropdownMenu`, `Input`, `TreeView`, `Table`).*
-- [RESOLVIDO] Componentes e hooks extensos demais — *Totalmente modularizados. `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, ecossistema `AdvancedSearchModal.tsx` e `useVideoPlayer.ts` perfeitamente otimizados.*
+- [PARCIAL] Uso significativo de `any` em áreas críticas — *reduzido criticamente via sprints de qualidade. Stores críticos, components de busca avançada e strategies estão 100% limpos. Restam pequenos UI components (`DropdownMenu`, `Input`, `TreeView`, `ContextMenu`).*
+- [RESOLVIDO] Componentes e hooks extensos demais — *Totalmente modularizados. `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, ecossistema `AdvancedSearchModal.tsx`, `useVideoPlayer.ts` e `Table.tsx` perfeitamente otimizados.*
 - [RESOLVIDO] Presença de `console.log` em runtime de produção — *removidos em 2026-02-23. Restam apenas `console.error`/`console.warn` legítimos.*
 - Ausência de script de lint no `package.json` apesar de orientação explícita no guia.
 
@@ -86,18 +86,18 @@ Principais desvios:
 ### 4.2 Code Smells e Legibilidade
 
 1. **[PARCIAL] `any` disseminado (TS)**  
-   ~~Reduz segurança de tipos e dificulta refatorações seguras.~~  
+   ~~Reduz segurança de tipos e dificulta refatorações seguras.~~
    - *Progresso em 2026-02-23: Eliminados em stores críticos, strategies e renderers. Restam ~30 ocorrências em UI components e `AdvancedSearchModal`. Ver `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`.*
-   - *Progresso em 2026-02-24: Eliminados em fluxos chave e UI complexas de busca usando genéricos dedicados. Ver `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md`.*
+   - *Progresso em 2026-02-24: Eliminados em fluxos chave, buscas dinâmicas e no orquestrador de `Table.tsx` usando genéricos dedicados. Ver `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md` e `docs/plans/2026-02-24_15:51-table-component-refactoring.md`.*
 
 2. **[RESOLVIDO] Logging de debug em produção** (`console.log`)  
    ~~Polui runtime, reduz sinal/ruído e pode expor dados/fluxos internos.~~  
    *Resolvido em 2026-02-23: Removidos todos os `console.log` de debug de `FolderTreeSidebarPanel.tsx`, `ReferenceImage.tsx`, `TagDropStrategy.ts`. Mantidos apenas `console.error`/`console.warn` legítimos.*
 
 3. **[RESOLVIDO] Funções com muitas responsabilidades**  
-   ~~Exemplos em fluxo de busca avançada, watcher e streaming handlers.~~  
+   ~~Exemplos em fluxo de busca avançada, watcher e streaming handlers.~~
    - *Progresso em 2026-02-23: `handleBatchChange` (complexidade 34→08), `TagDropStrategy.onDrop` (18→4), `hls-player.ts` modularizado.*
-   - *Progresso em 2026-02-24: Rotinas de Busca Avançada particionadas mediante Strategy/Registry handlers e `useVideoPlayer.ts` refatorado e quebrado em hooks granulares com responsabilidades únicas.*
+   - *Progresso em 2026-02-24: Rotinas de Busca Avançada particionadas e componente `Table.tsx` massivamente simplificado mediante hooks granulares (`useTableVirtualization`, `useTableNavigation`).*
 
 4. **[PARCIAL] Nomes e contratos fracos em payloads dinâmicos**  
    ~~Eventos como `library:batch-change` usando `any` e payload sem schema compartilhado robusto.~~  
@@ -195,8 +195,8 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 
 ### Fase 1 — Estruturação arquitetural (2–4 semanas)
 1. [ ] Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos.
-2. [✓] Quebrar arquivos >300 linhas em módulos por responsabilidade. *(Arquitetura de refatoração avançada foi aplicada em `hls-player`, metadata/buscas e `useVideoPlayer.ts` em 2026-02-24).*
-3. [✓] Eliminar `any` em fluxos principais (busca, metadata, eventos). *(Stores críticos limpos; front-base limpo; busca delegada e fortemente tipada).*
+2. [✓] Quebrar arquivos >300 linhas em módulos por responsabilidade. *(Arquitetura de refatoração avançada foi aplicada em `hls-player`, metadata/buscas, `useVideoPlayer.ts` e `Table.tsx` em 2026-02-24).*
+3. [✓] Eliminar `any` em fluxos principais (busca, metadata, eventos, tabelas). *(Com a modularização de `Table.tsx`, o core tabular está 100% tipado).*
 4. [ ] Padronizar logging estruturado (níveis, contexto, correlação).
 
 ### Fase 2 — Performance e escala DAM (4–8 semanas)
