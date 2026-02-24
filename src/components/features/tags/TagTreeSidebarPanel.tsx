@@ -22,7 +22,10 @@ export const TagTreeSidebarPanel: Component = () => {
 
     // --- Component State ---
     const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
-    const [contextMenuPos, setContextMenuPos] = createSignal({ x: 0, y: 0 });
+    const [contextMenuPosition, setContextMenuPosition] = createSignal({
+        coordinateX: 0,
+        coordinateY: 0
+    });
     const [contextMenuNode, setContextMenuNode] = createSignal<TreeNode | null>(null);
 
     const [editingId, setEditingId] = createSignal<number | null>(null);
@@ -168,8 +171,14 @@ export const TagTreeSidebarPanel: Component = () => {
         }
     };
 
+    /**
+     * Triggers the context menu for a specific node.
+     *
+     * @param {MouseEvent} event - The mouse event triggered by right-click.
+     * @param {TreeNode} node - The tree node being interacted with.
+     */
     const handleContextMenu = (event: MouseEvent, node: TreeNode) => {
-        setContextMenuPos({ x: event.clientX, y: event.clientY });
+        setContextMenuPosition({ coordinateX: event.clientX, coordinateY: event.clientY });
         setContextMenuNode(node);
         setContextMenuOpen(true);
     };
@@ -211,16 +220,22 @@ export const TagTreeSidebarPanel: Component = () => {
         return !node || !isDescendant(node, targetId);
     };
 
+    /**
+     * Handles drops on the root area of the tag panel.
+     * Allows tags to be moved back to the root level.
+     *
+     * @param {DragEvent} event - The browser drop event.
+     */
     const handleRootDrop = async (event: DragEvent) => {
         event.preventDefault();
         setIsTagHeaderDragOver(false);
         try {
-            const jsonData = event.dataTransfer?.getData('application/json');
-            if (jsonData) {
-                const item = JSON.parse(jsonData);
-                const strategy = dndRegistry.get('TAG');
-                if (strategy && item.type === 'TAG') {
-                    await strategy.onDrop(item, 'root');
+            const rawJsonData = event.dataTransfer?.getData('application/json');
+            if (rawJsonData) {
+                const droppedItem: DragItem = JSON.parse(rawJsonData);
+                const tagStrategy = dndRegistry.get('TAG');
+                if (tagStrategy && droppedItem.type === 'TAG') {
+                    await tagStrategy.onDrop(droppedItem, 'root');
                 }
             }
         } catch (error) {
@@ -267,8 +282,8 @@ export const TagTreeSidebarPanel: Component = () => {
             />
 
             <TagContextMenu
-                x={contextMenuPos().x}
-                y={contextMenuPos().y}
+                coordinateX={contextMenuPosition().coordinateX}
+                coordinateY={contextMenuPosition().coordinateY}
                 isOpen={contextMenuOpen()}
                 node={contextMenuNode()}
                 onClose={() => setContextMenuOpen(false)}

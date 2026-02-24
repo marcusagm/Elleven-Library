@@ -34,7 +34,10 @@ export const FolderTreeSidebarPanel: Component = () => {
     const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
     const [folderToDelete, setFolderToDelete] = createSignal<FolderNodeData | null>(null);
     const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
-    const [contextMenuPos, setContextMenuPos] = createSignal({ x: 0, y: 0 });
+    const [contextMenuPosition, setContextMenuPosition] = createSignal({
+        coordinateX: 0,
+        coordinateY: 0
+    });
     const [contextMenuNode, setContextMenuNode] = createSignal<TreeNode | null>(null);
 
     // --- Lifecycle: Persistence ---
@@ -142,9 +145,15 @@ export const FolderTreeSidebarPanel: Component = () => {
         filters.setFolder(data.folderId);
     };
 
+    /**
+     * Triggers the context menu for a specific node.
+     *
+     * @param {MouseEvent} event - The mouse event triggered by right-click.
+     * @param {TreeNode} node - The tree node being interacted with.
+     */
     const handleContextMenu = (event: MouseEvent, node: TreeNode) => {
         setContextMenuNode(node);
-        setContextMenuPos({ x: event.clientX, y: event.clientY });
+        setContextMenuPosition({ coordinateX: event.clientX, coordinateY: event.clientY });
         setContextMenuOpen(true);
     };
 
@@ -202,8 +211,8 @@ export const FolderTreeSidebarPanel: Component = () => {
 
             <FolderContextMenu
                 isOpen={contextMenuOpen()}
-                x={contextMenuPos().x}
-                y={contextMenuPos().y}
+                coordinateX={contextMenuPosition().coordinateX}
+                coordinateY={contextMenuPosition().coordinateY}
                 node={contextMenuNode()}
                 onClose={() => setContextMenuOpen(false)}
                 onDelete={node => {

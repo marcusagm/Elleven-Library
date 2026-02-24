@@ -13,8 +13,8 @@ interface FolderNodeData {
 }
 
 interface FolderContextMenuProps {
-    x: number;
-    y: number;
+    coordinateX: number;
+    coordinateY: number;
     isOpen: boolean;
     node: TreeNode | null;
     onClose: () => void;
@@ -88,8 +88,8 @@ export const FolderContextMenu: Component<FolderContextMenuProps> = props => {
 
     return (
         <ContextMenu
-            x={props.x}
-            y={props.y}
+            x={props.coordinateX}
+            y={props.coordinateY}
             items={items()}
             isOpen={props.isOpen}
             onClose={props.onClose}

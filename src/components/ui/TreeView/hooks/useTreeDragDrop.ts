@@ -208,12 +208,15 @@ export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
             const rawJsonData = event.dataTransfer?.getData('application/json');
             if (rawJsonData) {
                 const droppedItem: DragItem = JSON.parse(rawJsonData);
-                const dropStrategy = dndRegistry.get(droppedItem.type);
+
+                // We prioritize looking up a strategy for the target node type (the tree's dragType).
+                // If the tree does not define a specific type, we fall back to the dropped item's own strategy.
+                const hostTreeDragType = dragDropOptions.dragType();
+                const dropStrategy = dndRegistry.get(hostTreeDragType || droppedItem.type);
 
                 if (dropStrategy && dropStrategy.accepts(droppedItem)) {
                     // TreeView component acts as a generic bridge to the DND strategy system
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    await (dropStrategy as any).onDrop(
+                    await dropStrategy.onDrop(
                         droppedItem,
                         dragDropOptions.node().id,
                         finalDropPosition || 'inside'

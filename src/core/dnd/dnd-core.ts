@@ -11,9 +11,16 @@ export interface DragItem {
 
 // Strategy Interface
 export interface DropStrategy {
+    /** Determines if this strategy can handle the given dragged item. */
     accepts(item: DragItem): boolean;
-    onDrop(item: DragItem, targetId: number | string): Promise<void>;
-    onDragOver?(item: DragItem): boolean; // valid drop target?
+    /** Performs the actual drop operation logic. */
+    onDrop(
+        item: DragItem,
+        targetId: number | string,
+        position?: 'before' | 'inside' | 'after'
+    ): Promise<void>;
+    /** Optional hook to determine if the current drag position is a valid drop target. */
+    onDragOver?(item: DragItem): boolean;
 }
 
 // Registry to hold strategies
