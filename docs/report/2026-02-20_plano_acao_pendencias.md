@@ -17,8 +17,8 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 ### [ ] 2.1 Integração do Processo de Detecção (UMDS)
 *   **Ação:** O ecossistema de formatos (`FileFormat::detect`) já foi criado em `definitions.rs`, mas o `indexer/metadata.rs` ainda utiliza a heurística simples (linha 17: `path.extension()?.to_string_lossy().to_string().to_lowercase()`). O objetivo aqui é apenas fazer a **ligação final** dessa nova estrutura robusta de detecção no mecanismo raiz de ingestão e indexação volumosa.
 
-### [ ] 2.2 Tratamento de Erros e Controle de Loops (`Poison Pill`)
-*   **Ação:** Atualizar o `thumbnail_worker.rs` adicionando suporte explícito à contagem de repetições e sinalização de "Poison Pill", garantindo que falhas contínuas de compressão ou arquivos corrompidos não causem sobrecarga da CPU ou travem o pool Rayon num ciclo passivo.
+### [✓] 2.2 Tratamento de Erros e Controle de Loops (`Poison Pill`)
+*   **Ação (Concluída):** Atualizar o `thumbnail_worker.rs` adicionando suporte explícito à contagem de repetições e sinalização de "Poison Pill", garantindo que falhas contínuas de compressão ou arquivos corrompidos não causem sobrecarga da CPU ou travem o pool Rayon num ciclo passivo.
 
 ### [ ] 2.3 Melhorias nos Extratores Auxiliares
 *   **Ação:** **SVG:** Embora o `svg.rs` exista, deve-se validar e aprofundar se a renderização por intermédio de webview ou `resvg/librsvg` nativo está capturando perfeitamente as pranchas complexas.

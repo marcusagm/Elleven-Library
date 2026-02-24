@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE images SET thumbnail_last_error = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "10a2abe5efcddee5c30c28ffc5f219c4033aa5ba7d28367973d1eccfb62c9eb9"
+}

@@ -58,14 +58,36 @@ impl Db {
         Ok(rows)
     }
 
-    /// Increments the thumbnail failure count and records the last error message.
+    /// Increments the thumbnail attempts for a batch of images before processing.
+    pub async fn increment_thumbnail_attempts_batch(&self, ids: &[i64]) -> Result<(), sqlx::Error> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+
+        let placeholders: Vec<String> = ids.iter().map(|_| "?".to_string()).collect();
+        let query = format!(
+            "UPDATE images SET thumbnail_attempts = thumbnail_attempts + 1 WHERE id IN ({})",
+            placeholders.join(",")
+        );
+
+        let mut query_builder = sqlx::query(&query);
+        for id in ids {
+            query_builder = query_builder.bind(id);
+        }
+
+        query_builder.execute(&self.pool).await?;
+        Ok(())
+    }
+
+    /// Records the last error message for a thumbnail.
+    /// Note: Attempts are pre-incremented in batch to prevent poison pills.
     pub async fn record_thumbnail_error(
         &self,
         image_id: i64,
         error: String,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE images SET thumbnail_attempts = thumbnail_attempts + 1, thumbnail_last_error = ? WHERE id = ?",
+            "UPDATE images SET thumbnail_last_error = ? WHERE id = ?",
             error,
             image_id
         )
@@ -74,14 +96,14 @@ impl Db {
         Ok(())
     }
 
-    /// Updates the path to the generated thumbnail for an image.
+    /// Updates the path to the generated thumbnail for an image and resets errors/attempts.
     pub async fn update_thumbnail_path(
         &self,
         image_id: i64,
         path: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE images SET thumbnail_path = ? WHERE id = ?",
+            "UPDATE images SET thumbnail_path = ?, thumbnail_attempts = 0, thumbnail_last_error = NULL WHERE id = ?",
             path,
             image_id
         )
@@ -90,10 +112,10 @@ impl Db {
         Ok(())
     }
 
-    /// Clears the thumbnail path, effectively flagging it for regeneration.
+    /// Clears the thumbnail path, effectively flagging it for regeneration, and resets errors/attempts.
     pub async fn clear_thumbnail_path(&self, image_id: i64) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE images SET thumbnail_path = NULL WHERE id = ?",
+            "UPDATE images SET thumbnail_path = NULL, thumbnail_attempts = 0, thumbnail_last_error = NULL WHERE id = ?",
             image_id
         )
         .execute(&self.pool)

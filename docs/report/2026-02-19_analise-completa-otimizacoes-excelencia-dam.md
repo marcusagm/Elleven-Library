@@ -188,7 +188,7 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 ### Fase 0 — Correções críticas (1–2 semanas)
 1. [x] Remover `unwrap/expect` de runtime backend e substituir por `AppResult` + contexto. *(Concluído em 2026-02-20)*
 2. [x] Introduzir política formal de lifecycle para listeners e tasks periódicas (start/stop idempotente). *(Concluído em 2026-02-23)*
-3. [ ] Restringir CORS e adicionar mecanismo de autorização por sessão/token no streaming.
+3. [x] Restringir CORS e adicionar mecanismo de autorização por sessão/token no streaming.
 4. [x] Adicionar scripts de qualidade no frontend (`lint`, `typecheck`, `test`) e gate mínimo em CI. *(Concluído em 2026-02-20)*
 
 ### Fase 1 — Estruturação arquitetural (2–4 semanas)

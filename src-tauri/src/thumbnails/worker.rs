@@ -134,6 +134,18 @@ impl ThumbnailWorker {
                     );
                 }
 
+                // Pre-increment attempts for all images in the batch to prevent poison pills
+                // from catching the worker in an infinite crash loop spanning restarts.
+                let image_ids: Vec<i64> = images.iter().map(|(id, _)| *id).collect();
+                if let Err(increment_error) =
+                    db.increment_thumbnail_attempts_batch(&image_ids).await
+                {
+                    eprintln!(
+                        "Failed to pre-increment thumbnail attempts: {}",
+                        increment_error
+                    );
+                }
+
                 // Clone thumb_dir for the move closure
                 let thumb_dir_clone = thumb_dir.clone();
                 let num_threads = config.thumbnail_threads;
@@ -194,12 +206,16 @@ impl ThumbnailWorker {
                 }
 
                 // Perform DB updates sequentially (async)
+                let mut error_count = 0;
+                let total_items = db_updates.len();
+
                 for (id, result) in db_updates {
                     match result {
                         Ok(filename) => {
                             if let Err(update_error) = db.update_thumbnail_path(id, &filename).await
                             {
                                 eprintln!("Error updating DB for thumbnail: {}", update_error);
+                                error_count += 1;
                             } else {
                                 let payload = ThumbnailPayload {
                                     id,
@@ -210,6 +226,7 @@ impl ThumbnailWorker {
                         }
                         Err(err_msg) => {
                             eprintln!("Thumbnail error for ID {}: {}", id, err_msg);
+                            error_count += 1;
                             if let Err(record_error) = db.record_thumbnail_error(id, err_msg).await
                             {
                                 eprintln!(
@@ -221,9 +238,24 @@ impl ThumbnailWorker {
                     }
                 }
 
-                // Brief yield between batches
+                // Brief yield between batches with dynamic backoff for massive failures
                 if !is_priority_batch {
-                    sleep(Duration::from_millis(100)).await;
+                    if total_items > 0 && error_count == total_items {
+                        // 100% failure rate: back off significantly (e.g. out of memory, disk full, etc.)
+                        println!(
+                            "WARN: 100% failure rate in thumbnail batch. Backing off for 10s..."
+                        );
+                        sleep(Duration::from_secs(10)).await;
+                    } else if total_items > 0 && error_count > total_items / 2 {
+                        // > 50% failure rate: slow down to prevent thrashing
+                        println!(
+                            "WARN: >50% failure rate in thumbnail batch. Backing off for 5s..."
+                        );
+                        sleep(Duration::from_secs(5)).await;
+                    } else {
+                        // Normal brief yield
+                        sleep(Duration::from_millis(100)).await;
+                    }
                 } else {
                     sleep(Duration::from_millis(10)).await;
                 }
