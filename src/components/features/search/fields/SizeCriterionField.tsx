@@ -81,5 +81,10 @@ export const sizeHandler: import('./types').SearchFieldHandler = {
         }
 
         return { finalValue, unitMultiplier: unit };
+    },
+    formatDisplay: (val, _op, unit) => {
+        const numVal = Number(val);
+        const u = SIZE_UNITS.find(opt => opt.value === unit)?.label || 'bytes';
+        return `${numVal} ${u}`;
     }
 };

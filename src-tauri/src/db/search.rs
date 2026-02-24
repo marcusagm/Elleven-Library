@@ -492,20 +492,29 @@ fn build_criterion_clause<'a>(
                 }
             }
         }
-        "folder" => match c.operator.as_str() {
-            "is" => {
-                query_builder.push(" i.folder_id = ");
-                query_builder.push_bind(c.value.as_i64().unwrap_or(0));
+        "folder" => {
+            let folder_id = c
+                .value
+                .as_str()
+                .and_then(|s| s.parse::<i64>().ok())
+                .or_else(|| c.value.as_i64())
+                .unwrap_or(0);
+
+            match c.operator.as_str() {
+                "is" => {
+                    query_builder.push(" i.folder_id = ");
+                    query_builder.push_bind(folder_id);
+                }
+                "in" => {
+                    query_builder.push(" i.folder_id IN (WITH RECURSIVE subfolders AS (SELECT id, 0 as depth FROM folders WHERE id = ");
+                    query_builder.push_bind(folder_id);
+                    query_builder.push(" UNION ALL SELECT f.id, s.depth + 1 FROM folders f JOIN subfolders s ON f.parent_id = s.id WHERE s.depth < 50) SELECT id FROM subfolders) ");
+                }
+                _ => {
+                    query_builder.push(" 1=1 ");
+                }
             }
-            "in" => {
-                query_builder.push(" i.folder_id IN (WITH RECURSIVE subfolders AS (SELECT id, 0 as depth FROM folders WHERE id = ");
-                query_builder.push_bind(c.value.as_i64().unwrap_or(0));
-                query_builder.push(" UNION ALL SELECT f.id, s.depth + 1 FROM folders f JOIN subfolders s ON f.parent_id = s.id WHERE s.depth < 50) SELECT id FROM subfolders) ");
-            }
-            _ => {
-                query_builder.push(" 1=1 ");
-            }
-        },
+        }
         _ => {
             query_builder.push(" 1=1 ");
         }
