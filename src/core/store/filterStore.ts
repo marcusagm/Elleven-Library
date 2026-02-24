@@ -19,7 +19,7 @@ export interface SearchCriterion {
     id: string;
     key: string;
     operator: string;
-    value: string | number | boolean | null;
+    value: string | number | boolean | null | (string | number | boolean | null)[];
     unitMultiplier?: string;
     displayValue?: string;
 }

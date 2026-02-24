@@ -80,12 +80,21 @@
 }
 
 /* Specific Field UI */
+.smart-folder-creator {
+    display: flex;
+    align-items: center;
+    gap: var(--p-space-xs);
+}
+
+.smart-folder-input-wrapper {
+    width: 200px;
+}
 .tag-select-wrapper {
     position: relative;
     width: 100%;
 }
 
-.date-input-group, 
+.date-input-group,
 .number-input-group {
     display: flex;
     align-items: flex-start;

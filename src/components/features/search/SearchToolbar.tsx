@@ -200,7 +200,7 @@ export const SearchToolbar: Component = () => {
             <AdvancedSearchModal
                 isOpen={isModalOpen()}
                 onClose={() => setIsModalOpen(false)}
-                isSmartFolderMode={true}
+                isSmartFolderMode={!!currentSmartFolder()}
                 initialId={currentSmartFolder()?.id}
                 initialName={currentSmartFolder()?.name}
                 initialQuery={filters.advancedSearch || undefined}
