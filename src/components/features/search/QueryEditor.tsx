@@ -126,11 +126,12 @@ const CriterionItem: Component<{
 export const QueryEditor: Component<QueryEditorProps> = props => {
     return (
         <div class="query-editor-section">
-            <Tooltip content="Review and manage your active criteria. You can edit values in-line or remove them. All criteria work together based on the 'Any' or 'All' match mode below.">
-                <div class="section-title">
-                    Query Editor <CircleQuestionMark size={12} />
-                </div>
-            </Tooltip>
+            <div class="section-title">
+                Query Editor
+                <Tooltip content="Review and manage your active criteria. You can edit values in-line or remove them. All criteria work together based on the 'Any' or 'All' match mode below.">
+                    <CircleQuestionMark size={12} />
+                </Tooltip>
+            </div>
             <div class="criteria-list">
                 <Show when={props.search.criteria().length === 0}>
                     <div class="empty-query-info">
@@ -150,11 +151,12 @@ export const QueryEditor: Component<QueryEditorProps> = props => {
             </div>
 
             <div class="match-mode-section">
-                <Tooltip content="Choose how to combine your criteria. 'All' requires every condition to be met, while 'Any' matches if at least one condition is met.">
-                    <div class="section-title">
-                        Match Mode <CircleQuestionMark size={12} />
-                    </div>
-                </Tooltip>
+                <div class="section-title">
+                    Match Mode
+                    <Tooltip content="Choose how to combine your criteria. 'All' requires every condition to be met, while 'Any' matches if at least one condition is met.">
+                        <CircleQuestionMark size={12} />
+                    </Tooltip>
+                </div>
                 <RadioGroup
                     value={props.search.matchMode()}
                     onValueChange={val => props.search.setMatchMode(val as LogicalOperator)}

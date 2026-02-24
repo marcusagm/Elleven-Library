@@ -67,6 +67,7 @@ export const Tooltip: Component<TooltipProps> = props => {
         let x = 0;
         let y = 0;
 
+        console.log(triggerRect, tooltipRect);
         switch (position()) {
             case 'top':
                 x = triggerRect.left + (triggerRect.width - tooltipRect.width) / 2 + scrollX;

@@ -14,7 +14,8 @@
   font-size: var(--p-font-size-xs);
   font-weight: 500;
   border-radius: var(--radius-s);
-  white-space: nowrap;
+  max-width: 20rem;
+  text-align: center;
   z-index: 10000;
   pointer-events: none;
   animation: ui-tooltip-in 0.15s ease;

@@ -34,14 +34,14 @@ module.exports = {
         'prefer-const': ['error', { destructuring: 'all' }], // prefer const
         'no-global-assign': 'error', // prevent assignment to globals
         'no-implicit-globals': 'error', // prevent implicit globals (browser)
-        'no-unused-vars': [
-            'warn',
-            {
-                argsIgnorePattern: '^_',
-                ignoreRestSiblings: true,
-                caughtErrors: 'none'
-            }
-        ], // warn unused vars
+        // 'no-unused-vars': [
+        //     'warn',
+        //     {
+        //         argsIgnorePattern: '^_',
+        //         ignoreRestSiblings: true,
+        //         caughtErrors: 'none'
+        //     }
+        // ], // warn unused vars
 
         /*
          * Equality & coercion

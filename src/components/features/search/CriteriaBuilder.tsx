@@ -24,11 +24,12 @@ export const CriteriaBuilder: Component<CriteriaBuilderProps> = props => {
 
     return (
         <div class="criteria-builder-section">
-            <Tooltip content="Choose a field, operator, and value to add new search criteria. Filter by name, tags, date, and more.">
-                <div class="section-title">
-                    Criteria Builder <CircleQuestionMark size={12} />
-                </div>
-            </Tooltip>
+            <div class="section-title">
+                Criteria Builder
+                <Tooltip content="Choose a field, operator, and value to add new search criteria. Filter by name, tags, date, and more.">
+                    <CircleQuestionMark size={12} />
+                </Tooltip>
+            </div>
             <div class="builder-row">
                 <Select
                     options={SEARCH_FIELDS}
