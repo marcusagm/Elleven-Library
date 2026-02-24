@@ -12,6 +12,8 @@
     "sql:allow-load",
     "fs:default",
     "dialog:default",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
     "core:event:allow-listen",
     "core:event:allow-emit",
     "allow-start-indexing",

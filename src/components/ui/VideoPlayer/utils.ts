@@ -1,3 +1,12 @@
+/**
+ * Formats a given time in seconds into a traditional HH:MM:SS or MM:SS format.
+ *
+ * @param seconds - The time duration in seconds.
+ * @returns The formatted time string.
+ *
+ * @example
+ * const formatted = formatTime(125); // "02:05"
+ */
 export const formatTime = (seconds: number) => {
     if (!Number.isFinite(seconds) || Number.isNaN(seconds)) return '--:--';
     const h = Math.floor(seconds / 3600);

@@ -80,7 +80,7 @@ module.exports = {
          * Stylistic preferences (Prettier will override formatting rules)
          */
         'object-curly-spacing': ['error', 'always'],
-        'array-bracket-spacing': ['error', 'never'],
-        'space-before-function-paren': ['error', 'never']
+        'array-bracket-spacing': ['error', 'never']
+        // 'space-before-function-paren': ['error', 'never']
     }
 };

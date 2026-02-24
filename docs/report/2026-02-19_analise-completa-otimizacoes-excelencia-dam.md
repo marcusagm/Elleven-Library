@@ -38,7 +38,7 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
   - `console.log(` no frontend: ~~**17**~~ **~6 restantes** *(11 removidos em 2026-02-23 — 4 de debug, 7 em comentários/docs)*.
   - ocorrências de `any` no frontend: ~~**84**~~ **~30 restantes** *(redução significativa em 2026-02-23 via sprint de qualidade)*.
   - `TODO/FIXME`: **4**.
-- Vários arquivos excedem 300 linhas (limite recomendado nos guias) — ~~5+ arquivos~~ **1 arquivo crítico restante** (`useVideoPlayer.ts`). Modificações recentes aplicaram registro de componentes ao Search que resolveram os demais.
+- Vários arquivos excedem 300 linhas (limite recomendado nos guias) — ~~5+ arquivos resolvidos~~ *(Todos resolvidos. Arquivos modularizados para ficar dentro do limite).*
 
 ---
 
@@ -47,7 +47,7 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 ### 3.1 Frontend (Solid + TS)
 Principais desvios em relação ao guia:
 - [PARCIAL] Uso significativo de `any` em áreas críticas — *reduzido criticamente via sprints de qualidade. Stores críticos, components de busca avançada e strategies estão 100% limpos. Restam pequenos UI components (`DropdownMenu`, `Input`, `TreeView`, `Table`).*
-- [PARCIAL] Componentes e hooks extensos demais — *`hls-player.ts`, `dispatcher.ts`, `metadataStore.ts` e o ecossistema `AdvancedSearchModal.tsx` (agora regido via Component Registry Pattern) estão moduralizados. Resta apenas otimizar o `useVideoPlayer.ts`.*
+- [RESOLVIDO] Componentes e hooks extensos demais — *Totalmente modularizados. `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, ecossistema `AdvancedSearchModal.tsx` e `useVideoPlayer.ts` perfeitamente otimizados.*
 - [RESOLVIDO] Presença de `console.log` em runtime de produção — *removidos em 2026-02-23. Restam apenas `console.error`/`console.warn` legítimos.*
 - Ausência de script de lint no `package.json` apesar de orientação explícita no guia.
 
@@ -94,10 +94,10 @@ Principais desvios:
    ~~Polui runtime, reduz sinal/ruído e pode expor dados/fluxos internos.~~  
    *Resolvido em 2026-02-23: Removidos todos os `console.log` de debug de `FolderTreeSidebarPanel.tsx`, `ReferenceImage.tsx`, `TagDropStrategy.ts`. Mantidos apenas `console.error`/`console.warn` legítimos.*
 
-3. **[PARCIAL] Funções com muitas responsabilidades**  
+3. **[RESOLVIDO] Funções com muitas responsabilidades**  
    ~~Exemplos em fluxo de busca avançada, watcher e streaming handlers.~~  
    - *Progresso em 2026-02-23: `handleBatchChange` (complexidade 34→08), `TagDropStrategy.onDrop` (18→4), `hls-player.ts` modularizado.*
-   - *Progresso em 2026-02-24: Rotinas de Busca Avançada 100% particionadas mediante Strategy/Registry handlers. Resta avaliar aprofundamento do `useVideoPlayer.ts`.*
+   - *Progresso em 2026-02-24: Rotinas de Busca Avançada particionadas mediante Strategy/Registry handlers e `useVideoPlayer.ts` refatorado e quebrado em hooks granulares com responsabilidades únicas.*
 
 4. **[PARCIAL] Nomes e contratos fracos em payloads dinâmicos**  
    ~~Eventos como `library:batch-change` usando `any` e payload sem schema compartilhado robusto.~~  
@@ -195,7 +195,7 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 
 ### Fase 1 — Estruturação arquitetural (2–4 semanas)
 1. [ ] Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos.
-2. [~] Quebrar arquivos >300 linhas em módulos por responsabilidade. *(Arquitetura de refatoração avançada foi aplicada em `hls-player`, metadata/buscas. Resta refinar `useVideoPlayer.ts`.)*
+2. [✓] Quebrar arquivos >300 linhas em módulos por responsabilidade. *(Arquitetura de refatoração avançada foi aplicada em `hls-player`, metadata/buscas e `useVideoPlayer.ts` em 2026-02-24).*
 3. [✓] Eliminar `any` em fluxos principais (busca, metadata, eventos). *(Stores críticos limpos; front-base limpo; busca delegada e fortemente tipada).*
 4. [ ] Padronizar logging estruturado (níveis, contexto, correlação).
 

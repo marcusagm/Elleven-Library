@@ -160,9 +160,9 @@ export const ListViewToolbar: Component = () => {
                     ]}
                 />
 
-                {/* O Slider de tamanho de thumbnail precisa de um lugar melhor se o DropdownMenu for simplificado assim, 
+                {/* O Slider de tamanho de thumbnail precisa de um lugar melhor se o DropdownMenu for simplificado assim,
                     ou podemos adicionar um item customizado se o Dropdown suportar. Por enquanto, vamos deixar o Slider fora se necessário ou ajustar o Dropdown.
-                    Dado que o DropdownMenu atual não suporta itens customizados facilmente via props.items, 
+                    Dado que o DropdownMenu atual não suporta itens customizados facilmente via props.items,
                     vamos manter o Slider como um elemento separado por enquanto para não quebrar a UI.
                 */}
                 <div

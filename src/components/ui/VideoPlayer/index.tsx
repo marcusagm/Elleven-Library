@@ -53,38 +53,24 @@ const VideoPlayerContent: Component = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
         resetControlsTimeout();
-        switch (e.code) {
-            case 'Space':
-            case 'KeyK':
-                e.preventDefault();
-                togglePlay();
-                break;
-            case 'ArrowLeft':
-            case 'KeyJ':
-                e.preventDefault();
-                skip(-5);
-                break;
-            case 'ArrowRight':
-            case 'KeyL':
-                e.preventDefault();
-                skip(5);
-                break;
-            case 'ArrowUp':
-                e.preventDefault();
-                handleVolumeChange(Math.min((videoState.volume() + 0.1) * 100, 100));
-                break;
-            case 'ArrowDown':
-                e.preventDefault();
-                handleVolumeChange(Math.max((videoState.volume() - 0.1) * 100, 0));
-                break;
-            case 'KeyF':
-                e.preventDefault();
-                toggleFullscreen();
-                break;
-            case 'KeyM':
-                e.preventDefault();
-                toggleMute();
-                break;
+
+        const actionMap: Record<string, () => void> = {
+            Space: togglePlay,
+            KeyK: togglePlay,
+            ArrowLeft: () => skip(-5),
+            KeyJ: () => skip(-5),
+            ArrowRight: () => skip(5),
+            KeyL: () => skip(5),
+            ArrowUp: () => handleVolumeChange(Math.min((videoState.volume() + 0.1) * 100, 100)),
+            ArrowDown: () => handleVolumeChange(Math.max((videoState.volume() - 0.1) * 100, 0)),
+            KeyF: toggleFullscreen,
+            KeyM: toggleMute
+        };
+
+        const action = actionMap[e.code];
+        if (action) {
+            e.preventDefault();
+            action();
         }
     };
 
@@ -193,9 +179,19 @@ const VideoPlayerContent: Component = () => {
     );
 };
 
+/**
+ * VideoPlayer Component
+ *
+ * High-performance, fully featured video player built for Solid.js and Tauri.
+ * - Manages Custom UI Controls and HLS/Native playback.
+ * - Syncs volume and activity state with global `audioStore` and `videoStore`.
+ *
+ * @param props - Configuration properties `VideoPlayerProps`
+ * @returns Video player UI node
+ */
 export const VideoPlayer: Component<VideoPlayerProps> = props => {
     return (
-        <VideoProvider playerProps={props}>
+        <VideoProvider {...props}>
             <VideoPlayerContent />
         </VideoProvider>
     );

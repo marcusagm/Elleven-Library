@@ -8,16 +8,37 @@ type VideoContextValue = ReturnType<typeof useVideoPlayer> & {
 
 const VideoPlayerContext = createContext<VideoContextValue>();
 
-export const VideoProvider = (props: { children: JSX.Element; playerProps: VideoPlayerProps }) => {
-    const logic = useVideoPlayer(props.playerProps);
+/**
+ * Context Provider for the Video Player.
+ * Makes the initialized player state and handlers available down the component tree.
+ *
+ * @param props - Children components and underlying VideoPlayerProps
+ * @returns Context Provider node
+ */
+export const VideoProvider = (props: VideoPlayerProps & { children?: JSX.Element }) => {
+    const logic = useVideoPlayer(props);
 
     return (
-        <VideoPlayerContext.Provider value={{ ...logic, props: props.playerProps }}>
+        <VideoPlayerContext.Provider
+            value={
+                {
+                    ...logic,
+                    get props() {
+                        return props;
+                    }
+                } as unknown as VideoContextValue
+            }
+        >
             {props.children}
         </VideoPlayerContext.Provider>
     );
 };
 
+/**
+ * Consumes the `VideoPlayerContext` throwing an error if used outside a provider.
+ *
+ * @returns The fully constructed context from `useVideoPlayer`
+ */
 export const useVideoContext = () => {
     const context = useContext(VideoPlayerContext);
     if (!context) {

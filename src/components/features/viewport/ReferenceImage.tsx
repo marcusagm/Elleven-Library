@@ -147,7 +147,7 @@ export function ReferenceImage(props: ReferenceImageProps) {
         markPendingRegeneration(props.id);
 
         invoke('request_thumbnail_regenerate', { imageId: props.id }).catch(error =>
-            console.error(`Failed to request regeneration:`, error)
+            console.error('Failed to request regeneration:', error)
         );
     };
 

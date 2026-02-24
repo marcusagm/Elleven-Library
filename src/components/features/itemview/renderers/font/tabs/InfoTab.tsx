@@ -26,7 +26,7 @@ export const InfoTab: Component<InfoTabProps> = props => {
                         {props.fontFamily.split('-')[2] || 'Unknown'}
                     </span>
                 </div>
-                {/* 
+                {/*
                   To get real metadata (copyright, etc.) we'd need to parse the binary.
                   For now this is basic file info.
                 */}

@@ -3,6 +3,12 @@ import { Slider } from '../Slider';
 import { useVideoContext } from './VideoPlayerContext';
 import { formatTime } from './utils';
 
+/**
+ * Displays the video seekbar UI including the buffered progress and preview tooltip.
+ * Connects directly to `useVideoContext` internally.
+ *
+ * @returns Video seekbar component
+ */
 export const VideoSeekbar: Component = () => {
     const {
         duration,

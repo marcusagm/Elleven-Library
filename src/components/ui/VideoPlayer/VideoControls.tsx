@@ -22,6 +22,12 @@ import { formatTime } from './utils';
 import { QUALITY_OPTIONS } from './types';
 import { VideoSeekbar } from './VideoSeekbar';
 
+/**
+ * Displays the video UI controls including playback, volume, and fullscreen interactions.
+ * Connects directly to `useVideoContext` internally.
+ *
+ * @returns Video player controls component
+ */
 export const VideoControls: Component = () => {
     const {
         props,
