@@ -1,20 +1,15 @@
 import { Component, For, Show, createMemo } from 'solid-js';
+import { Dynamic } from 'solid-js/web';
 import { Info, Pencil, Check, Trash2, CircleQuestionMark } from 'lucide-solid';
-import { Input } from '../../ui/Input';
-import { NumberInput } from '../../ui/NumberInput';
-import { DateInput } from '../../ui/DateInput';
-import { Select } from '../../ui/Select';
 import { Button } from '../../ui/Button';
 import { RadioGroup, RadioGroupItem } from '../../ui/RadioGroup';
 import { Tooltip } from '../../ui/Tooltip';
-import { SEARCH_FIELDS, OPERATORS_FOR_TYPE, SIZE_UNITS } from './searchConstants';
-import { supportedFormats } from '../../../core/store/systemStore';
+import { SEARCH_FIELDS, OPERATORS_FOR_TYPE } from './searchConstants';
 import { LogicalOperator, SearchCriterion } from '../../../core/store/filterStore';
-import { useMetadata } from '../../../core/hooks';
 import { cn } from '../../../lib/utils';
-import { getHierarchicalFolders, getHierarchicalTags } from './searchHelpers';
-
-import { useAdvancedSearch } from './useAdvancedSearch';
+import { criterionFieldRegistry } from './fields';
+import { CriterionFieldRendererProps } from './fields/types';
+import { useAdvancedSearch, SearchValue } from './useAdvancedSearch';
 
 export interface QueryEditorProps {
     search: ReturnType<typeof useAdvancedSearch>;
@@ -25,12 +20,15 @@ const CriterionItem: Component<{
     index: number;
     search: ReturnType<typeof useAdvancedSearch>;
 }> = props => {
-    const metadata = useMetadata();
-    const hierarchicalTags = createMemo(() => getHierarchicalTags(metadata.tags));
-    const hierarchicalFolders = createMemo(() => getHierarchicalFolders(metadata.locations));
-
     const field = createMemo(() => SEARCH_FIELDS.find(f => f.value === props.item.key));
     const isEditing = () => props.search.editingId() === props.item.id;
+
+    const DynamicFieldComponent = createMemo(() => {
+        const key = props.item.key;
+        const type = field()?.type;
+        const resolvedType = key === 'size' ? 'size' : type;
+        return criterionFieldRegistry[resolvedType || 'text'] || criterionFieldRegistry.text;
+    });
 
     return (
         <div class={cn('criterion-item', isEditing() && 'editing')}>
@@ -45,228 +43,51 @@ const CriterionItem: Component<{
                     when={!isEditing()}
                     fallback={
                         <div class="edit-inputs">
-                            <Show when={field()?.type === 'text'}>
-                                <Input
-                                    size="sm"
-                                    value={(props.search.editingValue() as string) || ''}
-                                    onInput={e => {
-                                        props.search.setEditingValue(e.currentTarget.value);
-                                        if (props.search.editingValidationErrors().value)
-                                            props.search.setEditingValidationErrors(
-                                                (prev: Record<string, string>) => ({
-                                                    ...prev,
-                                                    value: ''
-                                                })
-                                            );
-                                    }}
-                                    error={!!props.search.editingValidationErrors().value}
-                                    errorMessage={props.search.editingValidationErrors().value}
-                                />
-                            </Show>
-                            <Show when={field()?.type === 'number' || props.item.key === 'size'}>
-                                <div class="horizontal-inputs">
-                                    <NumberInput
-                                        size="sm"
-                                        value={(props.search.editingValue() as number) ?? undefined}
-                                        onChange={val => {
-                                            props.search.setEditingValue(val ?? null);
-                                            if (props.search.editingValidationErrors().value)
-                                                props.search.setEditingValidationErrors(
-                                                    (prev: Record<string, string>) => ({
-                                                        ...prev,
-                                                        value: ''
-                                                    })
-                                                );
-                                        }}
-                                        placeholder={
-                                            props.item.operator === 'between'
-                                                ? 'From...'
-                                                : 'Value...'
-                                        }
-                                        error={!!props.search.editingValidationErrors().value}
-                                        errorMessage={props.search.editingValidationErrors().value}
-                                    />
-                                    <Show when={props.item.operator === 'between'}>
-                                        <span>to</span>
-                                        <NumberInput
-                                            size="sm"
-                                            value={
-                                                (props.search.editingValue2() as number) ??
-                                                undefined
-                                            }
-                                            onChange={val => {
-                                                props.search.setEditingValue2(val ?? null);
-                                                if (props.search.editingValidationErrors().value2)
-                                                    props.search.setEditingValidationErrors(
-                                                        (prev: Record<string, string>) => ({
-                                                            ...prev,
-                                                            value2: ''
-                                                        })
-                                                    );
-                                            }}
-                                            placeholder="To..."
-                                            error={!!props.search.editingValidationErrors().value2}
-                                            errorMessage={
-                                                props.search.editingValidationErrors().value2
-                                            }
-                                        />
-                                    </Show>
-                                    <Show when={props.item.key === 'size'}>
-                                        <Select
-                                            size="sm"
-                                            class="unit-select"
-                                            options={SIZE_UNITS}
-                                            value={props.search.editingUnit()}
-                                            onValueChange={val => {
-                                                props.search.setEditingUnit(val);
-                                                if (props.search.editingValidationErrors().unit)
-                                                    props.search.setEditingValidationErrors(
-                                                        (prev: Record<string, string>) => ({
-                                                            ...prev,
-                                                            unit: ''
-                                                        })
-                                                    );
-                                            }}
-                                            error={!!props.search.editingValidationErrors().unit}
-                                            errorMessage={
-                                                props.search.editingValidationErrors().unit
-                                            }
-                                        />
-                                    </Show>
-                                </div>
-                            </Show>
-                            <Show when={field()?.type === 'date'}>
-                                <div class="horizontal-inputs">
-                                    <DateInput
-                                        size="sm"
-                                        value={(props.search.editingValue() as Date) || null}
-                                        onChange={val => {
-                                            props.search.setEditingValue(val);
-                                            if (props.search.editingValidationErrors().value)
-                                                props.search.setEditingValidationErrors(
-                                                    (prev: Record<string, string>) => ({
-                                                        ...prev,
-                                                        value: ''
-                                                    })
-                                                );
-                                        }}
-                                        placeholder={
-                                            props.item.operator === 'between' ? 'From Date' : 'Date'
-                                        }
-                                        error={!!props.search.editingValidationErrors().value}
-                                        errorMessage={props.search.editingValidationErrors().value}
-                                    />
-                                    <Show when={props.item.operator === 'between'}>
-                                        <span>to</span>
-                                        <DateInput
-                                            size="sm"
-                                            value={(props.search.editingValue2() as Date) || null}
-                                            onChange={val => {
-                                                props.search.setEditingValue2(val);
-                                                if (props.search.editingValidationErrors().value2)
-                                                    props.search.setEditingValidationErrors(
-                                                        (prev: Record<string, string>) => ({
-                                                            ...prev,
-                                                            value2: ''
-                                                        })
-                                                    );
-                                            }}
-                                            placeholder="To Date"
-                                            error={!!props.search.editingValidationErrors().value2}
-                                            errorMessage={
-                                                props.search.editingValidationErrors().value2
-                                            }
-                                        />
-                                    </Show>
-                                </div>
-                            </Show>
-                            <Show when={field()?.type === 'tags'}>
-                                <Select
-                                    size="sm"
-                                    options={hierarchicalTags()}
-                                    value={String(props.search.editingValue() || '')}
-                                    onValueChange={val => {
-                                        props.search.setEditingValue(val);
-                                        if (props.search.editingValidationErrors().value)
-                                            props.search.setEditingValidationErrors(
-                                                (prev: Record<string, string>) => ({
-                                                    ...prev,
-                                                    value: ''
-                                                })
-                                            );
-                                    }}
-                                    searchable
-                                    error={!!props.search.editingValidationErrors().value}
-                                    errorMessage={props.search.editingValidationErrors().value}
-                                />
-                            </Show>
-                            <Show when={field()?.type === 'folder'}>
-                                <Select
-                                    size="sm"
-                                    options={hierarchicalFolders()}
-                                    value={String(props.search.editingValue() || '')}
-                                    onValueChange={val => {
-                                        props.search.setEditingValue(Number(val));
-                                        if (props.search.editingValidationErrors().value)
-                                            props.search.setEditingValidationErrors(
-                                                (prev: Record<string, string>) => ({
-                                                    ...prev,
-                                                    value: ''
-                                                })
-                                            );
-                                    }}
-                                    searchable
-                                    error={!!props.search.editingValidationErrors().value}
-                                    errorMessage={props.search.editingValidationErrors().value}
-                                />
-                            </Show>
-                            <Show when={field()?.type === 'rating'}>
-                                <Select
-                                    size="sm"
-                                    options={[0, 1, 2, 3, 4, 5].map(v => ({
-                                        value: String(v),
-                                        label: `${v} Stars`
-                                    }))}
-                                    value={String(props.search.editingValue() ?? '0')}
-                                    onValueChange={val => {
-                                        props.search.setEditingValue(Number(val));
-                                        if (props.search.editingValidationErrors().value)
-                                            props.search.setEditingValidationErrors(
-                                                (prev: Record<string, string>) => ({
-                                                    ...prev,
-                                                    value: ''
-                                                })
-                                            );
-                                    }}
-                                    error={!!props.search.editingValidationErrors().value}
-                                    errorMessage={props.search.editingValidationErrors().value}
-                                />
-                            </Show>
-                            <Show when={field()?.type === 'select'}>
-                                <Select
-                                    size="sm"
-                                    options={supportedFormats().flatMap(f =>
-                                        f.extensions.map(ext => ({
-                                            value: ext,
-                                            label: ext.toUpperCase()
-                                        }))
-                                    )}
-                                    value={(props.search.editingValue() as string) || ''}
-                                    onValueChange={val => {
-                                        props.search.setEditingValue(val);
-                                        if (props.search.editingValidationErrors().value)
-                                            props.search.setEditingValidationErrors(
-                                                (prev: Record<string, string>) => ({
-                                                    ...prev,
-                                                    value: ''
-                                                })
-                                            );
-                                    }}
-                                    searchable
-                                    error={!!props.search.editingValidationErrors().value}
-                                    errorMessage={props.search.editingValidationErrors().value}
-                                />
-                            </Show>
+                            <Dynamic
+                                component={
+                                    DynamicFieldComponent() as unknown as Component<CriterionFieldRendererProps>
+                                }
+                                fieldKey={props.item.key}
+                                operator={props.item.operator}
+                                value={props.search.editingValue()}
+                                setValue={(val: SearchValue) => {
+                                    props.search.setEditingValue(() => val);
+                                    if (props.search.editingValidationErrors().value) {
+                                        props.search.setEditingValidationErrors(
+                                            (prev: Record<string, string>) => ({
+                                                ...prev,
+                                                value: ''
+                                            })
+                                        );
+                                    }
+                                }}
+                                value2={props.search.editingValue2()}
+                                setValue2={(val: SearchValue) => {
+                                    props.search.setEditingValue2(() => val);
+                                    if (props.search.editingValidationErrors().value2) {
+                                        props.search.setEditingValidationErrors(
+                                            (prev: Record<string, string>) => ({
+                                                ...prev,
+                                                value2: ''
+                                            })
+                                        );
+                                    }
+                                }}
+                                unit={props.search.editingUnit()}
+                                setUnit={(unit: string) => {
+                                    props.search.setEditingUnit(unit);
+                                    if (props.search.editingValidationErrors().unit) {
+                                        props.search.setEditingValidationErrors(
+                                            (prev: Record<string, string>) => ({
+                                                ...prev,
+                                                unit: ''
+                                            })
+                                        );
+                                    }
+                                }}
+                                errors={props.search.editingValidationErrors()}
+                                size="sm"
+                            />
                         </div>
                     }
                 >

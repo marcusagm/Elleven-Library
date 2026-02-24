@@ -141,6 +141,7 @@ export const SearchToolbar: Component = () => {
                 <div class="search-actions">
                     <Show when={activeFiltersList().length > 0}>
                         <Popover
+                            align="end"
                             trigger={
                                 <Button
                                     variant="ghost"

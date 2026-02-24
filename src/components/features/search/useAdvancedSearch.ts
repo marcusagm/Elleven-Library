@@ -4,6 +4,7 @@ import { createId } from '../../../lib/primitives/createId';
 import { SEARCH_FIELDS, OPERATORS_FOR_TYPE, SIZE_UNITS } from './searchConstants';
 import { computeDisplayValue } from './searchHelpers';
 import { formatToISO, fromISO, formatToDisplay } from '../../../utils/format';
+import { supportedFormats } from '../../../core/store/systemStore';
 
 export type SearchValue = string | number | null | Date;
 
@@ -75,7 +76,22 @@ export const useAdvancedSearch = (
         if (field) {
             const defaultOp = OPERATORS_FOR_TYPE[field.type]?.[0]?.value;
             setCurrentOperator(defaultOp || '');
-            setCurrentValue(null);
+
+            // Sync initial state values with UI visual defaults, so validation matches representation.
+            if (field.type === 'rating') {
+                setCurrentValue(0);
+            } else if (field.type === 'select') {
+                const firstFormat = supportedFormats()[0]?.extensions[0];
+                setCurrentValue(firstFormat || '');
+            } else if (field.type === 'folder') {
+                const firstFolder = metadata.locations[0]?.id;
+                setCurrentValue(firstFolder ? Number(firstFolder) : null);
+            } else if (field.type === 'number' || field.value === 'size') {
+                setCurrentValue(1);
+            } else {
+                setCurrentValue(null);
+            }
+
             setCurrentValue2(null);
             setValidationErrors({});
             setEditingValidationErrors({});
@@ -95,8 +111,22 @@ export const useAdvancedSearch = (
             errors.value = 'Value is required';
         }
 
-        if (op === 'between' && (val2 === null || val2 === '')) {
-            errors.value2 = 'End value is required';
+        if (op === 'between') {
+            if (val2 === null || val2 === '') {
+                errors.value2 = 'End value is required';
+            } else if (val !== null && val !== '') {
+                if (field?.type === 'number' || field?.value === 'size') {
+                    if (Number(val) > Number(val2)) {
+                        errors.value2 = 'End value must be greater than start';
+                    }
+                } else if (field?.type === 'date') {
+                    const d1 = new Date(val as string | Date);
+                    const d2 = new Date(val2 as string | Date);
+                    if (d1 > d2) {
+                        errors.value2 = 'End date must be after start date';
+                    }
+                }
+            }
         }
 
         if (field?.type === 'date') {
@@ -231,13 +261,30 @@ export const useAdvancedSearch = (
                         displayValue =
                             metadata.tags.find(t => String(t.id) === String(editingValue()))
                                 ?.name || String(editingValue());
+                    } else if (c.key === 'format') {
+                        // For generic extension labels
+                        const foundFormat = supportedFormats().find(sf =>
+                            sf.extensions.includes(String(editingValue()))
+                        );
+                        displayValue = foundFormat
+                            ? `.${String(editingValue()).toUpperCase()} (${foundFormat.name})`
+                            : String(editingValue());
+                    } else if (c.key === 'rating') {
+                        displayValue = `${editingValue()} Stars`;
                     }
 
-                    return {
+                    const updatedCriterion = {
                         ...c,
                         value: finalValue,
-                        displayValue,
-                        unitMultiplier: c.key === 'size' ? editingUnit() : undefined
+                        unitMultiplier: c.key === 'size' ? editingUnit() : undefined,
+                        displayValue: undefined // Previne que o helper use a string cacheada antiga!
+                    };
+
+                    return {
+                        ...updatedCriterion,
+                        displayValue:
+                            displayValue ||
+                            computeDisplayValue(updatedCriterion as SearchCriterion, metadata)
                     };
                 }
                 return c;
@@ -293,6 +340,15 @@ export const useAdvancedSearch = (
             displayValue =
                 metadata.tags.find(t => String(t.id) === String(currentValue()))?.name ||
                 String(currentValue());
+        } else if (currentKey() === 'format') {
+            const foundFormat = supportedFormats().find(sf =>
+                sf.extensions.includes(String(currentValue()))
+            );
+            displayValue = foundFormat
+                ? `.${String(currentValue()).toUpperCase()} (${foundFormat.name})`
+                : String(currentValue());
+        } else if (currentKey() === 'rating') {
+            displayValue = `${currentValue()} Stars`;
         }
 
         const newCriterion: SearchCriterion = {
