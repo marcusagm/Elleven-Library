@@ -78,8 +78,7 @@ export const Select: Component<SelectProps> = props => {
     const { value, setValue } = createControllableSignal({
         value: () => local.value,
         defaultValue: local.defaultValue ?? '',
-        // eslint-disable-next-line solid/reactivity
-        onChange: local.onValueChange
+        onChange: (value: string) => local.onValueChange?.(value)
     });
 
     const selectedOption = createMemo(() => local.options.find(opt => opt.value === value()));
@@ -110,8 +109,8 @@ export const Select: Component<SelectProps> = props => {
         close();
     };
 
-    const clearValue = (e: Event) => {
-        e.stopPropagation();
+    const clearValue = (event: Event) => {
+        event.stopPropagation();
         setValue('');
     };
 
@@ -175,10 +174,10 @@ export const Select: Component<SelectProps> = props => {
     });
 
     // Keyboard navigation
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
         if (!isOpen()) {
-            if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
-                e.preventDefault();
+            if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+                event.preventDefault();
                 open();
             }
             return;
@@ -186,21 +185,21 @@ export const Select: Component<SelectProps> = props => {
 
         const options = filteredOptions();
 
-        switch (e.key) {
+        switch (event.key) {
             case 'Escape':
-                e.preventDefault();
+                event.preventDefault();
                 close();
                 break;
             case 'ArrowDown':
-                e.preventDefault();
-                setHighlightedIndex(i => Math.min(i + 1, options.length - 1));
+                event.preventDefault();
+                setHighlightedIndex(currentIndex => Math.min(currentIndex + 1, options.length - 1));
                 break;
             case 'ArrowUp':
-                e.preventDefault();
-                setHighlightedIndex(i => Math.max(i - 1, 0));
+                event.preventDefault();
+                setHighlightedIndex(currentIndex => Math.max(currentIndex - 1, 0));
                 break;
             case 'Enter': {
-                e.preventDefault();
+                event.preventDefault();
                 const highlighted = options[highlightedIndex()];
                 if (highlighted && !highlighted.disabled) {
                     selectOption(highlighted);
@@ -281,8 +280,8 @@ export const Select: Component<SelectProps> = props => {
                                     class="ui-select-search-input"
                                     placeholder="Search..."
                                     value={searchQuery()}
-                                    onInput={e => {
-                                        setSearchQuery(e.currentTarget.value);
+                                    onInput={event => {
+                                        setSearchQuery(event.currentTarget.value);
                                         setHighlightedIndex(0);
                                     }}
                                     onKeyDown={handleKeyDown}

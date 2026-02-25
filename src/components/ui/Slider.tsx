@@ -20,6 +20,30 @@ export interface SliderProps extends Omit<JSX.HTMLAttributes<HTMLDivElement>, 'o
 }
 
 /**
+ * Calculates tick values for the slider based on range and step.
+ */
+const calculateTicks = (minValue: number, maxValue: number, stepValue: number | undefined) => {
+    if (stepValue === undefined) return [];
+
+    const range = maxValue - minValue;
+    if (range <= 0 || stepValue <= 0) return [];
+
+    const tickCount = Math.floor(range / stepValue);
+    if (tickCount > 50) return []; // Avoid too many ticks
+
+    const tickValues = [];
+    // Start from 1 to skip min
+    // Go up to count, but exclude if it equals max
+    for (let index = 1; index <= tickCount; index++) {
+        const value = minValue + index * stepValue;
+        if (value < maxValue) {
+            tickValues.push(value);
+        }
+    }
+    return tickValues;
+};
+
+/**
  * Slider component for selecting a value from a range.
  *
  * @example
@@ -63,7 +87,7 @@ export const Slider: Component<SliderProps> = props => {
     const { value, setValue } = createControllableSignal({
         value: () => local.value,
         defaultValue: local.defaultValue ?? min(),
-        onChange: local.onValueChange
+        onChange: (value: number) => local.onValueChange?.(value)
     });
 
     const percentage = createMemo(() => {
@@ -72,34 +96,10 @@ export const Slider: Component<SliderProps> = props => {
         return ((value() - min()) / range) * 100;
     });
 
-    const ticks = createMemo(() => {
-        // Only show ticks if step is explicitly provided and we don't have too many steps
-        if (local.step === undefined) return [];
+    const ticks = createMemo(() => calculateTicks(min(), max(), local.step));
 
-        const s = step();
-        const m = min();
-        const M = max();
-        const range = M - m;
-
-        if (range <= 0 || s <= 0) return [];
-
-        const count = Math.floor(range / s);
-        if (count > 50) return []; // Avoid too many ticks
-
-        const t = [];
-        // Start from 1 to skip min
-        // Go up to count, but exclude if it equals max
-        for (let i = 1; i <= count; i++) {
-            const val = m + i * s;
-            if (val < M) {
-                t.push(val);
-            }
-        }
-        return t;
-    });
-
-    const formatValue = (val: number) => {
-        return local.formatValue ? local.formatValue(val) : String(val);
+    const formatValue = (currentValue: number) => {
+        return local.formatValue ? local.formatValue(currentValue) : String(currentValue);
     };
 
     const clamp = (val: number) => {
@@ -152,13 +152,13 @@ export const Slider: Component<SliderProps> = props => {
         document.addEventListener('pointerup', handlePointerUp);
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
         if (local.disabled) return;
 
         let newValue = value();
         const bigStep = step() * 10;
 
-        switch (e.key) {
+        switch (event.key) {
             case 'ArrowRight':
             case 'ArrowUp':
                 newValue = clamp(value() + step());
@@ -183,7 +183,7 @@ export const Slider: Component<SliderProps> = props => {
                 return;
         }
 
-        e.preventDefault();
+        event.preventDefault();
         setValue(newValue);
         local.onValueCommit?.(newValue);
     };

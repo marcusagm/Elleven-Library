@@ -47,7 +47,7 @@ export const Switch: Component<SwitchProps> = props => {
     const { value: isChecked, setValue: setChecked } = createControllableSignal({
         value: () => local.checked,
         defaultValue: local.defaultChecked ?? false,
-        onChange: local.onCheckedChange
+        onChange: (checked: boolean) => local.onCheckedChange?.(checked)
     });
 
     const handleClick = () => {

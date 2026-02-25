@@ -39,7 +39,7 @@ export const Toggle: Component<ToggleProps> = props => {
     const { value: isPressed, setValue: setPressed } = createControllableSignal({
         value: () => local.pressed,
         defaultValue: local.defaultPressed ?? false,
-        onChange: local.onPressedChange
+        onChange: (pressed: boolean) => local.onPressedChange?.(pressed)
     });
 
     const handleClick = () => {

@@ -2,6 +2,9 @@ import { Component, JSX, splitProps, Show } from 'solid-js';
 import { cn } from '../../lib/utils';
 import './button.css';
 
+/**
+ * Defines the visual style variants for the Button component.
+ */
 export type ButtonVariant =
     | 'primary'
     | 'secondary'
@@ -9,20 +12,42 @@ export type ButtonVariant =
     | 'ghost-destructive'
     | 'destructive'
     | 'outline';
+
+/**
+ * Defines the available sizes for the Button component.
+ */
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm' | 'icon-xs';
 
+/**
+ * Properties for the Button component, extending standard HTML button attributes.
+ */
 export interface ButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
-    /** Visual variant */
+    /**
+     * The visual style variant of the button.
+     * @default 'primary'
+     */
     variant?: ButtonVariant;
-    /** Size variant */
+    /**
+     * The size variant of the button.
+     * @default 'md'
+     */
     size?: ButtonSize;
-    /** Loading state */
+    /**
+     * Whether the button is in a loading state.
+     * When true, the button is disabled and may show a spinner.
+     */
     loading?: boolean;
-    /** Icon to display before children */
+    /**
+     * An optional icon element to display before the button content.
+     */
     leftIcon?: JSX.Element;
-    /** Icon to display after children */
+    /**
+     * An optional icon element to display after the button content.
+     */
     rightIcon?: JSX.Element;
-    /** Button content */
+    /**
+     * The content to be rendered inside the button.
+     */
     children?: JSX.Element;
 }
 

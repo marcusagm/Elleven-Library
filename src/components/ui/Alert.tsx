@@ -1,7 +1,7 @@
 import { Component, JSX, splitProps, Show } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
-import { cn } from '../../lib/utils';
-import { AlertCircle, CheckCircle2, AlertTriangle, Info, X } from 'lucide-solid';
+import { cn as concatenateClasses } from '../../lib/utils';
+import { CircleAlert, CircleCheck, TriangleAlert, Info, X as CloseIcon } from 'lucide-solid';
 import './alert.css';
 
 type AlertVariant = 'default' | 'info' | 'success' | 'warning' | 'destructive';
@@ -9,7 +9,7 @@ type AlertVariant = 'default' | 'info' | 'success' | 'warning' | 'destructive';
 /**
  * Properties for the Alert component.
  */
-export interface AlertProps extends JSX.HTMLAttributes<HTMLDivElement> {
+export interface AlertProperties extends JSX.HTMLAttributes<HTMLDivElement> {
     /** The visual variant of the alert */
     variant?: AlertVariant;
     /** Optional custom icon to display */
@@ -27,16 +27,16 @@ export interface AlertProps extends JSX.HTMLAttributes<HTMLDivElement> {
 const variantIcons: Record<AlertVariant, Component<{ size?: number | string }>> = {
     default: Info,
     info: Info,
-    success: CheckCircle2,
-    warning: AlertTriangle,
-    destructive: AlertCircle
+    success: CircleCheck,
+    warning: TriangleAlert,
+    destructive: CircleAlert
 };
 
 /**
  * Alert component for displaying important messages.
  * Supports multiple variants and optional dismissal.
  *
- * @param {AlertProps} props - Component properties.
+ * @param {AlertProperties} properties - Component properties.
  * @returns {JSX.Element} The rendered solid-js component.
  *
  * @example
@@ -48,8 +48,8 @@ const variantIcons: Record<AlertVariant, Component<{ size?: number | string }>> 
  *   Something went wrong.
  * </Alert>
  */
-export const Alert: Component<AlertProps> = props => {
-    const [local, others] = splitProps(props, [
+export const Alert: Component<AlertProperties> = properties => {
+    const [localProperties, remainingProperties] = splitProps(properties, [
         'class',
         'variant',
         'icon',
@@ -59,42 +59,60 @@ export const Alert: Component<AlertProps> = props => {
         'children'
     ]);
 
-    const variant = () => local.variant || 'default';
-    const IconComponent = () => local.icon || variantIcons[variant()];
+    const variant = () => localProperties.variant || 'default';
+    const IconComponent = () => localProperties.icon || variantIcons[variant()];
 
     return (
-        <div class={cn('ui-alert', `ui-alert-${variant()}`, local.class)} role="alert" {...others}>
+        <div
+            class={concatenateClasses('ui-alert', `ui-alert-${variant()}`, localProperties.class)}
+            role="alert"
+            {...remainingProperties}
+        >
             <span class="ui-alert-icon">
                 <Dynamic component={IconComponent()} />
             </span>
 
             <div class="ui-alert-content">
-                <Show when={local.title}>
-                    <h5 class="ui-alert-title">{local.title}</h5>
+                <Show when={localProperties.title}>
+                    <h5 class="ui-alert-title">{localProperties.title}</h5>
                 </Show>
-                <Show when={local.children}>
-                    <div class="ui-alert-description">{local.children}</div>
+                <Show when={localProperties.children}>
+                    <div class="ui-alert-description">{localProperties.children}</div>
                 </Show>
             </div>
 
-            <Show when={local.dismissible}>
+            <Show when={localProperties.dismissible}>
                 <button
                     type="button"
                     class="ui-alert-dismiss"
-                    onClick={local.onDismiss}
+                    onClick={() => localProperties.onDismiss?.()}
                     aria-label="Dismiss"
                 >
-                    <X size={14} />
+                    <CloseIcon size={14} />
                 </button>
             </Show>
         </div>
     );
 };
 
-export const AlertTitle: Component<{ children: JSX.Element }> = props => (
-    <h5 class="ui-alert-title">{props.children}</h5>
+/**
+ * Component for the title of an alert.
+ *
+ * @param {Object} properties - Component properties.
+ * @param {JSX.Element} properties.children - The title content.
+ * @returns {JSX.Element} The rendered title component.
+ */
+export const AlertTitle: Component<{ children: JSX.Element }> = properties => (
+    <h5 class="ui-alert-title">{properties.children}</h5>
 );
 
-export const AlertDescription: Component<{ children: JSX.Element }> = props => (
-    <div class="ui-alert-description">{props.children}</div>
+/**
+ * Component for the description or body of an alert.
+ *
+ * @param {Object} properties - Component properties.
+ * @param {JSX.Element} properties.children - The description content.
+ * @returns {JSX.Element} The rendered description component.
+ */
+export const AlertDescription: Component<{ children: JSX.Element }> = properties => (
+    <div class="ui-alert-description">{properties.children}</div>
 );

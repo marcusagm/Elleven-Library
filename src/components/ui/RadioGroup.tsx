@@ -60,14 +60,18 @@ export const RadioGroup: Component<RadioGroupProps> = props => {
     const { value, setValue } = createControllableSignal({
         value: () => local.value,
         defaultValue: local.defaultValue ?? '',
-        onChange: local.onValueChange
+        onChange: (value: string) => local.onValueChange?.(value)
     });
 
     const contextValue: RadioGroupContextValue = {
-        name: name(),
+        get name() {
+            return name();
+        },
         value,
         onChange: setValue,
-        disabled: local.disabled ?? false
+        get disabled() {
+            return local.disabled ?? false;
+        }
     };
 
     return (

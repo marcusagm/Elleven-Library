@@ -22,6 +22,32 @@ const isValidHex = (hex: string): boolean => {
     return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hex);
 };
 
+/**
+ * Normalizes a hex color string, adding '#' if missing and expanding shorthand format.
+ */
+const normalizeHexValue = (inputValue: string): string | null => {
+    let processedValue = inputValue;
+    if (!processedValue.startsWith('#') && /^[0-9A-Fa-f]{3,6}$/.test(processedValue)) {
+        processedValue = '#' + processedValue;
+    }
+
+    if (isValidHex(processedValue)) {
+        // Expand 3 char hex (#RGB to #RRGGBB)
+        if (processedValue.length === 4) {
+            processedValue =
+                '#' +
+                processedValue[1] +
+                processedValue[1] +
+                processedValue[2] +
+                processedValue[2] +
+                processedValue[3] +
+                processedValue[3];
+        }
+        return processedValue;
+    }
+    return null;
+};
+
 export const ColorInput: Component<ColorInputProps> = props => {
     const merged = mergeProps({ defaultValue: '#000000' }, props);
     const [local, others] = splitProps(merged, [
@@ -40,7 +66,7 @@ export const ColorInput: Component<ColorInputProps> = props => {
     const { value, setValue } = createControllableSignal({
         value: () => local.value,
         defaultValue: local.defaultValue,
-        onChange: local.onChange
+        onChange: (color: string) => local.onChange?.(color)
     });
 
     // Internal signal for input field to allow typing partial hex before validation
@@ -48,35 +74,28 @@ export const ColorInput: Component<ColorInputProps> = props => {
 
     createEffect(() => {
         // If value prop changes externally, update input text
-        const v = value();
-        if (v) {
-            setInputValue(v);
+        const currentValue = value();
+        if (currentValue) {
+            setInputValue(currentValue);
         }
     });
 
-    const handleInput = (e: InputEvent & { currentTarget: HTMLInputElement }) => {
-        const val = e.currentTarget.value;
-        setInputValue(val);
+    const handleInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
+        const newValue = event.currentTarget.value;
+        setInputValue(newValue);
 
         // Live update if valid
-        if (isValidHex(val)) {
-            setValue(val);
+        if (isValidHex(newValue)) {
+            setValue(newValue);
         }
     };
 
     const handleBlur = () => {
-        let val = inputValue();
-        if (!val.startsWith('#') && /^[0-9A-Fa-f]{3,6}$/.test(val)) {
-            val = '#' + val;
-        }
+        const normalizedValue = normalizeHexValue(inputValue());
 
-        if (isValidHex(val)) {
-            // Expand 3 char hex
-            if (val.length === 4) {
-                val = '#' + val[1] + val[1] + val[2] + val[2] + val[3] + val[3];
-            }
-            setValue(val);
-            setInputValue(val);
+        if (normalizedValue) {
+            setValue(normalizedValue);
+            setInputValue(normalizedValue);
         } else {
             setInputValue(value() || '#000000');
         }

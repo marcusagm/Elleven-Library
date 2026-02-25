@@ -2,13 +2,38 @@ import { Component, JSX, splitProps, createMemo } from 'solid-js';
 import { cn } from '../../lib/utils';
 import './button-group.css';
 
-type ButtonGroupOrientation = 'horizontal' | 'vertical';
-type ButtonGroupSize = 'sm' | 'md' | 'lg';
+/**
+ * Defines the orientation options for the ButtonGroup component.
+ */
+export type ButtonGroupOrientation = 'horizontal' | 'vertical';
 
+/**
+ * Defines the size options for the ButtonGroup component.
+ */
+export type ButtonGroupSize = 'sm' | 'md' | 'lg';
+
+/**
+ * Properties for the ButtonGroup component.
+ */
 export interface ButtonGroupProps extends JSX.HTMLAttributes<HTMLDivElement> {
+    /**
+     * The orientation of the buttons within the group.
+     * @default 'horizontal'
+     */
     orientation?: ButtonGroupOrientation;
+    /**
+     * The size variant of the buttons within the group.
+     * @default 'md'
+     */
     size?: ButtonGroupSize;
+    /**
+     * Whether the buttons should appear attached to each other.
+     * @default false
+     */
     attached?: boolean;
+    /**
+     * The content to be rendered inside the button group, typically Button components.
+     */
     children: JSX.Element;
 }
 
@@ -32,6 +57,9 @@ export const ButtonGroup: Component<ButtonGroupProps> = props => {
         'children'
     ]);
 
+    /**
+     * Computes the CSS class names for the ButtonGroup component based on its props.
+     */
     const classes = createMemo(() =>
         cn(
             'ui-button-group',
