@@ -8,7 +8,7 @@ import { SEARCH_FIELDS, OPERATORS_FOR_TYPE } from './searchConstants';
 import { LogicalOperator, SearchCriterion } from '../../../core/store/filterStore';
 import { cn } from '../../../lib/utils';
 import { criterionHandlerRegistry } from './fields';
-import { CriterionFieldRendererProps } from './fields/types';
+import { CriterionFieldRendererProperties } from './fields/types';
 import { useAdvancedSearch, SearchValue } from './useAdvancedSearch';
 
 export interface QueryEditorProps {
@@ -47,10 +47,10 @@ const CriterionItem: Component<{
                         <div class="edit-inputs">
                             <Dynamic
                                 component={
-                                    DynamicFieldComponent() as unknown as Component<CriterionFieldRendererProps>
+                                    DynamicFieldComponent() as unknown as Component<CriterionFieldRendererProperties>
                                 }
                                 fieldKey={props.item.key}
-                                operator={props.item.operator}
+                                comparisonOperator={props.item.operator}
                                 value={props.search.editingValue()}
                                 setValue={(val: SearchValue) => {
                                     props.search.setEditingValue(() => val);
@@ -75,9 +75,9 @@ const CriterionItem: Component<{
                                         );
                                     }
                                 }}
-                                unit={props.search.editingUnit()}
-                                setUnit={(unit: string) => {
-                                    props.search.setEditingUnit(unit);
+                                unitMultiplier={props.search.editingUnitMultiplier()}
+                                setUnitMultiplier={(unit: string) => {
+                                    props.search.setEditingUnitMultiplier(unit);
                                     if (props.search.editingValidationErrors().unit) {
                                         props.search.setEditingValidationErrors(
                                             (prev: Record<string, string>) => ({

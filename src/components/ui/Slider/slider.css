@@ -87,31 +87,31 @@
 /* Thumb */
 .ui-slider-thumb {
   position: absolute;
-  
+
   width: var(--p-space-m);
   height: var(--p-space-m);
-  
+
   background-color: var(--text-inverse);
   border: var(--p-space-xxs) solid var(--action-primary-bg);
   border-radius: 50%;
-  
+
   cursor: grab;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-  
+
   /* Center in track container (which is now full size) */
   top: 50%;
   left: 50%;
   /* Transform handled by modifying specific properties below to preserve hover scale */
-  transform: translate(-50%, -50%); 
+  transform: translate(-50%, -50%);
 }
 
-/* Specific overrides for positioning are no longer needed if we use left/bottom percentages in JS, 
-   but we used translate(-50%, -50%) as base. 
+/* Specific overrides for positioning are no longer needed if we use left/bottom percentages in JS,
+   but we used translate(-50%, -50%) as base.
    JS sets `left` (horizontal) or `bottom` (vertical).
-   
+
    Horizontal: JS sets `left: X%`. `top: 50%` is from CSS. `translate(-50%, -50%)` centers it.
    Vertical: JS sets `bottom: X%`. `left: 50%` is from CSS. `translate(-50%, 50%)` is needed?
-   
+
    Wait, if `bottom` is set, `translate(-50%, 50%)` moves it down (visual correction).
    Let's check vertical transform logic.
 */
@@ -164,18 +164,18 @@
   bottom: 100%;
   left: 50%;
   transform: translate(-50%, -8px); /* 8px gap */
-  
+
   padding: var(--p-space-xs) var(--p-space-s);
-  
+
   background-color: var(--bg-surface-2);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-s);
-  
+
   font-size: var(--p-font-size-xs);
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
-  
+
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--transition-fast);

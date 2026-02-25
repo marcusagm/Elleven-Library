@@ -3,7 +3,7 @@
  */
 
 export { SettingsModal } from './SettingsModal';
-export type { SettingsModalProps, SettingsTab } from './SettingsModal';
+export type { SettingsModalProperties, SettingsTab } from './SettingsModal';
 
 export { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 export { GeneralPanel } from './GeneralPanel';

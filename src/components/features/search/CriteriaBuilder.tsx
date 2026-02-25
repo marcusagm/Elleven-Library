@@ -46,7 +46,7 @@ export const CriteriaBuilder: Component<CriteriaBuilderProps> = props => {
                     <Dynamic
                         component={DynamicFieldComponent()}
                         fieldKey={props.search.currentKey()}
-                        operator={props.search.currentOperator()}
+                        comparisonOperator={props.search.currentOperator()}
                         value={props.search.currentValue()}
                         setValue={(val: SearchValue) => {
                             props.search.setCurrentValue(() => val);
@@ -71,9 +71,9 @@ export const CriteriaBuilder: Component<CriteriaBuilderProps> = props => {
                                 );
                             }
                         }}
-                        unit={props.search.currentUnit()}
-                        setUnit={(unit: string) => {
-                            props.search.setCurrentUnit(unit);
+                        unitMultiplier={props.search.currentUnitMultiplier()}
+                        setUnitMultiplier={(unit: string) => {
+                            props.search.setCurrentUnitMultiplier(unit);
                             if (props.search.validationErrors().unit) {
                                 props.search.setValidationErrors(
                                     (prev: Record<string, string>) => ({
