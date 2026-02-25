@@ -28,10 +28,10 @@ export const AudioControls: Component = () => {
                             variant="ghost"
                             size="icon-sm"
                             onClick={() => {
-                                const muted = !audioState.isMuted();
-                                audioActions.setIsMuted(muted);
-                                const ref = audioRef();
-                                if (ref) ref.muted = muted;
+                                const isMuted = !audioState.isMuted();
+                                audioActions.setIsMuted(isMuted);
+                                const audioElement = audioRef();
+                                if (audioElement) audioElement.muted = isMuted;
                             }}
                         >
                             <Show
@@ -42,8 +42,9 @@ export const AudioControls: Component = () => {
                             </Show>
                         </Button>
                         <Slider
-                            min={0}
-                            max={100}
+                            minimumValue={0}
+                            maximumValue={100}
+                            showTicks={false}
                             value={audioState.isMuted() ? 0 : audioState.volume() * 100}
                             onValueChange={handleVolumeChange}
                             class="ui-audio-volume-slider"

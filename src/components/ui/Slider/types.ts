@@ -1,70 +1,74 @@
 import { JSX, Accessor } from 'solid-js';
 
 /**
- * Orientation of the slider component.
+ * Defines the visual and interaction orientation of the slider component.
+ * - 'horizontal': The slider moves left/right.
+ * - 'vertical': The slider moves up/down.
  */
 export type SliderOrientation = 'horizontal' | 'vertical';
 
 /**
- * Properties for the Slider component.
+ * Public properties for the Slider component and its atomic parts.
+ * Follows strict naming conventions: no abbreviations and descriptive purposes.
  */
 export interface SliderProperties extends Omit<JSX.HTMLAttributes<HTMLDivElement>, 'onChange'> {
-    /** The current value of the slider. */
+    /** The current controlled numeric value of the slider. */
     value?: number;
-    /** The default value when the component is uncontrolled. */
+    /** The initial value when the component is used in an uncontrolled manner. */
     defaultValue?: number;
-    /** Callback fired when the value changes during interaction. */
+    /** Callback function invoked whenever the slider value changes during interaction. */
     onValueChange?: (value: number) => void;
-    /** Callback fired when the interaction is finished (pointer up or key commit). */
+    /** Callback function invoked when the interaction is finalized (e.g., on pointer up or key commit). */
     onValueCommit?: (value: number) => void;
-    /** The minimum allowed value. Defaults to 0. */
-    min?: number;
-    /** The maximum allowed value. Defaults to 100. */
-    max?: number;
-    /** The step interval between values. Defaults to 1. */
-    step?: number;
-    /** Whether the slider is disabled. */
-    disabled?: boolean;
-    /** The visual orientation of the slider. */
+    /** The minimum selectable value for the slider. Defaults to 0 correctly. */
+    minimumValue?: number;
+    /** The maximum selectable value for the slider. Defaults to 100 correctly. */
+    maximumValue?: number;
+    /** The incremental step between selectable values. Defaults to 1. */
+    stepValue?: number;
+    /** Indicates if the slider is interactive. If true, interactions and focus are disabled. */
+    isDisabled?: boolean;
+    /** Determines if the slider is rendered horizontally or vertically. */
     orientation?: SliderOrientation;
-    /** Whether to show a tooltip above the thumb with the current value. */
+    /** Controls whether an interactive tooltip is displayed above the handle showing the current value. */
     showTooltip?: boolean;
-    /** Whether to show tick marks at each step. */
+    /** Controls the visibility of visual tick marks at each step interval along the track. */
     showTicks?: boolean;
-    /** Function to format the value for display in tooltips and ARIA attributes. */
+    /** Optional function to transform the numeric value into a formatted string for display and accessibility. */
     formatValue?: (value: number) => string;
 }
 
 /**
- * Context state for the Slider component and its children.
+ * Encapsulates the internal state and methods shared across all atomic slider sub-components.
+ * Provided via SliderContext to ensure strict separation of concerns and reactivity.
  */
 export interface SliderContextValue {
-    /** Accessor for the current numeric value. */
+    /** Accessor that returns the current numeric value of the slider. */
     value: Accessor<number>;
-    /** Accessor for the minimum value. */
+    /** Accessor that returns the minimum allowed value. */
     minimumValue: Accessor<number>;
-    /** Accessor for the maximum value. */
+    /** Accessor that returns the maximum allowed value. */
     maximumValue: Accessor<number>;
-    /** Accessor for the step value. */
+    /** Accessor that returns the defined step interval. */
     stepValue: Accessor<number>;
-    /** Accessor for the percentage of the value within the range (0-100). */
+    /** Accessor that returns the calculated percentage (0-100) of the current value within the total range. */
     percentage: Accessor<number>;
-    /** Whether the slider is currently being dragged. */
+    /** Accessor that returns true if the user is currently interacting with the slider via pointer. */
     isDragging: Accessor<boolean>;
-    /** Update the dragging state. */
+    /** Function to update the dragging status. */
     setIsDragging: (isDragging: boolean) => void;
-    /** Whether the slider is disabled. */
+    /** Accessor that returns true if the slider as a whole is disabled. */
     isDisabled: Accessor<boolean>;
-    /** The orientation of the slider. */
+    /** Accessor that returns the current orientation (horizontal/vertical). */
     orientation: Accessor<SliderOrientation>;
-    /** Function to format the value. */
+    /** Utility function to format any numeric value into its display string version. */
     formatValue: (value: number) => string;
-    /** Method to update the value. */
+    /** Method to programmatically update the slider's value. */
     setValue: (value: number) => void;
-    /** Method to commit the current value. */
+    /** Method to commit a final value, usually triggering the onValueCommit callback. */
     commitValue: (value: number) => void;
-    /** Reference to the track element. */
+    /** Contains a reactive reference to the physical track element for coordinate calculations. */
     trackReference: { ref: HTMLDivElement | undefined };
-    /** Unique ID for the slider components. */
+    /** Accessor returning a unique identifier for the slider instance, used for accessibility and input scopes. */
     sliderIdentifier: Accessor<string>;
 }

@@ -19,26 +19,30 @@ export const AudioWaveform: Component = () => {
                     }
                 >
                     <For each={displayWaveform()}>
-                        {(val, index) => {
+                        {(waveformValue, stepIndex) => {
                             const isPlayed = () => {
-                                const d = duration();
-                                if (d === 0) return false;
-                                const prog = (currentTime() / d) * 100;
-                                const ptProg = (index() / (displayWaveform().length || 1)) * 100;
-                                return ptProg <= prog;
+                                const totalDuration = duration();
+                                if (totalDuration === 0) return false;
+                                const playbackPercentage = (currentTime() / totalDuration) * 100;
+                                const pointPercentage =
+                                    (stepIndex() / (displayWaveform().length || 1)) * 100;
+                                return pointPercentage <= playbackPercentage;
                             };
 
                             const isBuffered = () => {
-                                const d = duration();
-                                if (d === 0) return true;
-                                return index() / (displayWaveform().length || 1) <= buffered() / d;
+                                const totalDuration = duration();
+                                if (totalDuration === 0) return true;
+                                return (
+                                    stepIndex() / (displayWaveform().length || 1) <=
+                                    buffered() / totalDuration
+                                );
                             };
 
                             return (
                                 <div
                                     class={cn('ui-audio-waveform-bar', isPlayed() && 'is-played')}
                                     style={{
-                                        height: `${Math.max(15, val * 100)}%`,
+                                        height: `${Math.max(15, waveformValue * 100)}%`,
                                         opacity: isBuffered() ? 1 : 0.3
                                     }}
                                 />
@@ -48,13 +52,14 @@ export const AudioWaveform: Component = () => {
                 </Show>
             </div>
             <Slider
-                min={0}
-                max={duration()}
-                step={0.1}
+                minimumValue={0}
+                maximumValue={duration()}
+                stepValue={0.1}
+                showTicks={false}
                 value={currentTime()}
-                onValueChange={v => {
-                    const ref = audioRef();
-                    if (ref) ref.currentTime = v;
+                onValueChange={newSeekTime => {
+                    const audioElement = audioRef();
+                    if (audioElement) audioElement.currentTime = newSeekTime;
                 }}
                 class="ui-audio-seekbar-slider"
             />

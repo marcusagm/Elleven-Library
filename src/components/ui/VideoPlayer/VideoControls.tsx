@@ -55,7 +55,7 @@ export const VideoControls: Component = () => {
                         <Button
                             variant="ghost"
                             size="icon-sm"
-                            onClick={(e: MouseEvent) => togglePlay(e)}
+                            onClick={(mouseEvent: MouseEvent) => togglePlay(mouseEvent)}
                         >
                             <Show
                                 when={isPlaying()}
@@ -80,7 +80,11 @@ export const VideoControls: Component = () => {
                     </Show>
 
                     <div class="ui-video-volume-group">
-                        <Button variant="ghost" size="icon-sm" onClick={e => toggleMute(e)}>
+                        <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(mouseEvent: MouseEvent) => toggleMute(mouseEvent)}
+                        >
                             <Show
                                 when={videoState.isMuted() || videoState.volume() === 0}
                                 fallback={<Volume2 size={18} />}
@@ -90,8 +94,9 @@ export const VideoControls: Component = () => {
                         </Button>
                         <div class="ui-video-volume-slider">
                             <Slider
-                                min={0}
-                                max={100}
+                                minimumValue={0}
+                                maximumValue={100}
+                                showTicks={false}
                                 value={videoState.isMuted() ? 0 : videoState.volume() * 100}
                                 onValueChange={handleVolumeChange}
                             />
@@ -112,7 +117,7 @@ export const VideoControls: Component = () => {
                                 variant="ghost"
                                 size="sm"
                                 class="ui-video-speed-btn"
-                                onClick={e => cyclePlaybackRate(e)}
+                                onClick={mouseEvent => cyclePlaybackRate(mouseEvent)}
                             >
                                 {videoState.playbackRate()}x
                             </Button>
@@ -167,7 +172,11 @@ export const VideoControls: Component = () => {
                     </Show>
 
                     <Tooltip content={isFullscreen() ? 'Exit Fullscreen' : 'Fullscreen'}>
-                        <Button variant="ghost" size="icon-sm" onClick={e => toggleFullscreen(e)}>
+                        <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={mouseEvent => toggleFullscreen(mouseEvent)}
+                        >
                             <Show when={isFullscreen()} fallback={<Maximize size={18} />}>
                                 <Minimize size={18} />
                             </Show>

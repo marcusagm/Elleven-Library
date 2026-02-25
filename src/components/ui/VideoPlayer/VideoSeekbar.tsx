@@ -21,12 +21,19 @@ export const VideoSeekbar: Component = () => {
         previewPos
     } = useVideoContext();
 
-    const handleSeekMouseMove = (e: MouseEvent) => {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        const pos = (e.clientX - rect.left) / rect.width;
-        const time = pos * duration();
-        setPreviewTime(time);
-        setPreviewPos(pos * 100);
+    /**
+     * Calculates the preview time based on mouse position over the seekbar.
+     *
+     * @param mouseEvent - The native MouseEvent.
+     */
+    const handleSeekMouseMove = (mouseEvent: MouseEvent) => {
+        const trackElement = mouseEvent.currentTarget as HTMLElement;
+        const trackBoundingRect = trackElement.getBoundingClientRect();
+        const positionRatio =
+            (mouseEvent.clientX - trackBoundingRect.left) / trackBoundingRect.width;
+        const calculatedTime = positionRatio * duration();
+        setPreviewTime(calculatedTime);
+        setPreviewPos(positionRatio * 100);
     };
 
     return (
@@ -46,9 +53,10 @@ export const VideoSeekbar: Component = () => {
                     style={{ width: `${(buffered() / duration()) * 100}%` }}
                 />
                 <Slider
-                    min={0}
-                    max={duration()}
-                    step={0.1}
+                    minimumValue={0}
+                    maximumValue={duration()}
+                    stepValue={0.1}
+                    showTicks={false}
                     value={currentTime()}
                     onValueChange={handleSeek}
                     class="ui-video-seekbar-slider"

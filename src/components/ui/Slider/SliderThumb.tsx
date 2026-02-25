@@ -9,16 +9,19 @@ import { useShortcut } from '../../../core/input/primitives/createShortcut';
  * Properties for the SliderThumb component.
  */
 interface SliderThumbProperties extends JSX.HTMLAttributes<HTMLDivElement> {
-    /** Whether to show a tooltip above the thumb. */
+    /** Controls whether an interactive tooltip is displayed above the thumb with the current value. */
     showTooltip?: boolean;
 }
 
 /**
- * The interactive handle for the slider.
- * It manages focus, keyboard navigation (via the input system), and accessibility attributes.
+ * The SliderThumb component represents the interactive handle that users drag to select a value.
+ * It manages its own focus state, accessibility attributes (ARIA), and integrates with the
+ * global input system to provide standard keyboard navigation (Arrow keys, Home, End, PageUp/Down).
+ *
+ * This component acts as the primary focusable element for the slider system.
  *
  * @param componentProperties - Properties for the SliderThumb.
- * @returns The rendered thumb element.
+ * @returns The rendered thumb handle element.
  */
 export const SliderThumb: Component<SliderThumbProperties> = componentProperties => {
     const [localProperties, otherProperties] = splitProps(componentProperties, [
@@ -26,69 +29,92 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
         'showTooltip'
     ]);
     const slider = useSlider();
+
+    /** Track whether the handle currently has keyboard focus. */
     const [isFocused, setIsFocused] = createSignal(false);
 
-    // Register a conditional scope and shortcuts when this thumb is focused
-    const sliderScope = createMemo(() => `slider-${slider.sliderIdentifier()}`);
+    /**
+     * Unique scope identifier for this slider instance's keyboard shortcuts.
+     * Ensures that multiple sliders on the same page don't conflict.
+     */
+    const sliderInputScope = createMemo(() => `slider-${slider.sliderIdentifier()}`);
 
-    // Since shortcuts are registered once on mount, we use a stable scope name
-    // derived from the initial identifier to avoid reactivity lint warnings
-    // on initialization functions that aren't reactive.
-    const initialScope = untrack(() => sliderScope());
+    /**
+     * Cache the initial scope name for use in shortcut registration.
+     * Shortcuts are registered once; using a stable identifier avoids reactivity warnings.
+     */
+    const initialInputScopeIdentifier = untrack(() => sliderInputScope());
 
-    createConditionalScope(initialScope, isFocused, 1200);
+    // Enable the custom keyboard shortcut scope only when this specific thumb is focused.
+    createConditionalScope(initialInputScopeIdentifier, isFocused, 1200);
 
-    const clamp = (value: number) => {
-        return Math.min(slider.maximumValue(), Math.max(slider.minimumValue(), value));
+    /**
+     * Utility to ensure any new value remains strictly between minimum and maximum bounds.
+     *
+     * @param targetValue - The numeric value to be clamped.
+     * @returns The clamped value.
+     */
+    const clampValueToRange = (targetValue: number) => {
+        return Math.min(slider.maximumValue(), Math.max(slider.minimumValue(), targetValue));
     };
 
-    const bigStep = () => slider.stepValue() * 10;
+    /**
+     * Calculates a 'large' increment, typically used for PageUp/PageDown interactions.
+     * By convention, this is 10 times the base step value.
+     */
+    const calculateLargeStepIncrement = () => slider.stepValue() * 10;
 
-    // Register accessibility shortcuts
+    // --- Keyboard Shortcut Registration ---
+
+    // Standard Increments (ArrowRight, ArrowUp)
     useShortcut(
         ['ArrowRight', 'ArrowUp'],
         event => {
             event?.preventDefault();
-            const newValue = clamp(slider.value() + slider.stepValue());
+            const newValue = clampValueToRange(slider.value() + slider.stepValue());
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialScope }
+        { scope: initialInputScopeIdentifier }
     );
 
+    // Standard Decrements (ArrowLeft, ArrowDown)
     useShortcut(
         ['ArrowLeft', 'ArrowDown'],
         event => {
             event?.preventDefault();
-            const newValue = clamp(slider.value() - slider.stepValue());
+            const newValue = clampValueToRange(slider.value() - slider.stepValue());
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialScope }
+        { scope: initialInputScopeIdentifier }
     );
 
+    // Large Increments (PageUp)
     useShortcut(
         'PageUp',
         event => {
             event?.preventDefault();
-            const newValue = clamp(slider.value() + bigStep());
+            const newValue = clampValueToRange(slider.value() + calculateLargeStepIncrement());
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialScope }
+        { scope: initialInputScopeIdentifier }
     );
 
+    // Large Decrements (PageDown)
     useShortcut(
         'PageDown',
         event => {
             event?.preventDefault();
-            const newValue = clamp(slider.value() - bigStep());
+            const newValue = clampValueToRange(slider.value() - calculateLargeStepIncrement());
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialScope }
+        { scope: initialInputScopeIdentifier }
     );
 
+    // Jump to Minimum (Home)
     useShortcut(
         'Home',
         event => {
@@ -97,9 +123,10 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialScope }
+        { scope: initialInputScopeIdentifier }
     );
 
+    // Jump to Maximum (End)
     useShortcut(
         'End',
         event => {
@@ -108,10 +135,12 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialScope }
+        { scope: initialInputScopeIdentifier }
     );
 
+    /** Updates local focus state to active. */
     const handleFocus = () => setIsFocused(true);
+    /** Updates local focus state to inactive. */
     const handleBlur = () => setIsFocused(false);
 
     return (

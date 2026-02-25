@@ -9,14 +9,25 @@ import { SliderProperties } from './types';
 import './slider.css';
 
 /**
- * A versatile slider component for selecting numeric values from a range.
- * This is the simplified, backward-compatible version of the slider.
+ * A highly versatile and accessible slider component for selecting numeric values from a range.
+ * This component follows the atomic design pattern and uses the SliderRoot provider to share state.
  *
- * @param componentProperties - Properties for the Slider.
+ * It is fully compatible with keyboard navigation, screen readers, and touch devices.
+ *
+ * @param componentProperties - Properties for configuring the Slider's value, range, and appearance.
  * @returns The rendered Slider component.
  *
  * @example
- * <Slider defaultValue={50} min={0} max={100} onValueChange={console.log} />
+ * ```tsx
+ * <Slider
+ *   defaultValue={50}
+ *   minimumValue={0}
+ *   maximumValue={100}
+ *   stepValue={5}
+ *   showTooltip={true}
+ *   onValueChange={(newValue) => console.log('Current value:', newValue)}
+ * />
+ * ```
  */
 export const Slider: Component<SliderProperties> = componentProperties => {
     const [localProperties, otherProperties] = splitProps(componentProperties, [
@@ -26,10 +37,10 @@ export const Slider: Component<SliderProperties> = componentProperties => {
         'defaultValue',
         'onValueChange',
         'onValueCommit',
-        'min',
-        'max',
-        'step',
-        'disabled',
+        'minimumValue',
+        'maximumValue',
+        'stepValue',
+        'isDisabled',
         'orientation',
         'showTooltip',
         'showTicks',
@@ -43,10 +54,10 @@ export const Slider: Component<SliderProperties> = componentProperties => {
             defaultValue={localProperties.defaultValue}
             onValueChange={localProperties.onValueChange}
             onValueCommit={localProperties.onValueCommit}
-            min={localProperties.min}
-            max={localProperties.max}
-            step={localProperties.step}
-            disabled={localProperties.disabled}
+            minimumValue={localProperties.minimumValue}
+            maximumValue={localProperties.maximumValue}
+            stepValue={localProperties.stepValue}
+            isDisabled={localProperties.isDisabled}
             orientation={localProperties.orientation}
             formatValue={localProperties.formatValue}
         >
@@ -54,7 +65,7 @@ export const Slider: Component<SliderProperties> = componentProperties => {
                 class={cn(
                     'ui-slider',
                     `ui-slider-${localProperties.orientation || 'horizontal'}`,
-                    localProperties.disabled && 'ui-slider-disabled',
+                    localProperties.isDisabled && 'ui-slider-disabled',
                     localProperties.class
                 )}
                 {...otherProperties}
@@ -67,15 +78,19 @@ export const Slider: Component<SliderProperties> = componentProperties => {
                     <SliderThumb showTooltip={localProperties.showTooltip} />
                 </SliderTrack>
 
-                {/* Hidden input for form submission & accessibility context */}
+                {/*
+                  Hidden native range input.
+                  Maintained for form submission compatibility and as an additional
+                  accessibility context, although interaction is handled by SliderThumb.
+                */}
                 <input
                     type="range"
                     id={localProperties.id}
-                    min={localProperties.min ?? 0}
-                    max={localProperties.max ?? 100}
-                    step={localProperties.step ?? 1}
+                    min={localProperties.minimumValue ?? 0}
+                    max={localProperties.maximumValue ?? 100}
+                    step={localProperties.stepValue ?? 1}
                     value={localProperties.value}
-                    disabled={localProperties.disabled}
+                    disabled={localProperties.isDisabled}
                     class="ui-slider-input"
                     tabindex={-1}
                     aria-hidden="true"

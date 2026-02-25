@@ -95,13 +95,16 @@ export const AppearancePanel: Component = () => {
                     <span class="setting-label">Corner Radius:</span>
                     <div style={{ padding: 'var(--p-space-xs) var(--p-space-s)' }}>
                         <Slider
-                            min={0}
-                            max={16}
-                            step={2}
+                            minimumValue={0}
+                            maximumValue={16}
+                            stepValue={2}
+                            showTicks={true}
                             value={appearance().radius}
-                            onValueChange={v => appearanceActions.update({ radius: v })}
+                            onValueChange={newRadius =>
+                                appearanceActions.update({ radius: newRadius })
+                            }
                             showTooltip
-                            formatValue={v => `${v}px`}
+                            formatValue={value => `${value}px`}
                         />
                         <div class="appearance-radius-preview">
                             <span>Sharp (0px)</span>

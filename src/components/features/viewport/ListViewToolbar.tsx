@@ -177,9 +177,10 @@ export const ListViewToolbar: Component = () => {
                 >
                     <Slider
                         value={filters.thumbSize || 200}
-                        min={100}
-                        max={500}
-                        onValueChange={val => filters.setThumbSize(val)}
+                        minimumValue={100}
+                        maximumValue={500}
+                        showTicks={false}
+                        onValueChange={newThumbnailSize => filters.setThumbSize(newThumbnailSize)}
                         title="Thumbnail Size"
                     />
                 </div>

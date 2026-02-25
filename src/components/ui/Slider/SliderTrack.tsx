@@ -6,18 +6,19 @@ import { useSlider } from './SliderContext';
  * Properties for the SliderTrack component.
  */
 interface SliderTrackProperties extends JSX.HTMLAttributes<HTMLDivElement> {
-    /** Optional class name. */
+    /** Optional CSS class for custom styling of the track element. */
     class?: string;
-    /** Track content. */
+    /** Elements to be rendered within the track, usually SliderRange, SliderTicks, and SliderThumb. */
     children?: JSX.Element;
 }
 
 /**
- * The track component for the slider.
- * It handles pointer events for clicking and dragging to update the slider value.
+ * The SliderTrack component provides the physical container and interactive area for the slider.
+ * It detects pointer interactions (clicks and drags) to calculate and update the slider's value
+ * based on the relative position of the pointer along the track.
  *
  * @param componentProperties - Properties for the SliderTrack.
- * @returns The rendered track element.
+ * @returns The rendered track div element.
  */
 export const SliderTrack: Component<SliderTrackProperties> = componentProperties => {
     const [localProperties, otherProperties] = splitProps(componentProperties, [
@@ -27,41 +28,67 @@ export const SliderTrack: Component<SliderTrackProperties> = componentProperties
     ]);
     const slider = useSlider();
 
+    /**
+     * Calculates the slider's numeric value berdasarkan pointer coordinates relative to the track bounds.
+     * Takes into account orientation (horizontal/vertical) and range constraints (min/max/step).
+     *
+     * @param clientX - The X coordinate of the pointer.
+     * @param clientY - The Y coordinate of the pointer.
+     * @returns The calculated, clamped, and stepped numeric value.
+     */
     const calculateValueFromPosition = (clientX: number, clientY: number) => {
         if (!slider.trackReference.ref) return slider.value();
 
-        const rect = slider.trackReference.ref.getBoundingClientRect();
-        let ratio: number;
+        const trackBoundingRect = slider.trackReference.ref.getBoundingClientRect();
+        let positionRatio: number;
 
         if (slider.orientation() === 'vertical') {
-            ratio = 1 - (clientY - rect.top) / rect.height;
+            // In vertical mode, the bottom of the track is usually 0% and the top is 100%.
+            positionRatio = 1 - (clientY - trackBoundingRect.top) / trackBoundingRect.height;
         } else {
-            ratio = (clientX - rect.left) / rect.width;
+            // In horizontal mode, the left of the track is usually 0% and the right is 100%.
+            positionRatio = (clientX - trackBoundingRect.left) / trackBoundingRect.width;
         }
 
-        const rawValue =
-            slider.minimumValue() + ratio * (slider.maximumValue() - slider.minimumValue());
+        const rawCalculatedValue =
+            slider.minimumValue() + positionRatio * (slider.maximumValue() - slider.minimumValue());
 
-        // Clamp and round to step
+        // Clamp the raw value to ensure it stays within the defined range bounds.
         const clampedValue = Math.min(
             slider.maximumValue(),
-            Math.max(slider.minimumValue(), rawValue)
+            Math.max(slider.minimumValue(), rawCalculatedValue)
         );
-        const steps = Math.round((clampedValue - slider.minimumValue()) / slider.stepValue());
-        const roundedValue = slider.minimumValue() + steps * slider.stepValue();
 
+        // Round the clamped value to the nearest incremental step.
+        const numberOfSteps = Math.round(
+            (clampedValue - slider.minimumValue()) / slider.stepValue()
+        );
+        const roundedValue = slider.minimumValue() + numberOfSteps * slider.stepValue();
+
+        // Final clamp to handle potential floating point precision issues at the boundaries.
         return Math.min(slider.maximumValue(), Math.max(slider.minimumValue(), roundedValue));
     };
 
+    /**
+     * Handles the pointer down interaction on the track.
+     * Initiates dragging state and attaches movement listeners to the document for a fluid experience.
+     *
+     * @param event - The pointer event from the user interaction.
+     */
     const handlePointerDown = (event: PointerEvent) => {
         if (slider.isDisabled()) return;
 
+        // Prevent default browser behavior like text selection during dragging.
         event.preventDefault();
         slider.setIsDragging(true);
 
+        // Calculate and set initial value on pointer down (allows "clicking" the track to jump).
         const newValue = calculateValueFromPosition(event.clientX, event.clientY);
         slider.setValue(newValue);
 
+        /**
+         * Actively updates the value as the pointer moves across the document.
+         */
         const handlePointerMove = (moveEvent: PointerEvent) => {
             const currentNewValue = calculateValueFromPosition(
                 moveEvent.clientX,
@@ -70,6 +97,9 @@ export const SliderTrack: Component<SliderTrackProperties> = componentProperties
             slider.setValue(currentNewValue);
         };
 
+        /**
+         * Cleans up listeners and finalize state when the pointer is released anywhere.
+         */
         const handlePointerUp = () => {
             slider.setIsDragging(false);
             slider.commitValue(slider.value());
@@ -77,14 +107,14 @@ export const SliderTrack: Component<SliderTrackProperties> = componentProperties
             document.removeEventListener('pointerup', handlePointerUp);
         };
 
+        // Attach listeners to document to ensure dragging works even if the pointer leaves the track area.
         document.addEventListener('pointermove', handlePointerMove);
         document.addEventListener('pointerup', handlePointerUp);
 
-        // Pass event to potential custom handler
+        // Notify any external listeners attached to the track about the pointer interaction.
         const externalPointerDownHandler = localProperties.onPointerDown;
         if (typeof externalPointerDownHandler === 'function') {
-            // Cast to a generic function to satisfy callability, then pass event as any
-            // to bridge the gap between native and Solid events.
+            // Double cast to bridge the gap between native events and potentially custom handler types.
             (externalPointerDownHandler as (event: unknown) => void)(event);
         } else if (Array.isArray(externalPointerDownHandler)) {
             const [handler, data] = externalPointerDownHandler;

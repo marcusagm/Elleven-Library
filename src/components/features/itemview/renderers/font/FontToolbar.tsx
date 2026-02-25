@@ -23,10 +23,11 @@ export const FontToolbar: Component = () => {
                         <Type size={14} class="font-icon" />
                         <div style={{ width: '80px' }}>
                             <Slider
-                                min={8}
-                                max={200}
+                                minimumValue={8}
+                                maximumValue={200}
+                                showTicks={false}
                                 value={fontSettings().fontSize}
-                                onValueChange={val => updateSetting('fontSize', val)}
+                                onValueChange={newValue => updateSetting('fontSize', newValue)}
                             />
                         </div>
                         <span class="font-control-value">
@@ -42,11 +43,11 @@ export const FontToolbar: Component = () => {
                         <MoveVertical size={14} class="font-icon" />
                         <div style={{ width: '80px' }}>
                             <Slider
-                                min={0.5}
-                                max={3}
-                                step={0.1}
+                                minimumValue={0.5}
+                                maximumValue={3}
+                                stepValue={0.1}
                                 value={fontSettings().lineHeight}
-                                onValueChange={val => updateSetting('lineHeight', val)}
+                                onValueChange={newValue => updateSetting('lineHeight', newValue)}
                                 showTicks={false}
                             />
                         </div>
@@ -62,10 +63,11 @@ export const FontToolbar: Component = () => {
                         />
                         <div style={{ width: '80px' }}>
                             <Slider
-                                min={-5}
-                                max={20}
+                                minimumValue={-5}
+                                maximumValue={20}
+                                showTicks={false}
                                 value={fontSettings().letterSpacing}
-                                onValueChange={val => updateSetting('letterSpacing', val)}
+                                onValueChange={newValue => updateSetting('letterSpacing', newValue)}
                             />
                         </div>
                     </div>

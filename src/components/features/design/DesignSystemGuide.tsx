@@ -2408,17 +2408,29 @@ export const DesignSystemGuide: Component = () => {
                                     <Slider
                                         value={sliderVal()}
                                         onValueChange={setSliderVal}
-                                        min={0}
-                                        max={100}
+                                        minimumValue={0}
+                                        maximumValue={100}
+                                        showTicks={false}
                                     />
-                                    <Slider defaultValue={50} min={0} max={100} disabled />
-                                    <Slider defaultValue={50} step={25} min={0} max={100} />
                                     <Slider
                                         defaultValue={50}
-                                        step={25}
-                                        min={0}
-                                        max={100}
-                                        disabled
+                                        minimumValue={0}
+                                        maximumValue={100}
+                                        showTicks={false}
+                                        isDisabled
+                                    />
+                                    <Slider
+                                        defaultValue={50}
+                                        stepValue={25}
+                                        minimumValue={0}
+                                        maximumValue={100}
+                                    />
+                                    <Slider
+                                        defaultValue={50}
+                                        stepValue={25}
+                                        minimumValue={0}
+                                        maximumValue={100}
+                                        isDisabled
                                     />
                                 </div>
                                 <div
@@ -2431,31 +2443,33 @@ export const DesignSystemGuide: Component = () => {
                                     <Slider
                                         value={sliderVal()}
                                         onValueChange={setSliderVal}
-                                        min={0}
-                                        max={100}
+                                        minimumValue={0}
+                                        maximumValue={100}
+                                        showTicks={false}
                                         orientation="vertical"
                                     />
                                     <Slider
                                         defaultValue={50}
-                                        min={0}
-                                        max={100}
+                                        minimumValue={0}
+                                        maximumValue={100}
+                                        showTicks={false}
                                         orientation="vertical"
-                                        disabled
+                                        isDisabled
                                     />
                                     <Slider
                                         defaultValue={50}
-                                        step={25}
-                                        min={0}
-                                        max={100}
+                                        stepValue={25}
+                                        minimumValue={0}
+                                        maximumValue={100}
                                         orientation="vertical"
                                     />
                                     <Slider
                                         defaultValue={50}
-                                        step={25}
-                                        min={0}
-                                        max={100}
+                                        stepValue={25}
+                                        minimumValue={0}
+                                        maximumValue={100}
                                         orientation="vertical"
-                                        disabled
+                                        isDisabled
                                     />
                                 </div>
                             </div>

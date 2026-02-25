@@ -2,40 +2,56 @@ import { Component, createMemo, For } from 'solid-js';
 import { useSlider } from './SliderContext';
 
 /**
- * Calculates tick values for the slider based on range and step.
+ * Calculates the appropriate numeric values where tick marks should be positioned along the track.
+ * Includes a performance safeguard to prevent rendering an excessive number of elements.
  *
- * @param minValue - The minimum value of the slider.
- * @param maxValue - The maximum value of the slider.
- * @param stepValue - The step interval between ticks.
- * @returns An array of numeric values where ticks should be placed.
+ * @param minimumValue - The lowest selectable value on the slider.
+ * @param maximumValue - The highest selectable value on the slider.
+ * @param stepValue - The incremental step determining the density of ticks.
+ * @returns An array of numeric values corresponding to each intermediate tick position.
  */
-const calculateTickValues = (minValue: number, maxValue: number, stepValue: number) => {
-    const range = maxValue - minValue;
-    if (range <= 0 || stepValue <= 0) return [];
+const calculateTickValues = (minimumValue: number, maximumValue: number, stepValue: number) => {
+    const rangeSize = maximumValue - minimumValue;
+    if (rangeSize <= 0 || stepValue <= 0) return [];
 
-    const tickCount = Math.floor(range / stepValue);
-    if (tickCount > 50) return []; // Performance safeguard: Avoid too many ticks
+    const calculatedTickCount = Math.floor(rangeSize / stepValue);
+
+    /**
+     * Performance safeguard: Avoid rendering too many tick elements which could
+     * degrade DOM performance and visual clarity.
+     */
+    const MAXIMUM_TICK_LIMIT = 100;
+    if (calculatedTickCount > MAXIMUM_TICK_LIMIT) return [];
 
     const tickValues: number[] = [];
-    // Skip the min value as the track start represents it
-    for (let index = 1; index <= tickCount; index++) {
-        const value = minValue + index * stepValue;
-        // Don't include if it exactly equals max to avoid overlap with track end
-        if (value < maxValue) {
-            tickValues.push(value);
+
+    // Iteratively calculate values for each step increment.
+    // We skip the boundaries (minimum/maximum) as they are visually represented by the track ends.
+    for (let stepIndex = 1; stepIndex < calculatedTickCount; stepIndex++) {
+        const tickPositionValue = minimumValue + stepIndex * stepValue;
+
+        // Safety check to ensure we stay strictly within the numerical range.
+        if (tickPositionValue < maximumValue) {
+            tickValues.push(tickPositionValue);
         }
     }
+
     return tickValues;
 };
 
 /**
- * Component to render tick marks along the slider track.
+ * The SliderTicks component renders visual markers at each step interval along the slider track.
+ * These markers help users perceive the granularity and selectable positions of the slider.
  *
- * @returns A group of tick elements.
+ * @returns A reactive collection of tick DIV elements.
  */
 export const SliderTicks: Component = () => {
     const slider = useSlider();
 
+    /**
+     * Memoized calculation of tick values to ensure
+     * the DOM only updates when range or step configuration changes.
+     */
     const tickValues = createMemo(() =>
         calculateTickValues(slider.minimumValue(), slider.maximumValue(), slider.stepValue())
     );
@@ -46,6 +62,7 @@ export const SliderTicks: Component = () => {
                 <div
                     class="ui-slider-tick"
                     style={{
+                        /** Positions the tick correctly along the track based on its percentage within the range. */
                         [slider.orientation() === 'vertical' ? 'bottom' : 'left']:
                             `${((tickValue - slider.minimumValue()) / (slider.maximumValue() - slider.minimumValue())) * 100}%`
                     }}

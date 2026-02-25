@@ -63,9 +63,10 @@ export const ImageToolbar: Component = () => {
 
                 <Slider
                     value={zoom()}
-                    min={5}
-                    max={500}
-                    onValueChange={val => setZoom(val)}
+                    minimumValue={5}
+                    maximumValue={500}
+                    showTicks={false}
+                    onValueChange={newZoomValue => setZoom(newZoomValue)}
                     class="zoom-slider"
                 />
                 <Tooltip position="bottom" content={<ShortcutHint name="Zoom In" />}>
