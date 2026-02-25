@@ -82,9 +82,11 @@ export const sizeHandler: import('./types').SearchFieldHandler = {
 
         return { finalValue, unitMultiplier: unit };
     },
-    formatDisplay: (val, _op, unit) => {
-        const numVal = Number(val);
+    formatDisplay: (v1, v2, op, unit) => {
         const u = SIZE_UNITS.find(opt => opt.value === unit)?.label || 'bytes';
-        return `${numVal} ${u}`;
+        if (op === 'between') {
+            return `${v1} ${u} to ${v2} ${u}`;
+        }
+        return `${v1} ${u}`;
     }
 };

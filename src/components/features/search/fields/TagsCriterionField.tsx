@@ -30,8 +30,8 @@ export const tagsHandler: import('./types').SearchFieldHandler = {
         return errors;
     },
     process: val => ({ finalValue: val }),
-    formatDisplay: (val, _op, _unit, metadata) => {
-        const found = metadata?.tags.find(t => String(t.id) === String(val));
-        return found?.name || String(val);
+    formatDisplay: (v1, _v2, _op, _unit, metadata) => {
+        const found = metadata?.tags.find(t => String(t.id) === String(v1));
+        return found?.name || String(v1);
     }
 };

@@ -17,11 +17,9 @@ const formatWithHandler = (
     if (!handler?.formatDisplay) return null;
     if (isArray) {
         const arr = value as unknown[];
-        const v1 = handler.formatDisplay(arr[0], op, unit, meta);
-        const v2 = handler.formatDisplay(arr[1], op, unit, meta);
-        return `${v1} to ${v2}`;
+        return handler.formatDisplay(arr[0], arr[1], op, unit, meta);
     }
-    return handler.formatDisplay(value, op, unit, meta);
+    return handler.formatDisplay(value, undefined, op, unit, meta);
 };
 
 export const computeDisplayValue = (

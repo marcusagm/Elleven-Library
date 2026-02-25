@@ -26,5 +26,5 @@ export const ratingHandler: import('./types').SearchFieldHandler = {
         return errors;
     },
     process: val => ({ finalValue: val }),
-    formatDisplay: val => `${val} Stars`
+    formatDisplay: v1 => `${v1} Stars`
 };

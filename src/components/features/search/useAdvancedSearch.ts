@@ -193,6 +193,7 @@ export const useAdvancedSearch = (
                 if (c.id === id) {
                     const displayValue = handler.formatDisplay?.(
                         editingValue(),
+                        editingValue2(),
                         currentItem.operator,
                         unitMultiplier,
                         {
@@ -239,6 +240,7 @@ export const useAdvancedSearch = (
 
         const internalDisplayValue = handler.formatDisplay?.(
             currentValue(),
+            currentValue2(),
             currentOperator(),
             unitMultiplier,
             {

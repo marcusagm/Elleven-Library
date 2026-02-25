@@ -60,6 +60,7 @@ export interface SearchFieldHandler {
 
     formatDisplay?: (
         value: unknown,
+        value2: unknown,
         operator: string,
         unitMultiplier?: string,
         metadata?: StoreMetadata

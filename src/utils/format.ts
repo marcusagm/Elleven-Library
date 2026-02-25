@@ -66,38 +66,75 @@ export const formatToISO = (val: Date | string): string => {
 };
 
 /**
- * Formats an ISO standard date string to a localized display format (DD/MM/YYYY).
- *
- * @param {string} iso - The ISO string to format.
- * @returns {string} The formatted display date string.
- */
-export const formatToDisplay = (iso: string) => {
-    if (!iso || typeof iso !== 'string') return iso;
-    const parts = iso.split('-');
-    if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        if (!isNaN(d.getTime())) {
-            const day = d.getDate().toString().padStart(2, '0');
-            const month = (d.getMonth() + 1).toString().padStart(2, '0');
-            const year = d.getFullYear();
-            return `${day}/${month}/${year}`;
-        }
-    }
-    return iso;
-};
-
-/**
- * Prepares a Date object from an ISO standard date string.
+ * Parses an ISO standard date string (YYYY-MM-DD) to a Date object.
  *
  * @param {string} iso - The ISO standard date string.
  * @returns {Date | null} The corresponding date object, or null if invalid.
  */
-export const fromISO = (iso: string) => {
+export const fromISO = (iso: string): Date | null => {
     if (!iso || typeof iso !== 'string') return null;
     const parts = iso.split('-');
     if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        return isNaN(d.getTime()) ? null : d;
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        const date = new Date(year, month, day);
+        return isNaN(date.getTime()) ? null : date;
     }
     return null;
+};
+
+/**
+ * Formats a Date object to a display-ready string (DD/MM/YYYY).
+ *
+ * @param {Date} date - The date object to format.
+ * @returns {string} The formatted display date string.
+ */
+export const formatDateToDisplay = (date: Date): string => {
+    if (!(date instanceof Date) || isNaN(date.getTime())) return '';
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString();
+    return `${day}/${month}/${year}`;
+};
+
+/**
+ * Parses a display date string (DD/MM/YYYY) to a Date object.
+ *
+ * @param {string} displayString - The string in DD/MM/YYYY format.
+ * @returns {Date | null} The corresponding date object, or null if invalid.
+ */
+export const parseDisplayDate = (displayString: string): Date | null => {
+    if (!displayString || displayString.length < 10) return null;
+    const parts = displayString.split('/');
+    if (parts.length !== 3) return null;
+
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+    const year = parseInt(parts[2], 10);
+
+    const date = new Date(year, month, day);
+
+    // Validation to ensure it's a real date (e.g. not 31/02/2021)
+    if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+        return date;
+    }
+
+    return null;
+};
+
+/**
+ * Formats a date (ISO string or Date object) to a localized display format (DD/MM/YYYY).
+ *
+ * @param {string | Date} val - The date to format.
+ * @returns {string} The formatted display date string.
+ */
+export const formatToDisplay = (val: string | Date): string => {
+    if (val instanceof Date) {
+        return formatDateToDisplay(val);
+    }
+    if (typeof val !== 'string') return '';
+
+    const date = fromISO(val);
+    return date ? formatDateToDisplay(date) : val;
 };

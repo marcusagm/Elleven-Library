@@ -1,7 +1,7 @@
 import { Component, Show } from 'solid-js';
 import { DateInput } from '../../../ui/DateInput';
 import { CriterionFieldRendererProps } from './types';
-import { formatToISO } from '../../../../utils/format';
+import { formatToISO, formatToDisplay } from '../../../../utils/format';
 
 export const DateCriterionField: Component<CriterionFieldRendererProps> = props => {
     const isRange = () => props.operator === 'between';
@@ -55,5 +55,11 @@ export const dateHandler: import('./types').SearchFieldHandler = {
             return { finalValue: [v1, v2] };
         }
         return { finalValue: formatToISO(val as Date | string) };
+    },
+    formatDisplay: (v1, v2, op) => {
+        if (op === 'between') {
+            return `${formatToDisplay(v1 as string | Date)} to ${formatToDisplay(v2 as string | Date)}`;
+        }
+        return formatToDisplay(v1 as string | Date);
     }
 };

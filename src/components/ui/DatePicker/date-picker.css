@@ -16,7 +16,7 @@
   margin-bottom: var(--p-space-m);
 }
 
-.ui-date-picker-title-btn {
+.ui-date-picker-title-button {
   font-weight: 600;
   font-size: var(--p-font-size-m);
   color: var(--text-primary);
@@ -28,7 +28,7 @@
   transition: background-color var(--transition-fast);
 }
 
-.ui-date-picker-title-btn:hover {
+.ui-date-picker-title-button:hover {
   background-color: var(--bg-surface-hover);
 }
 
@@ -91,7 +91,7 @@
   transition: all var(--transition-fast);
   /* Default square-ish aspect */
   height: 2rem;
-  width: 100%; 
+  width: 100%;
 }
 
 .ui-date-picker-cell:hover:not(:disabled) {
@@ -99,7 +99,7 @@
 }
 
 /* Specific aspect ratios if needed */
-.ui-date-picker-month-cell, 
+.ui-date-picker-month-cell,
 .ui-date-picker-year-cell {
    height: 3rem;
    font-size: var(--p-font-size-m);

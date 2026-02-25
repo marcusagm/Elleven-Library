@@ -33,10 +33,10 @@ export const selectHandler: import('./types').SearchFieldHandler = {
         return errors;
     },
     process: val => ({ finalValue: val }),
-    formatDisplay: (val, _op, _unit, metadata) => {
+    formatDisplay: (v1, _v2, _op, _unit, metadata) => {
         const foundFormat = metadata?.supportedFormats?.find(sf =>
-            sf.extensions.includes(String(val))
+            sf.extensions.includes(String(v1))
         );
-        return foundFormat ? `.${String(val).toUpperCase()} (${foundFormat.name})` : String(val);
+        return foundFormat ? `.${String(v1).toUpperCase()} (${foundFormat.name})` : String(v1);
     }
 };
