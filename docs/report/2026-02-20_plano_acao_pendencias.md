@@ -2,7 +2,7 @@
 
 **Data:** 20 de Fevereiro de 2026
 **Status:** Planejamento (parcialmente em andamento)
-**Última atualização:** 2026-02-25 — Conclusão da refatoração de DropdownMenu e ContextMenu.
+**Última atualização:** 2026-02-25 — Conclusão da refatoração de Accordion, DropdownMenu e ContextMenu.
 **Baseado em:** `pendencias_consolidadas.md`
 
 Este documento elabora um plano detalhado de implementação para todas as pendências ativas mapeadas nos relatórios recentes do projeto **Mundam**. Para manter a manutenibilidade, o plano foi segmentado em partes menores, de modo que cada tópico representa uma evolução lógica, focada em recursos específicos, melhorias de arquitetura e otimizações de performance.
@@ -70,7 +70,9 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 *   **Pendente:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI.
 *   *Detalhes: `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`, `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md`, `docs/plans/2026-02-24_15:51-table-component-refactoring.md`, `docs/plans/2026-02-24_19:09-tree-view-refactoring.md`, `docs/plans/2026-02-24_21:40-input-component-refactoring.md` e `docs/plans/2025-02-25_02:22-dropdown-context-menu-refactoring.md`*
 
-
+### [✓] 5.2 Refatoração de Componentes Base (Accordion)
+*   **Concluído:** O componente `Accordion` foi completamente refatorado de um modelo monolítico para um padrão de **Compound Components**. Agora inclui `AccordionRoot`, `AccordionItem`, `AccordionHeader`, `AccordionTrigger`, `AccordionContent` e `AccordionChevron`. Implementada Context API dedicada para gerenciamento reativo do estado de expansão.
+*   *Detalhes: `docs/plans/2026-02-25_01:28-refactor-accordion.md`*
 
 ### [ ] 5.3 Globalização e Customizações Exclusivas (UX Premium)
 *   **Ação:** Integrar o ambiente arquitetural da Localização (`i18n`) para suportar instâncias multilíngue no layout Solid.

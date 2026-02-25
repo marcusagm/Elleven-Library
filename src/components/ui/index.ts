@@ -34,8 +34,11 @@ export * from './AudioPlayer';
 export * from './VideoPlayer';
 
 // Data Display
-export { Accordion, AccordionItem } from './Accordion';
-export type { AccordionProps, AccordionItemProps } from './Accordion';
+export { Accordion } from './Accordion/AccordionRoot';
+export { AccordionItem } from './Accordion/AccordionItem';
+export { AccordionHeader, AccordionTrigger, AccordionChevron } from './Accordion/AccordionTrigger';
+export { AccordionContent } from './Accordion/AccordionContent';
+export * from './Accordion/types';
 export { Badge } from './Badge';
 export type { BadgeProps, BadgeVariant, BadgeSize } from './Badge';
 export { CountBadge } from './CountBadge';

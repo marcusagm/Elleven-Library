@@ -4,7 +4,7 @@ import { CommonMetadata } from '../base/CommonMetadata';
 import { ImageMetadata } from './ImageMetadata.tsx';
 import { InspectorTags } from '../base/InspectorTags';
 import { AdvancedMetadata } from './AdvancedMetadata.tsx';
-import { Accordion } from '../../../ui/Accordion';
+import { Accordion } from '../../../ui';
 import './ImageInspector.css';
 
 interface ImageInspectorProps {

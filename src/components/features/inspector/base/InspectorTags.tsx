@@ -1,6 +1,6 @@
 import { Component, createResource } from 'solid-js';
 import { Tag as TagIcon } from 'lucide-solid';
-import { AccordionItem } from '../../../ui/Accordion';
+import { AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { TagInput, TagOption } from '../../../ui/TagInput';
 import { tagService } from '../../../../lib/tags';
 import './InspectorTags.css';
@@ -68,16 +68,19 @@ export const InspectorTags: Component<InspectorTagsProps> = props => {
     };
 
     return (
-        <AccordionItem value="tags" title="Tags" icon={<TagIcon size={14} />}>
-            <div class="inspector-tags-wrapper">
-                <TagInput
-                    value={selectedOptions()}
-                    suggestions={tagOptions()}
-                    onChange={handleChange}
-                    onCreate={handleCreate}
-                    placeholder="Add tags..."
-                />
-            </div>
+        <AccordionItem value="tags">
+            <AccordionHeader title="Tags" icon={<TagIcon size={14} />} />
+            <AccordionContent>
+                <div class="inspector-tags-wrapper">
+                    <TagInput
+                        value={selectedOptions()}
+                        suggestions={tagOptions()}
+                        onChange={handleChange}
+                        onCreate={handleCreate}
+                        placeholder="Add tags..."
+                    />
+                </div>
+            </AccordionContent>
         </AccordionItem>
     );
 };

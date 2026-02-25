@@ -1,6 +1,6 @@
 import { Component, Show } from 'solid-js';
 import { type ImageItem } from '../../../../types';
-import { Accordion, AccordionItem } from '../../../ui/Accordion';
+import { Accordion, AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { InspectorTags } from '../base/InspectorTags';
 import { CommonMetadata } from '../base/CommonMetadata';
 import { Type } from 'lucide-solid';
@@ -33,26 +33,24 @@ export const FontInspector: Component<FontInspectorProps> = props => {
 
             <Accordion>
                 <CommonMetadata item={props.item} />
-                <AccordionItem
-                    value="font-details"
-                    title="Typography Info"
-                    defaultOpen
-                    icon={<Type size={14} />}
-                >
-                    <div class="inspector-grid">
-                        <div class="inspector-meta-item">
-                            <span class="inspector-meta-label">Format</span>
-                            <span class="inspector-meta-value">
-                                {props.item.format.toUpperCase()}
-                            </span>
+                <AccordionItem value="font-details">
+                    <AccordionHeader title="Typography Info" icon={<Type size={14} />} />
+                    <AccordionContent>
+                        <div class="inspector-grid">
+                            <div class="inspector-meta-item">
+                                <span class="inspector-meta-label">Format</span>
+                                <span class="inspector-meta-value">
+                                    {props.item.format.toUpperCase()}
+                                </span>
+                            </div>
+                            <div class="inspector-meta-item">
+                                <span class="inspector-meta-label">Extension</span>
+                                <span class="inspector-meta-value">
+                                    .{props.item.filename.split('.').pop()}
+                                </span>
+                            </div>
                         </div>
-                        <div class="inspector-meta-item">
-                            <span class="inspector-meta-label">Extension</span>
-                            <span class="inspector-meta-value">
-                                .{props.item.filename.split('.').pop()}
-                            </span>
-                        </div>
-                    </div>
+                    </AccordionContent>
                 </AccordionItem>
                 <InspectorTags itemId={props.item.id} />
             </Accordion>
