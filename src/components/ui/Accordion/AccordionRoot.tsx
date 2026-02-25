@@ -6,19 +6,24 @@ import { AccordionContext } from './useAccordion';
 import './accordion.css';
 
 /**
- * Root component for the Accordion.
- * Manages the state of expanded items and provides it to sub-components via context.
+ * The Root component of the Accordion system.
+ * It coordinates the expansion state of all its children and provides accessibility context.
  *
- * @param {AccordionRootProps} props - Properties for the accordion.
- * @returns {JSX.Element} The rendered Accordion root.
+ * @param {AccordionRootProps} props - The configuration properties for the accordion.
+ * @returns {JSX.Element} A reactive provider wrapping the accordion children.
  *
  * @example
- * <Accordion type="multiple" defaultValue={['item-1']}>
- *   <AccordionItem value="item-1">...</AccordionItem>
+ * ```tsx
+ * <Accordion type="single" collapsible defaultValue={['first-item']}>
+ *   <AccordionItem value="first-item">
+ *     <AccordionHeader title="Section 1" />
+ *     <AccordionContent>Content goes here</AccordionContent>
+ *   </AccordionItem>
  * </Accordion>
+ * ```
  */
 export const Accordion: Component<AccordionRootProps> = props => {
-    const [local, restProps] = splitProps(props, [
+    const [localProps, restProps] = splitProps(props, [
         'type',
         'value',
         'defaultValue',
@@ -29,47 +34,61 @@ export const Accordion: Component<AccordionRootProps> = props => {
         'children'
     ]);
 
-    const accordionType = () => local.type ?? 'single';
-    const isCollapsible = () => local.collapsible ?? true;
-    const isDisabled = () => local.disabled ?? false;
+    /** Reactive accessor for the accordion behavior type. Defaults to 'single'. */
+    const accordionType = () => localProps.type ?? 'single';
 
+    /** Reactive accessor for whether a single expanded item can be collapsed. Defaults to true. */
+    const isCollapsible = () => localProps.collapsible ?? true;
+
+    /** Reactive accessor for the disabled state of the entire accordion. */
+    const isDisabled = () => localProps.disabled ?? false;
+
+    /**
+     * Internal signal managing the list of expanded items.
+     * Supports both controlled and uncontrolled modes via createControllableSignal primitive.
+     */
     const { value: expandedItems, setValue: setExpandedItems } = createControllableSignal<string[]>(
         {
-            value: () => local.value,
-            defaultValue: local.defaultValue ?? [],
-            onChange: value => local.onValueChange?.(value)
+            value: () => localProps.value,
+            defaultValue: localProps.defaultValue ?? [],
+            onChange: valueList => localProps.onValueChange?.(valueList)
         }
     );
 
     /**
-     * Toggles an item's expanded state based on the accordion type.
+     * Toggles the expansion state of an item based on the accordion mode.
      *
-     * @param {string} itemValue - The value of the item to toggle.
+     * @param {string} itemIdentifier - The unique identifier of the item to toggle.
      */
-    const toggleItem = (itemValue: string) => {
+    const toggleItem = (itemIdentifier: string) => {
         if (isDisabled()) {
             return;
         }
 
-        const currentExpanded = expandedItems();
-        const isItemExpanded = currentExpanded.includes(itemValue);
+        const currentExpandedList = expandedItems();
+        const isItemCurrentlyExpanded = currentExpandedList.includes(itemIdentifier);
 
         if (accordionType() === 'single') {
-            if (isItemExpanded && isCollapsible()) {
+            if (isItemCurrentlyExpanded && isCollapsible()) {
                 setExpandedItems([]);
-            } else if (!isItemExpanded) {
-                setExpandedItems([itemValue]);
+            } else if (!isItemCurrentlyExpanded) {
+                setExpandedItems([itemIdentifier]);
             }
         } else {
-            // Multiple items mode
-            if (isItemExpanded) {
-                setExpandedItems(currentExpanded.filter((value: string) => value !== itemValue));
+            // Multiple items expansion mode
+            if (isItemCurrentlyExpanded) {
+                setExpandedItems(
+                    currentExpandedList.filter(
+                        (identifier: string) => identifier !== itemIdentifier
+                    )
+                );
             } else {
-                setExpandedItems([...currentExpanded, itemValue]);
+                setExpandedItems([...currentExpandedList, itemIdentifier]);
             }
         }
     };
 
+    /** Context value provided to all descendant items and sub-components. */
     const contextValue: AccordionContextValue = {
         expandedItems,
         toggleItem,
@@ -80,12 +99,12 @@ export const Accordion: Component<AccordionRootProps> = props => {
     return (
         <AccordionContext.Provider value={contextValue}>
             <div
-                class={cn('ui-accordion', local.class)}
+                class={cn('ui-accordion', localProps.class)}
                 data-orientation="vertical"
                 data-disabled={isDisabled() ? '' : undefined}
                 {...restProps}
             >
-                {local.children}
+                {localProps.children}
             </div>
         </AccordionContext.Provider>
     );

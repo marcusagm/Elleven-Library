@@ -4,26 +4,34 @@ import { AccordionContentProps } from './types';
 import { useAccordionItem } from './useAccordion';
 
 /**
- * Content component for an Accordion item expansion.
+ * The expandable panel that holds the content of an AccordionItem.
+ * Visibility and accessibility attributes are controlled automatically by the parent AccordionItem state.
  *
- * @param {AccordionContentProps} props - Properties for the content container.
- * @returns {JSX.Element} The rendered content container.
+ * @param {AccordionContentProps} props - Configuration for the content container.
+ * @returns {JSX.Element} A div element representing the collapsible region.
+ *
+ * @example
+ * ```tsx
+ * <AccordionContent>
+ *   <p>This information is hidden until the section is opened.</p>
+ * </AccordionContent>
+ * ```
  */
 export const AccordionContent: Component<AccordionContentProps> = props => {
-    const [local, restProps] = splitProps(props, ['class', 'children']);
-    const itemContext = useAccordionItem();
+    const [localProps, restProps] = splitProps(props, ['class', 'children']);
+    const currentItemContext = useAccordionItem();
 
     return (
         <div
-            id={itemContext.contentId}
+            id={currentItemContext.contentId}
             role="region"
-            aria-labelledby={itemContext.triggerId}
-            class={cn('ui-accordion-content', local.class)}
-            data-state={itemContext.isExpanded() ? 'open' : 'closed'}
-            hidden={!itemContext.isExpanded()}
+            aria-labelledby={currentItemContext.triggerId}
+            class={cn('ui-accordion-content', localProps.class)}
+            data-state={currentItemContext.isExpanded() ? 'open' : 'closed'}
+            hidden={!currentItemContext.isExpanded()}
             {...restProps}
         >
-            <div class="ui-accordion-content-inner">{local.children}</div>
+            <div class="ui-accordion-content-inner">{localProps.children}</div>
         </div>
     );
 };

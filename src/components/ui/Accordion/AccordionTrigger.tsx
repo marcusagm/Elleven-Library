@@ -5,43 +5,62 @@ import { AccordionTriggerProps } from './types';
 import { useAccordion, useAccordionItem } from './useAccordion';
 
 /**
- * Trigger component for an Accordion item.
- * Must be used inside an AccordionItem.
+ * The interactive element that toggles the expansion of an AccordionItem.
+ * Must be used as a child of AccordionItem.
  *
- * @param {AccordionTriggerProps} props - Properties for the trigger.
- * @returns {JSX.Element} The rendered trigger button.
+ * @param {AccordionTriggerProps} props - Configuration for the trigger button.
+ * @returns {JSX.Element} An accessible button element.
+ *
+ * @example
+ * ```tsx
+ * <AccordionTrigger>
+ *   <span>Section Title</span>
+ * </AccordionTrigger>
+ * ```
  */
 export const AccordionTrigger: Component<AccordionTriggerProps> = props => {
-    const [local, restProps] = splitProps(props, ['class', 'children']);
-    const accordionContext = useAccordion();
-    const itemContext = useAccordionItem();
+    const [localProps, restProps] = splitProps(props, ['class', 'children']);
+    const accordionRootContext = useAccordion();
+    const currentItemContext = useAccordionItem();
 
-    const handleToggle = () => {
-        if (!itemContext.disabled()) {
-            accordionContext.toggleItem(itemContext.value());
+    /** Handles the click event to toggle this item's expansion state if not disabled. */
+    const handleToggleInteraction = () => {
+        if (!currentItemContext.disabled()) {
+            accordionRootContext.toggleItem(currentItemContext.value());
         }
     };
 
     return (
         <button
             type="button"
-            id={itemContext.triggerId}
-            class={cn('ui-accordion-trigger', local.class)}
-            aria-expanded={itemContext.isExpanded()}
-            aria-controls={itemContext.contentId}
-            aria-disabled={itemContext.disabled()}
-            disabled={itemContext.disabled()}
-            onClick={handleToggle}
+            id={currentItemContext.triggerId}
+            class={cn('ui-accordion-trigger', localProps.class)}
+            aria-expanded={currentItemContext.isExpanded()}
+            aria-controls={currentItemContext.contentId}
+            aria-disabled={currentItemContext.disabled()}
+            disabled={currentItemContext.disabled()}
+            onClick={handleToggleInteraction}
             {...restProps}
         >
-            {local.children}
+            {localProps.children}
         </button>
     );
 };
 
 /**
- * Convenience header component that includes the standard chevron, title, and optional icon.
- * Follows the Mundam design pattern while being part of the compound component structure.
+ * A pre-styled header component for frequent use cases.
+ * Combines a toggle chevron, title text, and an optional icon into a cohesive UI element.
+ *
+ * @param {Object} props - Properties for the accordion header.
+ * @param {string | JSX.Element} props.title - The main label for the section.
+ * @param {JSX.Element} [props.icon] - An optional icon to display on the right.
+ * @param {string} [props.class] - Optional CSS class for styling.
+ * @returns {JSX.Element} A configured AccordionTrigger.
+ *
+ * @example
+ * ```tsx
+ * <AccordionHeader title="General Settings" icon={<SettingsIcon />} />
+ * ```
  */
 export const AccordionHeader: Component<{
     title: string | JSX.Element;
@@ -64,8 +83,18 @@ export const AccordionHeader: Component<{
 };
 
 /**
- * Default chevron icon for the Accordion.
- * Rotates automatically when the item is expanded.
+ * The standard arrow icon used within the accordion headers.
+ * It provides a visual cue for the expansion state and rotates automatically via CSS.
+ *
+ * @param {Object} props - Properties for the chevron icon.
+ * @param {string} [props.class] - Optional CSS class for the icon.
+ * @param {number} [props.size] - The size of the chevron in pixels. Defaults to 16.
+ * @returns {JSX.Element} The rendered Lucide chevron icon.
+ *
+ * @example
+ * ```tsx
+ * <AccordionChevron size={20} class="custom-chevron" />
+ * ```
  */
 export const AccordionChevron: Component<{ class?: string; size?: number }> = props => {
     return <ChevronRight size={props.size ?? 16} class={cn('ui-accordion-chevron', props.class)} />;
