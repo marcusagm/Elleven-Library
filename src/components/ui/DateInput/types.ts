@@ -1,37 +1,39 @@
 import { JSX } from 'solid-js';
 
 /**
- * Properties for the DateInput component.
- * Extends standard input HTML attributes but overrides value and event handlers
- * to work with Date objects instead of raw strings.
+ * Properties defining the behavior, look, and state of the DateInput component.
+ * Extends standard HTML input attributes while specializing behavior for Date objects.
  */
 export interface DateInputProperties extends Omit<
     JSX.InputHTMLAttributes<HTMLInputElement>,
     'value' | 'onChange' | 'onInput' | 'defaultValue'
 > {
-    /** The currently selected date value. */
+    /** The reactive Date object representing the current selection. Use null to clear the field. */
     value?: Date | null;
 
-    /** The initial date value for uncontrolled usage. */
+    /** The initial Date value to be used when the component is uncontrolled. */
     defaultValue?: Date | null;
 
-    /** Callback triggered when a valid date is selected or entered. */
+    /**
+     * Callback function executed when either a valid date is typed or selected from the picker.
+     * @param date - The updated Date object or null if cleared.
+     */
     onChange?: (date: Date | null) => void;
 
-    /** Optional text label displayed above the input field. */
+    /** An optional text label to be displayed above the input field for accessibility and context. */
     label?: string;
 
-    /** Whether the input is in an error state. */
+    /** Flag indicating if the input should visually reflect an invalid or error state. */
     error?: boolean;
 
-    /** Message to display when the input is in an error state. */
+    /** A descriptive message explaining the validation error, displayed below the input field. */
     errorMessage?: string;
 
-    /** Additional CSS class for the outermost wrapper element. */
+    /** An optional CSS class to be applied to the outermost wrapper container of the component. */
     wrapperClass?: string;
 
     /**
-     * The size of the input field.
+     * The visual density and scale of the input field.
      * @default 'md'
      */
     size?: 'sm' | 'md' | 'lg';

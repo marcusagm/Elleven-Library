@@ -1,21 +1,24 @@
 /**
- * Properties for the DatePicker component.
- * Used to select a specific date from a calendar interface.
+ * Properties defining the configuration and interactive state of the DatePicker component.
+ * Used to control the calendar selection interface.
  */
 export interface DatePickerProperties {
-    /** The currently selected date. */
+    /** The currently selected JS Date object. If undefined, no date is highlighted as selected. */
     value?: Date;
 
-    /** Callback triggered when a new date is selected. */
+    /**
+     * Callback function executed when the user selects a date from the calendar.
+     * @param date - The newly selected Date object.
+     */
     onChange?: (date: Date) => void;
 
-    /** The earliest date that can be selected. */
+    /** The minimum possible date that can be navigated to or selected (optional validation limit). */
     minDate?: Date;
 
-    /** The latest date that can be selected. */
+    /** The maximum possible date that can be navigated to or selected (optional validation limit). */
     maxDate?: Date;
 
-    /** Additional CSS class for the root element. */
+    /** Optional CSS class string to be applied to the root container of the date picker. */
     class?: string;
 }
 

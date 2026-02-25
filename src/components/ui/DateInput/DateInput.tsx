@@ -10,18 +10,18 @@ import './date-input.css';
 
 /**
  * A specialized Input component for date selection.
- * Combines a masked text input with a calendar dropdown.
+ * Combines a masked text input with a calendar dropdown for an enhanced user experience.
  *
- * @param props - Properties for the DateInput component.
- * @returns The rendered DateInput component.
+ * @param properties - The reactive properties for the DateInput component.
+ * @returns The rendered DateInput component interface.
  *
  * @example
  * <DateInput label="Birth Date" value={birthDate()} onChange={setBirthDate} />
  */
-export const DateInput: Component<DateInputProperties> = props => {
-    // Provide default values and split props for cleaner handling.
-    const mergedProperties = mergeProps({ size: 'md' as const }, props);
-    const [local, htmlAttributes] = splitProps(mergedProperties, [
+export const DateInput: Component<DateInputProperties> = properties => {
+    // Provide default values and split properties for cleaner handling within the component.
+    const mergedProperties = mergeProps({ size: 'md' as const }, properties);
+    const [localProperties, htmlAttributes] = splitProps(mergedProperties, [
         'value',
         'defaultValue',
         'onChange',
@@ -40,24 +40,26 @@ export const DateInput: Component<DateInputProperties> = props => {
     // Integrates with the global input system to block shortcuts during editing.
     const { handleFocus, handleBlur, handleKeyDown } = useInputEvents(htmlAttributes);
 
-    // Synchronize the input string with the reactive date value.
+    // Synchronize the input string with the reactive date value providing real-time feedback.
     createEffect(() => {
-        const currentDate = local.value ?? local.defaultValue;
+        const currentDate = localProperties.value ?? localProperties.defaultValue;
         if (currentDate instanceof Date && !isNaN(currentDate.getTime())) {
             setInputValue(formatDateToDisplay(currentDate));
-        } else if (local.value === null) {
+        } else if (localProperties.value === null) {
             setInputValue('');
         }
     });
 
     /**
-     * Handles the input event, applying the mask and updating the value.
+     * Handles the input event, applying the mask and updating the value accordingly.
+     *
+     * @param event - The generic input event from the text field.
      */
     const handleInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
         const rawValue = event.currentTarget.value;
         const maskedValue = applyMask(rawValue);
 
-        // Update the input field value directly to maintain mask effect
+        // Update the input field value directly to maintain mask effect visually for the user.
         if (maskedValue !== rawValue) {
             event.currentTarget.value = maskedValue;
         }
@@ -65,32 +67,36 @@ export const DateInput: Component<DateInputProperties> = props => {
 
         const parsedDate = parseDisplayDate(maskedValue);
         if (parsedDate) {
-            local.onChange?.(parsedDate);
+            localProperties.onChange?.(parsedDate);
         } else if (maskedValue === '') {
-            local.onChange?.(null);
+            localProperties.onChange?.(null);
         }
     };
 
     /**
-     * Handles date selection from the calendar picker.
+     * Handles date selection from the calendar picker and closes the popover.
+     *
+     * @param date - The Date object selected from the calendar.
      */
     const handleCalendarSelect = (date: Date) => {
         setInputValue(formatDateToDisplay(date));
-        local.onChange?.(date);
+        localProperties.onChange?.(date);
         setIsPopoverOpen(false);
     };
     return (
-        <div class={cn('ui-date-input-wrapper', local.wrapperClass)}>
-            {local.label && <label class="ui-date-input-label">{local.label}</label>}
+        <div class={cn('ui-date-input-wrapper', localProperties.wrapperClass)}>
+            {localProperties.label && (
+                <label class="ui-date-input-label">{localProperties.label}</label>
+            )}
 
             <div
                 class={cn(
                     'ui-date-input-container',
-                    `ui-date-input-${local.size}`,
-                    local.error && 'ui-date-input-error',
+                    `ui-date-input-${localProperties.size}`,
+                    localProperties.error && 'ui-date-input-error',
                     htmlAttributes.disabled && 'ui-date-input-disabled',
                     'ui-date-input-has-right',
-                    local.class
+                    localProperties.class
                 )}
             >
                 <input
@@ -103,7 +109,7 @@ export const DateInput: Component<DateInputProperties> = props => {
                     onKeyDown={handleKeyDown}
                     disabled={htmlAttributes.disabled}
                     placeholder={htmlAttributes.placeholder || 'DD/MM/YYYY'}
-                    aria-invalid={local.error || undefined}
+                    aria-invalid={localProperties.error || undefined}
                     {...htmlAttributes}
                 />
 
@@ -116,7 +122,8 @@ export const DateInput: Component<DateInputProperties> = props => {
                         anchor={
                             <DatePicker
                                 value={
-                                    parseDisplayDate(inputValue()) || (local.value ?? new Date())
+                                    parseDisplayDate(inputValue()) ||
+                                    (localProperties.value ?? new Date())
                                 }
                                 onChange={handleCalendarSelect}
                             />
@@ -125,9 +132,9 @@ export const DateInput: Component<DateInputProperties> = props => {
                 </div>
             </div>
 
-            {local.error && local.errorMessage && (
+            {localProperties.error && localProperties.errorMessage && (
                 <span class="ui-date-input-error-message" role="alert">
-                    {local.errorMessage}
+                    {localProperties.errorMessage}
                 </span>
             )}
         </div>
@@ -146,12 +153,16 @@ function applyMask(rawString: string): string {
     let resultString = '';
     let cleanStringIndex = 0;
 
-    for (let i = 0; i < maskPattern.length && cleanStringIndex < cleanString.length; i++) {
-        if (maskPattern[i] === '9') {
+    for (
+        let patternIndex = 0;
+        patternIndex < maskPattern.length && cleanStringIndex < cleanString.length;
+        patternIndex++
+    ) {
+        if (maskPattern[patternIndex] === '9') {
             resultString += cleanString[cleanStringIndex];
             cleanStringIndex++;
         } else {
-            resultString += maskPattern[i];
+            resultString += maskPattern[patternIndex];
         }
     }
     return resultString;
@@ -170,11 +181,13 @@ interface DateInputTriggerProperties {
 
 /**
  * Internal component for the calendar trigger button and popover.
+ *
+ * @param properties - The reactive properties for the DateInputTrigger.
  */
-const DateInputTrigger: Component<DateInputTriggerProperties> = props => {
+const DateInputTrigger: Component<DateInputTriggerProperties> = properties => {
     return (
         <Show
-            when={!props.disabled}
+            when={!properties.disabled}
             fallback={
                 <button
                     type="button"
@@ -188,15 +201,15 @@ const DateInputTrigger: Component<DateInputTriggerProperties> = props => {
             }
         >
             <Popover
-                isOpen={props.isOpen}
-                onClose={() => props.onClose()}
+                isOpen={properties.isOpen}
+                onClose={() => properties.onClose()}
                 trigger={
                     <button
                         type="button"
                         class="ui-date-input-trigger"
                         onClick={event => {
                             event.stopPropagation();
-                            props.onToggle();
+                            properties.onToggle();
                         }}
                         disabled={false}
                         aria-label="Open calendar"
@@ -208,7 +221,7 @@ const DateInputTrigger: Component<DateInputTriggerProperties> = props => {
                 class="ui-date-input-popover"
                 align="end"
             >
-                {props.anchor}
+                {properties.anchor}
             </Popover>
         </Show>
     );

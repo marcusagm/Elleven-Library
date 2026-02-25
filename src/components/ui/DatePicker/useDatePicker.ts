@@ -2,28 +2,28 @@ import { createSignal, createMemo, createEffect } from 'solid-js';
 import { DatePickerProperties, DatePickerViewMode } from './types';
 
 /**
- * Hook to manage the internal logic of the DatePicker component.
- * Handles view transitions, calendar calculations, and selection.
+ * Custom hook to manage the internal state and business logic of the DatePicker component.
+ * Handles view transitions between day/month/year, calendar grid calculations, and date selection logic.
  *
- * @param props - Component properties.
- * @returns State and methods for the DatePicker.
+ * @param properties - The reactive configuration properties for the DatePicker.
+ * @returns An object containing reactive state, computed values, and orchestration methods for the picker.
  */
-export const useDatePicker = (props: DatePickerProperties) => {
+export const useDatePicker = (properties: DatePickerProperties) => {
     const today = new Date();
 
     // View date manages what month/year is currently displayed in the calendar grid.
     const [viewDate, setViewDate] = createSignal(today);
     const [viewMode, setViewMode] = createSignal<DatePickerViewMode>('day');
 
-    // Sync view date if props.value changes externally
+    // Synchronize the internal view date whenever the external value property changes.
     createEffect(() => {
-        const selectedDate = props.value;
-        if (selectedDate) {
-            setViewDate(new Date(selectedDate));
+        const selectedDateValue = properties.value;
+        if (selectedDateValue) {
+            setViewDate(new Date(selectedDateValue));
         }
     });
 
-    const MONTH_NAMES = [
+    const MONTH_NAME_LIST = [
         'January',
         'February',
         'March',
@@ -38,7 +38,7 @@ export const useDatePicker = (props: DatePickerProperties) => {
         'December'
     ];
 
-    const WEEKDAYS_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const WEEKDAY_LABEL_LIST = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
     /**
      * Calculates the days to display for the current month view.
@@ -75,15 +75,17 @@ export const useDatePicker = (props: DatePickerProperties) => {
     });
 
     /**
-     * Checks if a specific day is currently selected.
-     * @param dayOfMonth - Day of the month to check.
+     * Determines if a specific day represents the currently selected value.
+     *
+     * @param dayOfMonth - The numeric day of the month to evaluate.
+     * @returns True if the day is currently selected.
      */
     const isDaySelected = (dayOfMonth: number) => {
-        if (!props.value) return false;
+        if (!properties.value) return false;
         return (
-            props.value.getDate() === dayOfMonth &&
-            props.value.getMonth() === viewDate().getMonth() &&
-            props.value.getFullYear() === viewDate().getFullYear()
+            properties.value.getDate() === dayOfMonth &&
+            properties.value.getMonth() === viewDate().getMonth() &&
+            properties.value.getFullYear() === viewDate().getFullYear()
         );
     };
 
@@ -140,11 +142,11 @@ export const useDatePicker = (props: DatePickerProperties) => {
     };
 
     /**
-     * Formats the title display based on the current view.
+     * Computes the formatted title string (e.g., "August 2026" or "2020 - 2031") for the current view.
      */
     const viewTitle = createMemo(() => {
         if (viewMode() === 'day') {
-            return `${MONTH_NAMES[viewDate().getMonth()]} ${viewDate().getFullYear()}`;
+            return `${MONTH_NAME_LIST[viewDate().getMonth()]} ${viewDate().getFullYear()}`;
         }
         if (viewMode() === 'month') {
             return `${viewDate().getFullYear()}`;
@@ -154,11 +156,17 @@ export const useDatePicker = (props: DatePickerProperties) => {
     });
 
     /**
-     * Handles selecting a specific day.
+     * Finalizes the selection of a specific day and triggers the change event.
+     *
+     * @param dayOfMonth - The numeric day of the month selected by the user.
      */
     const selectDay = (dayOfMonth: number) => {
-        const newDate = new Date(viewDate().getFullYear(), viewDate().getMonth(), dayOfMonth);
-        props.onChange?.(newDate);
+        const selectedFullDate = new Date(
+            viewDate().getFullYear(),
+            viewDate().getMonth(),
+            dayOfMonth
+        );
+        properties.onChange?.(selectedFullDate);
     };
 
     /**
@@ -187,8 +195,8 @@ export const useDatePicker = (props: DatePickerProperties) => {
         viewTitle,
         calendarDays,
         selectableYears,
-        MONTH_NAMES,
-        WEEKDAYS_LABELS,
+        MONTH_NAME_LIST,
+        WEEKDAY_LABEL_LIST,
         isDaySelected,
         isToday,
         navigatePrevious,

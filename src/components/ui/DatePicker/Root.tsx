@@ -6,18 +6,18 @@ import { useDatePicker } from './useDatePicker';
 import './date-picker.css';
 
 /**
- * A calendar-based date selection component.
- * Supports day, month, and year selection views.
+ * A calendar-based date selection component allowing users to pick a date from a visual grid.
+ * Supports specialized day, month, and year selection views for quick navigation.
  *
- * @param props - Properties for the DatePicker.
- * @returns The rendered DatePicker component.
+ * @param properties - The reactive properties defining the behavior and appearance of the DatePicker.
+ * @returns The rendered DatePicker component interface.
  *
  * @example
  * <DatePicker value={new Date()} onChange={(date) => console.log(date)} />
  */
-export const DatePicker: Component<DatePickerProperties> = props => {
-    // Separate specialized picker properties from other props if any.
-    const [pickerProps, otherHtmlAttributes] = splitProps(props, [
+export const DatePicker: Component<DatePickerProperties> = properties => {
+    // Separate specialized picker properties from other standard HTML attributes.
+    const [pickerProperties, otherHtmlAttributes] = splitProps(properties, [
         'value',
         'onChange',
         'minDate',
@@ -30,8 +30,8 @@ export const DatePicker: Component<DatePickerProperties> = props => {
         viewTitle,
         calendarDays,
         selectableYears,
-        MONTH_NAMES,
-        WEEKDAYS_LABELS,
+        MONTH_NAME_LIST,
+        WEEKDAY_LABEL_LIST,
         isDaySelected,
         isToday,
         viewDate,
@@ -41,11 +41,11 @@ export const DatePicker: Component<DatePickerProperties> = props => {
         selectDay,
         selectMonth,
         selectYear
-    } = useDatePicker(pickerProps);
+    } = useDatePicker(pickerProperties);
 
     return (
         <div
-            class={cn('ui-date-picker', pickerProps.class)}
+            class={cn('ui-date-picker', pickerProperties.class)}
             onClick={event => event.stopPropagation()}
             {...otherHtmlAttributes}
         >
@@ -82,7 +82,7 @@ export const DatePicker: Component<DatePickerProperties> = props => {
             {/* Day Selection View */}
             {viewMode() === 'day' && (
                 <div class="ui-date-picker-grid ui-date-picker-day-grid">
-                    <For each={WEEKDAYS_LABELS}>
+                    <For each={WEEKDAY_LABEL_LIST}>
                         {label => <div class="ui-date-picker-weekday">{label}</div>}
                     </For>
                     <For each={calendarDays()}>
@@ -113,7 +113,7 @@ export const DatePicker: Component<DatePickerProperties> = props => {
             {/* Month Selection View */}
             {viewMode() === 'month' && (
                 <div class="ui-date-picker-grid ui-date-picker-month-grid">
-                    <For each={MONTH_NAMES}>
+                    <For each={MONTH_NAME_LIST}>
                         {(monthName, index) => (
                             <button
                                 type="button"

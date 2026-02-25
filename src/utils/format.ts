@@ -1,85 +1,89 @@
 /**
- * Formats a file size in bytes to a human-readable string.
+ * Formats a file size in bytes to a human-readable string (e.g., "1.5 MB").
  *
  * @param {number} bytes - The size of the file in bytes.
- * @returns {string} The formatted file size.
+ * @returns {string} The formatted file size with its appropriate unit.
  *
  * @example
  * const readableSize = formatFileSize(1024); // Returns "1 KB"
  */
 export function formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    const bytesPerKilobyte = 1024;
+    const sizeUnitList = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const unitIndex = Math.floor(Math.log(bytes) / Math.log(bytesPerKilobyte));
+    return (
+        parseFloat((bytes / Math.pow(bytesPerKilobyte, unitIndex)).toFixed(2)) +
+        ' ' +
+        sizeUnitList[unitIndex]
+    );
 }
 
 /**
- * Formats a date string or object to a localized alphanumeric string.
+ * Formats a date string or Date object to a localized alphanumeric string including time.
  *
- * @param {string | Date} dateStr - The date to format.
- * @returns {string} The formatted date.
+ * @param {string | Date} dateSource - The date string or object to format.
+ * @returns {string} The formatted date string in localized format, or "-" if input is empty.
  */
-export function formatDate(dateStr: string | Date): string {
-    if (!dateStr) return '-';
-    const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+export function formatDate(dateSource: string | Date): string {
+    if (!dateSource) return '-';
+    const dateObject = typeof dateSource === 'string' ? new Date(dateSource) : dateSource;
     return new Intl.DateTimeFormat(navigator.language, {
         year: 'numeric',
         month: 'short',
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit'
-    }).format(date);
+    }).format(dateObject);
 }
 
 /**
- * Formats a date to a short numeric representation.
+ * Formats a date to a short localized numeric representation (e.g., "DD/MM/YY").
  *
- * @param {string | Date} dateStr - The date to format.
- * @returns {string} The short formatted date.
+ * @param {string | Date} dateSource - The date source string or object to format.
+ * @returns {string} The short formatted date string.
  */
-export function formatShortDate(dateStr: string | Date): string {
-    if (!dateStr) return '-';
-    const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+export function formatShortDate(dateSource: string | Date): string {
+    if (!dateSource) return '-';
+    const dateObject = typeof dateSource === 'string' ? new Date(dateSource) : dateSource;
     return new Intl.DateTimeFormat(navigator.language, {
         year: '2-digit',
         month: '2-digit',
         day: '2-digit'
-    }).format(date);
+    }).format(dateObject);
 }
 
 /**
  * Formats a Date object or string to an ISO standard date string (YYYY-MM-DD).
  *
- * @param {Date | string} val - The date to convert to ISO string.
- * @returns {string} The formatted ISO date string.
+ * @param {Date | string} dateSource - The date to convert to ISO string.
+ * @returns {string} The formatted ISO date string or the original string if conversion is not applicable.
  */
-export const formatToISO = (val: Date | string): string => {
-    if (val instanceof Date) {
-        const year = val.getFullYear();
-        const month = (val.getMonth() + 1).toString().padStart(2, '0');
-        const day = val.getDate().toString().padStart(2, '0');
+export const formatToISO = (dateSource: Date | string): string => {
+    if (dateSource instanceof Date) {
+        const year = dateSource.getFullYear();
+        const month = (dateSource.getMonth() + 1).toString().padStart(2, '0');
+        const day = dateSource.getDate().toString().padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
-    return String(val);
+    return String(dateSource);
 };
 
 /**
  * Parses an ISO standard date string (YYYY-MM-DD) to a Date object.
  *
- * @param {string} iso - The ISO standard date string.
- * @returns {Date | null} The corresponding date object, or null if invalid.
+ * @param {string} isoString - The ISO standard date string to parse.
+ * @returns {Date | null} The corresponding Date object, or null if the string is invalid or cannot be parsed.
  */
-export const fromISO = (iso: string): Date | null => {
-    if (!iso || typeof iso !== 'string') return null;
-    const parts = iso.split('-');
-    if (parts.length === 3) {
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        const day = parseInt(parts[2], 10);
-        const date = new Date(year, month, day);
-        return isNaN(date.getTime()) ? null : date;
+export const fromISO = (isoString: string): Date | null => {
+    if (!isoString || typeof isoString !== 'string') return null;
+    const dateParts = isoString.split('-');
+    if (dateParts.length === 3) {
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1;
+        const day = parseInt(dateParts[2], 10);
+        const dateObject = new Date(year, month, day);
+        return isNaN(dateObject.getTime()) ? null : dateObject;
     }
     return null;
 };
@@ -124,17 +128,17 @@ export const parseDisplayDate = (displayString: string): Date | null => {
 };
 
 /**
- * Formats a date (ISO string or Date object) to a localized display format (DD/MM/YYYY).
+ * Formats a date source (ISO string or Date object) to a localized display format (DD/MM/YYYY).
  *
- * @param {string | Date} val - The date to format.
- * @returns {string} The formatted display date string.
+ * @param {string | Date} dateSource - The date source to format.
+ * @returns {string} The formatted display date string, or an empty string if invalid.
  */
-export const formatToDisplay = (val: string | Date): string => {
-    if (val instanceof Date) {
-        return formatDateToDisplay(val);
+export const formatToDisplay = (dateSource: string | Date): string => {
+    if (dateSource instanceof Date) {
+        return formatDateToDisplay(dateSource);
     }
-    if (typeof val !== 'string') return '';
+    if (typeof dateSource !== 'string') return '';
 
-    const date = fromISO(val);
-    return date ? formatDateToDisplay(date) : val;
+    const dateObject = fromISO(dateSource);
+    return dateObject ? formatDateToDisplay(dateObject) : dateSource;
 };
