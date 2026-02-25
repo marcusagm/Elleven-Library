@@ -1,117 +1,172 @@
 import { Component, JSX, createSignal, createContext, useContext, Accessor } from 'solid-js';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../components/ui/Resizable';
-
-// Context for Statusbar to control Shell
-interface AppShellContextValue {
-    isSidebarOpen: Accessor<boolean>;
-    toggleSidebar: () => void;
-    isInspectorOpen: Accessor<boolean>;
-    toggleInspector: () => void;
-}
-const AppShellContext = createContext<AppShellContextValue>();
-export const useAppShell = () => useContext(AppShellContext);
 import '../styles/global.css';
 import './app-shell.css';
 
-// This layout implements the 3-pane Grid structure with resizable areas
-// [ Header ]
-// [ Sidebar | Content | Inspector ]
-// [ Statusbar ]
+/**
+ * Context value for the AppShell to control its various sections.
+ */
+interface AppShellContextValue {
+    /** Whether the left library sidebar is currently visible */
+    isSidebarOpen: Accessor<boolean>;
+    /** Toggles the visibility of the left sidebar */
+    toggleSidebar: () => void;
+    /** Whether the right property inspector is currently visible */
+    isInspectorOpen: Accessor<boolean>;
+    /** Toggles the visibility of the right inspector */
+    toggleInspector: () => void;
+}
 
-interface AppShellProps {
+/** Context for sharing AppShell control state with sub-components (like Statusbar) */
+const AppShellContext = createContext<AppShellContextValue>();
+
+/**
+ * Hook to access the AppShell context.
+ *
+ * @returns {AppShellContextValue | undefined} The shell state and actions.
+ */
+export const useAppShell = () => useContext(AppShellContext);
+
+/**
+ * Properties for the AppShell component.
+ */
+interface AppShellProperties {
+    /** The main content area children */
     children: JSX.Element;
+    /** Optional header element */
     header?: JSX.Element;
+    /** Optional left sidebar content (e.g., LibrarySidebar) */
     sidebar?: JSX.Element;
+    /** Optional right inspector content */
     inspector?: JSX.Element;
+    /** Optional bottom statusbar content */
     statusbar?: JSX.Element;
 }
 
-export const AppShell: Component<AppShellProps> = props => {
-    // Persistence Keys
+/**
+ * The core layout system of the application.
+ * Implements a 3-pane structure with resizable horizontal areas and persistence.
+ *
+ * Layout Structure:
+ * [ Header Area (Optional) ]
+ * [ Sidebar (Resizable) | Content (Flexible) | Inspector (Resizable) ]
+ * [ Statusbar (Fixed) ]
+ *
+ * @param {AppShellProperties} props - Component properties.
+ * @returns {JSX.Element} The rendered shell.
+ */
+export const AppShell: Component<AppShellProperties> = props => {
+    /** LocalStorage key for persisting panel percentages */
     const STORAGE_KEY_LAYOUT = 'app-shell-layout';
+    /** LocalStorage key for persisting collapsed/expanded states */
     const STORAGE_KEY_STATES = 'app-shell-states';
 
-    // Get persisted sizes or use defaults
-    const getPersistedLayout = () => {
+    /**
+     * Retrieves the persisted layout from local storage.
+     *
+     * @returns {number[] | null} Array of sizes or null.
+     */
+    const getPersistedLayout = (): number[] | null => {
         try {
-            const saved = localStorage.getItem(STORAGE_KEY_LAYOUT);
-            return saved ? JSON.parse(saved) : null;
+            const savedLayout = localStorage.getItem(STORAGE_KEY_LAYOUT);
+            return savedLayout ? JSON.parse(savedLayout) : null;
         } catch {
             return null;
         }
     };
 
-    const getPersistedStates = () => {
+    /**
+     * Retrieves the persisted open/collapsed states from local storage.
+     *
+     * @returns {{ sidebar: boolean; inspector: boolean }} States object.
+     */
+    const getPersistedStates = (): { sidebar: boolean; inspector: boolean } => {
         try {
-            const saved = localStorage.getItem(STORAGE_KEY_STATES);
-            return saved ? JSON.parse(saved) : { sidebar: true, inspector: true };
+            const savedStates = localStorage.getItem(STORAGE_KEY_STATES);
+            return savedStates ? JSON.parse(savedStates) : { sidebar: true, inspector: true };
         } catch {
             return { sidebar: true, inspector: true };
         }
     };
 
-    const layout = getPersistedLayout();
-    const states = getPersistedStates();
+    const persistedLayout = getPersistedLayout();
+    const persistedStates = getPersistedStates();
 
-    const [isSidebarOpen, setIsSidebarOpen] = createSignal(states.sidebar);
-    const [isInspectorOpen, setIsInspectorOpen] = createSignal(states.inspector);
+    const [isSidebarOpen, setIsSidebarOpen] = createSignal(persistedStates.sidebar);
+    const [isInspectorOpen, setIsInspectorOpen] = createSignal(persistedStates.inspector);
 
-    const saveStates = (sidebar: boolean, inspector: boolean) => {
-        localStorage.setItem(STORAGE_KEY_STATES, JSON.stringify({ sidebar, inspector }));
+    /**
+     * Persists the visibility states to local storage.
+     */
+    const saveStates = (sidebarVisible: boolean, inspectorVisible: boolean) => {
+        localStorage.setItem(
+            STORAGE_KEY_STATES,
+            JSON.stringify({
+                sidebar: sidebarVisible,
+                inspector: inspectorVisible
+            })
+        );
     };
 
+    /**
+     * Toggles the sidebar visibility.
+     */
     const toggleSidebar = () => {
-        setIsSidebarOpen(prev => {
-            const next = !prev;
-            saveStates(next, isInspectorOpen());
-            return next;
+        setIsSidebarOpen(previousState => {
+            const nextState = !previousState;
+            saveStates(nextState, isInspectorOpen());
+            return nextState;
         });
     };
 
+    /**
+     * Toggles the inspector visibility.
+     */
     const toggleInspector = () => {
-        setIsInspectorOpen(prev => {
-            const next = !prev;
-            saveStates(isSidebarOpen(), next);
-            return next;
+        setIsInspectorOpen(previousState => {
+            const nextState = !previousState;
+            saveStates(isSidebarOpen(), nextState);
+            return nextState;
         });
     };
 
-    const sidebarSize = layout?.[0] ?? 18;
-    const contentSize = layout?.[1] ?? 62;
-    const inspectorSize = layout?.[2] ?? 20;
+    // Calculate initial sizes based on persistence or defaults
+    const sidebarInitialSize = persistedLayout?.[0] ?? 18;
+    const contentInitialSize = persistedLayout?.[1] ?? 62;
+    const inspectorInitialSize = persistedLayout?.[2] ?? 20;
 
-    const handleLayoutChange = (sizes: number[]) => {
-        localStorage.setItem(STORAGE_KEY_LAYOUT, JSON.stringify(sizes));
+    /**
+     * Handles updates to the layout percentages.
+     */
+    const handleLayoutChange = (newSizes: number[]) => {
+        localStorage.setItem(STORAGE_KEY_LAYOUT, JSON.stringify(newSizes));
     };
 
     return (
         <div class="app-shell">
-            {/* Header Area Removed */}
-
-            {/* Main 3-Pane Area - Resizable */}
             <ResizablePanelGroup
                 direction="horizontal"
                 class="shell-body"
                 onLayout={handleLayoutChange}
             >
-                {/* Left Sidebar */}
+                {/* Left Sidebar Pane */}
                 <ResizablePanel
                     id="shell-sidebar"
-                    defaultSize={sidebarSize}
+                    defaultSize={sidebarInitialSize}
                     minSize={12}
                     maxSize={35}
                     class="shell-sidebar"
-                    classList={{ collapsed: !isSidebarOpen() }}
+                    isCollapsed={!isSidebarOpen()}
                 >
                     {props.sidebar}
                 </ResizablePanel>
 
-                <ResizableHandle classList={{ collapsed: !isSidebarOpen() }} />
+                <ResizableHandle isCollapsed={!isSidebarOpen()} />
 
-                {/* Central Viewport */}
+                {/* Central Application Viewport */}
                 <ResizablePanel
                     id="shell-content"
-                    defaultSize={contentSize}
+                    defaultSize={contentInitialSize}
                     minSize={30}
                     flexGrow={1}
                     class="shell-content"
@@ -119,22 +174,22 @@ export const AppShell: Component<AppShellProps> = props => {
                     {props.children}
                 </ResizablePanel>
 
-                <ResizableHandle classList={{ collapsed: !isInspectorOpen() }} />
+                <ResizableHandle isCollapsed={!isInspectorOpen()} />
 
-                {/* Right Inspector */}
+                {/* Right Inspector Pane */}
                 <ResizablePanel
                     id="shell-inspector"
-                    defaultSize={inspectorSize}
+                    defaultSize={inspectorInitialSize}
                     minSize={15}
                     maxSize={40}
                     class="shell-inspector"
-                    classList={{ collapsed: !isInspectorOpen() }}
+                    isCollapsed={!isInspectorOpen()}
                 >
                     {props.inspector}
                 </ResizablePanel>
             </ResizablePanelGroup>
 
-            {/* Footer / Statusbar */}
+            {/* Bottom Global Statusbar Area */}
             <footer class="shell-footer">
                 <AppShellContext.Provider
                     value={{

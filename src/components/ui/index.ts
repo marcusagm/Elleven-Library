@@ -1,12 +1,6 @@
 // Layout & Containers
 export * from './Modal';
-
-export { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './Resizable';
-export type {
-    ResizablePanelGroupProps,
-    ResizablePanelProps,
-    ResizableHandleProps
-} from './Resizable';
+export * from './Resizable';
 
 // Form Controls
 export * from './Button';
