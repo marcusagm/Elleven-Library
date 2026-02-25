@@ -65,9 +65,9 @@ export type ContextMenuItem =
  */
 export interface ContextMenuProps {
     /** X coordinate for positioning. */
-    x: number;
+    coordinateX: number;
     /** Y coordinate for positioning. */
-    y: number;
+    coordinateY: number;
     /** Menu items to display. */
     items: ContextMenuItem[];
     /** Whether the menu is currently visible. */

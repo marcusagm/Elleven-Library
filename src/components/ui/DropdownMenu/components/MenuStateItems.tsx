@@ -1,3 +1,9 @@
+/**
+ * Dropdown Stateful Items
+ *
+ * Specialized menu item components for handling selectable states (checkboxes and radios).
+ */
+
 import { Component, Show, createMemo } from 'solid-js';
 import { Check } from 'lucide-solid';
 import { cn } from '../../../../lib/utils';

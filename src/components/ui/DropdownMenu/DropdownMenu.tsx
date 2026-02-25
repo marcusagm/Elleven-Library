@@ -1,3 +1,10 @@
+/**
+ * Dropdown Menu Core Component
+ *
+ * Provides the main DropdownMenu wrapper, trigger handling, and portal rendering.
+ * Uses Floating UI for positioning and Context API for tree-wide state.
+ */
+
 import { Component, splitProps, createSignal, Show, createContext } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { cn } from '../../../lib/utils';
@@ -21,8 +28,14 @@ export const DropdownMenuContext = createContext<DropdownContextValue>();
  * - Recursion support for nested submenus.
  * - Discriminated union based items for full type safety.
  *
- * @param props - Properties for the dropdown menu.
- * @returns The rendered dropdown component.
+ * @param {DropdownMenuProps} props - Properties for the dropdown menu.
+ * @returns {JSX.Element} The rendered dropdown component.
+ *
+ * @example
+ * <DropdownMenu
+ *   trigger={<Button>Menu</Button>}
+ *   items={[{ type: 'item', label: 'Save', action: handleSave }]}
+ * />
  */
 export const DropdownMenu: Component<DropdownMenuProps> = props => {
     /**
@@ -40,7 +53,7 @@ export const DropdownMenu: Component<DropdownMenuProps> = props => {
         'contentClass'
     ]);
 
-    /** State of the dropdown visibility. */
+    /** Current visibility state of the dropdown menu content. */
     const [isMenuOpen, setIsMenuOpen] = createSignal(false);
 
     /** Trigger and floating content refs managed by the positioning hook. */
@@ -59,7 +72,7 @@ export const DropdownMenu: Component<DropdownMenuProps> = props => {
     const handleClose = () => setIsMenuOpen(false);
 
     /**
-     * Toggles the menu open/closed.
+     * Toggles the menu visibility.
      */
     const handleToggle = () => setIsMenuOpen(!isMenuOpen());
 
@@ -74,7 +87,7 @@ export const DropdownMenu: Component<DropdownMenuProps> = props => {
     );
 
     /**
-     * Context value for children components.
+     * Context value for children components to access shareable state and actions.
      */
     const contextValue: DropdownContextValue = {
         close: handleClose,
@@ -86,9 +99,9 @@ export const DropdownMenu: Component<DropdownMenuProps> = props => {
         <DropdownMenuContext.Provider value={contextValue}>
             <div class={cn('ui-dropdown', local.class)}>
                 <div
-                    ref={el => {
-                        triggerElementContainer = el;
-                        setTriggerReference(el);
+                    ref={element => {
+                        triggerElementContainer = element;
+                        setTriggerReference(element);
                     }}
                     class="ui-dropdown-trigger"
                     onClick={handleToggle}
@@ -99,9 +112,9 @@ export const DropdownMenu: Component<DropdownMenuProps> = props => {
                 <Show when={isMenuOpen()}>
                     <Portal>
                         <div
-                            ref={el => {
-                                floatingContentContainer = el;
-                                setFloatingElement(el);
+                            ref={element => {
+                                floatingContentContainer = element;
+                                setFloatingElement(element);
                             }}
                             class={cn('ui-dropdown-content', local.contentClass)}
                             style={{

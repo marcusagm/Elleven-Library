@@ -1,3 +1,9 @@
+/**
+ * Context Menu Item List
+ *
+ * Internal component for rendering the recursive list of items within a context menu.
+ */
+
 import { Component, For, Show, createSignal, Switch, Match } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 import { ChevronRight } from 'lucide-solid';
@@ -23,6 +29,10 @@ interface MenuListProps {
 
 /**
  * Recursive menu list for ContextMenu.
+ * Handles item rendering and keyboard navigation for a specific menu level.
+ *
+ * @param {MenuListProps} props - Component properties.
+ * @returns {JSX.Element} The rendered menu list.
  */
 export const MenuList: Component<MenuListProps> = props => {
     /** Index of the currently hovered/active submenu. */
@@ -34,24 +44,32 @@ export const MenuList: Component<MenuListProps> = props => {
 
     /**
      * Internal keyboard navigation for context menu levels.
+     *
+     * @param {KeyboardEvent} event - The keyboard event object.
+     * @param {number} itemIndex - The index of the item receiving the event.
+     * @param {ContextMenuItem} item - The item definition.
      */
-    const handleKeyDown = (event: KeyboardEvent, index: number, item: ContextMenuItem) => {
+    const handleKeyDown = (event: KeyboardEvent, itemIndex: number, item: ContextMenuItem) => {
         // Stop propagation to ensure only one level handles the event
         event.stopPropagation();
 
         const handlers: Record<string, () => void> = {
             ArrowDown: () => {
                 event.preventDefault();
-                setFocusedIndex(prev => (prev < props.items.length - 1 ? prev + 1 : 0));
+                setFocusedIndex(previousIndex =>
+                    previousIndex < props.items.length - 1 ? previousIndex + 1 : 0
+                );
             },
             ArrowUp: () => {
                 event.preventDefault();
-                setFocusedIndex(prev => (prev > 0 ? prev - 1 : props.items.length - 1));
+                setFocusedIndex(previousIndex =>
+                    previousIndex > 0 ? previousIndex - 1 : props.items.length - 1
+                );
             },
             ArrowRight: () => {
                 if (item.type === 'submenu' && !item.disabled) {
                     event.preventDefault();
-                    setActiveSubmenuIndex(index);
+                    setActiveSubmenuIndex(itemIndex);
                 }
             },
             Enter: () => {
@@ -60,7 +78,7 @@ export const MenuList: Component<MenuListProps> = props => {
                     item.action();
                     props.onClose();
                 } else if (item.type === 'submenu' && !item.disabled) {
-                    setActiveSubmenuIndex(index);
+                    setActiveSubmenuIndex(itemIndex);
                 }
             },
             ' ': () => {
@@ -69,7 +87,7 @@ export const MenuList: Component<MenuListProps> = props => {
                     item.action();
                     props.onClose();
                 } else if (item.type === 'submenu' && !item.disabled) {
-                    setActiveSubmenuIndex(index);
+                    setActiveSubmenuIndex(itemIndex);
                 }
             },
             Escape: () => {

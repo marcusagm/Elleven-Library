@@ -1,3 +1,10 @@
+/**
+ * Dropdown Menu Item List
+ *
+ * Internal component for rendering the recursive list of items within a dropdown menu.
+ * Integrates with the custom keyboard navigation system.
+ */
+
 import { Component, For, createSignal, Show, Switch, Match } from 'solid-js';
 import { ChevronRight } from 'lucide-solid';
 import { Dynamic } from 'solid-js/web';

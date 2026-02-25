@@ -1,3 +1,10 @@
+/**
+ * Context Menu Component
+ *
+ * Provides a coordinate-based context menu that appears at a specific screen position.
+ * Handles viewport collisions to ensure the menu remains visible.
+ */
+
 import { Component, createSignal, createEffect, onCleanup, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { createClickOutside } from '../../../lib/primitives';
@@ -10,13 +17,22 @@ import './context-menu.css';
  * Supports standard items, submenus, and custom layouts.
  * Uses a coordinate-based positioning system.
  *
- * @param props - Properties for the context menu.
- * @returns The rendered context menu.
+ * @param {ContextMenuProps} props - Properties for the context menu.
+ * @returns {JSX.Element} The rendered context menu.
+ *
+ * @example
+ * <ContextMenu
+ *   coordinateX={100}
+ *   coordinateY={200}
+ *   isOpen={true}
+ *   items={menuItems}
+ *   onClose={() => setOpen(false)}
+ * />
  */
 export const ContextMenu: Component<ContextMenuProps> = props => {
     /** Target ref for the container for positioning and clicking outside. */
     let containerRef: HTMLDivElement | undefined;
-    /** Current calculated placement. */
+    /** Current calculated placement coordinates. */
     const [coordinates, setCoordinates] = createSignal({ top: 0, left: 0 });
     /** Controls opacity to avoid flicker before positioning. */
     const [isVisible, setIsVisible] = createSignal(false);
@@ -30,36 +46,36 @@ export const ContextMenu: Component<ContextMenuProps> = props => {
             return;
         }
 
-        // Initially hide to measure
-        containerRef.style.top = `${props.y}px`;
-        containerRef.style.left = `${props.x}px`;
+        // Initially move to requested position to allow measurement
+        containerRef.style.top = `${props.coordinateY}px`;
+        containerRef.style.left = `${props.coordinateX}px`;
 
         requestAnimationFrame(() => {
             if (!containerRef) return;
 
-            const rect = containerRef.getBoundingClientRect();
+            const menuBoundingRect = containerRef.getBoundingClientRect();
             const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
 
-            let top = props.y;
-            let left = props.x;
+            let topCoordinate = props.coordinateY;
+            let leftCoordinate = props.coordinateX;
 
             // Collision detection for right boundary
-            if (left + rect.width > viewportWidth) {
-                left = Math.max(0, viewportWidth - rect.width - 8);
+            if (leftCoordinate + menuBoundingRect.width > viewportWidth) {
+                leftCoordinate = Math.max(0, viewportWidth - menuBoundingRect.width - 8);
             }
             // Collision detection for bottom boundary
-            if (top + rect.height > viewportHeight) {
-                top = Math.max(0, viewportHeight - rect.height - 8);
+            if (topCoordinate + menuBoundingRect.height > viewportHeight) {
+                topCoordinate = Math.max(0, viewportHeight - menuBoundingRect.height - 8);
             }
 
-            setCoordinates({ top, left });
+            setCoordinates({ top: topCoordinate, left: leftCoordinate });
             setIsVisible(true);
         });
     });
 
     /**
-     * Click outside detection.
+     * Detection for clicks outside the menu container.
      */
     createClickOutside(
         () => containerRef,
@@ -67,7 +83,7 @@ export const ContextMenu: Component<ContextMenuProps> = props => {
     );
 
     /**
-     * Listen for Escape key at the document level while open.
+     * Listen for Escape key at the document level while the menu is open.
      */
     createEffect(() => {
         if (!props.isOpen) return;

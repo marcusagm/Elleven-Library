@@ -1,4 +1,4 @@
-import { Component, Show, createSignal } from 'solid-js';
+import { Component, Show, createSignal, Switch, Match } from 'solid-js';
 import { useSystem } from '../../../core/hooks';
 import { Loader } from '../../ui/Loader';
 import { CircleCheck, PaintRoller, Settings } from 'lucide-solid';
@@ -92,6 +92,3 @@ export const StatusSystem: Component = () => {
         </div>
     );
 };
-
-// Helper for Switch/Match imports
-import { Switch, Match } from 'solid-js';

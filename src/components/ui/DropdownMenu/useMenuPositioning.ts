@@ -1,3 +1,10 @@
+/**
+ * Dropdown Positioning Hook
+ *
+ * Provides logic for calculating the position of a dropdown relative to its trigger element.
+ * Integrates with Floating UI for viewport-aware placement.
+ */
+
 import { createSignal, createEffect, onCleanup, Accessor, createMemo } from 'solid-js';
 import { computePosition, flip, shift, offset, autoUpdate, Placement } from '@floating-ui/dom';
 import { DropdownAlignment, DropdownSide } from './types';
@@ -6,9 +13,15 @@ import { DropdownAlignment, DropdownSide } from './types';
  * Custom hook for managing floating element positioning using Floating UI.
  * Handles viewport collisions, scrolling, and resizing.
  *
- * @param alignment - Accessor for horizontal/vertical alignment.
- * @param side - Accessor for the opening side.
- * @returns An object containing refs and the computed position state.
+ * @param {Accessor<DropdownAlignment | undefined>} alignment - Accessor for horizontal/vertical alignment.
+ * @param {Accessor<DropdownSide | undefined>} side - Accessor for the opening side.
+ * @returns {Object} An object containing refs and the computed position state.
+ *
+ * @example
+ * const { setTriggerReference, setFloatingElement, coordinates } = useMenuPositioning(
+ *   () => props.align,
+ *   () => props.side
+ * );
  */
 export const useMenuPositioning = (
     alignment: Accessor<DropdownAlignment | undefined>,
@@ -47,7 +60,7 @@ export const useMenuPositioning = (
 
         if (!reference || !floating) return;
 
-        const { x, y } = await computePosition(reference, floating, {
+        const { x: coordinateX, y: coordinateY } = await computePosition(reference, floating, {
             placement: placement(),
             middleware: [
                 offset(4), // Small gap between trigger and menu
@@ -56,7 +69,7 @@ export const useMenuPositioning = (
             ]
         });
 
-        setCoordinates({ top: y, left: x });
+        setCoordinates({ top: coordinateY, left: coordinateX });
     };
 
     // Use Floating UI's autoUpdate to handle scroll and resize automatically while open
