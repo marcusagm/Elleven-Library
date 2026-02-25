@@ -1,5 +1,6 @@
 import { Component, createSignal, Show, For, JSX, createMemo } from 'solid-js';
 import { cn } from '../../../lib/utils';
+import { DragItem } from '../../../core/dnd';
 import { TreeViewItemProps, TreeNode } from './types';
 import { useTreeNavigation } from './hooks/useTreeNavigation';
 import { useTreeDragDrop } from './hooks/useTreeDragDrop';
@@ -151,13 +152,13 @@ export const TreeViewItem: Component<TreeViewItemProps<unknown>> = props => {
     useTreeNavigation(navigationOptions);
 
     const dragDropOptions = {
-        node: () => props.node,
+        node: () => props.node as TreeNode<unknown>,
         isEnabled: () => props.draggable ?? false,
         isEditing,
         dragType: () => props.dragType,
         acceptedDragTypes: () => props.acceptedDragTypes,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        isValidDrop: (dragged: any, target: any) => props.isValidDrop?.(dragged, target) ?? true
+        isValidDrop: (dragged: DragItem, target: TreeNode<unknown>) =>
+            props.isValidDrop?.(dragged, target) ?? true
     };
     const dragDrop = useTreeDragDrop(dragDropOptions);
 

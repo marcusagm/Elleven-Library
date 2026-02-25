@@ -152,6 +152,7 @@ export const FolderTreeSidebarPanel: Component = () => {
      * @param {TreeNode} node - The tree node being interacted with.
      */
     const handleContextMenu = (event: MouseEvent, node: TreeNode) => {
+        event.preventDefault();
         setContextMenuNode(node);
         setContextMenuPosition({ coordinateX: event.clientX, coordinateY: event.clientY });
         setContextMenuOpen(true);

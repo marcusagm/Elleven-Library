@@ -1,7 +1,7 @@
 import { Component, createSignal, splitProps, For } from 'solid-js';
 import { cn } from '../../../lib/utils';
 import { createId } from '../../../lib/primitives/createId';
-import { dndRegistry, currentDragItem } from '../../../core/dnd';
+import { dndRegistry, currentDragItem, DragItem } from '../../../core/dnd';
 import { TreeViewProps } from './types';
 import { TreeViewItem } from './TreeViewItem';
 import './tree-view.css';
@@ -64,7 +64,7 @@ export const TreeView: Component<TreeViewProps<unknown>> = props => {
         try {
             const rawJsonData = event.dataTransfer?.getData('application/json');
             if (rawJsonData) {
-                const droppedItem = JSON.parse(rawJsonData);
+                const droppedItem: DragItem = JSON.parse(rawJsonData);
                 const dropStrategy = dndRegistry.get(droppedItem.type);
 
                 // Check if this type is accepted at the root
@@ -72,9 +72,7 @@ export const TreeView: Component<TreeViewProps<unknown>> = props => {
                     localProperties.acceptedDragTypes?.includes(droppedItem.type) ?? true;
 
                 if (dropStrategy && isAccepted) {
-                    // TreeView acts as a bridge; we cast here as the strategy might optionally accept hierarchical positions
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    await (dropStrategy as any).onDrop(droppedItem, 'root');
+                    await dropStrategy.onDrop(droppedItem, 'root');
                 }
             }
         } catch (error) {

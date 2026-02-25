@@ -1,8 +1,8 @@
 # Plano de Ação: Otimizações e Funcionalidades Pendentes (Mundam)
 
 **Data:** 20 de Fevereiro de 2026
-**Status:** Planejamento (parcialmente em andamento)  
-**Última atualização:** 2026-02-24 — Progresso total na seção 5.1 (tipagem e modularização de Table e TreeView). Ver planos em `docs/plans/`.
+**Status:** Planejamento (parcialmente em andamento)
+**Última atualização:** 2026-02-25 — Conclusão da refatoração de DropdownMenu e ContextMenu.
 **Baseado em:** `pendencias_consolidadas.md`
 
 Este documento elabora um plano detalhado de implementação para todas as pendências ativas mapeadas nos relatórios recentes do projeto **Mundam**. Para manter a manutenibilidade, o plano foi segmentado em partes menores, de modo que cada tópico representa uma evolução lógica, focada em recursos específicos, melhorias de arquitetura e otimizações de performance.
@@ -49,12 +49,12 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 
 ### [ ] 4.1 Ingestão Web Clipper (Extensão) e Clipboard
 *   **Ação:** Desenvolver o endpoint no protocolo stream/interno (como `/ingest`) exposto pelo servidor Web local (via `axum` ou `tauri-plugin-localhost`) recebendo payloads rest (como base64 string, URL remotas).
-*   **Ação:** Criar estrutura inicial no navegador para envio da imagem, atrelando à lógica local de download e parse e aceitar interceptação por Deep OS Integration + Ctrl+V Universal do ecossistema. 
+*   **Ação:** Criar estrutura inicial no navegador para envio da imagem, atrelando à lógica local de download e parse e aceitar interceptação por Deep OS Integration + Ctrl+V Universal do ecossistema.
 
 ### [ ] 4.2 Empacotamento Portátil e Cloud Sync Estrutural
 *   **Ação:** Implementação de uma UI de "Exportação Inteligente".
 *   **Ação:** Desenvolver no backend scripts em Rust em `commands/` encarregados de encapsular as mídias requeridas juntamente a um arquivo de base de dados/manifest com metadados isolando o formato (`.eaglepack` / `.mundampack`) para fins de backup ágil e compartilhamento de metadados limpos.
-*   **Ação Genérica:** Investigar soluções nativas e fluxos padronizados para amparo básico de versionamento de Cloud Sync (e.g., GDrive e Dropbox wrappers / watcher de conflitos). 
+*   **Ação Genérica:** Investigar soluções nativas e fluxos padronizados para amparo básico de versionamento de Cloud Sync (e.g., GDrive e Dropbox wrappers / watcher de conflitos).
 
 ### [ ] 4.3 Suporte Básico à Arquitetura de Plugins e Scripts
 *   **Ação:** Planejar o ecossistema base e API exposta do Tauri com permissões escaladas que viabilize em um futuro a integração por scripts customizados.
@@ -65,10 +65,10 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 
 **Motivação:** Interfaces inchadas podem dificultar a injeção reativa do Solid e as melhorias visuais do portfólio.
 
-### [~] 5.1 Refatoração Reativa: Actions e Store *(progresso parcial — 2026-02-24)*
-*   **Concluído:** Modularização de god files concluída (incluindo `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, `useVideoPlayer.ts` e `AdvancedSearchModal.tsx`). Eliminação de `any` em stores críticos. Remoção de `console.log` de debug, rewrite do `TagDropStrategy.ts`. Build TypeScript com 0 erros.
-*   **Pendente:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI. Restam `any` apenas em `DropdownMenu.tsx`, `ContextMenu.tsx`.
-*   *Detalhes: `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`, `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md`, `docs/plans/2026-02-24_15:51-table-component-refactoring.md`, `docs/plans/2026-02-24_19:09-tree-view-refactoring.md` e `docs/plans/2026-02-24_21:40-input-component-refactoring.md`*
+### [✓] 5.1 Refatoração Reativa: Actions e Store
+*   **Concluído:** Modularização de god files concluída (incluindo `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, `useVideoPlayer.ts`, `AdvancedSearchModal.tsx`, `Table.tsx`, `TreeView.tsx`, `Input.tsx`, `DropdownMenu.tsx` e `ContextMenu.tsx`). Eliminação de `any` em stores e UI components críticos. Resolução de conflitos de atalhos (Meta+A).
+*   **Pendente:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI.
+*   *Detalhes: `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`, `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md`, `docs/plans/2026-02-24_15:51-table-component-refactoring.md`, `docs/plans/2026-02-24_19:09-tree-view-refactoring.md`, `docs/plans/2026-02-24_21:40-input-component-refactoring.md` e `docs/plans/2025-02-25_02:22-dropdown-context-menu-refactoring.md`*
 
 
 

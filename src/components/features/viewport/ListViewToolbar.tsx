@@ -136,25 +136,25 @@ export const ListViewToolbar: Component = () => {
                         {
                             type: 'item',
                             label: 'Masonry Vertical',
-                            icon: AlignCenterVertical as any,
+                            icon: AlignCenterVertical,
                             action: () => filters.setLayout('masonry-v')
                         },
                         {
                             type: 'item',
                             label: 'Masonry Horizontal',
-                            icon: AlignCenterHorizontal as any,
+                            icon: AlignCenterHorizontal,
                             action: () => filters.setLayout('masonry-h')
                         },
                         {
                             type: 'item',
                             label: 'Grid',
-                            icon: LayoutGrid as any,
+                            icon: LayoutGrid,
                             action: () => filters.setLayout('grid')
                         },
                         {
                             type: 'item',
                             label: 'List',
-                            icon: List as any,
+                            icon: List,
                             action: () => filters.setLayout('list')
                         }
                     ]}
