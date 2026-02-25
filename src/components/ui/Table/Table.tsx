@@ -277,9 +277,9 @@ export function Table<T>(props: TableProps<T>) {
                 />
 
                 <ContextMenu
+                    coordinateX={visibilityMenu().xPos}
+                    coordinateY={visibilityMenu().yPos}
                     isOpen={visibilityMenu().isOpen}
-                    x={visibilityMenu().xPos}
-                    y={visibilityMenu().yPos}
                     items={menuItems()}
                     onClose={() => setVisibilityMenu({ ...visibilityMenu(), isOpen: false })}
                 />

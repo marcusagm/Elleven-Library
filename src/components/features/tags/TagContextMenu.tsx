@@ -19,6 +19,11 @@ interface TagContextMenuProps {
 
 export const TagContextMenu: Component<TagContextMenuProps> = props => {
     const { loadTags } = useMetadata();
+    const handleColorChange = async (tagId: number, newColor: string) => {
+        await tagService.updateTag(tagId, undefined, newColor);
+        await loadTags();
+    };
+
     const items = createMemo<ContextMenuItem[]>(() => {
         const node = props.node;
         if (!node) return [];
@@ -46,14 +51,7 @@ export const TagContextMenu: Component<TagContextMenuProps> = props => {
                         content: (
                             <ColorPicker
                                 color={node.iconColor || '#cccccc'}
-                                onChange={async newColor => {
-                                    await tagService.updateTag(
-                                        Number(node.id),
-                                        undefined,
-                                        newColor
-                                    );
-                                    await loadTags();
-                                }}
+                                onChange={newColor => handleColorChange(Number(node.id), newColor)}
                             />
                         )
                     }
@@ -72,8 +70,8 @@ export const TagContextMenu: Component<TagContextMenuProps> = props => {
 
     return (
         <ContextMenu
-            x={props.coordinateX}
-            y={props.coordinateY}
+            coordinateX={props.coordinateX}
+            coordinateY={props.coordinateY}
             items={items()}
             isOpen={props.isOpen}
             onClose={props.onClose}

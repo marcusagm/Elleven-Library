@@ -88,8 +88,8 @@ export const FolderContextMenu: Component<FolderContextMenuProps> = props => {
 
     return (
         <ContextMenu
-            x={props.coordinateX}
-            y={props.coordinateY}
+            coordinateX={props.coordinateX}
+            coordinateY={props.coordinateY}
             items={items()}
             isOpen={props.isOpen}
             onClose={props.onClose}

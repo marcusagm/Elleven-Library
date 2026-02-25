@@ -9,7 +9,7 @@ type AlertVariant = 'default' | 'info' | 'success' | 'warning' | 'destructive';
 /**
  * Properties for the Alert component.
  */
-export interface AlertProperties extends JSX.HTMLAttributes<HTMLDivElement> {
+export interface AlertProps extends JSX.HTMLAttributes<HTMLDivElement> {
     /** The visual variant of the alert */
     variant?: AlertVariant;
     /** Optional custom icon to display */
@@ -48,7 +48,7 @@ const variantIcons: Record<AlertVariant, Component<{ size?: number | string }>> 
  *   Something went wrong.
  * </Alert>
  */
-export const Alert: Component<AlertProperties> = properties => {
+export const Alert: Component<AlertProps> = properties => {
     const [localProperties, remainingProperties] = splitProps(properties, [
         'class',
         'variant',

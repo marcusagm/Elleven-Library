@@ -38,8 +38,8 @@ export const SmartFolderContextMenu: Component<SmartFolderContextMenuProps> = pr
 
     return (
         <ContextMenu
-            x={props.x}
-            y={props.y}
+            coordinateX={props.x}
+            coordinateY={props.y}
             items={items()}
             isOpen={props.isOpen}
             onClose={props.onClose}
