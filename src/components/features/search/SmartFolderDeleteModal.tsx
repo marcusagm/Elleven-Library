@@ -1,37 +1,56 @@
 import { Component } from 'solid-js';
-import { ConfirmModal } from '../../ui/Modal';
+import { ConfirmModal } from '../../ui';
 import { SmartFolder } from '../../../core/store/metadataStore';
 import { useMetadata, useNotification } from '../../../core/hooks';
 
-interface SmartFolderDeleteModalProps {
+/**
+ * Properties for the SmartFolderDeleteModal component.
+ */
+interface SmartFolderDeleteModalProperties {
+    /** Whether the modal is currently open. */
     isOpen: boolean;
+    /** Callback invoked when the modal requests closure. */
     onClose: () => void;
+    /** The smart folder metadata object to be deleted. */
     folder: SmartFolder | null;
 }
 
-export const SmartFolderDeleteModal: Component<SmartFolderDeleteModalProps> = props => {
+/**
+ * Modal dialog to confirm the deletion of a smart folder (saved search).
+ *
+ * @param componentProperties - Properties for the component.
+ * @returns The rendered SmartFolderDeleteModal.
+ */
+export const SmartFolderDeleteModal: Component<
+    SmartFolderDeleteModalProperties
+> = componentProperties => {
     const metadata = useMetadata();
     const notification = useNotification();
 
+    /**
+     * Handles the smart folder deletion confirmation.
+     */
     const handleConfirm = async () => {
-        if (!props.folder) return;
+        if (!componentProperties.folder) {
+            return;
+        }
 
-        const folderName = props.folder.name;
+        const folderName = componentProperties.folder.name;
         try {
-            await metadata.deleteSmartFolder(props.folder.id);
+            await metadata.deleteSmartFolder(componentProperties.folder.id);
             notification.success('Smart Folder Deleted', `Removed "${folderName}"`);
-        } catch (err) {
-            console.error('Delete failed:', err);
+        } catch (error) {
+            console.error('Delete failed:', error);
             notification.error('Failed to Delete Smart Folder');
         } finally {
-            props.onClose();
+            componentProperties.onClose();
         }
     };
 
     return (
         <ConfirmModal
-            isOpen={props.isOpen}
-            onClose={props.onClose}
+            isOpen={componentProperties.isOpen}
+            onClose={componentProperties.onClose}
             onConfirm={handleConfirm}
             title="Delete Smart Folder"
             kind="danger"
@@ -41,7 +60,7 @@ export const SmartFolderDeleteModal: Component<SmartFolderDeleteModalProps> = pr
             <div class="delete-confirmation-content">
                 <p>
                     Are you sure you want to delete the smart folder{' '}
-                    <strong>"{props.folder?.name}"</strong>?
+                    <strong>"{componentProperties.folder?.name}"</strong>?
                 </p>
                 <p class="delete-warning">
                     This will only remove the saved search. Your images and actual folders will not

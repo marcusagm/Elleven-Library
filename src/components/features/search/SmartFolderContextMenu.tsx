@@ -3,27 +3,47 @@ import { Edit, Trash2 } from 'lucide-solid';
 import { ContextMenu, ContextMenuItem } from '../../ui/ContextMenu';
 import { SmartFolder } from '../../../core/store/metadataStore';
 
-interface SmartFolderContextMenuProps {
-    x: number;
-    y: number;
+/**
+ * Properties for the SmartFolderContextMenu component.
+ */
+interface SmartFolderContextMenuProperties {
+    /** The X screen coordinate where the menu should appear. */
+    coordinateX: number;
+    /** The Y screen coordinate where the menu should appear. */
+    coordinateY: number;
+    /** Whether the menu is currently visible. */
     isOpen: boolean;
+    /** The smart folder metadata for which the menu is displayed. */
     folder: SmartFolder | null;
+    /** Callback invoked when the menu requests closure. */
     onClose: () => void;
+    /** Callback invoked to edit the folder. */
     onEdit: (folder: SmartFolder) => void;
+    /** Callback invoked to delete the folder. */
     onDelete: (folder: SmartFolder) => void;
 }
 
-export const SmartFolderContextMenu: Component<SmartFolderContextMenuProps> = props => {
-    const items = createMemo<ContextMenuItem[]>(() => {
-        const folder = props.folder;
-        if (!folder) return [];
+/**
+ * Context menu providing management actions for a smart folder.
+ *
+ * @param componentProperties - Properties for the component.
+ * @returns The rendered SmartFolderContextMenu.
+ */
+export const SmartFolderContextMenu: Component<
+    SmartFolderContextMenuProperties
+> = componentProperties => {
+    const contextMenuItems = createMemo<ContextMenuItem[]>(() => {
+        const folder = componentProperties.folder;
+        if (!folder) {
+            return [];
+        }
 
         return [
             {
                 type: 'item',
                 label: 'Edit Smart Folder',
                 icon: Edit,
-                action: () => props.onEdit(folder)
+                action: () => componentProperties.onEdit(folder)
             },
             { type: 'separator' },
             {
@@ -31,18 +51,18 @@ export const SmartFolderContextMenu: Component<SmartFolderContextMenuProps> = pr
                 label: 'Delete',
                 danger: true,
                 icon: Trash2,
-                action: () => props.onDelete(folder)
+                action: () => componentProperties.onDelete(folder)
             }
         ];
     });
 
     return (
         <ContextMenu
-            coordinateX={props.x}
-            coordinateY={props.y}
-            items={items()}
-            isOpen={props.isOpen}
-            onClose={props.onClose}
+            coordinateX={componentProperties.coordinateX}
+            coordinateY={componentProperties.coordinateY}
+            items={contextMenuItems()}
+            isOpen={componentProperties.isOpen}
+            onClose={componentProperties.onClose}
         />
     );
 };

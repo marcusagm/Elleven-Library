@@ -15,9 +15,13 @@ import './folder-tree-sidebar-panel.css';
  * Metadata for folder nodes to facilitate domain operations.
  */
 interface FolderNodeData {
-    folderId: number;
+    /** The unique identifier of the folder. */
+    folderIdentifier: number;
+    /** The full file system path. */
     path: string;
+    /** The display name of the folder. */
     name: string;
+    /** Whether this is a root-level monitored folder. */
     isRoot: boolean;
 }
 
@@ -30,7 +34,9 @@ export const FolderTreeSidebarPanel: Component = () => {
     const notification = useNotification();
 
     // --- Component State ---
-    const [expandedIds, setExpandedIds] = createSignal<Set<string | number>>(new Set());
+    const [expandedIdentifiers, setExpandedIdentifiers] = createSignal<Set<string | number>>(
+        new Set()
+    );
     const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
     const [folderToDelete, setFolderToDelete] = createSignal<FolderNodeData | null>(null);
     const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
@@ -45,9 +51,9 @@ export const FolderTreeSidebarPanel: Component = () => {
         const savedExpansionState = localStorage.getItem('mundam_folder_expanded');
         if (savedExpansionState) {
             try {
-                const parsedIds = JSON.parse(savedExpansionState);
-                if (Array.isArray(parsedIds)) {
-                    setExpandedIds(new Set(parsedIds));
+                const parsedIdentifiers = JSON.parse(savedExpansionState);
+                if (Array.isArray(parsedIdentifiers)) {
+                    setExpandedIdentifiers(new Set(parsedIdentifiers));
                 }
             } catch (error) {
                 console.error('Failed to parse saved folder expansion state:', error);
@@ -55,19 +61,29 @@ export const FolderTreeSidebarPanel: Component = () => {
         }
     });
 
+    /**
+     * Persists the current tree expansion state to local storage.
+     *
+     * @param nextSet - The new set of expanded node identifiers.
+     */
     const persistExpansionState = (nextSet: Set<string | number>) => {
-        setExpandedIds(nextSet);
+        setExpandedIdentifiers(nextSet);
         localStorage.setItem('mundam_folder_expanded', JSON.stringify(Array.from(nextSet)));
     };
 
-    const toggleExpansion = (id: string | number) => {
-        const next = new Set(expandedIds());
-        if (next.has(id)) {
-            next.delete(id);
+    /**
+     * Toggles the expansion state of a specific node.
+     *
+     * @param identifier - The identifier of the node to toggle.
+     */
+    const toggleExpansion = (identifier: string | number) => {
+        const nextSet = new Set(expandedIdentifiers());
+        if (nextSet.has(identifier)) {
+            nextSet.delete(identifier);
         } else {
-            next.add(id);
+            nextSet.add(identifier);
         }
-        persistExpansionState(next);
+        persistExpansionState(nextSet);
     };
 
     // --- Tree Construction ---
@@ -88,7 +104,7 @@ export const FolderTreeSidebarPanel: Component = () => {
                 label: folder.name,
                 children: [],
                 data: {
-                    folderId: folder.id,
+                    folderIdentifier: folder.id,
                     path: folder.path,
                     name: folder.name,
                     isRoot: folder.is_root
@@ -106,7 +122,11 @@ export const FolderTreeSidebarPanel: Component = () => {
 
         // Phase 2: Build hierarchy
         for (const folder of allFolders) {
-            const node = nodeMap.get(folder.id)!;
+            const node = nodeMap.get(folder.id);
+            if (!node) {
+                continue;
+            }
+
             if (folder.parent_id && nodeMap.has(folder.parent_id)) {
                 nodeMap.get(folder.parent_id)!.children!.push(node);
             } else {
@@ -117,6 +137,9 @@ export const FolderTreeSidebarPanel: Component = () => {
         return rootNodes.sort((a, b) => a.label.localeCompare(b.label));
     });
 
+    /**
+     * Opens a directory picker to add a new monitored folder to the library.
+     */
     const handleAddFolder = async () => {
         try {
             const selectedPath = await open({
@@ -140,16 +163,21 @@ export const FolderTreeSidebarPanel: Component = () => {
         }
     };
 
+    /**
+     * Handles the selection of a folder node.
+     *
+     * @param node - The selected tree node.
+     */
     const handleSelect = (node: TreeNode) => {
         const data = node.data as FolderNodeData;
-        filters.setFolder(data.folderId);
+        filters.setFolder(data.folderIdentifier);
     };
 
     /**
      * Triggers the context menu for a specific node.
      *
-     * @param {MouseEvent} event - The mouse event triggered by right-click.
-     * @param {TreeNode} node - The tree node being interacted with.
+     * @param event - The mouse event triggered by right-click.
+     * @param node - The tree node being interacted with.
      */
     const handleContextMenu = (event: MouseEvent, node: TreeNode) => {
         event.preventDefault();
@@ -159,12 +187,12 @@ export const FolderTreeSidebarPanel: Component = () => {
     };
 
     // --- Selection State ---
-    const activeSelectionIds = createMemo(() => {
-        const ids: (string | number)[] = [];
+    const activeSelectionIdentifiers = createMemo(() => {
+        const identifiers: (string | number)[] = [];
         if (filters.selectedFolderId) {
-            ids.push(`folder-${filters.selectedFolderId}`);
+            identifiers.push(`folder-${filters.selectedFolderId}`);
         }
-        return ids;
+        return identifiers;
     });
 
     return (
@@ -187,9 +215,9 @@ export const FolderTreeSidebarPanel: Component = () => {
                     <TreeView
                         items={folderTreeHierarchy()}
                         onSelect={handleSelect}
-                        selectedIds={activeSelectionIds()}
+                        selectedIds={activeSelectionIdentifiers()}
                         onContextMenu={handleContextMenu}
-                        expandedIds={expandedIds()}
+                        expandedIds={expandedIdentifiers()}
                         onToggle={toggleExpansion}
                         draggable={false}
                         dragType="FOLDER"
@@ -206,7 +234,7 @@ export const FolderTreeSidebarPanel: Component = () => {
             <FolderDeleteModal
                 isOpen={deleteModalOpen()}
                 onClose={() => setDeleteModalOpen(false)}
-                folderId={folderToDelete()?.folderId ?? null}
+                folderIdentifier={folderToDelete()?.folderIdentifier ?? null}
                 folderName={folderToDelete()?.name ?? ''}
             />
 

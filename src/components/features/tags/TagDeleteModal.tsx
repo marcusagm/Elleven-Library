@@ -1,43 +1,66 @@
 import { Component, Show } from 'solid-js';
-import './tag-delete-modal.css';
-import { ConfirmModal } from '../../ui/Modal';
+import { ConfirmModal } from '../../ui';
 import { TreeNode } from '../../ui/TreeView';
 import { tagService } from '../../../lib/tags';
 import { useMetadata, useNotification } from '../../../core/hooks';
+import './tag-delete-modal.css';
 
-interface TagDeleteModalProps {
+/**
+ * Properties for the TagDeleteModal component.
+ */
+interface TagDeleteModalProperties {
+    /** Whether the modal is open. */
     isOpen: boolean;
+    /** Callback to close the modal. */
     onClose: () => void;
+    /** The tag node to be deleted. */
     node: TreeNode | null;
 }
 
-export const TagDeleteModal: Component<TagDeleteModalProps> = props => {
+/**
+ * Modal to confirm the deletion of a tag and its descendants.
+ *
+ * @param componentProperties - Properties for the component.
+ * @returns The rendered TagDeleteModal.
+ */
+export const TagDeleteModal: Component<TagDeleteModalProperties> = componentProperties => {
     const { loadTags } = useMetadata();
     const notification = useNotification();
 
-    const getAllDescendants = (node: TreeNode): number[] => {
-        let ids: number[] = [];
+    /**
+     * Recursively retrieves all descendant identifiers of a given node.
+     *
+     * @param node - The starting tree node.
+     * @returns An array of descendant numeric identifiers.
+     */
+    const getAllDescendantIdentifiers = (node: TreeNode): number[] => {
+        let identifiers: number[] = [];
         if (node.children) {
             node.children.forEach(child => {
-                ids.push(Number(child.id));
-                ids = [...ids, ...getAllDescendants(child)];
+                identifiers.push(Number(child.id));
+                identifiers = [...identifiers, ...getAllDescendantIdentifiers(child)];
             });
         }
-        return ids;
+        return identifiers;
     };
 
+    /**
+     * Handles the confirmation of tag deletion.
+     */
     const handleConfirm = async () => {
-        const node = props.node;
-        if (!node) return;
+        const node = componentProperties.node;
+        if (!node) {
+            return;
+        }
 
         const tagName = node.label;
-        const parentId = (node.data as Record<string, unknown>)?.parent_id as number;
-        const color = (node.data as Record<string, unknown>)?.color as string;
+        const parentIdentifier = (node.data as Record<string, unknown>)?.parent_id as number;
+        const tagColor = (node.data as Record<string, unknown>)?.color as string;
 
         try {
-            const descendantIds = getAllDescendants(node);
-            for (const childId of descendantIds) {
-                await tagService.deleteTag(childId);
+            const descendantIdentifiers = getAllDescendantIdentifiers(node);
+            for (const childIdentifier of descendantIdentifiers) {
+                await tagService.deleteTag(childIdentifier);
             }
             await tagService.deleteTag(Number(node.id));
             await loadTags();
@@ -46,7 +69,7 @@ export const TagDeleteModal: Component<TagDeleteModalProps> = props => {
                 label: 'Undo',
                 onClick: async () => {
                     try {
-                        await tagService.createTag(tagName, parentId, color);
+                        await tagService.createTag(tagName, parentIdentifier, tagColor);
                         await loadTags();
                         notification.success('Restored', `Tag "${tagName}" restored`);
                     } catch {
@@ -54,34 +77,39 @@ export const TagDeleteModal: Component<TagDeleteModalProps> = props => {
                     }
                 }
             });
-        } catch (err) {
-            console.error('Delete failed:', err);
+        } catch (error) {
+            console.error('Delete failed:', error);
             notification.error('Failed to Delete Tag');
         } finally {
-            props.onClose();
+            componentProperties.onClose();
         }
     };
 
-    const count = () => (props.node ? getAllDescendants(props.node).length : 0);
+    /**
+     * Calculates the number of descendant tags.
+     */
+    const descendantCount = () =>
+        componentProperties.node ? getAllDescendantIdentifiers(componentProperties.node).length : 0;
 
     return (
         <ConfirmModal
-            isOpen={props.isOpen}
-            onClose={props.onClose}
+            isOpen={componentProperties.isOpen}
+            onClose={componentProperties.onClose}
             onConfirm={handleConfirm}
             title="Delete Tag"
             kind="danger"
             confirmText="Delete"
-            message="" // We pass children instead
+            message=""
         >
             <div class="tag-delete-modal-content">
                 <p>
-                    Are you sure you want to delete tag <strong>"{props.node?.label}"</strong>?
+                    Are you sure you want to delete tag{' '}
+                    <strong>"{componentProperties.node?.label}"</strong>?
                 </p>
-                <Show when={count() > 0}>
+                <Show when={descendantCount() > 0}>
                     <p class="tag-delete-warning">
-                        This will also delete <strong>{count()}</strong> child tags. This action
-                        cannot be undone.
+                        This will also delete <strong>{descendantCount()}</strong> child tags. This
+                        action cannot be undone.
                     </p>
                 </Show>
             </div>

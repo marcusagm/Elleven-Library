@@ -37,14 +37,14 @@ export const SmartFoldersSidebarPanel: Component = () => {
         try {
             const query = JSON.parse(json) as SearchGroup;
             filters.setAdvancedSearch(query);
-        } catch (e) {
-            console.error('Failed to parse smart folder query', e);
+        } catch (event) {
+            console.error('Failed to parse smart folder query', event);
         }
     };
 
-    const handleContextMenu = (e: MouseEvent, folder: SmartFolder) => {
-        e.preventDefault();
-        setContextMenuPos({ x: e.clientX, y: e.clientY });
+    const handleContextMenu = (event: MouseEvent, folder: SmartFolder) => {
+        event.preventDefault();
+        setContextMenuPos({ x: event.clientX, y: event.clientY });
         setSelectedFolder(folder);
         setContextMenuOpen(true);
     };
@@ -88,7 +88,7 @@ export const SmartFoldersSidebarPanel: Component = () => {
                                 isActive(folder.query_json) && 'active'
                             )}
                             onClick={() => handleSelect(folder.query_json)}
-                            onContextMenu={e => handleContextMenu(e, folder)}
+                            onContextMenu={event => handleContextMenu(event, folder)}
                         >
                             <FolderHeart size={16} />
                             <span class="folder-name">{folder.name}</span>
@@ -105,8 +105,8 @@ export const SmartFoldersSidebarPanel: Component = () => {
             </div>
 
             <SmartFolderContextMenu
-                x={contextMenuPos().x}
-                y={contextMenuPos().y}
+                coordinateX={contextMenuPos().x}
+                coordinateY={contextMenuPos().y}
                 isOpen={contextMenuOpen()}
                 folder={selectedFolder()}
                 onClose={() => setContextMenuOpen(false)}
@@ -125,17 +125,17 @@ export const SmartFoldersSidebarPanel: Component = () => {
                     isOpen={isEditModalOpen()}
                     onClose={() => setIsEditModalOpen(false)}
                     isSmartFolderMode={true}
-                    initialId={folderToEdit()?.id}
+                    initialIdentifier={folderToEdit()?.id}
                     initialName={folderToEdit()?.name}
                     initialQuery={
                         folderToEdit() ? JSON.parse(folderToEdit()!.query_json) : undefined
                     }
-                    onSave={(name, query, id) => {
+                    onSave={(name, query, identifier) => {
                         void (async () => {
                             try {
-                                await metadata.saveSmartFolder(name, query, id);
+                                await metadata.saveSmartFolder(name, query, identifier);
                                 notification.success(
-                                    id ? 'Smart Folder Updated' : 'Smart Folder Created',
+                                    identifier ? 'Smart Folder Updated' : 'Smart Folder Created',
                                     `Saved "${name}"`
                                 );
                             } catch {

@@ -6,7 +6,7 @@
 import { Component, createSignal, For, Show } from 'solid-js';
 import { Keyboard, Palette, Settings, Info } from 'lucide-solid';
 import { cn } from '../../../lib/utils';
-import { Modal } from '../../ui/Modal';
+import { Modal } from '../../ui';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 import { GeneralPanel } from './GeneralPanel';
 import { AppearancePanel } from './AppearancePanel';
@@ -14,35 +14,61 @@ import { FoldersPanel } from './FoldersPanel';
 import { AboutPanel } from './AboutPanel';
 import './settings-modal.css';
 
+/**
+ * Valid settings tabs.
+ */
 export type SettingsTab = 'general' | 'appearance' | 'keyboard-shortcuts' | 'folders' | 'about';
 
-interface SettingsTabDef {
-    id: SettingsTab;
+/**
+ * Definition structure for a settings tab.
+ */
+interface SettingsTabDefinition {
+    /** Unique identifier for the tab. */
+    identifier: SettingsTab;
+    /** Human-readable label for the tab. */
     label: string;
+    /** Icon component for the tab. */
     icon: Component<{ size?: number }>;
 }
 
-const SETTINGS_TABS: SettingsTabDef[] = [
-    { id: 'general', label: 'General', icon: Settings },
-    { id: 'appearance', label: 'Appearance', icon: Palette },
-    { id: 'keyboard-shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
-    // { id: 'folders', label: 'Folders', icon: FolderOpen },
-    { id: 'about', label: 'About', icon: Info }
+/**
+ * Collection of all available settings tabs.
+ */
+const SETTINGS_TABS: SettingsTabDefinition[] = [
+    { identifier: 'general', label: 'General', icon: Settings },
+    { identifier: 'appearance', label: 'Appearance', icon: Palette },
+    { identifier: 'keyboard-shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
+    { identifier: 'about', label: 'About', icon: Info }
 ];
 
-export interface SettingsModalProps {
+/**
+ * Properties for the SettingsModal component.
+ */
+export interface SettingsModalProperties {
+    /** Whether the settings modal is currently open. */
     isOpen: boolean;
+    /** Callback invoked when the modal requests closure. */
     onClose: () => void;
+    /** The tab to show when the modal first opens. */
     initialTab?: SettingsTab;
 }
 
-export const SettingsModal: Component<SettingsModalProps> = props => {
-    const [activeTab, setActiveTab] = createSignal<SettingsTab>(props.initialTab || 'general');
+/**
+ * A modal providing access to various application-wide configurations,
+ * organized into a sidebar-navigated layout.
+ *
+ * @param componentProperties - Properties for the component.
+ * @returns The rendered SettingsModal.
+ */
+export const SettingsModal: Component<SettingsModalProperties> = componentProperties => {
+    const [activeTab, setActiveTab] = createSignal<SettingsTab>(
+        componentProperties.initialTab || 'general'
+    );
 
     return (
         <Modal
-            isOpen={props.isOpen}
-            onClose={props.onClose}
+            isOpen={componentProperties.isOpen}
+            onClose={componentProperties.onClose}
             title="Settings"
             size="xl"
             class="settings-modal-wrapper"
@@ -58,10 +84,12 @@ export const SettingsModal: Component<SettingsModalProps> = props => {
                                         type="button"
                                         class={cn(
                                             'settings-sidebar-item',
-                                            activeTab() === tab.id && 'is-active'
+                                            activeTab() === tab.identifier && 'is-active'
                                         )}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        aria-current={activeTab() === tab.id ? 'page' : undefined}
+                                        onClick={() => setActiveTab(tab.identifier)}
+                                        aria-current={
+                                            activeTab() === tab.identifier ? 'page' : undefined
+                                        }
                                     >
                                         <tab.icon size={16} />
                                         <span>{tab.label}</span>

@@ -1,8 +1,6 @@
 // Layout & Containers
-export { Modal, ModalHeader, ModalBody, ModalFooter, ConfirmModal } from './Modal';
-export { PromptModal } from './PromptModal';
-export type { ModalProps, ModalSize, ConfirmModalProps } from './Modal';
-export type { PromptModalProps } from './PromptModal';
+export * from './Modal';
+
 export { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './Resizable';
 export type {
     ResizablePanelGroupProps,

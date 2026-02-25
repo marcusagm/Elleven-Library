@@ -1,24 +1,36 @@
 /* eslint-disable max-lines */
 import { Component, createSignal, onMount } from 'solid-js';
-import { Button } from '../../ui/Button';
-import { RadioGroup, RadioGroupItem } from '../../ui/RadioGroup';
-import { Input } from '../../ui/Input';
-import { Badge } from '../../ui/Badge';
-import { Switch } from '../../ui/Switch';
-import { Slider } from '../../ui/Slider';
-import { Alert } from '../../ui/Alert';
-import { Select } from '../../ui/Select';
-import { Checkbox } from '../../ui/Checkbox';
-import { ToggleGroup, ToggleGroupItem } from '../../ui/ToggleGroup';
-import { ProgressBar } from '../../ui/ProgressBar';
-import { Tooltip } from '../../ui/Tooltip';
-import { Popover } from '../../ui/Popover';
-import { Modal, ConfirmModal } from '../../ui/Modal';
-import { PromptModal } from '../../ui/PromptModal';
-import { Sonner, toast, type ToasterProps } from '../../ui/Sonner';
-import { Kbd } from '../../ui/Kbd';
-import { TagInput } from '../../ui/TagInput';
-import { Loader } from '../../ui/Loader';
+import {
+    Button,
+    RadioGroup,
+    RadioGroupItem,
+    Input,
+    Badge,
+    Switch,
+    Slider,
+    Alert,
+    Select,
+    Checkbox,
+    ToggleGroup,
+    ToggleGroupItem,
+    ProgressBar,
+    Tooltip,
+    Popover,
+    Modal,
+    ConfirmModal,
+    PromptModal,
+    Sonner,
+    toast,
+    ToasterProps,
+    Kbd,
+    TagInput,
+    Loader,
+    Toggle,
+    NumberInput,
+    ColorInput,
+    DateInput,
+    MaskedInput
+} from '../../ui';
 import {
     Search,
     Info,
@@ -30,12 +42,6 @@ import {
     AlignLeft,
     AlignRight
 } from 'lucide-solid';
-import '../../ui/sonner.css'; // Ensure sonner styles are loaded
-import { Toggle } from '../../ui';
-import { NumberInput } from '../../ui/NumberInput';
-import { ColorInput } from '../../ui/ColorInput';
-import { DateInput } from '../../ui/DateInput';
-import { MaskedInput } from '../../ui/MaskedInput';
 import { appearance, appearanceActions } from '../../../core/store/appearanceStore';
 
 export const DesignSystemGuide: Component = () => {
