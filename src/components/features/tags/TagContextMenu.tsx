@@ -17,29 +17,43 @@ interface TagContextMenuProps {
     onDelete: (node: TreeNode) => void;
 }
 
-export const TagContextMenu: Component<TagContextMenuProps> = props => {
+/**
+ * Context menu for tag tree nodes.
+ * Provides actions for adding, renaming, deleting, and changing tag colors.
+ *
+ * @param {TagContextMenuProps} properties - Component properties.
+ * @returns {import('solid-js').JSX.Element} The rendered context menu.
+ */
+export const TagContextMenu: Component<TagContextMenuProps> = properties => {
     const { loadTags } = useMetadata();
+
+    /**
+     * Updates a tag's color and refreshes the metadata.
+     *
+     * @param {number} tagId - The unique identifier of the tag.
+     * @param {string} newColor - The new hexadecimal color code.
+     */
     const handleColorChange = async (tagId: number, newColor: string) => {
         await tagService.updateTag(tagId, undefined, newColor);
         await loadTags();
     };
 
-    const items = createMemo<ContextMenuItem[]>(() => {
-        const node = props.node;
-        if (!node) return [];
+    const contextMenuItems = createMemo<ContextMenuItem[]>(() => {
+        const treeNode = properties.node;
+        if (!treeNode) return [];
 
         return [
             {
                 type: 'item',
                 label: 'Add Child Tag',
                 icon: Plus,
-                action: () => props.onAddChild(Number(node.id))
+                action: () => properties.onAddChild(Number(treeNode.id))
             },
             {
                 type: 'item',
                 label: 'Rename',
                 icon: Pencil,
-                action: () => props.onRename(Number(node.id))
+                action: () => properties.onRename(Number(treeNode.id))
             },
             {
                 type: 'submenu',
@@ -50,8 +64,10 @@ export const TagContextMenu: Component<TagContextMenuProps> = props => {
                         type: 'custom',
                         content: (
                             <ColorPicker
-                                color={node.iconColor || '#cccccc'}
-                                onChange={newColor => handleColorChange(Number(node.id), newColor)}
+                                color={treeNode.iconColor || '#cccccc'}
+                                onChange={newColor =>
+                                    handleColorChange(Number(treeNode.id), newColor)
+                                }
                             />
                         )
                     }
@@ -63,18 +79,18 @@ export const TagContextMenu: Component<TagContextMenuProps> = props => {
                 label: 'Delete',
                 danger: true,
                 icon: Trash2,
-                action: () => props.onDelete(node)
+                action: () => properties.onDelete(treeNode)
             }
         ];
     });
 
     return (
         <ContextMenu
-            coordinateX={props.coordinateX}
-            coordinateY={props.coordinateY}
-            items={items()}
-            isOpen={props.isOpen}
-            onClose={props.onClose}
+            coordinateX={properties.coordinateX}
+            coordinateY={properties.coordinateY}
+            items={contextMenuItems()}
+            isOpen={properties.isOpen}
+            onClose={properties.onClose}
         />
     );
 };

@@ -4,6 +4,8 @@ import { useColorPickerContext } from './context';
 /**
  * Area component for selecting Saturation and Brightness.
  * Displays a colorful gradient box with a draggable thumb.
+ *
+ * @returns {import('solid-js').JSX.Element} The rendered color area component.
  */
 export const ColorArea: Component = () => {
     const {
@@ -17,22 +19,24 @@ export const ColorArea: Component = () => {
 
     /**
      * Calculates and updates the color based on pointer coordinates within the area.
+     *
+     * @param {MouseEvent | PointerEvent} pointerEvent - The movement event.
      */
     const handleMove = (pointerEvent: MouseEvent | PointerEvent) => {
         if (!areaReference) return;
 
-        const rectangle = areaReference.getBoundingClientRect();
+        const boundingRectangle = areaReference.getBoundingClientRect();
         const horizontalPosition = Math.max(
             0,
-            Math.min(rectangle.width, pointerEvent.clientX - rectangle.left)
+            Math.min(boundingRectangle.width, pointerEvent.clientX - boundingRectangle.left)
         );
         const verticalPosition = Math.max(
             0,
-            Math.min(rectangle.height, pointerEvent.clientY - rectangle.top)
+            Math.min(boundingRectangle.height, pointerEvent.clientY - boundingRectangle.top)
         );
 
-        const saturation = (horizontalPosition / rectangle.width) * 100;
-        const brightness = 100 - (verticalPosition / rectangle.height) * 100;
+        const saturation = (horizontalPosition / boundingRectangle.width) * 100;
+        const brightness = 100 - (verticalPosition / boundingRectangle.height) * 100;
 
         updateColorFromHueSaturationBrightness({ saturation, brightness });
     };
@@ -54,6 +58,8 @@ export const ColorArea: Component = () => {
 
     /**
      * Handles keyboard navigation for fine-tuning saturation and brightness.
+     *
+     * @param {KeyboardEvent} keyboardEvent - The keyboard event.
      */
     const handleKeyDown = (keyboardEvent: KeyboardEvent) => {
         const movementStep = keyboardEvent.shiftKey ? 10 : 1;

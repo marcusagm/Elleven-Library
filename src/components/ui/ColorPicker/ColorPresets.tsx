@@ -31,11 +31,15 @@ const DEFAULT_PRESET_COLORS = [
 /**
  * Presets component for the ColorPicker.
  * Displays a grid of color swatches and an optional "transparent" option.
+ *
+ * @param {Object} properties - Component properties.
+ * @param {string[]} [properties.presets] - Optional list of custom hexadecimal color strings.
+ * @returns {import('solid-js').JSX.Element} The rendered presets grid.
  */
 export const ColorPresets: Component<{ presets?: string[] }> = properties => {
     const { activeColor, setColor, allowNoColor } = useColorPickerContext();
 
-    const colorList = () => properties.presets ?? DEFAULT_PRESET_COLORS;
+    const presetColorList = () => properties.presets ?? DEFAULT_PRESET_COLORS;
 
     return (
         <div class="ui-color-picker-presets" role="listbox" aria-label="Color presets">
@@ -54,7 +58,7 @@ export const ColorPresets: Component<{ presets?: string[] }> = properties => {
                     aria-label="Transparent"
                 />
             )}
-            <For each={colorList()}>
+            <For each={presetColorList()}>
                 {hexadecimalColor => (
                     <button
                         type="button"

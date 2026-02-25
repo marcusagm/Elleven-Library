@@ -4,6 +4,8 @@ import { useColorPickerContext } from './context';
 /**
  * Slider component for selecting Hue.
  * Displays a colorful spectrum gradient with a draggable thumb.
+ *
+ * @returns {import('solid-js').JSX.Element} The rendered hue slider component.
  */
 export const ColorSlider: Component = () => {
     const {
@@ -17,16 +19,18 @@ export const ColorSlider: Component = () => {
 
     /**
      * Calculates and updates the hue based on pointer coordinates within the slider.
+     *
+     * @param {MouseEvent | PointerEvent} pointerEvent - The movement event.
      */
     const handleMove = (pointerEvent: MouseEvent | PointerEvent) => {
         if (!sliderReference) return;
 
-        const rectangle = sliderReference.getBoundingClientRect();
+        const boundingRectangle = sliderReference.getBoundingClientRect();
         const horizontalPosition = Math.max(
             0,
-            Math.min(rectangle.width, pointerEvent.clientX - rectangle.left)
+            Math.min(boundingRectangle.width, pointerEvent.clientX - boundingRectangle.left)
         );
-        const hue = (horizontalPosition / rectangle.width) * 360;
+        const hue = (horizontalPosition / boundingRectangle.width) * 360;
 
         updateColorFromHueSaturationBrightness({ hue });
     };
@@ -48,6 +52,8 @@ export const ColorSlider: Component = () => {
 
     /**
      * Handles keyboard navigation for fine-tuning the hue value.
+     *
+     * @param {KeyboardEvent} keyboardEvent - The keyboard event.
      */
     const handleKeyDown = (keyboardEvent: KeyboardEvent) => {
         const movementStep = keyboardEvent.shiftKey ? 10 : 1;

@@ -92,6 +92,8 @@ export const ColorInput: Component<ColorInputProps> = properties => {
 
     /**
      * Render the color swatch button that acts as the popover trigger.
+     *
+     * @returns {JSX.Element} The rendered swatch trigger button.
      */
     const renderSwatchButton = (): JSX.Element => (
         <button

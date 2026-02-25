@@ -4,18 +4,20 @@ import { useColorPickerContext } from './context';
 /**
  * Preview component showing the currently selected color.
  * Supports a checkerboard background for transparent colors.
+ *
+ * @returns {import('solid-js').JSX.Element} The rendered preview box.
  */
 export const ColorPreview: Component = () => {
     const { activeColor } = useColorPickerContext();
 
-    const isTransparent = () => activeColor() === 'transparent';
+    const checkIsTransparent = () => activeColor() === 'transparent';
 
     return (
         <div
             class="ui-color-picker-preview"
             style={{
-                'background-color': isTransparent() ? 'transparent' : activeColor(),
-                'background-image': isTransparent()
+                'background-color': checkIsTransparent() ? 'transparent' : activeColor(),
+                'background-image': checkIsTransparent()
                     ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)'
                     : 'none',
                 'background-size': '8px 8px',
