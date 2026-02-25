@@ -50,6 +50,7 @@ function App() {
         {
             keys: 'Meta+KeyA',
             name: 'Select All',
+            ignoreInputs: true,
             action: () => {
                 const allIds = lib.items.map(i => i.id);
                 selection.select(allIds);

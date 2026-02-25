@@ -70,7 +70,14 @@ export const useInputEvents = (htmlAttributes: JSX.InputHTMLAttributes<HTMLInput
             'End'
         ];
 
-        if (blockedKeysList.includes(event.key)) {
+        // Check for standard text editing shortcuts (Cmd/Ctrl + A, C, V, X, Z, etc.)
+        // These should be handled by the browser's native input behavior and blocked
+        // from bubbling up to the application's global shortcut system.
+        const isModifierPressed = event.metaKey || event.ctrlKey;
+        const isStandardEditingShortcut =
+            isModifierPressed && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase());
+
+        if (blockedKeysList.includes(event.key) || isStandardEditingShortcut) {
             event.stopPropagation();
 
             // Prevent default form submission or other browser behaviors for Enter

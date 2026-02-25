@@ -36,7 +36,8 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
         keys: 'Meta+KeyA',
         scope: 'global',
         command: 'app:select-all',
-        category: 'Selection'
+        category: 'Selection',
+        ignoreInputs: true
     },
     {
         name: 'Deselect All',
@@ -144,7 +145,8 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
         keys: 'Meta+KeyA',
         scope: 'viewport',
         command: 'viewport:select-all',
-        category: 'Selection'
+        category: 'Selection',
+        ignoreInputs: true
     },
 
     // Image Viewer scope
