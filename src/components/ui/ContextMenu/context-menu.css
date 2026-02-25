@@ -17,8 +17,20 @@
   border-radius: var(--radius-s);
   box-shadow: 0 var(--p-space-s) var(--p-space-l) rgba(0, 0, 0, 0.4);
   z-index: 9999;
-  opacity: 0;
-  transition: opacity 0.1s ease;
+
+  /* Entrance animation */
+  animation: ui-context-menu-in 0.15s ease-out;
+}
+
+@keyframes ui-context-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .ui-context-menu-list {
@@ -76,7 +88,7 @@
   cursor: not-allowed;
 }
 
-.ui-context-menu-shortcut {
+.ui-context-shortcut {
   margin-left: var(--p-space-m);
   font-size: var(--p-font-size-xs);
   color: var(--text-tertiary);
@@ -93,9 +105,13 @@
   background-color: var(--border-subtle);
 }
 
-/* .ui-context-menu-custom {
-  padding: var(--p-space-s);
-} */
+.ui-context-menu-custom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--p-space-xs);
+  min-width: 0; /* Avoid expansion */
+}
 
 /* Submenu */
 .ui-context-menu-submenu-trigger {
@@ -103,26 +119,25 @@
 }
 
 .ui-context-submenu {
-  position: absolute;
-  left: calc(100% - var(--p-space-xs));
-  top: 0;
-  margin-left: var(--p-space-xs);
+  position: fixed;
   min-width: 180px;
   padding: var(--p-space-xs);
   background-color: var(--bg-surface-2);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-s);
   box-shadow: 0 var(--p-space-s) var(--p-space-l) rgba(0, 0, 0, 0.4);
-  animation: ui-context-submenu-in 0.15s ease;
+
+  /* Entrance animation for submenus */
+  animation: ui-submenu-in 0.15s ease-out;
 }
 
-@keyframes ui-context-submenu-in {
+@keyframes ui-submenu-in {
   from {
     opacity: 0;
-    transform: translateX(-4px);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: scale(1);
   }
 }

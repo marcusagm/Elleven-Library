@@ -2,84 +2,65 @@
  * Context Menu Component
  *
  * Provides a coordinate-based context menu that appears at a specific screen position.
- * Handles viewport collisions to ensure the menu remains visible.
+ * Uses @floating-ui/dom for robust positioning and boundary detection.
  */
 
-import { Component, createSignal, createEffect, onCleanup, Show } from 'solid-js';
+import { Component, createEffect, onCleanup, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { createClickOutside } from '../../../lib/primitives';
 import { ContextMenuProps } from './types';
 import { MenuList } from './components/MenuList';
+import { useMenuPositioning } from './useMenuPositioning';
 import './context-menu.css';
 
 /**
- * ContextMenu component for right-click displays.
- * Supports standard items, submenus, and custom layouts.
- * Uses a coordinate-based positioning system.
+ * ContextMenu component for right-click interactions.
+ * Features:
+ * - Viewport-aware positioning using Floating UI.
+ * - Portal-based rendering to avoid parent container clipping.
+ * - Backdrop to handle clicks and disable standard browser menu.
  *
- * @param {ContextMenuProps} props - Properties for the context menu.
+ * @param {ContextMenuProps} props - Component properties.
  * @returns {JSX.Element} The rendered context menu.
- *
- * @example
- * <ContextMenu
- *   coordinateX={100}
- *   coordinateY={200}
- *   isOpen={true}
- *   items={menuItems}
- *   onClose={() => setOpen(false)}
- * />
  */
 export const ContextMenu: Component<ContextMenuProps> = props => {
-    /** Target ref for the container for positioning and clicking outside. */
-    let containerRef: HTMLDivElement | undefined;
-    /** Current calculated placement coordinates. */
-    const [coordinates, setCoordinates] = createSignal({ top: 0, left: 0 });
-    /** Controls opacity to avoid flicker before positioning. */
-    const [isVisible, setIsVisible] = createSignal(false);
+    /**
+     * Virtual element to represent the mouse coordinates for Floating UI.
+     */
+    const virtualReference = () => ({
+        getBoundingClientRect: () =>
+            ({
+                width: 0,
+                height: 0,
+                x: props.coordinateX,
+                y: props.coordinateY,
+                top: props.coordinateY,
+                left: props.coordinateX,
+                right: props.coordinateX,
+                bottom: props.coordinateY
+            }) as DOMRect
+    });
 
     /**
-     * Re-calculates placement when menu opens or coordinates change.
+     * Handles positioning relative to the virtual coordinate point.
+     * We only provide the reference when the menu is open.
      */
-    createEffect(() => {
-        if (!props.isOpen || !containerRef) {
-            setIsVisible(false);
-            return;
-        }
+    const { setFloatingElement, coordinates } = useMenuPositioning(
+        () => (props.isOpen ? virtualReference() : null),
+        'bottom-start'
+    );
 
-        // Initially move to requested position to allow measurement
-        containerRef.style.top = `${props.coordinateY}px`;
-        containerRef.style.left = `${props.coordinateX}px`;
-
-        requestAnimationFrame(() => {
-            if (!containerRef) return;
-
-            const menuBoundingRect = containerRef.getBoundingClientRect();
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-
-            let topCoordinate = props.coordinateY;
-            let leftCoordinate = props.coordinateX;
-
-            // Collision detection for right boundary
-            if (leftCoordinate + menuBoundingRect.width > viewportWidth) {
-                leftCoordinate = Math.max(0, viewportWidth - menuBoundingRect.width - 8);
-            }
-            // Collision detection for bottom boundary
-            if (topCoordinate + menuBoundingRect.height > viewportHeight) {
-                topCoordinate = Math.max(0, viewportHeight - menuBoundingRect.height - 8);
-            }
-
-            setCoordinates({ top: topCoordinate, left: leftCoordinate });
-            setIsVisible(true);
-        });
-    });
+    /** Ref for click-outside detection. */
+    let contentElement: HTMLDivElement | undefined;
 
     /**
      * Detection for clicks outside the menu container.
      */
     createClickOutside(
-        () => containerRef,
-        () => props.onClose()
+        () => contentElement,
+        () => {
+            if (props.isOpen) props.onClose();
+        }
     );
 
     /**
@@ -101,7 +82,7 @@ export const ContextMenu: Component<ContextMenuProps> = props => {
     return (
         <Show when={props.isOpen}>
             <Portal>
-                {/* Backdrop to capture clicks and prevent context menu on itself */}
+                {/* Backdrop to capture clicks and prevent nested context menus */}
                 <div
                     class="ui-context-menu-backdrop"
                     onContextMenu={event => {
@@ -113,14 +94,19 @@ export const ContextMenu: Component<ContextMenuProps> = props => {
                 />
 
                 <div
-                    ref={containerRef}
+                    ref={element => {
+                        contentElement = element;
+                        setFloatingElement(element);
+                    }}
                     class="ui-context-menu-container"
                     style={{
+                        position: 'fixed',
                         top: `${coordinates().top}px`,
                         left: `${coordinates().left}px`,
-                        opacity: isVisible() ? 1 : 0,
-                        'transition-property': 'opacity',
-                        'transition-duration': '150ms'
+                        // Slight delay or check for (0,0) might be needed,
+                        // but autoUpdate usually handles the first calculation quickly.
+                        opacity: coordinates().top === 0 && coordinates().left === 0 ? 0 : 1,
+                        'z-index': 9999
                     }}
                     onContextMenu={event => event.preventDefault()}
                 >

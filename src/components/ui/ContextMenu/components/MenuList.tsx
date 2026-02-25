@@ -2,11 +2,11 @@
  * Context Menu Item List
  *
  * Internal component for rendering the recursive list of items within a context menu.
+ * High-level orchestrator for item types and keyboard flow.
  */
 
 import { Component, For, Show, createSignal, Switch, Match } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
-import { ChevronRight } from 'lucide-solid';
 import { cn } from '../../../../lib/utils';
 import {
     ContextMenuItem,
@@ -14,22 +14,23 @@ import {
     SubmenuContextMenuItem,
     CustomContextMenuItem
 } from '../types';
+import { SubmenuItem } from './SubmenuItem';
 
 /**
  * Common properties for internal menu rendering levels.
  */
 interface MenuListProps {
-    /** Array of items to be displayed. */
+    /** Array of items to be displayed in the current list level. */
     items: ContextMenuItem[];
-    /** Callback to close the menu. */
+    /** Callback to close the entire menu tree. */
     onClose: () => void;
-    /** Current nesting level (0 for root). */
+    /** Current nesting depth (0 for root context menu). */
     level?: number;
 }
 
 /**
  * Recursive menu list for ContextMenu.
- * Handles item rendering and keyboard navigation for a specific menu level.
+ * Handles selection state, hover tracking, and integration with specialized item components.
  *
  * @param {MenuListProps} props - Component properties.
  * @returns {JSX.Element} The rendered menu list.
@@ -40,17 +41,19 @@ export const MenuList: Component<MenuListProps> = props => {
     /** Visual focus for keyboard/mouse guidance. */
     const [focusedIndex, setFocusedIndex] = createSignal(-1);
 
+    /** Resolves current menu level (0-indexed). */
     const menuLevel = () => props.level ?? 0;
 
     /**
      * Internal keyboard navigation for context menu levels.
+     * Manages circular navigation and sub-menu activation.
      *
-     * @param {KeyboardEvent} event - The keyboard event object.
-     * @param {number} itemIndex - The index of the item receiving the event.
-     * @param {ContextMenuItem} item - The item definition.
+     * @param {KeyboardEvent} event - The native keyboard event.
+     * @param {number} itemIndex - The index of the item that received the event.
+     * @param {ContextMenuItem} item - The structural definition of the item.
      */
     const handleKeyDown = (event: KeyboardEvent, itemIndex: number, item: ContextMenuItem) => {
-        // Stop propagation to ensure only one level handles the event
+        // Stop propagation to ensure only one level handles the navigation event
         event.stopPropagation();
 
         const handlers: Record<string, () => void> = {
@@ -110,10 +113,31 @@ export const MenuList: Component<MenuListProps> = props => {
                         class="ui-context-menu-item-wrapper"
                         onMouseEnter={() => {
                             setFocusedIndex(index());
-                            if (item.type === 'submenu') setActiveSubmenuIndex(index());
+
+                            if (item.type === 'submenu') {
+                                setActiveSubmenuIndex(index());
+                            } else {
+                                // Close any active submenu when hovering another item
+                                setActiveSubmenuIndex(null);
+                            }
                         }}
-                        onMouseLeave={() => {
-                            if (item.type === 'submenu') setActiveSubmenuIndex(null);
+                        onMouseLeave={event => {
+                            /**
+                             * If the mouse moves out of a submenu item, we only close it
+                             * if it's NOT moving into its own submenu content.
+                             * However, since we now have physical overlap, this is handled
+                             * more naturally by the pointer events chain.
+                             */
+                            if (item.type === 'submenu' && activeSubmenuIndex() === index()) {
+                                const relatedTarget = event.relatedTarget as HTMLElement;
+                                // If moving to something that isn't the submenu content, close it
+                                if (
+                                    !relatedTarget ||
+                                    !relatedTarget.closest('.ui-context-submenu')
+                                ) {
+                                    setActiveSubmenuIndex(null);
+                                }
+                            }
                         }}
                     >
                         <Switch>
@@ -149,7 +173,9 @@ export const MenuList: Component<MenuListProps> = props => {
                                                 props.onClose();
                                             }}
                                             onKeyDown={event => handleKeyDown(event, index(), item)}
-                                            onFocus={() => setFocusedIndex(index())}
+                                            onFocus={() => {
+                                                setFocusedIndex(index());
+                                            }}
                                         >
                                             <span class="ui-context-menu-item-content">
                                                 <Show when={actionItem.icon}>
@@ -171,50 +197,18 @@ export const MenuList: Component<MenuListProps> = props => {
                             </Match>
 
                             <Match when={item.type === 'submenu'}>
-                                {(() => {
-                                    const submenuItem = item as SubmenuContextMenuItem;
-                                    return (
-                                        <div
-                                            class={cn(
-                                                'ui-context-menu-item ui-context-menu-submenu-trigger',
-                                                submenuItem.disabled &&
-                                                    'ui-context-menu-item-disabled',
-                                                focusedIndex() === index() &&
-                                                    'ui-context-menu-item-focused'
-                                            )}
-                                            role="menuitem"
-                                            aria-haspopup="menu"
-                                            aria-expanded={activeSubmenuIndex() === index()}
-                                            tabIndex={submenuItem.disabled ? -1 : 0}
-                                            onKeyDown={event => handleKeyDown(event, index(), item)}
-                                            onFocus={() => setFocusedIndex(index())}
-                                        >
-                                            <span class="ui-context-menu-item-content">
-                                                <Show when={submenuItem.icon}>
-                                                    <Dynamic
-                                                        component={submenuItem.icon}
-                                                        size={14}
-                                                    />
-                                                </Show>
-                                                <span>{submenuItem.label}</span>
-                                            </span>
-                                            <ChevronRight
-                                                size={14}
-                                                class="ui-context-menu-chevron"
-                                            />
-
-                                            <Show when={activeSubmenuIndex() === index()}>
-                                                <div class="ui-context-submenu">
-                                                    <MenuList
-                                                        items={submenuItem.items}
-                                                        onClose={props.onClose}
-                                                        level={menuLevel() + 1}
-                                                    />
-                                                </div>
-                                            </Show>
-                                        </div>
-                                    );
-                                })()}
+                                <SubmenuItem
+                                    item={item as SubmenuContextMenuItem}
+                                    onClose={props.onClose}
+                                    isFocused={focusedIndex() === index()}
+                                    isActive={activeSubmenuIndex() === index()}
+                                    onKeyDown={handleKeyDown}
+                                    index={index()}
+                                    onFocus={() => {
+                                        setFocusedIndex(index());
+                                    }}
+                                    level={menuLevel()}
+                                />
                             </Match>
                         </Switch>
                     </div>

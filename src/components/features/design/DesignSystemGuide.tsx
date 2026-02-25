@@ -1432,7 +1432,7 @@ export const DesignSystemGuide: Component = () => {
                             'padding-bottom': 'var(--p-space-s)'
                         }}
                     >
-                        3. Form Elements
+                        5. Form Elements
                     </h2>
                     <div
                         style={{
@@ -2466,7 +2466,7 @@ export const DesignSystemGuide: Component = () => {
                             'padding-bottom': 'var(--p-space-s)'
                         }}
                     >
-                        4. Overlay & Feedback
+                        6. Overlay & Feedback
                     </h2>
                     <div
                         style={{
@@ -2842,7 +2842,7 @@ export const DesignSystemGuide: Component = () => {
                             'padding-bottom': 'var(--p-space-s)'
                         }}
                     >
-                        5. Data Display
+                        7. Data Display
                     </h2>
                     <div
                         style={{
