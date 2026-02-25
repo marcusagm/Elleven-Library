@@ -1,41 +1,49 @@
 import { Component, Show } from 'solid-js';
 import { NumberInput } from '../../../ui/NumberInput';
 import { Select } from '../../../ui/Select';
-import { CriterionFieldRendererProps } from './types';
+import { CriterionFieldRendererProperties } from './types';
 import { SIZE_UNITS } from '../searchConstants';
 
-export const SizeCriterionField: Component<CriterionFieldRendererProps> = props => {
-    const isRange = () => props.operator === 'between';
+/**
+ * Renders a specialized input group for file size criteria.
+ * Includes one or two number inputs (depending on the operator) and a unit selector (B, KB, MB, GB).
+ *
+ * @param {CriterionFieldRendererProperties} properties - The configuration and state for the size field renderer.
+ * @returns {JSX.Element} The rendered size input group.
+ */
+export const SizeCriterionField: Component<CriterionFieldRendererProperties> = properties => {
+    /** Checks if the current comparison logic expects a range of two sizes. */
+    const isRangeMode = () => properties.comparisonOperator === 'between';
 
     return (
         <div class="number-input-group">
             <NumberInput
-                size={props.size || 'md'}
-                value={(props.value as number) ?? undefined}
-                onChange={val => props.setValue(val ?? null)}
-                placeholder={isRange() ? 'From Size...' : 'Size Value...'}
-                error={!!props.errors.value}
-                errorMessage={props.errors.value}
+                size={properties.size || 'md'}
+                value={(properties.value as number) ?? undefined}
+                onChange={value => properties.setValue(value ?? null)}
+                placeholder={isRangeMode() ? 'From Size...' : 'Size Value...'}
+                error={!!properties.errors.value}
+                errorMessage={properties.errors.value}
             />
-            <Show when={isRange() && props.setValue2}>
+            <Show when={isRangeMode() && properties.setValue2}>
                 <span class="range-separator">to</span>
                 <NumberInput
-                    size={props.size || 'md'}
-                    value={(props.value2 as number) ?? undefined}
-                    onChange={val => props.setValue2?.(val ?? null)}
+                    size={properties.size || 'md'}
+                    value={(properties.value2 as number) ?? undefined}
+                    onChange={value => properties.setValue2?.(value ?? null)}
                     placeholder="To Size..."
-                    error={!!props.errors.value2}
-                    errorMessage={props.errors.value2}
+                    error={!!properties.errors.value2}
+                    errorMessage={properties.errors.value2}
                 />
             </Show>
-            <Show when={props.setUnit}>
+            <Show when={properties.setUnitMultiplier}>
                 <Select
-                    size={props.size || 'md'}
+                    size={properties.size || 'md'}
                     options={SIZE_UNITS}
-                    value={props.unit || '1048576'}
-                    onValueChange={val => props.setUnit?.(val)}
-                    error={!!props.errors.unit}
-                    errorMessage={props.errors.unit}
+                    value={properties.unitMultiplier || '1048576'}
+                    onValueChange={value => properties.setUnitMultiplier?.(value)}
+                    error={!!properties.errors.unit}
+                    errorMessage={properties.errors.unit}
                     class="unit-select"
                 />
             </Show>
@@ -43,50 +51,91 @@ export const SizeCriterionField: Component<CriterionFieldRendererProps> = props 
     );
 };
 
-const isEmpty = (v: unknown) => v === null || v === '';
+/**
+ * Checks if a given input value is considered empty (null, undefined, or empty string).
+ * @param value - The value to check.
+ */
+const checkIsEmpty = (value: unknown) => value === null || value === undefined || value === '';
 
+/**
+ * Handler implementation for file size-based search criteria.
+ * Handles validation of numeric inputs, conversion between display units and bytes,
+ * and formatting for human-readable output.
+ */
 export const sizeHandler: import('./types').SearchFieldHandler = {
+    /** The visual component representing the size inputs and unit selector. */
     component: SizeCriterionField,
-    validate: (val, val2, op, unit) => {
-        const errors: Record<string, string> = {};
 
-        if (isEmpty(val)) {
-            errors.value = 'Value is required';
+    /**
+     * Validates that size values are provided and range consistency is maintained.
+     *
+     * @param value - Primary size value selection.
+     * @param value2 - Secondary size value selection.
+     * @param operator - The comparison logic being used.
+     * @param unitMultiplier - The selected unit multiplier string.
+     * @returns A record of validation error messages.
+     */
+    validate: (value, value2, operator, unitMultiplier) => {
+        const validationErrors: Record<string, string> = {};
+
+        if (checkIsEmpty(value)) {
+            validationErrors.value = 'Value is required';
         }
 
-        if (op === 'between') {
-            if (isEmpty(val2)) {
-                errors.value2 = 'End value is required';
-            } else if (!isEmpty(val) && Number(val) > Number(val2)) {
-                errors.value2 = 'End value must be greater than start';
+        if (operator === 'between') {
+            if (checkIsEmpty(value2)) {
+                validationErrors.value2 = 'End value is required';
+            } else if (!checkIsEmpty(value) && Number(value) > Number(value2)) {
+                validationErrors.value2 = 'End value must be greater than start';
             }
         }
 
-        if (!SIZE_UNITS.find(u => u.value === unit)) {
-            errors.unit = 'Unit is required';
+        if (!SIZE_UNITS.find(option => option.value === unitMultiplier)) {
+            validationErrors.unit = 'Unit is required';
         }
 
-        return errors;
+        return validationErrors;
     },
-    process: (val, val2, op, unit) => {
-        const multiplier = Number(unit);
+
+    /**
+     * Converts the UI-level numeric inputs and units into raw byte counts for database queries.
+     *
+     * @param value - Primary raw size input.
+     * @param value2 - Secondary raw size input.
+     * @param operator - Current comparison operator.
+     * @param unitMultiplier - The selected unit multiplier.
+     * @returns The final processed byte value (or range) and the unit used.
+     */
+    process: (value, value2, operator, unitMultiplier) => {
+        const numericMultiplier = Number(unitMultiplier);
         let finalValue: unknown;
 
-        if (op === 'between') {
-            const v1 = Math.round(Number(val) * multiplier);
-            const v2 = Math.round(Number(val2) * multiplier);
-            finalValue = [v1, v2];
+        if (operator === 'between') {
+            const startBytes = Math.round(Number(value) * numericMultiplier);
+            const endBytes = Math.round(Number(value2) * numericMultiplier);
+            finalValue = [startBytes, endBytes];
         } else {
-            finalValue = Math.round(Number(val) * multiplier);
+            finalValue = Math.round(Number(value) * numericMultiplier);
         }
 
-        return { finalValue, unitMultiplier: unit };
+        return { finalValue, unitMultiplier };
     },
-    formatDisplay: (v1, v2, op, unit) => {
-        const u = SIZE_UNITS.find(opt => opt.value === unit)?.label || 'bytes';
-        if (op === 'between') {
-            return `${v1} ${u} to ${v2} ${u}`;
+
+    /**
+     * Formats the byte values back into display-friendly strings based on the selected unit.
+     *
+     * @param value1 - Primary byte count (or UI display value before multiplier).
+     * @param value2 - Secondary byte count (or UI display value before multiplier).
+     * @param operator - Comparison logic used.
+     * @param unitMultiplier - The unit multiplier for resolving the correct label.
+     * @returns A friendly string (e.g., "500 MB to 1 GB").
+     */
+    formatDisplay: (value1, value2, operator, unitMultiplier) => {
+        const unitLabel =
+            SIZE_UNITS.find(option => option.value === unitMultiplier)?.label || 'bytes';
+        if (operator === 'between') {
+            return `${value1} ${unitLabel} to ${value2} ${unitLabel}`;
         }
-        return `${v1} ${u}`;
+        return `${value1} ${unitLabel}`;
     }
 };

@@ -8,6 +8,11 @@ import { sizeHandler } from './SizeCriterionField';
 import { tagsHandler } from './TagsCriterionField';
 import { textHandler } from './TextCriterionField';
 
+/**
+ * Global registry mapping internal field type identifiers to their specialized logic handlers.
+ * This registry allows the Advanced Search system to dynamically resolve validation,
+ * processing, and UI rendering based on the type of search criterion selected.
+ */
 export const criterionHandlerRegistry: Record<string, SearchFieldHandler> = {
     date: dateHandler,
     folder: folderHandler,

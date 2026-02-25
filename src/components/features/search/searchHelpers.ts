@@ -4,75 +4,123 @@ import { supportedFormats } from '../../../core/store/systemStore';
 import { SearchFieldHandler, StoreMetadata } from './fields/types';
 import { SEARCH_FIELDS } from './searchConstants';
 
-const isEmpty = (v: unknown) => v === null || v === undefined || v === '';
+/**
+ * Checks if a given search value is considered empty.
+ * @param value - The value to examine.
+ */
+const checkIsSearchValueEmpty = (value: unknown) =>
+    value === null || value === undefined || value === '';
 
-const formatWithHandler = (
+/**
+ * Internal delegate to format a value using a specific type handler.
+ *
+ * @param handler - The designated field handler (if any).
+ * @param value - The raw search value.
+ * @param operator - The comparison operator.
+ * @param unitMultiplier - Optional numeric multiplier.
+ * @param metadata - Contextual store information.
+ * @param isArrayValue - Whether the value is a range array.
+ * @returns A formatted string or null if the handler doesn't support display formatting.
+ */
+const formatUsingTypeHandler = (
     handler: SearchFieldHandler | undefined,
     value: unknown,
-    op: string,
-    unit: string | undefined,
-    meta: StoreMetadata,
-    isArray: boolean
+    operator: string,
+    unitMultiplier: string | undefined,
+    metadata: StoreMetadata,
+    isArrayValue: boolean
 ) => {
     if (!handler?.formatDisplay) return null;
-    if (isArray) {
-        const arr = value as unknown[];
-        return handler.formatDisplay(arr[0], arr[1], op, unit, meta);
+    if (isArrayValue) {
+        const itemArray = value as unknown[];
+        return handler.formatDisplay(
+            itemArray[0],
+            itemArray[1],
+            operator,
+            unitMultiplier,
+            metadata
+        );
     }
-    return handler.formatDisplay(value, undefined, op, unit, meta);
+    return handler.formatDisplay(value, undefined, operator, unitMultiplier, metadata);
 };
 
+/**
+ * Derives a human-readable string representation of a search criterion for the bar/tag UI.
+ *
+ * @param criterionItem - The search criterion to format.
+ * @param metadata - The metadata containing locations and tags for resolving IDs.
+ * @returns A descriptive string representing the search logic.
+ */
 export const computeDisplayValue = (
-    item: Partial<SearchCriterion>,
-    metadata: { locations: { id: number; name: string }[]; tags: { id: number; name: string }[] }
+    criterionItem: Partial<SearchCriterion>,
+    metadata: {
+        locations: { id: number; name: string }[];
+        tags: { id: number; name: string }[];
+    }
 ): string => {
-    if (item.displayValue) return item.displayValue;
-    if (isEmpty(item.value)) return '';
+    if (criterionItem.displayValue) return criterionItem.displayValue;
+    if (checkIsSearchValueEmpty(criterionItem.value)) return '';
 
-    const key = item.key ?? '';
-    const fieldObj = SEARCH_FIELDS.find(f => f.value === key);
-    const handlerName = key === 'size' ? 'size' : (fieldObj?.type ?? 'text');
-    const handler = criterionHandlerRegistry[handlerName];
-    const isArrayType = Array.isArray(item.value);
+    const fieldKey = criterionItem.key ?? '';
+    const searchFieldDefinition = SEARCH_FIELDS.find(field => field.value === fieldKey);
+    const handlerName = fieldKey === 'size' ? 'size' : (searchFieldDefinition?.type ?? 'text');
+    const fieldHandler = criterionHandlerRegistry[handlerName];
+    const isArrayType = Array.isArray(criterionItem.value);
 
-    const meta = { ...metadata, supportedFormats: supportedFormats() };
-    const formatted = formatWithHandler(
-        handler,
-        item.value,
-        item.operator ?? '',
-        item.unitMultiplier,
-        meta,
+    const consolidatedMetadata = { ...metadata, supportedFormats: supportedFormats() };
+    const formattedString = formatUsingTypeHandler(
+        fieldHandler,
+        criterionItem.value,
+        criterionItem.operator ?? '',
+        criterionItem.unitMultiplier,
+        consolidatedMetadata,
         isArrayType
     );
 
-    if (formatted) return formatted;
+    if (formattedString) return formattedString;
 
-    const arr = item.value as unknown[];
-    return isArrayType ? `${arr[0]} to ${arr[1]}` : String(item.value);
+    const valuesArray = criterionItem.value as unknown[];
+    return isArrayType ? `${valuesArray[0]} to ${valuesArray[1]}` : String(criterionItem.value);
 };
 
+/**
+ * Transforms a flat list of tags into a hierarchical array of selection options.
+ *
+ * @param tags - The raw list of tags from the database.
+ * @param parentId - The ID of the parent tag for the current recursion level.
+ * @param depth - Current numeric nesting level for visual indentation.
+ * @returns A flat list of options with prefixed labels for hierarchy.
+ */
 export const getHierarchicalTags = (
     tags: { id: number; name: string; parent_id?: number | null }[],
     parentId: number | null = null,
     depth = 0
 ): { value: string; label: string }[] => {
     return tags
-        .filter(t => t.parent_id === parentId || (parentId === null && !t.parent_id))
-        .flatMap(t => [
-            { value: String(t.id), label: `${'\u00A0'.repeat(depth * 3)}${t.name}` },
-            ...getHierarchicalTags(tags, t.id, depth + 1)
+        .filter(tag => tag.parent_id === parentId || (parentId === null && !tag.parent_id))
+        .flatMap(tag => [
+            { value: String(tag.id), label: `${'\u00A0'.repeat(depth * 3)}${tag.name}` },
+            ...getHierarchicalTags(tags, tag.id, depth + 1)
         ]);
 };
 
+/**
+ * Transforms a flat list of folders into a hierarchical array of selection options.
+ *
+ * @param folders - The raw list of storage locations/folders.
+ * @param parentId - The ID of the parent folder for recursion.
+ * @param depth - Visual nesting level.
+ * @returns A flat list of options with prefixed labels.
+ */
 export const getHierarchicalFolders = (
     folders: { id: number; name: string; parent_id?: number | null }[],
     parentId: number | null = null,
     depth = 0
 ): { value: string; label: string }[] => {
     return folders
-        .filter(f => f.parent_id === parentId || (parentId === null && !f.parent_id))
-        .flatMap(f => [
-            { value: String(f.id), label: `${'\u00A0'.repeat(depth * 4)}${f.name}` },
-            ...getHierarchicalFolders(folders, f.id, depth + 1)
+        .filter(folder => folder.parent_id === parentId || (parentId === null && !folder.parent_id))
+        .flatMap(folder => [
+            { value: String(folder.id), label: `${'\u00A0'.repeat(depth * 4)}${folder.name}` },
+            ...getHierarchicalFolders(folders, folder.id, depth + 1)
         ]);
 };
