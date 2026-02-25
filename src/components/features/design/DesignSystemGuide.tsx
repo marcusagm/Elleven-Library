@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { Component, createSignal, onMount } from 'solid-js';
 import { Button } from '../../ui/Button';
 import { RadioGroup, RadioGroupItem } from '../../ui/RadioGroup';
@@ -14,8 +15,7 @@ import { Tooltip } from '../../ui/Tooltip';
 import { Popover } from '../../ui/Popover';
 import { Modal, ConfirmModal } from '../../ui/Modal';
 import { PromptModal } from '../../ui/PromptModal';
-import { Sonner, toast } from '../../ui/Sonner';
-import type { ToasterProps } from '../../ui/Sonner';
+import { Sonner, toast, type ToasterProps } from '../../ui/Sonner';
 import { Kbd } from '../../ui/Kbd';
 import { TagInput } from '../../ui/TagInput';
 import { Loader } from '../../ui/Loader';

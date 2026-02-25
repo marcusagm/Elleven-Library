@@ -1,6 +1,6 @@
 import { onMount, onCleanup, Show, createEffect, createSignal, createMemo } from 'solid-js';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { useSystem, useNotification } from './core/hooks';
+import { useSystem, useNotification, useSelection, useLibrary } from './core/hooks';
 import { AppShell } from './layouts/AppShell';
 import { LibrarySidebar } from './components/layout/LibrarySidebar';
 import { FileInspector } from './components/layout/FileInspector';
@@ -21,7 +21,6 @@ import { Loader } from './components/ui/Loader';
 import { SettingsModal } from './components/features/settings';
 // Input System
 import { InputProvider, useShortcuts } from './core/input';
-import { useSelection, useLibrary } from './core/hooks';
 import logoColor from './assets/logo-color.svg';
 import logoWhite from './assets/logo-white.svg';
 import { appearance } from './core/store/appearanceStore';

@@ -46,8 +46,8 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 
 ### 3.1 Frontend (Solid + TS)
 Principais desvios em relação ao guia:
-- [PARCIAL] Uso significativo de `any` em áreas críticas — *reduzido criticamente via sprints de qualidade. Stores críticos, components de busca avançada e strategies estão 100% limpos. Restam pequenos UI components (`DropdownMenu`, `Input`, `ContextMenu`).*
-- [RESOLVIDO] Componentes e hooks extensos demais — *Totalmente modularizados. `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, ecossistema `AdvancedSearchModal.tsx`, `useVideoPlayer.ts`, `Table.tsx` e `TreeView.tsx` perfeitamente otimizados.*
+- [PARCIAL] Uso significativo de `any` em áreas críticas — *reduzido criticamente via sprints de qualidade. Stores críticos, components de busca avançada, strategies e UI components base (`Input`, `Table`, `TreeView`) estão 100% limpos. Restam apenas `DropdownMenu` e `ContextMenu`.*
+- [RESOLVIDO] Componentes e hooks extensos demais — *Totalmente modularizados. `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, ecossistema `AdvancedSearchModal.tsx`, `useVideoPlayer.ts`, `Table.tsx`, `TreeView.tsx` e `Input.tsx` perfeitamente otimizados.*
 - [RESOLVIDO] Presença de `console.log` em runtime de produção — *removidos em 2026-02-23. Restam apenas `console.error`/`console.warn` legítimos.*
 - Ausência de script de lint no `package.json` apesar de orientação explícita no guia.
 

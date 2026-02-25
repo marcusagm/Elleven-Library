@@ -5,8 +5,7 @@
 
 import { onCleanup, createEffect } from 'solid-js';
 import { inputStore } from '../store/inputStore';
-import type { InputScopeName } from '../types';
-import { SCOPE_PRIORITIES } from '../types';
+import { SCOPE_PRIORITIES, type InputScopeName } from '../types';
 
 /**
  * Push a scope when component mounts, pop when it unmounts

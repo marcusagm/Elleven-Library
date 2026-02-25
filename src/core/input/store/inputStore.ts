@@ -4,8 +4,13 @@
  */
 
 import { createSignal } from 'solid-js';
-import type { InputScope, InputScopeName, InputToken, InputActions } from '../types';
-import { SCOPE_PRIORITIES } from '../types';
+import {
+    SCOPE_PRIORITIES,
+    type InputScope,
+    type InputScopeName,
+    type InputToken,
+    type InputActions
+} from '../types';
 
 // =============================================================================
 // State

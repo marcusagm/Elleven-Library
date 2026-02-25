@@ -1,4 +1,4 @@
-import { Component } from 'solid-js';
+import { Show, Component } from 'solid-js';
 import { type ImageItem } from '../../../../types';
 import { Accordion, AccordionItem } from '../../../ui/Accordion';
 import { InspectorTags } from '../base/InspectorTags';
@@ -56,5 +56,3 @@ export const ModelInspector: Component<ModelInspectorProps> = props => {
         </div>
     );
 };
-
-import { Show } from 'solid-js';

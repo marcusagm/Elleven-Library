@@ -178,6 +178,7 @@ export const TagTreeSidebarPanel: Component = () => {
      * @param {TreeNode} node - The tree node being interacted with.
      */
     const handleContextMenu = (event: MouseEvent, node: TreeNode) => {
+        event.preventDefault();
         setContextMenuPosition({ coordinateX: event.clientX, coordinateY: event.clientY });
         setContextMenuNode(node);
         setContextMenuOpen(true);
