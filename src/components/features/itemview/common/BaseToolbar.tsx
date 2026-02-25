@@ -1,8 +1,8 @@
+import { Button } from '../../../ui';
 import { ParentComponent } from 'solid-js';
 import { X, ChevronLeft, ChevronRight } from 'lucide-solid';
 import { useViewport, useLibrary } from '../../../../core/hooks';
-import { Button } from '../../../ui/Button';
-import { ButtonGroup } from '../../../ui/ButtonGroup';
+import { ButtonGroup } from '../../../ui/Button/ButtonGroup';
 import { Tooltip } from '../../../ui/Tooltip';
 import { ShortcutHint } from './ToolbarUtils';
 import '../item-view-toolbar.css';

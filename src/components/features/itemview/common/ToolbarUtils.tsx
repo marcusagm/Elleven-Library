@@ -1,5 +1,5 @@
+import { Kbd } from '../../../ui';
 import { Component, Show, For } from 'solid-js';
-import { Kbd } from '../../../ui/Kbd';
 import { shortcutStore } from '../../../../core/input';
 import { getShortcutDisplayParts } from '../../../../core/input/normalizer';
 

@@ -1,5 +1,5 @@
+import { Button } from '../../ui';
 import { Component, createSignal, onMount } from 'solid-js';
-import { Button } from '../../ui/Button';
 import { toast } from '../../ui/Sonner';
 import { SectionGroup } from '../../ui/SectionGroup';
 import { Select } from '../../ui/Select';

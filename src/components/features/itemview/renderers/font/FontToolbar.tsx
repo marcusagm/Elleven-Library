@@ -1,9 +1,9 @@
+import { Button } from '../../../../ui';
 import { Component } from 'solid-js';
 import { Type, AlignJustify, MoveVertical } from 'lucide-solid';
 import { Popover } from '../../../../ui/Popover';
 import { ColorPicker } from '../../../../ui/ColorPicker';
 import { Slider } from '../../../../ui/Slider';
-import { Button } from '../../../../ui/Button';
 import { useItemViewContext, FontSettings } from '../../ItemViewContext';
 import { Tooltip } from '../../../../ui/Tooltip';
 import './font-view.css';

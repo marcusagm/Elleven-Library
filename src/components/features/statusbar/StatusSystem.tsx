@@ -1,8 +1,8 @@
+import { Button } from '../../ui';
 import { Component, Show, createSignal, Switch, Match } from 'solid-js';
 import { useSystem } from '../../../core/hooks';
 import { Loader } from '../../ui/Loader';
 import { CircleCheck, PaintRoller, Settings } from 'lucide-solid';
-import { Button } from '../../ui/Button';
 import '../../ui/popover.css';
 
 export const StatusSystem: Component = () => {

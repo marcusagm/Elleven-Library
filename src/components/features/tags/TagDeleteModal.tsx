@@ -1,5 +1,5 @@
-import { Component, Show } from 'solid-js';
 import { ConfirmModal } from '../../ui';
+import { Component, Show } from 'solid-js';
 import { TreeNode } from '../../ui/TreeView';
 import { tagService } from '../../../lib/tags';
 import { useMetadata, useNotification } from '../../../core/hooks';

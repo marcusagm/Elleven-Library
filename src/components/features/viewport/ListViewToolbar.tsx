@@ -1,3 +1,5 @@
+import { Button, ButtonGroup, DropdownMenu, Slider, ToggleGroup, ToggleGroupItem } from '../../ui';
+import { SearchToolbar } from '../search/SearchToolbar';
 import { Component } from 'solid-js';
 import {
     ArrowLeft,
@@ -11,12 +13,6 @@ import {
     ChevronDown
 } from 'lucide-solid';
 import { useFilters } from '../../../core/hooks';
-import { Button } from '../../ui/Button';
-import { ButtonGroup } from '../../ui/ButtonGroup';
-import { SearchToolbar } from '../search/SearchToolbar';
-import { DropdownMenu } from '../../ui/DropdownMenu';
-import { ToggleGroup, ToggleGroupItem } from '../../ui/ToggleGroup';
-import { Slider } from '../../ui/Slider';
 import './list-view-toolbar.css';
 
 export const ListViewToolbar: Component = () => {
@@ -113,7 +109,7 @@ export const ListViewToolbar: Component = () => {
                 <ToggleGroup
                     type="single"
                     value={filters.sortOrder}
-                    onValueChange={val => filters.setSortOrder(val as 'asc' | 'desc')}
+                    onValueChange={(val: string) => filters.setSortOrder(val as 'asc' | 'desc')}
                 >
                     <ToggleGroupItem value="asc" title="Ascending">
                         <SortAsc size={14} />

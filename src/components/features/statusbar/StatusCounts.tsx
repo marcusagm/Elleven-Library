@@ -1,7 +1,7 @@
+import { Button } from '../../ui';
 import { Component, Show } from 'solid-js';
 import { useLibrary, useSelection } from '../../../core/hooks';
 import { X } from 'lucide-solid';
-import { Button } from '../../ui/Button';
 
 export const StatusCounts: Component = () => {
     const lib = useLibrary();

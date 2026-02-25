@@ -1,9 +1,9 @@
+import { Button } from '../ui';
 import { Component } from 'solid-js';
 import { StatusCounts } from '../features/statusbar/StatusCounts';
 import { StatusMessages } from '../features/statusbar/StatusMessages';
 import { StatusSystem } from '../features/statusbar/StatusSystem';
 import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-solid';
-import { Button } from '../ui/Button';
 import { useAppShell } from '../../layouts/AppShell';
 import './global-statusbar.css';
 

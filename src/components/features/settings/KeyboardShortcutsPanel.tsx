@@ -1,4 +1,5 @@
 /**
+import { Button, Kbd } from '../../ui';
  * Keyboard Shortcuts Panel
  * Settings panel for viewing and editing keyboard shortcuts
  */
@@ -8,10 +9,9 @@ import { RotateCcw, AlertTriangle, Check, X } from 'lucide-solid';
 import { shortcutStore } from '../../../core/input/store/shortcutStore';
 import { formatShortcutForDisplay, buildCanonicalId } from '../../../core/input/normalizer';
 import type { RegisteredShortcut, ModifierKey } from '../../../core/input/types';
-import { Button } from '../../ui/Button';
-import { Kbd } from '../../ui/Kbd';
 import { SectionGroup } from '../../ui/SectionGroup';
 import './keyboard-shortcuts-panel.css';
+import { Button, Kbd } from '../../ui';
 
 type ScopeGroup = {
     scope: string;

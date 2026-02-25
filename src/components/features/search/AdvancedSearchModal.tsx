@@ -1,6 +1,6 @@
+import { Button, Input, Modal } from '../../ui';
 import { Component, createSignal, createEffect } from 'solid-js';
 import { Search, Save } from 'lucide-solid';
-import { Modal, Button, Input } from '../../ui';
 import { useFilters, useMetadata } from '../../../core/hooks';
 import { SearchGroup } from '../../../core/store/filterStore';
 import { createId } from '../../../lib/primitives/createId';

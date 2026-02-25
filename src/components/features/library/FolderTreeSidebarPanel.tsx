@@ -1,9 +1,9 @@
+import { Button } from '../../ui';
 import { Component, createMemo, createSignal, onMount } from 'solid-js';
 import { Folder as FolderIcon, FolderOpen as FolderOpenIcon, Plus } from 'lucide-solid';
 import { useMetadata, useFilters, useNotification } from '../../../core/hooks';
 import { TreeView, TreeNode } from '../../ui/TreeView';
 import { SidebarPanel } from '../../ui/SidebarPanel';
-import { Button } from '../../ui/Button';
 import { CountBadge } from '../../ui/CountBadge';
 import { FolderDeleteModal } from './FolderDeleteModal';
 import { FolderContextMenu } from './FolderContextMenu';

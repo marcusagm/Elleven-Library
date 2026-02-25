@@ -1,8 +1,8 @@
+import { Button } from '../../ui';
 import { Component, createSignal, Show, For, createMemo } from 'solid-js';
 import { Search, SlidersHorizontal, Funnel, X } from 'lucide-solid';
 import { useFilters, useMetadata } from '../../../core/hooks';
 import { SearchGroup } from '../../../core/store/filterStore';
-import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Popover } from '../../ui/Popover';
 import { AdvancedSearchModal } from './AdvancedSearchModal';

@@ -1,6 +1,6 @@
+import { ConfirmModal } from '../../ui';
 import { Component } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
-import { ConfirmModal } from '../../ui';
 import { useMetadata, useNotification } from '../../../core/hooks';
 import './folder-delete-modal.css';
 

@@ -1,5 +1,5 @@
-import { Component, createSignal, Show } from 'solid-js';
 import { VideoPlayer as UIVideoPlayer } from '../../../../ui';
+import { Component, createSignal, Show } from 'solid-js';
 import { Loader } from '../../../../ui/Loader';
 import { type TranscodeQuality } from '../../../../../lib/stream-utils';
 import { transcodeState } from '../../../../../core/store/transcodeStore';

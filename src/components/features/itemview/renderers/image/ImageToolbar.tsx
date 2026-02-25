@@ -1,3 +1,6 @@
+import { Button, Select, Slider, ToggleGroup, ToggleGroupItem, Tooltip } from '../../../../ui';
+import { useItemViewContext, FlipState } from '../../ItemViewContext';
+import { ShortcutHint } from '../../common/ToolbarUtils';
 import { Component } from 'solid-js';
 import {
     RotateCw,
@@ -12,13 +15,6 @@ import {
     Fullscreen,
     Maximize2
 } from 'lucide-solid';
-import { Button } from '../../../../ui/Button';
-import { Slider } from '../../../../ui/Slider';
-import { ToggleGroup, ToggleGroupItem } from '../../../../ui/ToggleGroup';
-import { Tooltip } from '../../../../ui/Tooltip';
-import { useItemViewContext, FlipState } from '../../ItemViewContext';
-import { ShortcutHint } from '../../common/ToolbarUtils';
-import { Select } from '../../../../ui';
 
 export const ImageToolbar: Component = () => {
     const {
@@ -103,7 +99,7 @@ export const ImageToolbar: Component = () => {
                 <ToggleGroup
                     type="single"
                     value={tool()}
-                    onValueChange={val => val && setTool(val as 'pan' | 'rotate')}
+                    onValueChange={(val: string) => val && setTool(val as 'pan' | 'rotate')}
                 >
                     <Tooltip position="bottom" content={<ShortcutHint name="Pan Tool" />}>
                         <ToggleGroupItem value="pan">

@@ -1,4 +1,5 @@
 /**
+import { Modal } from '../../ui';
  * Settings Modal
  * A modal with sidebar navigation for application settings
  */
@@ -6,13 +7,13 @@
 import { Component, createSignal, For, Show } from 'solid-js';
 import { Keyboard, Palette, Settings, Info } from 'lucide-solid';
 import { cn } from '../../../lib/utils';
-import { Modal } from '../../ui';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 import { GeneralPanel } from './GeneralPanel';
 import { AppearancePanel } from './AppearancePanel';
 import { FoldersPanel } from './FoldersPanel';
 import { AboutPanel } from './AboutPanel';
 import './settings-modal.css';
+import { Modal } from '../../ui';
 
 /**
  * Valid settings tabs.

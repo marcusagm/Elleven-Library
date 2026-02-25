@@ -1,10 +1,14 @@
+import {
+    Button,
+    ColorPicker,
+    Popover,
+    ToggleGroup,
+    ToggleGroupItem,
+    Tooltip
+} from '../../../../ui';
 import { Component } from 'solid-js';
 import { RotateCw, Grid, RefreshCcw } from 'lucide-solid';
-import { Button } from '../../../../ui/Button';
-import { ToggleGroup, ToggleGroupItem } from '../../../../ui/ToggleGroup';
-import { Tooltip } from '../../../../ui/Tooltip';
 import { useItemViewContext, ModelSettings } from '../../ItemViewContext';
-import { ColorPicker, Popover } from '../../../../ui';
 
 export const ModelToolbar: Component = () => {
     const { modelSettings, setModelSettings, reset } = useItemViewContext();

@@ -1,6 +1,6 @@
+import { Button } from '../../../../ui';
 import { Component, createSignal, onCleanup, onMount, Switch, Match, Show } from 'solid-js';
 import { useItemViewContext } from '../../ItemViewContext';
-import { Button } from '../../../../ui/Button';
 import { PreviewTab } from './tabs/PreviewTab';
 import { WaterfallTab } from './tabs/WaterfallTab';
 import { GlyphsTab } from './tabs/GlyphsTab';

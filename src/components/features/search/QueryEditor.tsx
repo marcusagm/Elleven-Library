@@ -1,7 +1,7 @@
+import { Button } from '../../ui';
 import { Component, For, Show, createMemo } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 import { Info, Pencil, Check, Trash2, CircleQuestionMark } from 'lucide-solid';
-import { Button } from '../../ui/Button';
 import { RadioGroup, RadioGroupItem } from '../../ui/RadioGroup';
 import { Tooltip } from '../../ui/Tooltip';
 import { SEARCH_FIELDS, OPERATORS_FOR_TYPE } from './searchConstants';

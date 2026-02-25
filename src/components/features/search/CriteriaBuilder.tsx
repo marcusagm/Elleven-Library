@@ -1,8 +1,8 @@
+import { Button } from '../../ui';
 import { Component, createMemo } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 import { Plus, CircleQuestionMark } from 'lucide-solid';
 import { Select } from '../../ui/Select';
-import { Button } from '../../ui/Button';
 import { Tooltip } from '../../ui/Tooltip';
 import { SEARCH_FIELDS } from './searchConstants';
 import { criterionHandlerRegistry } from './fields';
