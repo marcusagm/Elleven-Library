@@ -2330,20 +2330,32 @@ export const DesignSystemGuide: Component = () => {
                                 Masked Inputs (Phone)
                             </h3>
                             <MaskedInput
-                                mask="(99) 99999-9999"
+                                mask="(00) 00000-0000"
                                 placeholder="(99) 99999-9999"
                                 size="lg"
                             />
                             <MaskedInput
-                                mask="(99) 99999-9999"
+                                mask="(00) 00000-0000"
                                 placeholder="(99) 99999-9999"
                                 size="md"
                             />
                             <MaskedInput
-                                mask="(99) 99999-9999"
+                                mask="(00) 00000-0000"
                                 placeholder="(99) 99999-9999"
                                 size="sm"
                             />
+
+                            <h3
+                                style={{
+                                    'margin-bottom': 'var(--p-space-m)',
+                                    color: 'var(--text-secondary)'
+                                }}
+                            >
+                                Masked Inputs (Complex mask)
+                            </h3>
+                            <MaskedInput mask="aaa-0000-*" placeholder="XXX-9999-*" size="lg" />
+                            <MaskedInput mask="aaa-0000-*" placeholder="XXX-9999-*" size="md" />
+                            <MaskedInput mask="aaa-0000-*" placeholder="XXX-9999-*" size="sm" />
 
                             <hr
                                 style={{

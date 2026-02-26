@@ -3,14 +3,67 @@ import { Input } from '../Input/Input';
 import { MaskedInputProps } from './types';
 
 /**
+ * Checks if a character matches a corresponding mask token.
+ *
+ * @param character - The character to check.
+ * @param token - The mask token (0, a, *).
+ * @returns True if the character matches the token rules.
+ */
+const matchesToken = (character: string, token: string): boolean => {
+    if (token === '0') return /[0-9]/.test(character);
+    if (token === 'a') return /[a-zA-Z]/.test(character);
+    if (token === '*') return /[a-zA-Z0-9]/.test(character);
+    return false;
+};
+
+/**
+ * Determines if a character is a valid mask token.
+ *
+ * @param character - The character to evaluate.
+ * @returns True if the character is a supported token.
+ */
+const isToken = (character: string): boolean => ['0', 'a', '*'].includes(character);
+
+/**
+ * Find the last index in rawValue that matches a token to avoid trailing separators.
+ *
+ * @param maskPattern - The mask string.
+ * @param rawValue - The unmasked input value.
+ * @returns The last valid index in rawValue.
+ */
+const calculateLastValidInputIndex = (maskPattern: string, rawValue: string): number => {
+    let lastValidInputIndex = -1;
+    let tempValueIndex = 0;
+
+    for (let maskIndex = 0; maskIndex < maskPattern.length; maskIndex++) {
+        const char = maskPattern[maskIndex];
+        if (isToken(char)) {
+            while (
+                tempValueIndex < rawValue.length &&
+                !matchesToken(rawValue[tempValueIndex], char)
+            ) {
+                tempValueIndex++;
+            }
+            if (tempValueIndex < rawValue.length) {
+                lastValidInputIndex = tempValueIndex;
+                tempValueIndex++;
+            }
+        } else if (tempValueIndex < rawValue.length && rawValue[tempValueIndex] === char) {
+            tempValueIndex++;
+        }
+    }
+    return lastValidInputIndex;
+};
+
+/**
  * A specialized Input component that applies a format mask to the user input.
- * Supports '9' as a placeholder for numeric digits.
+ * Supports '0' (numeric), 'a' (alpha), and '*' (alphanumeric) as placeholders.
  *
  * @param props - Properties for the MaskedInput component.
  * @returns The rendered MaskedInput component.
  *
  * @example
- * <MaskedInput mask="99/99/9999" placeholder="DD/MM/YYYY" onInput={setDate} />
+ * <MaskedInput mask="00/00/0000" placeholder="DD/MM/YYYY" onInput={setDate} />
  */
 export const MaskedInput: Component<MaskedInputProps> = props => {
     // Separate specialized masking logic properties from standard input attributes.
@@ -25,32 +78,53 @@ export const MaskedInput: Component<MaskedInputProps> = props => {
 
     /**
      * Applies the defined mask pattern to a raw string value.
+     * Supports tokens: 0 (digits), a (letters), * (alphanumeric).
      *
      * @param rawValue - The unmasked input value.
      * @returns The formatted string based on the mask.
      */
     const applyInputMask = (rawValue: string) => {
-        let resultString = '';
-        let valueIndex = 0;
-        // Remove all non-digit characters before applying the mask.
-        const cleanedValue = rawValue.replace(/\D/g, '');
+        if (!rawValue) return '';
 
-        for (
-            let maskIndex = 0;
-            maskIndex < maskComponentProperties.mask.length && valueIndex < cleanedValue.length;
-            maskIndex++
-        ) {
-            const currentMaskCharacter = maskComponentProperties.mask[maskIndex];
+        const maskPattern = maskComponentProperties.mask;
+        const lastValidInputIndex = calculateLastValidInputIndex(maskPattern, rawValue);
 
-            if (currentMaskCharacter === '9') {
-                resultString += cleanedValue[valueIndex];
-                valueIndex++;
+        let formattedResult = '';
+        let inputValueIndex = 0;
+
+        for (let maskIndex = 0; maskIndex < maskPattern.length; maskIndex++) {
+            const currentMaskChar = maskPattern[maskIndex];
+
+            if (isToken(currentMaskChar)) {
+                while (
+                    inputValueIndex < rawValue.length &&
+                    !matchesToken(rawValue[inputValueIndex], currentMaskChar)
+                ) {
+                    inputValueIndex++;
+                }
+
+                if (inputValueIndex < rawValue.length) {
+                    formattedResult += rawValue[inputValueIndex];
+                    inputValueIndex++;
+                } else {
+                    break;
+                }
             } else {
-                resultString += currentMaskCharacter;
+                // Only add separator if we haven't reached the end of valid input
+                if (inputValueIndex <= lastValidInputIndex) {
+                    formattedResult += currentMaskChar;
+                }
+
+                if (
+                    inputValueIndex < rawValue.length &&
+                    rawValue[inputValueIndex] === currentMaskChar
+                ) {
+                    inputValueIndex++;
+                }
             }
         }
 
-        return resultString;
+        return formattedResult;
     };
 
     /**
@@ -59,10 +133,11 @@ export const MaskedInput: Component<MaskedInputProps> = props => {
      * @param event - The input event from the HTML input element.
      */
     const handleMaskedInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
-        const maskedValue = applyInputMask(event.currentTarget.value);
+        const inputElement = event.currentTarget;
+        const maskedValue = applyInputMask(inputElement.value);
 
-        // Directly update the input element's value to reflect the mask immediately.
-        event.currentTarget.value = maskedValue;
+        // Update the value
+        inputElement.value = maskedValue;
 
         // Execute the optional onInput callback with the formatted value.
         maskComponentProperties.onInput?.(maskedValue);

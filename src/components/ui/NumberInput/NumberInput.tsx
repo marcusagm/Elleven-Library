@@ -49,7 +49,7 @@ export const NumberInput: Component<NumberInputProps> = props => {
     >({
         value: () => localComponentProperties.value,
         defaultValue: localComponentProperties.defaultValue,
-        onChange: localComponentProperties.onChange
+        onChange: value => localComponentProperties.onChange?.(value)
     });
 
     /**

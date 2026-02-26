@@ -1,14 +1,4 @@
-/* eslint-disable complexity */
-import {
-    Component,
-    For,
-    Show,
-    createSignal,
-    createEffect,
-    onCleanup,
-    splitProps,
-    createMemo
-} from 'solid-js';
+import { Component, For, Show, splitProps } from 'solid-js';
 import { cn } from '../../../lib/utils';
 import { createId } from '../../../lib/primitives/createId';
 import { createClickOutside } from '../../../lib/primitives';
@@ -18,16 +8,21 @@ import { TagChip } from './TagChip';
 import { TagSuggestions } from './TagSuggestions';
 import './tag-input.css';
 
+// Hooks especializados para decomposição de complexidade
+import { useTagInputState } from './hooks/useTagInputState';
+import { useTagFloating } from './hooks/useTagFloating';
+import { useTagNavigation } from './hooks/useTagNavigation';
+
 /**
  * TagInput component for managing a list of tags with autocomplete support.
  * Integrates with the core input system for keyboard shortcut safety and accessibility.
+ * Decomposed into specialized hooks for state, positioning, and navigation.
  *
  * @param props - Properties for the TagInput component.
  * @returns The rendered TagInput component.
  */
 export const TagInput: Component<TagInputProps> = props => {
     // Separate specialized tag logic properties from standard attributes.
-    // We strictly avoid abbreviations.
     const [localTagInputProperties] = splitProps(props, [
         'value',
         'onChange',
@@ -39,14 +34,19 @@ export const TagInput: Component<TagInputProps> = props => {
         'class'
     ]);
 
-    const [inputValue, setInputValue] = createSignal('');
-    const [showSuggestions, setShowSuggestions] = createSignal(false);
-    const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = createSignal(-1);
-    const [suggestionDropdownPosition, setSuggestionDropdownPosition] = createSignal({
-        top: 0,
-        left: 0,
-        width: 0
-    });
+    // Internal state and tag manipulation logic
+    const {
+        inputValue,
+        setInputValue,
+        showSuggestions,
+        setShowSuggestions,
+        highlightedSuggestionIndex,
+        setHighlightedSuggestionIndex,
+        filteredTagSuggestionsList,
+        canAddMoreTags,
+        addTag,
+        removeTag
+    } = useTagInputState(localTagInputProperties);
 
     let inputContainerReference: HTMLDivElement | undefined;
     let inputFieldReference: HTMLInputElement | undefined;
@@ -54,68 +54,31 @@ export const TagInput: Component<TagInputProps> = props => {
 
     const uniqueIdentifier = createId('tag-input');
     const suggestionListboxIdentifier = `${uniqueIdentifier}-listbox`;
+    const suggestionScopeIdentifier = `tag-suggestions-${uniqueIdentifier}`;
 
-    /**
-     * Determines if the user can still add more tags.
-     */
-    const canAddMoreTags = () => {
-        if (localTagInputProperties.max === undefined) {
-            return true;
-        }
-        return localTagInputProperties.value.length < localTagInputProperties.max;
-    };
+    // Floating UI positioning logic for the suggestions dropdown
+    const { suggestionDropdownCoordinates } = useTagFloating(
+        () => inputContainerReference,
+        () => dropdownListReference,
+        () => showSuggestions() && filteredTagSuggestionsList().length > 0
+    );
 
-    /**
-     * Filters available suggestions based on the current input value and selected tags.
-     */
-    const filteredTagSuggestionsList = createMemo(() => {
-        const normalizedInput = inputValue().toLowerCase().trim();
-        if (!normalizedInput) {
-            return [];
-        }
-
-        return (localTagInputProperties.suggestions || [])
-            .filter(tag => tag.label.toLowerCase().includes(normalizedInput))
-            .filter(tag => !localTagInputProperties.value.some(selected => selected.id === tag.id))
-            .slice(0, 10); // Limit results for performance and UX.
+    // Keyboard navigation and isolation via core input system
+    useTagNavigation({
+        scopeIdentifier: suggestionScopeIdentifier,
+        showSuggestions,
+        suggestions: filteredTagSuggestionsList,
+        highlightedIndex: highlightedSuggestionIndex,
+        setHighlightedIndex: setHighlightedSuggestionIndex,
+        inputValue,
+        setInputValue,
+        addTag,
+        onCreate: (name: string) => localTagInputProperties.onCreate?.(name),
+        canAddMoreTags,
+        setShowSuggestions
     });
 
-    /**
-     * Calculates and updates the position of the suggestions dropdown portal.
-     */
-    const updateDropdownPosition = () => {
-        if (!inputContainerReference || !showSuggestions()) {
-            return;
-        }
-
-        const containerBoundingClientRect = inputContainerReference.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const verticalOffset = 4;
-
-        let topPosition = containerBoundingClientRect.bottom + verticalOffset;
-        const leftPosition = containerBoundingClientRect.left;
-
-        // Note: contentRect calculation is tricky with Portal before render.
-        // We use a fallback if dropdown is not yet ready or measured.
-        const dropdownHeight = 250; // Approximated max height for boundary checks.
-
-        if (topPosition + dropdownHeight > viewportHeight - 10) {
-            const spaceAbove = containerBoundingClientRect.top - verticalOffset;
-            if (spaceAbove > dropdownHeight) {
-                topPosition = containerBoundingClientRect.top - dropdownHeight - verticalOffset;
-            } else {
-                topPosition = Math.max(10, viewportHeight - dropdownHeight - 10);
-            }
-        }
-
-        setSuggestionDropdownPosition({
-            top: topPosition,
-            left: leftPosition,
-            width: containerBoundingClientRect.width
-        });
-    };
-
-    // Use our custom core hook for shortcut safety and focus management.
+    // Custom core hook for shortcut safety and focus management.
     const {
         handleFocus,
         handleBlur,
@@ -134,117 +97,39 @@ export const TagInput: Component<TagInputProps> = props => {
         }
     );
 
-    // Dynamic positioning on scroll or resize.
-    createEffect(() => {
-        const isVisible = showSuggestions() && filteredTagSuggestionsList().length > 0;
-        if (isVisible) {
-            requestAnimationFrame(updateDropdownPosition);
-
-            const updateHandler = () => requestAnimationFrame(updateDropdownPosition);
-            window.addEventListener('scroll', updateHandler, true);
-            window.addEventListener('resize', updateHandler);
-
-            onCleanup(() => {
-                window.removeEventListener('scroll', updateHandler, true);
-                window.removeEventListener('resize', updateHandler);
-            });
-        }
-    });
-
     /**
-     * Handles local keyboard navigation within the tag input.
+     * Handles local keyboard events not covered by scoped shortcuts (e.g., Backspace).
      *
      * @param event - The keyboard event object.
      */
     const handleLocalKeyDown = (event: KeyboardEvent) => {
-        const currentSuggestions = filteredTagSuggestionsList();
-
-        switch (event.key) {
-            case 'ArrowDown':
-                if (currentSuggestions.length > 0) {
-                    setHighlightedSuggestionIndex(previous =>
-                        previous < currentSuggestions.length - 1 ? previous + 1 : 0
-                    );
-                }
-                break;
-
-            case 'ArrowUp':
-                if (currentSuggestions.length > 0) {
-                    setHighlightedSuggestionIndex(previous =>
-                        previous > 0 ? previous - 1 : currentSuggestions.length - 1
-                    );
-                }
-                break;
-
-            case 'Enter': {
-                const trimmedInput = inputValue().trim();
-                if (!trimmedInput || !canAddMoreTags()) {
-                    return;
-                }
-
-                const highlightedTag = currentSuggestions[highlightedSuggestionIndex()];
-                if (highlightedSuggestionIndex() >= 0 && highlightedTag) {
-                    addTag(highlightedTag);
-                } else {
-                    const exactMatch = currentSuggestions.find(
-                        tag => tag.label.toLowerCase() === trimmedInput.toLowerCase()
-                    );
-
-                    if (exactMatch) {
-                        addTag(exactMatch);
-                    } else if (localTagInputProperties.onCreate) {
-                        localTagInputProperties.onCreate(trimmedInput);
-                        setInputValue('');
-                        setShowSuggestions(false);
-                    }
-                }
-                setHighlightedSuggestionIndex(-1);
-                break;
-            }
-
-            case 'Backspace':
-                if (!inputValue() && localTagInputProperties.value.length > 0) {
-                    const updatedTagList = [...localTagInputProperties.value];
-                    updatedTagList.pop();
-                    localTagInputProperties.onChange(updatedTagList);
-                }
-                break;
-
-            case 'Escape':
-                setShowSuggestions(false);
-                setHighlightedSuggestionIndex(-1);
-                break;
+        if (
+            event.key === 'Backspace' &&
+            !inputValue() &&
+            localTagInputProperties.value.length > 0
+        ) {
+            const updatedTagList = [...localTagInputProperties.value];
+            updatedTagList.pop();
+            localTagInputProperties.onChange(updatedTagList);
         }
 
-        // Forward to core handler for shortcut safety
+        // Forward to core handler for shortcut safety of native editing keys.
         handleCoreKeyDown(event);
     };
 
     /**
-     * Adds a new tag to the selection list.
-     *
-     * @param tag - The tag option to add.
+     * Wrapper for addTag to ensure the input field regains focus.
      */
-    const addTag = (tag: TagOption) => {
-        if (!canAddMoreTags()) {
-            return;
-        }
-        localTagInputProperties.onChange([...localTagInputProperties.value, tag]);
-        setInputValue('');
-        setShowSuggestions(false);
-        setHighlightedSuggestionIndex(-1);
+    const handleTagSelection = (tag: TagOption) => {
+        addTag(tag);
         inputFieldReference?.focus();
     };
 
     /**
-     * Removes a tag from the selection list by its identifier.
-     *
-     * @param identifier - The ID of the tag to remove.
+     * Wrapper for removeTag to ensure the input field regains focus.
      */
-    const removeTag = (identifier: string | number) => {
-        localTagInputProperties.onChange(
-            localTagInputProperties.value.filter(tag => tag.id !== identifier)
-        );
+    const handleTagRemoval = (identifier: string | number) => {
+        removeTag(identifier);
         inputFieldReference?.focus();
     };
 
@@ -262,7 +147,7 @@ export const TagInput: Component<TagInputProps> = props => {
                     {tag => (
                         <TagChip
                             tag={tag}
-                            onRemove={removeTag}
+                            onRemove={handleTagRemoval}
                             disabled={localTagInputProperties.disabled}
                         />
                     )}
@@ -305,8 +190,8 @@ export const TagInput: Component<TagInputProps> = props => {
                     suggestions={filteredTagSuggestionsList()}
                     highlightedIndex={highlightedSuggestionIndex()}
                     listboxId={suggestionListboxIdentifier}
-                    position={suggestionDropdownPosition()}
-                    onSelect={addTag}
+                    position={suggestionDropdownCoordinates()}
+                    onSelect={handleTagSelection}
                     onHighlight={setHighlightedSuggestionIndex}
                     ref={dropdownListReference}
                 />

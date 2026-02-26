@@ -26,12 +26,40 @@ Use TSDoc style comments (`/** ... */`) for exported functions, classes, and int
 /**
  * Description of the UI component and its primary responsibility.
  *
- * @param {ComponentProps} props - Component properties.
+ * @param {ComponentNameProperties} componentProperties - Component properties. Use the prefix "component" for clarity and full names.
  * @returns {JSX.Element} The rendered component.
  *
  * @example
- * <Button variant="primary" onClick={handleClick}>Click Me</Button>
+ * <Button variant="primary" isDisabled={false} onAction={handleAction}>Click Me</Button>
  */
+```
+
+#### Template for Module index.ts
+
+The `index.ts` file serves as the public entry point for a component or module. it must contain a high-level description and comprehensive examples.
+
+```ts
+/**
+ * Component/Module Name
+ *
+ * @module ComponentName
+ * @description
+ * Detailed description of the component's purpose and primary responsibility.
+ * Mention key features, states, and variants supported.
+ *
+ * @example
+ * <ComponentName
+ *   propertyValue="value"
+ *   onActionChange={handleActionChange}
+ *   isDisabled={false}
+ *   size="md"
+ * >
+ *   Content
+ * </ComponentName>
+ */
+export * from './types';
+export * from './Root';
+export * from './ComponentName';
 ```
 
 #### Template for Functions / Hooks

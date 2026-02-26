@@ -1,8 +1,29 @@
 /**
- * Context Menu Component
+ * Context Menu component
  *
- * Provides a coordinate-based menu triggered by right-clicks,
- * with support for submenus and keyboard navigation.
+ * @module ContextMenu
+ * @description
+ * The ContextMenu component is a coordinate-based menu triggered by right-clicks.
+ * It provides a menu that appears at the mouse position when the user right-clicks on the trigger element.
+ * Supports submenus and keyboard navigation.
+ *
+ * @example
+ * <ContextMenu
+ *   coordinateX={0}
+ *   coordinateY={0}
+ *   items={[
+ *     {
+ *       label: 'Item 1',
+ *       onClick: () => {},
+ *     },
+ *     {
+ *       label: 'Item 2',
+ *       onClick: () => {},
+ *     },
+ *   ]}
+ *   isOpen={true}
+ *   onClose={() => {}}
+ * />
  */
 
 export { ContextMenu } from './ContextMenu';

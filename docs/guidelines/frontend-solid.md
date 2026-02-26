@@ -21,6 +21,47 @@ src/
         utils.ts             # Private utilities
 ```
 
+---
+
+## 🧱 UI Component Standards
+
+When creating or modifying components in `src/components/ui`, follow these structural and architectural patterns.
+
+### 📂 Folder Structure
+
+Each UI component must have its own directory with the following convention:
+
+- `index.ts`: Public entry point with JSDoc and exports.
+- `types.ts`: Interface definitions (e.g., `ButtonProperties`). Use full names, never abbreviations.
+- `[Component].tsx`: Main component implementation.
+- `[Component]Root.tsx`: Context provider for compound components (if applicable).
+- `[component-name].css`: Scoped styles using design tokens.
+- `components/` or root files: Internal parts (e.g., `SliderTrack.tsx`, `SliderThumb.tsx`).
+- `hooks/` or root files: Internal hooks (e.g., `useSlider.ts`).
+- `utils/` or root files: Internal utilities (e.g., `formatDate.ts`).
+
+### 🏗️ Architecture
+
+1.  **Compound Components**: Prefer the compound component pattern for complex elements. Share state via Solid.js `Context`.
+2.  **Logic Extraction**: Extract complex state management or calculations into local hooks (e.g., `useSlider.ts`).
+3.  **Atomic Composition**: Build complex components from smaller, focused "atoms".
+4.  **Property Naming**: Follow the project rule: **No Abbreviations**. Use `isDisabled` instead of `disabled`, `minimumValue` instead of `min`.
+
+### ♿ Accessibility (A11y)
+
+- **ARIA Attributes**: Always include relevant roles and state attributes (`aria-expanded`, `aria-hidden`, `aria-label`).
+- **Keyboard Navigation**: Ensure all interactive elements are focusable and support standard keys (Enter, Space, Arrows, Esc).
+- **Native Interop**: When building custom controls (e.g., Select, Slider), include a hidden native input to maintain form compatibility and provide additional context for screen readers.
+- **Contrast**: Ensure colors comply with WCAG standards by using established design tokens.
+
+### 🖱️ Usability
+
+- **Consistent API**: Maintain a consistent set of props across components (e.g., `size`, `variant`, `isDisabled`, `isLoading`).
+- **Feedback**: Provide visual and functional feedback for every state (Hover, Focus, Pressed, Loading, Disabled).
+- **Responsive Design**: Ensure components behave predictably across different screen sizes and input methods (Touch vs. Mouse).
+
+---
+
 ### Solid.js Specifics
 
 #### 1. Reactivity & Signals

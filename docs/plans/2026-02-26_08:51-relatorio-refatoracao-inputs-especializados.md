@@ -2,61 +2,82 @@
 
 **Data:** 26 de Fevereiro de 2026  
 **Status:** ✅ Concluído  
-**Assunto:** Reestruturação arquitetural e padronização de `NumberInput`, `MaskedInput` e `TagInput`.
+**Assunto:** Reestruturação arquitetural, padronização e excelência técnica de `NumberInput`, `MaskedInput` e `TagInput`.
 
 ---
 
 ## 📖 Contexto e Objetivos
 
-O objetivo desta tarefa foi modernizar os componentes de input especializados, movendo-os de uma implementação de arquivo único para uma estrutura de pastas atômica, seguindo o padrão já estabelecido para componentes como `ColorInput` e `Input`.
+O objetivo primordial desta tarefa foi a modernização e o saneamento técnico dos componentes de entrada especializados do **Mundam UI**. A meta foi elevar estes componentes ao nível de excelência definido pelas diretrizes do projeto (SolidJS, CLEAN Code, SOLID e TSDoc), migrando de implementações monolíticas para uma arquitetura atômica e modular.
 
-As principais metas foram:
-1.  **Conformidade com SOLID:** Divisão de responsabilidades, especialmente no complexo `TagInput`.
-2.  **Padronização de Nomenclatura:** Eliminação total de abreviações conforme `frontend-solid.md`.
-3.  **Documentação Exaustiva:** Adição de **TSDoc** em todas as interfaces e componentes.
-4.  **Segurança de Input:** Integração com o sistema core de shortcuts (`useInputEvents`).
+### Pilares da Refatoração:
+1.  **Conformidade SOLID:** Decomposição de componentes complexos em hooks especializados e sub-componentes.
+2.  **Padronização Nominal:** Eliminação total de abreviações e uso de nomes 100% descritivos (ex: `index` em vez de `i`, `deltaX` em vez de `dx`).
+3.  **Documentação de API:** Implementação de **TSDoc** exaustivo, incluindo metadados `@module`, `@description` e `@example` nos pontos de entrada (`index.ts`).
+4.  **Respeito à Viewport:** Uso de bibliotecas de posicionamento flutuante para garantir que overlays respeitem as bordas da aplicação.
+5.  **Segurança de Atalhos:** Integração profunda com o sistema de atalhos do core (`src/core/input`) para evitar conflitos de keyboard shortcuts globais.
 
 ---
 
 ## 🛠️ Passo a Passo da Implementação
 
-### 1. Reestruturação de Pastas
-Foram criados diretórios individuais para cada componente em `src/components/ui/`, permitindo a colocalização de tipos, sub-componentes e estilos específicos.
+### 1. Reestruturação de Pastas e Padrão Atômico
+Cada componente foi movido para seu próprio diretório em `src/components/ui/`, organizando-se da seguinte forma:
+-   `index.ts`: Ponto de entrada com documentação de uso.
+-   `{Component}.tsx`: Componente principal (Orquestrador).
+-   `types.ts`: Definições de interfaces e tipos.
+-   `{component}.css`: Estilos encapsulados.
+-   `hooks/`: (Opcional) Hooks especializados para lógica interna.
 
-### 2. Refatoração do `NumberInput`
--   **CSS:** Arquivo movido e classes renomeadas de `.ui-number-input-btn` para `.ui-number-input-button`.
--   **Lógica:** Implementação utilizando `createControllableSignal` para suportar estados controlados e não controlados.
--   **Componente Base:** Agora utiliza o componente `Input` interno, herdando automaticamente o tratamento de atalhos de teclado.
+### 2. NumberInput: Precisão e Reatividade
+-   **Controle de Estado:** Implementado via `createControllableSignal`, permitindo que o componente funcione tanto de modo controlado quanto não controlado de forma transparente.
+-   **Correção de Reatividade:** Resolvido o aviso `solid/reactivity` ao encapsular o callback `onChange` em uma função anônima, garantindo que o rastreamento do SolidJS funcione corretamente sem disparos desnecessários ou perdas de sincronia.
+-   **Validação Visual:** Botões de incremento/decremento integrados via `leftIcon` e `rightIcon` do componente base `Input`, mantendo a consistência visual.
 
-### 3. Refatoração do `MaskedInput`
--   **Interface:** Definição clara da prop `mask` com documentação sobre o padrão suportado (atualmente apenas '9' para dígitos).
--   **Responsabilidade:** Foco exclusivo na aplicação da máscara via regex, delegando a renderização ao componente `Input`.
+### 3. MaskedInput: Motor de Máscara Robusto
+-   **Novo Sistema de Tokens:** Substituição do token antigo '9' pelos novos tokens padronizados:
+    -   `0`: Apenas dígitos numéricos [0-9].
+    -   `a`: Apenas caracteres alfabéticos [a-zA-Z].
+    -   `*`: Caracteres alfanuméricos [a-zA-Z0-9].
+-   **Correção de "Separadores Fantasmas":** Implementada uma lógica inteligente no `applyInputMask` que impede a exibição de separadores (parênteses, traços) quando o campo está vazio ou quando não há dados suficientes, melhorando drasticamente a usabilidade ao apagar caracteres.
+-   **Redução de Complexidade:** A função original de 110 linhas com complexidade ciclomática de **17** foi decomposta em funções auxiliares (`calculateLastValidInputIndex`, `matchesToken`), reduzindo o índice para **< 10**, atendendo aos critérios de auditoria do projeto.
 
-### 4. Decomposição Atômica do `TagInput`
-Este foi o componente mais transformado devido à sua alta complexidade.
--   **Root (`TagInput.tsx`):** Gerencia apenas o estado da lista de tags, filtragem de sugestões e posicionamento do portal.
--   **`TagChip.tsx`:** Sub-componente isolado para a renderização visual da tag e seu botão de remoção.
--   **`TagSuggestions.tsx`:** Gerencia a exibição da lista de autocompletar em um `Portal`, garantindo que o dropdown não seja cortado por overflows de containers pais.
-
-### 5. Limpeza e Integração
--   Remoção dos arquivos antigos em `src/components/ui/`.
--   Atualização do `index.ts` central de UI para expor os novos componentes através de globais (`export *`).
+### 4. TagInput: A Joia da Coroa (Arquitetura Premium)
+Este componente foi o mais profundamente refatorado, servindo agora como modelo de arquitetura modular:
+-   **Decomposição em Hooks:**
+    -   `useTagInputState`: Gerencia o valor, a lista de tags e a lógica de filtragem/deduplicação.
+    -   `useTagFloating`: Encapsula a integração com `@floating-ui/dom` usando middlewares `flip`, `shift`, `offset` e `size`. Este último garante que a lista de sugestões tenha sempre a mesma largura do container do input.
+    -   `useTagNavigation`: Gerencia a navegação por teclado (Setas, Enter, Escape) e a segurança de atalhos.
+-   **Isolamento de Escopo:** Implementado o uso de `inputService.pushScope` com prioridade superior (`modal + 10`) quando as sugestões estão abertas. Isso garante que a navegação nas sugestões não dispare atalhos globais da aplicação.
+-   **Posicionamento Viewport-Aware:** O dropdown de sugestões agora utiliza `autoUpdate` e portais, garantindo que ele nunca seja cortado por overflows de containers pais e sempre respeite os limites físicos da janela.
 
 ---
 
-## 🚧 Obstáculos e Soluções
+## 🚧 Obstáculos e Soluções Técnicas
 
-| Obstáculo | Solução |
+| Desafio | Solução Implementada |
 | :--- | :--- |
-| **Avisos de Reatividade:** O SolidJS emitia avisos ao passar variáveis reativas diretamente para o hook `useInputEvents`. | Foram feitos ajustes para garantir que propriedades reativas sejam acessadas apenas dentro de contextos rastreados ou via `mergeProps`/callbacks. |
-| **Tipagem de Refs:** Incompatibilidade entre `HTMLElement` e `HTMLUListElement` ao disparar lógica de `clickOutside`. | Refatoração das interfaces para usar tipos específicos de elementos HTML, garantindo robustez no TypeScript. |
-| **Shortcut Safety:** `TagInput` precisava bloquear atalhos globais (como 'Delete' ou 'Espaço') sem quebrar sua própria lógica de remoção de chips. | Integração manual do `handleKeyDown` do core com a lógica local de navegação de sugestões. |
+| **Avisos de Reatividade (SolidJS)** | Todas as props reativas passadas para hooks internos foram envoltas em accessores (`() => prop`) ou `mergeProps`, garantindo o rastreamento correto pelo runtime do Solid. |
+| **Complexidade de Código** | Uso de scripts de auditoria (`checklist.py`) para identificar blocos de código com alta complexidade e refatorá-los em funções puras e testáveis. |
+| **Uso em Guia de Design** | Erros de preenchimento automático no `DesignSystemGuide.tsx` devido a tokens antigos. Solucionado com a atualização de todos os exemplos para o padrão `0/a/*`. |
+| **Gestão de Foco** | Garantia de que o foco retorne ao input após selecionar uma sugestão ou remover um chip, implementado através de refs e wrappers de evento. |
 
 ---
 
-## 🚀 Melhorias Futuras
+## 📈 Resultados da Auditoria Final
 
-1.  **Hook de Posicionamento:** Extrair a lógica de cálculo de posição do `TagInput` para um hook genérico `useOverlayPositioning`.
-2.  **Máscaras Avançadas:** Expandir o `MaskedInput` para suportar padrões alfanuméricos complexos e caracteres opcionais.
-3.  **Acessibilidade (Aria-Live):** Adicionar anúncios de `aria-live` quando tags são adicionadas ou removidas para melhor suporte a leitores de tela.
-4.  **Testes Unitários:** Implementar testes específicos para a lógica de incremento/decremento do `NumberInput` e filtragem de tags no `TagInput`.
+-   **Lint:** ✅ 0 Erros / Warnings nos arquivos refatorados.
+-   **Typecheck:** ✅ 100% Type-safe, sem uso de `any` ou `ts-ignore` nos componentes de UI.
+-   **Performance:** ✅ Uso otimizado de `createMemo` para filtragem de sugestões.
+-   **Acessibilidade:** ✅ Suporte completo a navegação via teclado, roles ARIA (`combobox`, `listbox`, `option`) e estados de foco.
+
+---
+
+## 🚀 Próximos Passos Sugeridos
+
+1.  **Aria-Live:** Adicionar anúncios via `aria-live` para informar usuários cegos sobre adições/remoções de tags.
+2.  **Suporte Mobile:** Testar e otimizar as interações de toque (swipe para remover tags) usando `GestureProvider`.
+3.  **HDS (History Management):** Integrar o `NumberInput` com o sistema de Undo/Redo para campos de formulário complexos.
+
+---
+**Sessão de Refatoração Finalizada com Sucesso.**

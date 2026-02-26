@@ -1,6 +1,19 @@
 /**
- * Public API for the DatePicker component.
- * Provides the visual calendar selection interface and its associated types.
+ * DatePicker component
+ *
+ * @module DatePicker
+ * @description
+ * The DatePicker component is a visual calendar selection interface for picking dates.
+ * It provides a calendar view for selecting dates and its associated types.
+ *
+ * @example
+ * <DatePicker
+ *   value={new Date()}
+ *   onChange={(value) => console.log(value)}
+ *   minDate={new Date()}
+ *   maxDate={new Date()}
+ *   class="custom-class"
+ * />
  */
 export * from './Root';
 export * from './types';
