@@ -1,7 +1,8 @@
 # Sprint 0: Fundamentos e Guardrails (Infraestrutura)
 
 **Data:** 2026-02-26  
-**Status:** Concluído ✅  
+**Status:** Concluído ✅
+**Data da conclusão:** 2026-02-26 18:52
 **Objetivo:** Estabelecer a base técnica, contratos e ferramentas de segurança arquitetural para suportar a migração das stores e ações sem riscos de regressão.
 
 ---

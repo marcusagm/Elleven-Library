@@ -1,7 +1,6 @@
 import { ConfirmModal } from '../../ui';
 import { Component } from 'solid-js';
-import { invoke } from '@tauri-apps/api/core';
-import { useMetadata, useNotification } from '../../../core/hooks';
+import { useLibrary, useNotification } from '../../../core/hooks';
 import './folder-delete-modal.css';
 
 /**
@@ -25,32 +24,29 @@ interface FolderDeleteModalProperties {
  * @returns The rendered FolderDeleteModal.
  */
 export const FolderDeleteModal: Component<FolderDeleteModalProperties> = componentProperties => {
-    const { loadLocations, loadStats } = useMetadata();
+    const { removeLocation } = useLibrary();
     const notification = useNotification();
 
     /**
      * Handles the folder removal confirmation.
      * Invokes the backend to stop monitoring the location.
      */
-    const handleConfirm = async () => {
+    const handleConfirm = () => {
         if (componentProperties.folderIdentifier === null) {
             return;
         }
 
-        try {
-            await invoke('remove_location', { locationId: componentProperties.folderIdentifier });
-            await loadLocations();
-            await loadStats();
-            notification.success(
-                'Folder Removed',
-                `Stopped monitoring "${componentProperties.folderName}"`
-            );
-        } catch (error) {
-            console.error('Failed to remove folder:', error);
-            notification.error('Failed to Remove Folder');
-        } finally {
+        removeLocation(componentProperties.folderIdentifier).then(result => {
+            if (result.success) {
+                notification.success(
+                    'Folder Removed',
+                    `Stopped monitoring "${componentProperties.folderName}"`
+                );
+            } else {
+                notification.error('Failed to Remove Folder');
+            }
             componentProperties.onClose();
-        }
+        });
     };
 
     return (

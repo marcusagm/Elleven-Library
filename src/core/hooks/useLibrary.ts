@@ -29,6 +29,8 @@ export const useLibrary = () => {
         updateItemRating: libraryActions.updateItemRating,
         updateItemNotes: libraryActions.updateItemNotes,
         updateThumbnail: libraryActions.updateThumbnail,
-        setThumbnailPriority: libraryActions.setThumbnailPriority
+        setThumbnailPriority: libraryActions.setThumbnailPriority,
+        addLocation: libraryActions.addLocation,
+        removeLocation: libraryActions.removeLocation
     };
 };

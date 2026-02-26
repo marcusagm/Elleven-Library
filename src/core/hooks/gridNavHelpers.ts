@@ -80,18 +80,41 @@ export function findBestCandidate(
     return bestCandidate;
 }
 
-/** Extract the multi-select flag from either a DOM Event or ShortcutPayload */
-export function extractMultiFlag(argument?: Event | ShortcutPayload): boolean {
-    if (!argument) return false;
+/**
+ * Extract selection modifiers from a DOM Event or ShortcutPayload.
+ * Distinguishes between multi-select (CMD/CTRL) and range-select (SHIFT).
+ */
+export function extractSelectionModifiers(argument?: Event | ShortcutPayload): {
+    multi: boolean;
+    shift: boolean;
+} {
+    if (!argument) return { multi: false, shift: false };
 
-    if ('shiftKey' in argument) {
-        return (argument as KeyboardEvent).shiftKey;
+    if ('getModifierState' in argument) {
+        const event = argument as MouseEvent | KeyboardEvent;
+        return {
+            multi: event.ctrlKey || event.metaKey,
+            shift: event.shiftKey
+        };
     }
 
     const payload = argument as ShortcutPayload;
     if (payload.meta && Array.isArray(payload.meta.modifiers)) {
-        return (payload.meta.modifiers as string[]).includes('Shift');
+        const modifiers = payload.meta.modifiers as string[];
+        return {
+            multi: modifiers.includes('Control') || modifiers.includes('Meta'),
+            shift: modifiers.includes('Shift')
+        };
     }
 
-    return false;
+    return { multi: false, shift: false };
+}
+
+/**
+ * Extract the multi-select flag (backward compatibility).
+ * @deprecated Use extractSelectionModifiers instead.
+ */
+export function extractMultiFlag(argument?: Event | ShortcutPayload): boolean {
+    const modifiers = extractSelectionModifiers(argument);
+    return modifiers.multi || modifiers.shift;
 }

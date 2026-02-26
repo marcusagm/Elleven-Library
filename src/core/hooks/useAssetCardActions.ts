@@ -8,10 +8,12 @@
 
 import { useSelection } from './useSelection';
 import { useViewport } from './useViewport';
+import { libraryState } from '../store/libraryStore';
+import { type ImageItem } from '../../types';
 
 export interface AssetCardActions {
-    /** Toggle selection for an item, optionally with multi-select */
-    handleSelect: (id: number, multi: boolean) => void;
+    /** Toggle selection for an item, optionally with multi-select or range-select */
+    handleSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) => void;
     /** Open item in detail/preview view */
     handleOpen: (id: number) => void;
     /** Check if an item is currently selected */
@@ -25,8 +27,13 @@ export function useAssetCardActions(): AssetCardActions {
     const viewport = useViewport();
 
     return {
-        handleSelect: (id: number, multi: boolean) => {
-            selection.toggle(id, multi);
+        handleSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) => {
+            if (modifiers.shift) {
+                const allIds = libraryState.items.map((item: ImageItem) => item.id);
+                selection.selectRange(id, allIds);
+            } else {
+                selection.toggle(id, modifiers.multi);
+            }
         },
 
         handleOpen: (id: number) => {

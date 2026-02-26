@@ -1,5 +1,5 @@
 import { createMemo } from 'solid-js';
-import { selectionState, selectionActions } from '../store/selectionStore';
+import { selectionState, selectionActions, isItemSelected } from '../store/selectionStore';
 
 const selectedCountMemo = createMemo(() => selectionState.selectedIds.length);
 
@@ -20,7 +20,11 @@ export const useSelection = () => {
         // Actions
         toggle: selectionActions.toggle,
         select: selectionActions.select,
+        selectRange: selectionActions.selectRange,
         clear: selectionActions.clear,
-        isSelected: selectionActions.isSelected
+        /** Slow version of isSelected (reactive to whole list) */
+        isSelected: selectionActions.isSelected,
+        /** Fast version of isSelected (O(1) reactive) */
+        isItemSelected
     };
 };

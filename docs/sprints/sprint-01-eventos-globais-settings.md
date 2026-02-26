@@ -1,6 +1,8 @@
 # Sprint 1: Eventos Globais e Configurações
 
-**Data:** 2026-02-26 - **Status:** Concluída ✅
+**Data:** 2026-02-26  
+**Status:** Concluída ✅
+**Data da conclusão:** 2026-02-26 19:54  
 **Objetivo:** Remover acoplamentos óbvios da Status Bar e do painel de Configurações, estabelecendo o padrão de `actions` em domínios de baixo risco.
 
 ---

@@ -1,14 +1,12 @@
 import { Button } from '../../ui';
-import { Component, createMemo, createSignal, onMount } from 'solid-js';
+import { Component, createMemo, createSignal } from 'solid-js';
 import { Folder as FolderIcon, FolderOpen as FolderOpenIcon, Plus } from 'lucide-solid';
-import { useMetadata, useFilters, useNotification } from '../../../core/hooks';
+import { useMetadata, useFilters, useNotification, useLibrary, useTree } from '../../../core/hooks';
 import { TreeView, TreeNode } from '../../ui/TreeView';
 import { SidebarPanel } from '../../ui/SidebarPanel';
 import { CountBadge } from '../../ui/CountBadge';
 import { FolderDeleteModal } from './FolderDeleteModal';
 import { FolderContextMenu } from './FolderContextMenu';
-import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
 import './folder-tree-sidebar-panel.css';
 
 /**
@@ -32,11 +30,9 @@ export const FolderTreeSidebarPanel: Component = () => {
     const metadata = useMetadata();
     const filters = useFilters();
     const notification = useNotification();
+    const tree = useTree();
 
     // --- Component State ---
-    const [expandedIdentifiers, setExpandedIdentifiers] = createSignal<Set<string | number>>(
-        new Set()
-    );
     const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
     const [folderToDelete, setFolderToDelete] = createSignal<FolderNodeData | null>(null);
     const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
@@ -45,46 +41,6 @@ export const FolderTreeSidebarPanel: Component = () => {
         coordinateY: 0
     });
     const [contextMenuNode, setContextMenuNode] = createSignal<TreeNode | null>(null);
-
-    // --- Lifecycle: Persistence ---
-    onMount(() => {
-        const savedExpansionState = localStorage.getItem('mundam_folder_expanded');
-        if (savedExpansionState) {
-            try {
-                const parsedIdentifiers = JSON.parse(savedExpansionState);
-                if (Array.isArray(parsedIdentifiers)) {
-                    setExpandedIdentifiers(new Set(parsedIdentifiers));
-                }
-            } catch (error) {
-                console.error('Failed to parse saved folder expansion state:', error);
-            }
-        }
-    });
-
-    /**
-     * Persists the current tree expansion state to local storage.
-     *
-     * @param nextSet - The new set of expanded node identifiers.
-     */
-    const persistExpansionState = (nextSet: Set<string | number>) => {
-        setExpandedIdentifiers(nextSet);
-        localStorage.setItem('mundam_folder_expanded', JSON.stringify(Array.from(nextSet)));
-    };
-
-    /**
-     * Toggles the expansion state of a specific node.
-     *
-     * @param identifier - The identifier of the node to toggle.
-     */
-    const toggleExpansion = (identifier: string | number) => {
-        const nextSet = new Set(expandedIdentifiers());
-        if (nextSet.has(identifier)) {
-            nextSet.delete(identifier);
-        } else {
-            nextSet.add(identifier);
-        }
-        persistExpansionState(nextSet);
-    };
 
     // --- Tree Construction ---
     const folderTreeHierarchy = createMemo(() => {
@@ -140,27 +96,19 @@ export const FolderTreeSidebarPanel: Component = () => {
     /**
      * Opens a directory picker to add a new monitored folder to the library.
      */
-    const handleAddFolder = async () => {
-        try {
-            const selectedPath = await open({
-                directory: true,
-                multiple: false,
-                title: 'Select folder to add to library'
-            });
+    const handleAddFolder = () => {
+        const { addLocation } = useLibrary();
 
-            if (selectedPath) {
-                await invoke('add_location', { path: selectedPath });
-                await metadata.loadLocations();
-                await metadata.loadStats();
+        addLocation().then(result => {
+            if (result.success && result.path) {
                 notification.success(
                     'Folder Linked',
-                    `Monitoring "${selectedPath.split(/[\\/]/).pop()}"`
+                    `Monitoring "${result.path.split(/[\\/]/).pop()}"`
                 );
+            } else if (result.error) {
+                notification.error('Failed to Link Folder');
             }
-        } catch (error) {
-            console.error('Failed to add folder:', error);
-            notification.error('Failed to Link Folder');
-        }
+        });
     };
 
     /**
@@ -217,8 +165,8 @@ export const FolderTreeSidebarPanel: Component = () => {
                         onSelect={handleSelect}
                         selectedIds={activeSelectionIdentifiers()}
                         onContextMenu={handleContextMenu}
-                        expandedIds={expandedIdentifiers()}
-                        onToggle={toggleExpansion}
+                        expandedIds={tree.expandedIds}
+                        onToggle={tree.toggle}
                         draggable={false}
                         dragType="FOLDER"
                         acceptedDragTypes={[]}

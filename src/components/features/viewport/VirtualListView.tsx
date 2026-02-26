@@ -1,6 +1,12 @@
 import { Component, createMemo, Show, createSignal, createEffect } from 'solid-js';
 import { Table, Column } from '../../ui/Table';
-import { useLibrary, useSelection, useViewport, useFilters } from '../../../core/hooks';
+import {
+    useLibrary,
+    useSelection,
+    useViewport,
+    useFilters,
+    useAssetCardActions
+} from '../../../core/hooks';
 import { type SortField } from '../../../core/store/filterStore';
 import { ImageItem } from '../../../types';
 import { formatFileSize, formatDate } from '../../../utils/format';
@@ -20,6 +26,7 @@ export const VirtualListView: Component = () => {
     const selection = useSelection();
     const viewport = useViewport();
     const filters = useFilters();
+    const actions = useAssetCardActions();
 
     // Register viewport scope
     createConditionalScope('viewport', () => lib.items.length > 0);
@@ -224,8 +231,8 @@ export const VirtualListView: Component = () => {
                     onColumnVisibilityChange={(key, visible) =>
                         updateColumnConfig(key, { hidden: !visible })
                     }
-                    onRowClick={(item, multi) => {
-                        selection.toggle(item.id, multi);
+                    onRowClick={(item, multi, shift) => {
+                        actions.handleSelect(item.id, { multi, shift });
                     }}
                     onRowDoubleClick={item => {
                         viewport.openItem(item.id.toString());

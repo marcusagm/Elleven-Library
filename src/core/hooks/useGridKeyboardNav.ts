@@ -17,7 +17,7 @@ import { createSignal, createEffect, on, Accessor } from 'solid-js';
 import { useCommands, createConditionalScope } from '../input';
 import type { ShortcutPayload } from '../input/types';
 import type { ItemPosition } from '../viewport';
-import { findByIndex, findBestCandidate, extractMultiFlag } from './gridNavHelpers';
+import { findByIndex, findBestCandidate, extractSelectionModifiers } from './gridNavHelpers';
 
 export interface GridKeyboardNavOptions {
     /** Array of visible items with positions */
@@ -29,7 +29,7 @@ export interface GridKeyboardNavOptions {
     /** Reference to scroll container */
     scrollContainer: Accessor<HTMLDivElement | undefined>;
     /** Callback when item should be selected */
-    onSelect: (id: number, multi: boolean) => void;
+    onSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) => void;
     /** Callback when item should be opened */
     onOpen: (id: number) => void;
     /** Check if item is selected */
@@ -200,8 +200,8 @@ export function useGridKeyboardNav(options: GridKeyboardNavOptions): GridKeyboar
         toggleSelect: (argument?: Event | ShortcutPayload) => {
             const current = focusedId();
             if (current !== null) {
-                const multi = extractMultiFlag(argument);
-                options.onSelect(current, multi);
+                const modifiers = extractSelectionModifiers(argument);
+                options.onSelect(current, modifiers);
             }
         }
     };

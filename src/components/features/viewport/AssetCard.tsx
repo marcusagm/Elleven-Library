@@ -32,7 +32,7 @@ export interface AssetCardProps {
     className?: string;
 
     // Callbacks (lifted to parent)
-    onSelect: (id: number, multi: boolean) => void;
+    onSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) => void;
     onOpen: (id: number) => void;
     onContextMenu?: (e: MouseEvent, id: number) => void;
 
@@ -151,7 +151,10 @@ export const AssetCard: Component<AssetCardProps> = props => {
             // Events
             onClick={e => {
                 e.stopPropagation();
-                props.onSelect(props.id, e.metaKey || e.ctrlKey);
+                props.onSelect(props.id, {
+                    multi: e.metaKey || e.ctrlKey,
+                    shift: e.shiftKey
+                });
             }}
             onDblClick={() => props.onOpen(props.id)}
             onContextMenu={e => props.onContextMenu?.(e, props.id)}

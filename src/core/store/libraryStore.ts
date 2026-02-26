@@ -1,4 +1,5 @@
 import { createStore, reconcile } from 'solid-js/store';
+import { untrack } from 'solid-js';
 import { getImages } from '../../lib/db';
 import { invoke } from '@tauri-apps/api/core';
 import { tagService } from '../../lib/tags';
@@ -26,6 +27,7 @@ export interface BatchChangePayload {
 interface LibraryState {
     items: ImageItem[];
     isFetching: boolean;
+    isRefreshing: boolean;
     totalItems: number; // useful for knowing if we reached end
 }
 
@@ -37,11 +39,15 @@ let currentOffset = 0;
 const [libraryState, setLibraryState] = createStore<LibraryState>({
     items: [],
     isFetching: false,
+    isRefreshing: false,
     totalItems: 0
 });
 
 export const libraryActions = {
-    refreshImages: async (reset = false) => {
+    /**
+     * Internal helper to fetch a batch of images based on current filters.
+     */
+    fetchLibraryBatch: async (offset: number) => {
         const isUntagged = filterState.filterUntagged;
         const folderId = filterState.selectedFolderId;
         const recursive = filterState.folderRecursiveView;
@@ -53,52 +59,37 @@ export const libraryActions = {
             ? JSON.stringify(filterState.advancedSearch)
             : undefined;
 
-        if (reset) {
-            currentOffset = 0;
-            let firstBatch;
-            if (anyFilter) {
-                firstBatch = await tagService.getImagesFiltered(
-                    BATCH_SIZE,
-                    0,
-                    filterState.selectedTags,
-                    true,
-                    isUntagged,
-                    folderId || undefined,
-                    recursive,
-                    sortBy,
-                    sortOrder,
-                    advancedQuery,
-                    filterState.searchQuery
-                );
-            } else {
-                firstBatch = await getImages(BATCH_SIZE, 0, sortBy, sortOrder);
-            }
-            setLibraryState('items', reconcile(firstBatch, { key: 'id' }));
-            currentOffset = BATCH_SIZE;
-        } else {
-            let fresh;
-            if (anyFilter) {
-                fresh = await tagService.getImagesFiltered(
-                    BATCH_SIZE,
-                    0,
-                    filterState.selectedTags,
-                    true,
-                    isUntagged,
-                    folderId || undefined,
-                    recursive,
-                    sortBy,
-                    sortOrder,
-                    advancedQuery,
-                    filterState.searchQuery
-                );
-            } else {
-                fresh = await getImages(BATCH_SIZE, 0, sortBy, sortOrder);
-            }
-            setLibraryState('items', reconcile(fresh, { key: 'id' }));
-            currentOffset = BATCH_SIZE;
+        if (anyFilter) {
+            return await tagService.getImagesFiltered(
+                BATCH_SIZE,
+                offset,
+                filterState.selectedTags,
+                true,
+                isUntagged,
+                folderId || undefined,
+                recursive,
+                sortBy,
+                sortOrder,
+                advancedQuery,
+                filterState.searchQuery
+            );
         }
+        return await getImages(BATCH_SIZE, offset, sortBy, sortOrder);
+    },
 
-        // Refresh Total Count
+    /**
+     * Internal helper to async refresh the total items count.
+     */
+    refreshTotalCount: () => {
+        const isUntagged = filterState.filterUntagged;
+        const folderId = filterState.selectedFolderId;
+        const recursive = filterState.folderRecursiveView;
+        const anyFilter = filterActions.hasActiveFilters();
+
+        const advancedQuery = filterState.advancedSearch
+            ? JSON.stringify(filterState.advancedSearch)
+            : undefined;
+
         if (anyFilter) {
             tagService
                 .getImagesFilteredCount(
@@ -114,12 +105,26 @@ export const libraryActions = {
                     setLibraryState('totalItems', count);
                 });
         } else {
-            // Total Library Count (no filters)
             tagService
-                .getImagesFilteredCount([], true, undefined, undefined, false, undefined, undefined)
+                .getImagesFilteredCount([], true, false, undefined, false, undefined, undefined)
                 .then(count => {
                     setLibraryState('totalItems', count);
                 });
+        }
+    },
+
+    refreshImages: async (reset = false) => {
+        if (libraryState.isRefreshing && reset) return;
+        if (reset) setLibraryState('isRefreshing', true);
+
+        try {
+            const freshBatch = await libraryActions.fetchLibraryBatch(0);
+            setLibraryState('items', reconcile(freshBatch, { key: 'id' }));
+            currentOffset = BATCH_SIZE;
+
+            libraryActions.refreshTotalCount();
+        } finally {
+            if (reset) setLibraryState('isRefreshing', false);
         }
     },
 
@@ -128,35 +133,7 @@ export const libraryActions = {
         setLibraryState('isFetching', true);
 
         try {
-            const isUntagged = filterState.filterUntagged;
-            const folderId = filterState.selectedFolderId;
-            const recursive = filterState.folderRecursiveView;
-            const anyFilter = filterActions.hasActiveFilters();
-            const sortBy = filterState.sortBy;
-            const sortOrder = filterState.sortOrder;
-
-            let nextBatch;
-            const advancedQuery = filterState.advancedSearch
-                ? JSON.stringify(filterState.advancedSearch)
-                : undefined;
-
-            if (anyFilter) {
-                nextBatch = await tagService.getImagesFiltered(
-                    BATCH_SIZE,
-                    currentOffset,
-                    filterState.selectedTags,
-                    true,
-                    isUntagged,
-                    folderId || undefined,
-                    recursive,
-                    sortBy,
-                    sortOrder,
-                    advancedQuery,
-                    filterState.searchQuery
-                );
-            } else {
-                nextBatch = await getImages(BATCH_SIZE, currentOffset, sortBy, sortOrder);
-            }
+            const nextBatch = await libraryActions.fetchLibraryBatch(currentOffset);
 
             if (nextBatch.length > 0) {
                 setLibraryState('items', prev => [...prev, ...nextBatch]);
@@ -207,13 +184,15 @@ export const libraryActions = {
         if (payload.updated && payload.updated.length > 0) {
             const updatedItems = payload.updated;
             import('./metadataStore').then(({ metadataState }) => {
-                const selectedFolderId = filterState.selectedFolderId;
-                const recursive = filterState.folderRecursiveView;
+                const { selectedFolderId, recursive, locations, currentItems } = untrack(() => ({
+                    selectedFolderId: filterState.selectedFolderId,
+                    recursive: filterState.folderRecursiveView,
+                    locations: metadataState.locations,
+                    currentItems: libraryState.items
+                }));
 
                 // Optimization: Create a Map for O(1) parent lookup instead of Array.find O(N)
-                const locationMap = new Map(
-                    metadataState.locations.map(location => [location.id, location])
-                );
+                const locationMap = new Map(locations.map(location => [location.id, location]));
 
                 const isChildOf = (childId: number, rootId: number): boolean => {
                     let current: number | null = childId;
@@ -238,7 +217,7 @@ export const libraryActions = {
                             ? isChildOf(item.folder_id, selectedFolderId)
                             : item.folder_id === selectedFolderId);
 
-                    const wasKnown = libraryState.items.some(i => i.id === item.id);
+                    const wasKnown = currentItems.some(i => i.id === item.id);
 
                     if (isNowInView) {
                         if (wasKnown) {
@@ -284,6 +263,59 @@ export const libraryActions = {
             }
         } catch (err) {
             console.error('Failed to set thumbnail priority:', err);
+        }
+    },
+
+    /**
+     * Adds a new root location to the library.
+     * Triggers directory picker and starts indexing.
+     */
+    addLocation: async () => {
+        try {
+            const { open } = await import('@tauri-apps/plugin-dialog');
+            const { metadataActions } = await import('./metadataStore');
+            const { tauriService } = await import('../tauri/services');
+            const { addLocation: dbAddLocation } = await import('../../lib/db');
+
+            const selectedPath = await open({
+                directory: true,
+                multiple: false,
+                title: 'Select Folder to Add'
+            });
+
+            if (selectedPath && !Array.isArray(selectedPath)) {
+                await dbAddLocation(selectedPath);
+                await metadataActions.loadLocations();
+                await tauriService.startIndexing({ path: selectedPath });
+                await libraryActions.refreshImages(true);
+                return { success: true, path: selectedPath };
+            }
+            return { success: false };
+        } catch (err) {
+            console.error('Failed to add location:', err);
+            return { success: false, error: err };
+        }
+    },
+
+    /**
+     * Removes a root location from the library.
+     * @param locationId - The unique ID of the location to remove.
+     */
+    removeLocation: async (locationId: number) => {
+        try {
+            const { metadataActions } = await import('./metadataStore');
+            await invoke('remove_location', { locationId });
+
+            // Atomic refresh of related metadata
+            await Promise.all([metadataActions.loadLocations(), metadataActions.loadStats()]);
+
+            // Refresh library view
+            await libraryActions.refreshImages(true);
+
+            return { success: true };
+        } catch (err) {
+            console.error('Failed to remove location:', err);
+            return { success: false, error: err };
         }
     }
 };

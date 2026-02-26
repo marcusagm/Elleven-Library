@@ -74,7 +74,8 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
         allItems: () => props.items,
         containerHeight,
         scrollContainer, // Pass accessor
-        onSelect: (id: number, multi: boolean) => selection.toggle(id, multi),
+        onSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) =>
+            actions.handleSelect(id, modifiers),
         onOpen: id => actions.handleOpen(id),
         isSelected: actions.isSelected,
         getSelectedIds: actions.getSelectedIds,
@@ -82,9 +83,9 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
     });
 
     // Wrap select to sync focus
-    const handleSelectWithFocus = (id: number, multi: boolean) => {
+    const handleSelectWithFocus = (id: number, modifiers: { multi: boolean; shift: boolean }) => {
         keyboardNav.syncFocusWithClick(id);
-        actions.handleSelect(id, multi);
+        actions.handleSelect(id, modifiers);
     };
 
     // DnD helper: get item info by ID (used by drag source for ghost creation)
@@ -212,7 +213,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
                                     width={item.width}
                                     height={item.height}
                                     // State
-                                    isSelected={actions.isSelected(item.id)}
+                                    isSelected={selection.isItemSelected(item.id)}
                                     isFocused={isFocused()}
                                     style={{
                                         position: 'absolute',
