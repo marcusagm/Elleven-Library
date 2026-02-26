@@ -19,21 +19,18 @@ export * from './VideoPlayer';
 
 // Data Display
 export * from './Accordion';
-export { Badge } from './Badge';
-export type { BadgeProps, BadgeVariant, BadgeSize } from './Badge';
-export { CountBadge } from './CountBadge';
-export type { CountBadgeProps, CountBadgeVariant } from './CountBadge';
-export { Separator } from './Separator';
-export type { SeparatorProps, SeparatorOrientation } from './Separator';
+export * from './Badge';
+export * from './CountBadge';
+export * from './Separator';
 export * from './TreeView';
 export { ProgressBar } from './ProgressBar';
 export type { ProgressBarProps, ProgressBarSize } from './ProgressBar';
-export { Loader } from './Loader';
+export * from './Loader';
 export { SectionGroup } from './SectionGroup';
 
 // Feedback
-export { Alert, AlertTitle, AlertDescription } from './Alert';
-export type { AlertProps } from './Alert';
+export * from './Alert';
+
 export { Toaster, Sonner, toast } from './Sonner';
 export type { ToasterProps, Toast, ToastType } from './Sonner';
 export * from './Tooltip';

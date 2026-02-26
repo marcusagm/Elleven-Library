@@ -166,7 +166,7 @@ function App() {
     return (
         <Show
             when={!system.loading()}
-            fallback={<Loader fullscreen text="Initializing Mundam..." />}
+            fallback={<Loader isFullscreen text="Initializing Mundam..." />}
         >
             <Show
                 when={system.rootPath()}
