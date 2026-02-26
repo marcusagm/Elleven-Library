@@ -1,7 +1,7 @@
 import { DropStrategy, DragItem } from '../dnd-core';
 import { tagService } from '../../../lib/tags';
 import { metadataActions, metadataState } from '../../store/metadataStore';
-import { toast } from '../../../components/ui/Sonner';
+import { toast } from '../../../components/ui';
 
 import { selectionState } from '../../store/selectionStore';
 

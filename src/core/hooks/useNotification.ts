@@ -1,4 +1,4 @@
-import { toast } from '../../components/ui/Sonner';
+import { toast } from '../../components/ui';
 
 /**
  * Hook providing utility methods for dispatching application notifications across various levels.

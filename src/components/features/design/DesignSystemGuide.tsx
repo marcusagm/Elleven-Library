@@ -21,7 +21,7 @@ import {
     PromptModal,
     Sonner,
     toast,
-    ToasterProps,
+    ToasterProperties,
     Kbd,
     TagInput,
     Loader,
@@ -56,7 +56,7 @@ export const DesignSystemGuide: Component = () => {
     const [promptOpen, setPromptOpen] = createSignal(false);
     const [sliderVal, setSliderVal] = createSignal(50);
     const [tags, setTags] = createSignal<string[]>(['Design', 'System']);
-    const [toastPos, setToastPos] = createSignal<ToasterProps['position']>('bottom-right');
+    const [toastPos, setToastPos] = createSignal<ToasterProperties['position']>('bottom-right');
 
     onMount(() => {
         appearanceActions.initialize();
@@ -2719,7 +2719,7 @@ export const DesignSystemGuide: Component = () => {
                                             variant="outline"
                                             onClick={() =>
                                                 toast.warning('System update required', {
-                                                    dismissible: false
+                                                    isDismissible: false
                                                 })
                                             }
                                         >

@@ -1,7 +1,5 @@
-import { Button } from '../../ui';
+import { Button, toast, SectionGroup } from '../../ui';
 import { Component, createSignal, onMount } from 'solid-js';
-import { toast } from '../../ui/Sonner';
-import { SectionGroup } from '../../ui/SectionGroup';
 import { Select } from '../../ui/Select';
 import { Input } from '../../ui/Input';
 import { tauriService } from '../../../core/tauri/services';

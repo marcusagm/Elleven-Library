@@ -1,7 +1,7 @@
 import { DropStrategy, DragItem } from '../dnd-core';
 import { tagService, type Tag } from '../../../lib/tags';
 import { metadataActions, metadataState } from '../../store/metadataStore';
-import { toast } from '../../../components/ui/Sonner';
+import { toast } from '../../../components/ui';
 
 /** Handle dropping images onto a tag (batch assignment) */
 async function handleImageDrop(imageIds: number[], targetTagId: number | null): Promise<void> {

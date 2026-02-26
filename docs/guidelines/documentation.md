@@ -30,7 +30,10 @@ Use TSDoc style comments (`/** ... */`) for exported functions, classes, and int
  * @returns {JSX.Element} The rendered component.
  *
  * @example
+ * ```tsx
+ * import { Button } from '@/components/ui';
  * <Button variant="primary" isDisabled={false} onAction={handleAction}>Click Me</Button>
+ * ```
  */
 ```
 
@@ -48,6 +51,9 @@ The `index.ts` file serves as the public entry point for a component or module. 
  * Mention key features, states, and variants supported.
  *
  * @example
+ * ```tsx
+ * import { ComponentName } from '@/components/ui';
+ * 
  * <ComponentName
  *   propertyValue="value"
  *   onActionChange={handleActionChange}
@@ -56,6 +62,7 @@ The `index.ts` file serves as the public entry point for a component or module. 
  * >
  *   Content
  * </ComponentName>
+ * ```
  */
 export * from './types';
 export * from './Root';
@@ -74,7 +81,10 @@ export * from './ComponentName';
  * @throws {ErrorType} Description of potential errors thrown.
  *
  * @example
+ * ```tsx
+ * import { calculateAspectRatio } from '@/components/ui';
  * const ratio = calculateAspectRatio(1920, 1080); // Returns 1.777...
+ * ```
  */
 export function calculateAspectRatio(width: number, height: number): number { ... }
 ```

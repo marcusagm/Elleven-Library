@@ -16,7 +16,7 @@ import {
     currentDragItem,
     setDropTargetId
 } from './core/dnd';
-import { Sonner } from './components/ui/Sonner';
+import { Sonner } from './components/ui';
 import { Loader } from './components/ui/Loader';
 import { SettingsModal } from './components/features/settings';
 // Input System
@@ -188,7 +188,7 @@ function App() {
                 >
                     <Viewport />
                 </AppShell>
-                <Sonner position="bottom-right" richColors />
+                <Sonner position="bottom-right" useRichColors />
                 <SettingsModal
                     isOpen={isSettingsOpen()}
                     onClose={() => setIsSettingsOpen(false)}

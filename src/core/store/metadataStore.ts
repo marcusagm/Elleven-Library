@@ -1,7 +1,7 @@
 import { createStore } from 'solid-js/store';
 import { Tag, tagService } from '../../lib/tags';
 import { getLocations } from '../../lib/db';
-import { toast } from '../../components/ui/Sonner';
+import { toast } from '../../components/ui';
 import { type BatchChangePayload } from './libraryStore';
 import { type SearchGroup } from './filterStore';
 import { computeStatsFromBatchChange } from './statsHelpers';
