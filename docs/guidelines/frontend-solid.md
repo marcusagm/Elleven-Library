@@ -185,7 +185,7 @@ type VideoProps = {
 | Metric              | Limit | Enforcement              |
 | ------------------- | ----- | ------------------------ |
 | Function complexity | 10    | ESLint `complexity` rule |
-| Max lines per file  | 400   | ESLint `max-lines` rule  |
+| Max lines per file  | 300   | ESLint `max-lines` rule  |
 
 If you exceed these limits, consider **splitting** logic into smaller functions or composables.
 

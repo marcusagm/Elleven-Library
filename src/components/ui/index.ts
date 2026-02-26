@@ -36,8 +36,7 @@ export { Alert, AlertTitle, AlertDescription } from './Alert';
 export type { AlertProps } from './Alert';
 export { Toaster, Sonner, toast } from './Sonner';
 export type { ToasterProps, Toast, ToastType } from './Sonner';
-export { Tooltip } from './Tooltip';
-export type { TooltipProps, TooltipPosition } from './Tooltip';
+export * from './Tooltip';
 
 // Overlays
 export * from './ContextMenu';
@@ -51,8 +50,7 @@ export * from './MaskedInput';
 export * from './NumberInput';
 export * from './DateInput';
 export * from './DatePicker';
-export { Popover } from './Popover';
-export type { PopoverProps } from './Popover';
+export * from './Popover';
 export * from './TagInput';
 export { SidebarPanel } from './SidebarPanel';
 export type { SidebarPanelProps } from './SidebarPanel';

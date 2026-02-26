@@ -9,3 +9,4 @@ export { createClickOutside } from './createClickOutside';
 export { createControllableSignal } from './createControllableSignal';
 export { createFocusTrap } from './createFocusTrap';
 export { createId } from './createId';
+export { createFloating } from './createFloating';
