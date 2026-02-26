@@ -7,6 +7,9 @@
  * Supports viewport-aware positioning, focus trapping, and click-outside dismissal.
  *
  * @example
+ * ```tsx
+ * import { Tooltip, TooltipRoot, TooltipTrigger, TooltipContent } from '@/components/ui';
+ *
  * <TooltipRoot placement="bottom-start" offsetValue={12}>
  *   <TooltipTrigger>
  *     <Button>Open Menu</Button>
@@ -18,6 +21,7 @@
  *     </div>
  *   </TooltipContent>
  * </TooltipRoot>
+ * ```
  */
 
 import { Component, JSX } from 'solid-js';

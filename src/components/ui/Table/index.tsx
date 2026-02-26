@@ -7,6 +7,9 @@
  * High-performance virtualized grid system with core input integration.
  *
  * @example
+ * ```tsx
+ * import { Table } from '@/components/ui';
+ *
  * <Table
  *   data={[
  *     {
@@ -52,6 +55,7 @@
  *   emptyIcon="table"
  *   onVisibleItemsChange={(items) => console.log(items)}
  * >
+ * ```
  */
 export { Table } from './Table';
 export type { TableProps, Column, SortOrder } from './types';

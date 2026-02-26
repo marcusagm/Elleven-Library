@@ -7,12 +7,16 @@
  * It provides a combined text field and graphical picker for color selection.
  *
  * @example
+ * ```tsx
+ * import { ColorInput } from '@/components/ui';
+ *
  * <ColorInput
  *   value="#ff0000"
  *   onChange={(value) => console.log(value)}
  *   disabled={false}
  *   class="custom-class"
  * />
+ * ```
  */
 export * from './Root';
 export * from './types';

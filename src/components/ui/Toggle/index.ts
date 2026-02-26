@@ -6,6 +6,9 @@
  * The Toggle component is a specialized component for displaying toggles.
  *
  * @example
+ * ```tsx
+ * import { Toggle } from '@/components/ui';
+ *
  * <Toggle
  *   class="custom-class"
  *   pressed={false}
@@ -17,6 +20,11 @@
  * >
  *   Toggle
  * </Toggle>
+ * ```
+ *
+ * @example
+ * ```tsx
+ * import { ToggleGroup, ToggleGroupItem } from '@/components/ui';
  *
  * <ToggleGroup>
  *   <ToggleGroupItem value="1">
@@ -29,6 +37,7 @@
  *     Toggle
  *   </ToggleGroupItem>
  * </ToggleGroup>
+ * ```
  */
 export * from './Toggle';
 export * from './ToggleGroup';

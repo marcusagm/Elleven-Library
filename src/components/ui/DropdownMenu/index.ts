@@ -7,6 +7,9 @@
  * and keyboard navigation.
  *
  * @example
+ * ```tsx
+ * import { DropdownMenu } from '@/components/ui';
+ *
  * <DropdownMenu
  *   trigger={<Button>Open Menu</Button>}
  *   items={[
@@ -20,6 +23,7 @@
  *   class="custom-class"
  *   contentClass="custom-content-class"
  * />
+ * ```
  */
 
 export * from './types';

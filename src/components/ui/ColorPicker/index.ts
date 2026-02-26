@@ -7,6 +7,9 @@
  * It provides a graphical picker for color selection with support for various color formats.
  *
  * @example
+ * ```tsx
+ * import { ColorPicker } from '@/components/ui';
+ *
  * <ColorPicker
  *   class="custom-class"
  *   allowNoColor={false}
@@ -15,6 +18,7 @@
  *   onChange={(value) => console.log(value)}
  *   presets={["#ff0000", "#00ff00", "#0000ff"]}
  * />
+ * ```
  */
 export * from './Root';
 export * from './types';

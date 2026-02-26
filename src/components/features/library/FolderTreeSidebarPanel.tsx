@@ -200,7 +200,7 @@ export const FolderTreeSidebarPanel: Component = () => {
             <SidebarPanel
                 title="Folders"
                 class="panel-fluid"
-                actions={
+                headerActions={
                     <Button
                         variant="ghost"
                         size="icon-xs"

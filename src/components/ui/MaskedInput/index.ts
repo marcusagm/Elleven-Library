@@ -7,6 +7,9 @@
  * It supports '0' as a placeholder for numeric digits.
  *
  * @example
+ * ```tsx
+ * import { MaskedInput } from '@/components/ui';
+ *
  * <MaskedInput
  *   mask="00/00/0000"
  *   placeholder="DD/MM/YYYY"
@@ -19,6 +22,7 @@
  *   errorMessage="custom-error-message"
  *   size="md"
  * />
+ * ```
  */
 export * from './MaskedInput';
 export * from './types';

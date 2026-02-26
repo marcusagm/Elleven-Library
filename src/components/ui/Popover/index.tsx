@@ -7,6 +7,9 @@
  * Supports viewport-aware positioning, focus trapping, and click-outside dismissal.
  *
  * @example
+ * ```tsx
+ * import { Popover } from '@/components/ui';
+ *
  * <PopoverRoot placement="bottom-start" offsetValue={12}>
  *   <PopoverTrigger>
  *     <Button>Open Menu</Button>
@@ -18,6 +21,22 @@
  *     </div>
  *   </PopoverContent>
  * </PopoverRoot>
+ * ```
+ *
+ * @example
+ * ```tsx
+ * import { Popover } from '@/components/ui';
+ *
+ * <Popover
+ *   placement="bottom-start"
+ *   trigger={<Button>Open Menu</Button>}
+ *   onClose={() => {}}
+ *   contentClass="popover-content"
+ *   class="popover-root"
+ * >
+ *     <div>Popover Content</div>
+ * </Popover>
+ * ```
  */
 
 export * from './types';

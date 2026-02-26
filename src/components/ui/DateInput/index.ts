@@ -7,6 +7,9 @@
  * It provides a masked date entry field and its associated types.
  *
  * @example
+ * ```tsx
+ * import { DateInput } from '@/components/ui';
+ *
  * <DateInput
  *   placeholder="DD/MM/YYYY"
  *   onInput={(value) => console.log(value)}
@@ -20,6 +23,7 @@
  *   errorMessage="custom-error-message"
  *   size="md"
  * />
+ * ```
  */
 export * from './DateInput';
 export * from './types';

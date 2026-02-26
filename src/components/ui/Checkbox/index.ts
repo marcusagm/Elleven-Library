@@ -4,7 +4,7 @@
  *
  * @example
  * ```tsx
- * import { Checkbox } from './Checkbox';
+ * import { Checkbox } from '@/components/ui';
  *
  * <Checkbox label="Enable notifications" />
  * ```

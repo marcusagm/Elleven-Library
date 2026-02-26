@@ -7,12 +7,18 @@
  * It follow the Compound Component pattern for maximum flexibility.
  *
  * @example
+ * ```tsx
+ * import { Alert } from '@/components/ui';
+ *
  * // Basic usage with props
  * <Alert.Root variant="info" title="Note" isDismissible>
  *   This is an informative message.
  * </Alert.Root>
- *
+ * ```
  * @example
+ * ```tsx
+ * import { Alert } from '@/components/ui';
+ *
  * // Advanced usage with compound components
  * <Alert.Root variant="success">
  *   <Alert.Title>Operation Successful</Alert.Title>
@@ -20,6 +26,7 @@
  *     The data has been synchronized with the server correctly.
  *   </Alert.Description>
  * </Alert.Root>
+ * ```
  */
 
 import { AlertRoot as RootComponent } from './Root';

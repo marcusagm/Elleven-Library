@@ -6,6 +6,9 @@
  * The Slider component is a specialized component for displaying sliders.
  *
  * @example
+ * ```tsx
+ * import { Slider } from '@/components/ui';
+ *
  * <Slider
  *   min={0}
  *   max={100}
@@ -19,6 +22,7 @@
  *   errorMessage="custom-error-message"
  *   size="md"
  * />
+ * ```
  */
 export * from './types';
 export * from './SliderContext';

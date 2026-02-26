@@ -20,10 +20,9 @@ export * from './Badge';
 export * from './CountBadge';
 export * from './Separator';
 export * from './TreeView';
-export { ProgressBar } from './ProgressBar';
-export type { ProgressBarProps, ProgressBarSize } from './ProgressBar';
+export * from './ProgressBar';
 export * from './Loader';
-export { SectionGroup } from './SectionGroup';
+export * from './SectionGroup';
 
 // Feedback
 export * from './Alert';
@@ -46,6 +45,5 @@ export * from './DateInput';
 export * from './DatePicker';
 export * from './Popover';
 export * from './TagInput';
-export { SidebarPanel } from './SidebarPanel';
-export type { SidebarPanelProps } from './SidebarPanel';
+export * from './SidebarPanel';
 export * from './Table';

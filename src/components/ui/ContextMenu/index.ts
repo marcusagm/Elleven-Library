@@ -8,6 +8,9 @@
  * Supports submenus and keyboard navigation.
  *
  * @example
+ * ```tsx
+ * import { ContextMenu } from '@/components/ui';
+ *
  * <ContextMenu
  *   coordinateX={0}
  *   coordinateY={0}
@@ -24,6 +27,7 @@
  *   isOpen={true}
  *   onClose={() => {}}
  * />
+ * ```
  */
 
 export { ContextMenu } from './ContextMenu';

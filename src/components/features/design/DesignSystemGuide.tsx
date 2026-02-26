@@ -2973,31 +2973,31 @@ export const DesignSystemGuide: Component = () => {
                                 <ProgressBar
                                     size="lg"
                                     value={sliderVal()}
-                                    max={100}
-                                    showLabel={true}
-                                    label="Loading..."
+                                    maximumValue={100}
+                                    isLabelVisible={true}
+                                    labelTitle="Loading..."
                                 />
                                 <ProgressBar
                                     size="md"
                                     value={sliderVal()}
-                                    max={100}
-                                    showLabel={true}
-                                    label="Loading..."
+                                    maximumValue={100}
+                                    isLabelVisible={true}
+                                    labelTitle="Loading..."
                                 />
                                 <ProgressBar
                                     size="sm"
                                     value={sliderVal()}
-                                    max={100}
-                                    showLabel={true}
-                                    label="Loading..."
+                                    maximumValue={100}
+                                    isLabelVisible={true}
+                                    labelTitle="Loading..."
                                 />
 
                                 <ProgressBar
                                     size="md"
                                     value={sliderVal()}
-                                    max={100}
-                                    label="Loading..."
-                                    indeterminate={true}
+                                    maximumValue={100}
+                                    labelTitle="Loading..."
+                                    isIndeterminate={true}
                                 />
                             </div>
                         </div>

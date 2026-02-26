@@ -7,6 +7,9 @@
  * It provides a calendar view for selecting dates and its associated types.
  *
  * @example
+ * ```tsx
+ * import { DatePicker } from '@/components/ui';
+ *
  * <DatePicker
  *   value={new Date()}
  *   onChange={(value) => console.log(value)}
@@ -14,6 +17,7 @@
  *   maxDate={new Date()}
  *   class="custom-class"
  * />
+ * ```
  */
 export * from './Root';
 export * from './types';

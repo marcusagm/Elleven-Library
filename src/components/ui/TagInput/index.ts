@@ -7,6 +7,9 @@
  * It provides controls for adding/removing tags and filtering suggestions.
  *
  * @example
+ * ```tsx
+ * import { TagInput } from '@/components/ui';
+ *
  * <TagInput
  *   value={['tag1', 'tag2']}
  *   onChange={handleChange}
@@ -17,6 +20,7 @@
  *   max={10}
  *   class="tag-input"
  * />
+ * ```
  */
 export * from './TagInput';
 export * from './TagChip';

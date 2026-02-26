@@ -53,7 +53,7 @@ export const Loader: Component<LoaderProperties> = properties => {
                 <div class="loader-progress-wrapper">
                     <ProgressBar
                         value={localProperties.progress!}
-                        max={localProperties.maximumValue}
+                        maximumValue={localProperties.maximumValue}
                         size="sm"
                     />
                 </div>

@@ -7,7 +7,11 @@
  * and an integrated tooltip for the exact value.
  *
  * @example
+ * ```tsx
+ * import { CountBadge } from '@/components/ui';
+ *
  * <CountBadge count={1234} variant="primary" />
+ * ```
  */
 
 export * from './CountBadge';

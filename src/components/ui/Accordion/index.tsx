@@ -7,6 +7,9 @@
  * Built with Solid.js for high performance and full accessibility compliance.
  *
  * @example
+ * ```tsx
+ * import { Accordion } from '@/components/ui';
+ *
  * <Accordion
  *   type="multiple"
  *   value={['item-1']}
@@ -21,6 +24,7 @@
  *     <AccordionContent>Visible when expanded</AccordionContent>
  *   </AccordionItem>
  * </Accordion>
+ * ```
  */
 
 export { Accordion } from './AccordionRoot';

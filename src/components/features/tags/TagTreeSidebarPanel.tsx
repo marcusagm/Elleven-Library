@@ -249,7 +249,7 @@ export const TagTreeSidebarPanel: Component = () => {
         <SidebarPanel
             title="Tags"
             class="panel-fluid"
-            actions={
+            headerActions={
                 <Button variant="ghost" size="icon-xs" title="Create Tag" onClick={handleCreateTag}>
                     <Plus size={14} />
                 </Button>

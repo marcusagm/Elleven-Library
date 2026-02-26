@@ -7,6 +7,9 @@
  * It provides controls for incrementing/decrementing the value and enforces numeric validation.
  *
  * @example
+ * ```tsx
+ * import { NumberInput } from '@/components/ui';
+ *
  * <NumberInput
  *   min={0}
  *   max={100}
@@ -16,6 +19,7 @@
  *   disabled={false}
  *   class="number-input"
  * />
+ * ```
  */
 export * from './NumberInput';
 export * from './types';

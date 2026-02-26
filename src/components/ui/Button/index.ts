@@ -7,6 +7,9 @@
  * It supports various states including disabled, loading, and different sizes.
  *
  * @example
+ * ```tsx
+ * import { Button } from '@/components/ui';
+ *
  * <Button
  *   size="lg"
  *   variant="primary"
@@ -17,6 +20,7 @@
  * >
  *   Click Me
  * </Button>
+ * ```
  */
 export * from './Button';
 export * from './ButtonGroup';

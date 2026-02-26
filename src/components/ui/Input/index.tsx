@@ -7,6 +7,9 @@
  * It provides a base component for all input types and handles keyboard events.
  *
  * @example
+ * ```tsx
+ * import { Input } from '@/components/ui';
+ *
  * <Input
  *   value="value"
  *   onInput={() => {}}
@@ -18,6 +21,7 @@
  *   errorMessage="custom-error-message"
  *   size="md"
  * />
+ * ```
  */
 
 export * from './Input';

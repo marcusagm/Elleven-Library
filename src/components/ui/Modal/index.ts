@@ -6,6 +6,9 @@
  * The Modal component is a specialized component for displaying modal dialogs.
  *
  * @example
+ * ```tsx
+ * import { Modal } from '@/components/ui';
+ *
  * // Standard Modal usage
  * <Modal
  *   isOpen={componentProperties.isOpen}
@@ -16,6 +19,11 @@
  *   footer={}>
  *   <p>This is the content of the modal.</p>
  * </Modal>
+ * ```
+ *
+ * @example
+ * ```tsx
+ * import { ConfirmModal } from '@/components/ui';
  *
  * // ConfirmModal usage
  * <ConfirmModal
@@ -29,6 +37,11 @@
  * >
  *   <p>This is the content of the modal.</p>
  * </ConfirmModal>
+ * ```
+ *
+ * @example
+ * ```tsx
+ * import { PromptModal } from '@/components/ui';
  *
  * // PromptModal usage
  * <PromptModal
@@ -43,6 +56,7 @@
  * >
  *   <p>This is the content of the modal.</p>
  * </PromptModal>
+ * ```
  */
 export * from './types';
 export * from './ModalContext';

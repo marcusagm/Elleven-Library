@@ -7,6 +7,9 @@
  * drag-and-drop, inline editing, and keyboard navigation.
  *
  * @example
+ * ```tsx
+ * import { TreeView } from '@/components/ui';
+ *
  * <TreeView
  *   items={[
  *     {
@@ -34,6 +37,7 @@
  *   dragType="tree-node"
  *   acceptedDragTypes={['tree-node']}
  * />
+ * ```
  */
 
 export { TreeView } from './TreeView';

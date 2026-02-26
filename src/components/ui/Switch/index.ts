@@ -6,6 +6,9 @@
  * The Switch component is a specialized component for displaying switches.
  *
  * @example
+ * ```tsx
+ * import { Switch } from '@/components/ui';
+ *
  * <Switch
  *   checked={false}
  *   onCheckedChange={(checked) => console.log(checked)}
@@ -18,6 +21,7 @@
  *   id="custom-id"
  *   disabled={false}
  * />
+ * ```
  */
 export * from './Switch';
 export * from './types';
