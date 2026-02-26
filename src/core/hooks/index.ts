@@ -8,3 +8,5 @@ export * from './useNotification';
 export * from './useAssetCardActions';
 export * from './useVirtualViewport';
 export * from './useGridKeyboardNav';
+export * from './useSettings';
+export * from './useMetadataNotifications';

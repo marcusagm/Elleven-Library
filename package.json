@@ -38,7 +38,9 @@
     "@thisbeyond/solid-dnd": "^0.7.5",
     "hls.js": "^1.6.15",
     "lucide-solid": "^0.563.0",
-    "solid-js": "^1.9.3"
+    "solid-js": "^1.9.3",
+    "zod": "^4.3.6",
+    "zod-validation-error": "^5.0.0"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
@@ -48,6 +50,8 @@
     "@typescript-eslint/parser": "^8.56.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-solid": "^0.14.5",
     "husky": "^9.1.7",

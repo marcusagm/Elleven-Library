@@ -130,19 +130,21 @@ export const SmartFoldersSidebarPanel: Component = () => {
                     initialQuery={
                         folderToEdit() ? JSON.parse(folderToEdit()!.query_json) : undefined
                     }
-                    onSave={(name, query, identifier) => {
-                        void (async () => {
-                            try {
-                                await metadata.saveSmartFolder(name, query, identifier);
+                    onSave={(name, query, identifier) =>
+                        metadata.saveSmartFolder(name, query, identifier).then(result => {
+                            if (result.success) {
                                 notification.success(
                                     identifier ? 'Smart Folder Updated' : 'Smart Folder Created',
                                     `Saved "${name}"`
                                 );
-                            } catch {
-                                notification.error('Failed to Save Smart Folder');
+                            } else {
+                                notification.error(
+                                    result.error?.message || 'Failed to Save Smart Folder'
+                                );
                             }
-                        })();
-                    }}
+                            return result;
+                        })
+                    }
                 />
             </Show>
         </SidebarPanel>

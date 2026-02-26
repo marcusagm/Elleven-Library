@@ -4,6 +4,7 @@ import { Search, Save } from 'lucide-solid';
 import { useFilters, useMetadata } from '../../../core/hooks';
 import { SearchGroup } from '../../../core/store/filterStore';
 import { createId } from '../../../lib/primitives/createId';
+import { ActionResult } from '../../../core/types/actions';
 import { useAdvancedSearch } from './useAdvancedSearch';
 import { CriteriaBuilder } from './CriteriaBuilder';
 import { QueryEditor } from './QueryEditor';
@@ -26,7 +27,11 @@ interface AdvancedSearchModalProperties {
     /** Initial search query configuration. */
     initialQuery?: SearchGroup;
     /** Callback to save a smart folder. */
-    onSave?: (name: string, query: SearchGroup, identifier?: number) => void;
+    onSave?: (
+        name: string,
+        query: SearchGroup,
+        identifier?: number
+    ) => Promise<ActionResult<void>> | ActionResult<void>;
 }
 
 /**
@@ -72,7 +77,7 @@ export const AdvancedSearchModal: Component<
     /**
      * Saves the current search criteria as a smart folder.
      */
-    const handleSaveSmartFolder = () => {
+    const handleSaveSmartFolder = async () => {
         if (!smartFolderName().trim()) {
             return;
         }
@@ -82,7 +87,7 @@ export const AdvancedSearchModal: Component<
             logicalOperator: search.matchMode(),
             items: search.criteria()
         };
-        componentProperties.onSave?.(
+        await componentProperties.onSave?.(
             smartFolderName().trim(),
             searchGroup,
             componentProperties.initialIdentifier

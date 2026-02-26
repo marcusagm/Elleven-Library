@@ -1,8 +1,8 @@
-import { Button, toast, SectionGroup } from '../../ui';
+import { Button, SectionGroup } from '../../ui';
 import { Component, createSignal, onMount } from 'solid-js';
 import { Select } from '../../ui/Select';
 import { Input } from '../../ui/Input';
-import { tauriService } from '../../../core/tauri/services';
+import { useSystem, useSettings, useNotification } from '../../../core/hooks';
 import { filterState, filterActions } from '../../../core/store/filterStore';
 import { transcodeState, transcodeActions } from '../../../core/store/transcodeStore';
 import { type TranscodeQuality } from '../../../lib/stream-utils';
@@ -18,78 +18,60 @@ function formatBytes(bytes: number): string {
 }
 
 export const GeneralPanel: Component = () => {
+    const system = useSystem();
+    const settings = useSettings();
+    const notification = useNotification();
+
     const [optimizing, setOptimizing] = createSignal(false);
-    const [threads, setThreads] = createSignal<string>('2');
-    const [cacheRetentionDays, setCacheRetentionDays] = createSignal<string>('30');
     const [cleaningCache, setCleaningCache] = createSignal(false);
     const [clearingCache, setClearingCache] = createSignal(false);
-    const [cacheStats, setCacheStats] = createSignal<{ size_bytes: number; file_count: number }>({
-        size_bytes: 0,
-        file_count: 0
-    });
 
     onMount(async () => {
-        // Load settings
-        const threadVal = await tauriService.getSetting('thumbnail_threads');
-        if (threadVal !== null && threadVal !== undefined) setThreads(String(threadVal));
-
-        const retentionVal = await tauriService.getSetting('cache_retention_days');
-        if (retentionVal !== null && retentionVal !== undefined)
-            setCacheRetentionDays(String(retentionVal));
-
-        // Load cache stats
-        const stats = await tauriService.getCacheStats();
-        setCacheStats({ size_bytes: stats.size_bytes, file_count: stats.file_count });
+        await settings.initialize();
     });
 
     const handleOptimize = async () => {
         setOptimizing(true);
-        toast.info('Starting database optimization...');
+        notification.info('Starting database optimization...');
         try {
-            await tauriService.runDbMaintenance();
-            toast.success('Database optimization complete.');
-        } catch (e) {
-            toast.error('Failed to optimize database.');
-            console.error(e);
+            await system.runDbMaintenance();
+            notification.success('Database optimization complete.');
+        } catch (error) {
+            notification.error('Failed to optimize database.');
+            console.error(error);
         } finally {
             setOptimizing(false);
         }
     };
 
-    const handleThreadChange = async (val: string) => {
-        setThreads(val);
-        try {
-            await tauriService.setSetting('thumbnail_threads', val);
-            toast.success('Settings saved. Please restart the app for changes to take effect.');
-        } catch {
-            toast.error('Failed to save settings.');
+    const handleThreadChange = async (value: string) => {
+        const result = await settings.updateSettings({ thumbnailThreads: Number(value) });
+        if (result.success) {
+            notification.success(
+                'Settings saved.',
+                'Please restart the app for changes to take effect.'
+            );
+        } else {
+            notification.error('Failed to save settings.', result.error.message);
         }
     };
 
-    const handleRetentionChange = async (val: string) => {
-        setCacheRetentionDays(val);
-        const days = parseInt(val);
-        if (!isNaN(days) && days > 0) {
-            try {
-                await tauriService.setSetting('cache_retention_days', String(days));
-            } catch {
-                toast.error('Failed to save settings.');
-            }
+    const handleRetentionChange = async (value: string) => {
+        const result = await settings.updateSettings({ cacheRetentionDays: Number(value) });
+        if (!result.success) {
+            notification.error('Failed to save settings.', result.error.message);
         }
     };
 
     const handleCleanupCache = async () => {
         setCleaningCache(true);
         try {
-            const days = parseInt(cacheRetentionDays()) || 30;
-            const deleted = await tauriService.cleanupCache(days);
-            toast.success(`Cleaned up ${deleted} old cache files.`);
-            // Refresh stats
-            const stats = await tauriService.getCacheStats();
-            setCacheStats({ size_bytes: stats.size_bytes, file_count: stats.file_count });
-        } catch (e) {
-            toast.error('Failed to cleanup cache.');
-            console.error(e);
+            const deleted = await system.cleanupCache(settings.cacheRetentionDays());
+            notification.success(`Cleaned up ${deleted} old cache files.`);
+            await settings.refreshCacheStats();
+        } catch (error) {
+            notification.error('Failed to cleanup cache.');
+            console.error(error);
         } finally {
             setCleaningCache(false);
         }
@@ -98,12 +80,12 @@ export const GeneralPanel: Component = () => {
     const handleClearCache = async () => {
         setClearingCache(true);
         try {
-            const deleted = await tauriService.clearCache();
-            toast.success(`Cleared ${deleted} cache files.`);
-            setCacheStats({ size_bytes: 0, file_count: 0 });
-        } catch (e) {
-            toast.error('Failed to clear cache.');
-            console.error(e);
+            const deleted = await system.clearCache();
+            notification.success(`Cleared ${deleted} cache files.`);
+            await settings.refreshCacheStats();
+        } catch (error) {
+            notification.error('Failed to clear cache.');
+            console.error(error);
         } finally {
             setClearingCache(false);
         }
@@ -131,9 +113,9 @@ export const GeneralPanel: Component = () => {
         { value: 'high', label: 'High (Best quality, larger files)' }
     ];
 
-    const handleQualityChange = (val: string) => {
-        transcodeActions.setQuality(val as TranscodeQuality);
-        toast.success('Default quality updated.');
+    const handleQualityChange = (value: string) => {
+        transcodeActions.setQuality(value as TranscodeQuality);
+        notification.success('Default quality updated.');
     };
 
     return (
@@ -149,7 +131,7 @@ export const GeneralPanel: Component = () => {
                     <div style={{ width: '200px' }}>
                         <Select
                             options={threadOptions}
-                            value={threads()}
+                            value={String(settings.thumbnailThreads())}
                             onValueChange={handleThreadChange}
                             placeholder="Select threads"
                         />
@@ -165,11 +147,13 @@ export const GeneralPanel: Component = () => {
                 <div class="cache-stats">
                     <div class="cache-stat-item">
                         <span class="cache-stat-label">Files:</span>
-                        <span class="cache-stat-value">{cacheStats().file_count}</span>
+                        <span class="cache-stat-value">{settings.cacheStats().file_count}</span>
                     </div>
                     <div class="cache-stat-item">
                         <span class="cache-stat-label">Size:</span>
-                        <span class="cache-stat-value">{formatBytes(cacheStats().size_bytes)}</span>
+                        <span class="cache-stat-value">
+                            {formatBytes(settings.cacheStats().size_bytes)}
+                        </span>
                     </div>
                 </div>
                 <div class="general-setting-row">
@@ -177,7 +161,7 @@ export const GeneralPanel: Component = () => {
                     <div style={{ width: '140px' }}>
                         <Select
                             options={retentionOptions}
-                            value={cacheRetentionDays()}
+                            value={String(settings.cacheRetentionDays())}
                             onValueChange={handleRetentionChange}
                             placeholder="Select days"
                         />
@@ -220,9 +204,9 @@ export const GeneralPanel: Component = () => {
                             type="number"
                             value={filterState.historyLimit}
                             onInput={e => {
-                                const val = parseInt(e.currentTarget.value);
-                                if (!isNaN(val) && val > 0) {
-                                    filterActions.setHistoryLimit(val);
+                                const value = parseInt(e.currentTarget.value);
+                                if (!isNaN(value) && value > 0) {
+                                    filterActions.setHistoryLimit(value);
                                 }
                             }}
                         />

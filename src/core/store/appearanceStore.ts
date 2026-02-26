@@ -1,6 +1,8 @@
 import { createSignal } from 'solid-js';
 import { tauriService } from '../tauri/services';
 import { emit, listen } from '@tauri-apps/api/event';
+import { ActionResult, ErrorCode } from '../types/actions';
+import { AppearancePayloadSchema, type AppearancePayload } from './settings/schemas';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 export type ThemeColor =
@@ -73,7 +75,18 @@ export const appearanceActions = {
         });
     },
 
-    update: async (updates: Partial<AppearanceState>) => {
+    update: async (updates: AppearancePayload): Promise<ActionResult> => {
+        const validation = AppearancePayloadSchema.safeParse(updates);
+        if (!validation.success) {
+            return {
+                success: false,
+                error: {
+                    code: ErrorCode.VALIDATION_ERROR,
+                    message: 'Invalid appearance settings'
+                }
+            };
+        }
+
         const next = { ...appearance(), ...updates };
         setAppearance(next);
         appearanceActions.apply();
@@ -88,10 +101,21 @@ export const appearanceActions = {
         if (updates.fontSize)
             promises.push(tauriService.setSetting('appearance_font_size', updates.fontSize));
 
-        await Promise.all(promises);
-
-        // Notify other windows
-        await emit(SYNC_EVENT, next);
+        try {
+            await Promise.all(promises);
+            // Notify other windows
+            await emit(SYNC_EVENT, next);
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Failed to save appearance settings:', error);
+            return {
+                success: false,
+                error: {
+                    code: ErrorCode.IO_ERROR,
+                    message: 'Failed to save appearance settings'
+                }
+            };
+        }
     },
 
     apply: () => {

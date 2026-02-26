@@ -1,4 +1,12 @@
-import { loading, progress, rootPath, systemActions } from '../store/systemStore';
+import {
+    loading,
+    progress,
+    thumbnailProgress,
+    rootPath,
+    isSettingsOpen,
+    isDesignSystemOpen,
+    systemActions
+} from '../store/systemStore';
 
 /**
  * Hook providing access to the overall system state like loading status and root path.
@@ -11,8 +19,14 @@ export const useSystem = () => {
         loading,
         /** Global progress tracking mapping */
         progress,
+        /** Thumbnail generation progress */
+        thumbnailProgress,
         /** Scanned library root path directory */
         rootPath,
+        /** Modal state for settings */
+        isSettingsOpen,
+        /** Modal state for design system */
+        isDesignSystemOpen,
 
         /** Core actions startup call */
         initialize: systemActions.initialize,
@@ -21,6 +35,17 @@ export const useSystem = () => {
         /** Send progress events */
         updateProgress: systemActions.updateProgress,
         /** Discards cached progress notifications */
-        clearProgress: systemActions.clearProgress
+        clearProgress: systemActions.clearProgress,
+
+        /** Toggle settings modal */
+        openSettings: systemActions.openSettings,
+        /** Toggle design system modal */
+        openDesignSystem: systemActions.openDesignSystem,
+        /** Database maintenance task */
+        runDbMaintenance: systemActions.runDbMaintenance,
+        /** Cache cleanup */
+        cleanupCache: systemActions.cleanupCache,
+        /** Total cache clearing */
+        clearCache: systemActions.clearCache
     };
 };

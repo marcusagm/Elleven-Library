@@ -1,6 +1,11 @@
-import { onMount, onCleanup, Show, createEffect, createSignal, createMemo } from 'solid-js';
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { useSystem, useNotification, useSelection, useLibrary } from './core/hooks';
+import { onMount, onCleanup, Show, createEffect, createMemo } from 'solid-js';
+import {
+    useSystem,
+    useNotification,
+    useSelection,
+    useLibrary,
+    useMetadataNotifications
+} from './core/hooks';
 import { AppShell } from './layouts/AppShell';
 import { LibrarySidebar } from './components/layout/LibrarySidebar';
 import { FileInspector } from './components/layout/FileInspector';
@@ -25,12 +30,20 @@ import logoColor from './assets/logo-color.svg';
 import logoWhite from './assets/logo-white.svg';
 import { appearance } from './core/store/appearanceStore';
 
+/**
+ * Main application component.
+ * Manages global initialization, shortcuts, and the top-level layout.
+ *
+ * @returns {JSX.Element} The application layout.
+ */
 function App() {
     const system = useSystem();
     const notification = useNotification();
     const selection = useSelection();
     const lib = useLibrary();
-    const [isSettingsOpen, setIsSettingsOpen] = createSignal(false);
+
+    // Start background sync notifications
+    useMetadataNotifications();
 
     const effectiveLogo = createMemo(() => {
         let mode = appearance().mode;
@@ -45,7 +58,7 @@ function App() {
         {
             keys: 'Meta+Comma',
             name: 'Settings',
-            action: () => setIsSettingsOpen(true)
+            action: () => system.openSettings(true)
         },
         {
             keys: 'Meta+KeyA',
@@ -104,40 +117,6 @@ function App() {
 
         // Notify Splash Screen
         window.dispatchEvent(new CustomEvent('app-ready'));
-
-        // Listen for settings open requests
-        const handleOpenSettings = () => setIsSettingsOpen(true);
-        window.addEventListener('app:open-settings', handleOpenSettings);
-
-        const handleOpenDesignSystem = async () => {
-            try {
-                const label = 'design-system';
-                const existing = await WebviewWindow.getByLabel(label);
-                if (existing) {
-                    await existing.setFocus();
-                    return;
-                }
-
-                const webview = new WebviewWindow(label, {
-                    url: 'index.html#design-system',
-                    title: 'Mundam Design System',
-                    width: 1200,
-                    height: 900
-                });
-
-                webview.once('tauri://error', function (e) {
-                    console.error('webview error', e);
-                });
-            } catch (e) {
-                console.error('Failed to open design system window', e);
-            }
-        };
-        window.addEventListener('app:open-design-system', handleOpenDesignSystem);
-
-        onCleanup(() => {
-            window.removeEventListener('app:open-settings', handleOpenSettings);
-            window.removeEventListener('app:open-design-system', handleOpenDesignSystem);
-        });
     });
 
     const handleSelectFolder = async () => {
@@ -190,8 +169,8 @@ function App() {
                 </AppShell>
                 <Sonner position="bottom-right" useRichColors />
                 <SettingsModal
-                    isOpen={isSettingsOpen()}
-                    onClose={() => setIsSettingsOpen(false)}
+                    isOpen={system.isSettingsOpen()}
+                    onClose={() => system.openSettings(false)}
                     initialTab="general"
                 />
             </Show>
@@ -199,6 +178,11 @@ function App() {
     );
 }
 
+/**
+ * Root application wrapper with context providers.
+ *
+ * @returns {JSX.Element} The application with providers.
+ */
 function AppWithProvider() {
     return (
         <InputProvider>

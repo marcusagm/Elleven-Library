@@ -7,7 +7,7 @@ export const StatusCounts: Component = () => {
     const lib = useLibrary();
     const selection = useSelection(); // Using existing hook
 
-    const totalLoaded = () => lib.items.length;
+    const totalLoaded = () => lib.loadedCount();
     const totalFiltered = () => lib.totalItems;
 
     return (
@@ -21,9 +21,9 @@ export const StatusCounts: Component = () => {
                 {totalFiltered()} Total
             </span>
 
-            <Show when={selection.selectedIds.length > 0}>
+            <Show when={selection.selectedCount() > 0}>
                 <span class="statusbar-divider" />
-                <span class="statusbar-selected">{selection.selectedIds.length} Selected</span>
+                <span class="statusbar-selected">{selection.selectedCount()} Selected</span>
                 <Button
                     variant="ghost"
                     size="icon-xs"

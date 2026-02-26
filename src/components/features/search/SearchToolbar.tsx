@@ -1,7 +1,7 @@
 import { Button } from '../../ui';
 import { Component, createSignal, Show, For, createMemo } from 'solid-js';
 import { Search, SlidersHorizontal, Funnel, X } from 'lucide-solid';
-import { useFilters, useMetadata } from '../../../core/hooks';
+import { useFilters, useMetadata, useNotification } from '../../../core/hooks';
 import { SearchGroup } from '../../../core/store/filterStore';
 import { Input } from '../../ui/Input';
 import { Popover } from '../../ui/Popover';
@@ -14,6 +14,7 @@ import './search-toolbar.css';
 export const SearchToolbar: Component = () => {
     const filters = useFilters();
     const metadata = useMetadata();
+    const notification = useNotification();
     const [isModalOpen, setIsModalOpen] = createSignal(false);
     const [isFocused, setIsFocused] = createSignal(false);
     let inputRef: HTMLInputElement | undefined;
@@ -141,7 +142,7 @@ export const SearchToolbar: Component = () => {
                 <div class="search-actions">
                     <Show when={activeFiltersList().length > 0}>
                         <Popover
-                            align="end"
+                            placement="bottom-end"
                             trigger={
                                 <Button
                                     variant="ghost"
@@ -206,7 +207,19 @@ export const SearchToolbar: Component = () => {
                 initialName={currentSmartFolder()?.name}
                 initialQuery={filters.advancedSearch || undefined}
                 onSave={(name: string, query: SearchGroup, id?: number) =>
-                    metadata.saveSmartFolder(name, query, id)
+                    metadata.saveSmartFolder(name, query, id).then(result => {
+                        if (result.success) {
+                            notification.success(
+                                id ? 'Smart Folder Updated' : 'Smart Folder Created',
+                                `Saved "${name}"`
+                            );
+                        } else {
+                            notification.error(
+                                result.error?.message || 'Failed to Save Smart Folder'
+                            );
+                        }
+                        return result;
+                    })
                 }
             />
         </div>

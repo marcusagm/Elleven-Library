@@ -1,10 +1,10 @@
 import { createStore } from 'solid-js/store';
 import { Tag, tagService } from '../../lib/tags';
 import { getLocations } from '../../lib/db';
-import { toast } from '../../components/ui';
 import { type BatchChangePayload } from './libraryStore';
 import { type SearchGroup } from './filterStore';
 import { computeStatsFromBatchChange } from './statsHelpers';
+import { ActionResult, ErrorCode } from '../types/actions';
 
 interface FolderNode {
     id: number;
@@ -49,29 +49,6 @@ const [metadataState, setMetadataState] = createStore<MetadataState>({
     tagUpdateVersion: 0
 });
 
-/** Show toast notifications for batch change events */
-function showBatchChangeToasts(payload: BatchChangePayload): void {
-    const addedCount = payload.added?.length || 0;
-    const removedCount = payload.removed?.length || 0;
-    const updatedCount = payload.updated?.length || 0;
-
-    if (addedCount > 0) {
-        toast.success('Library Sync', {
-            description: addedCount === 1 ? '1 image added' : `${addedCount} images added`
-        });
-    }
-    if (removedCount > 0) {
-        toast.info('Library Sync', {
-            description: removedCount === 1 ? '1 image removed' : `${removedCount} images removed`
-        });
-    }
-    if (updatedCount > 0) {
-        toast.info('Library Sync', {
-            description: updatedCount === 1 ? '1 image updated' : `${updatedCount} images updated`
-        });
-    }
-}
-
 /** Check if any added items belong to unknown folders */
 function hasUnknownFolders(added: BatchChangePayload['added'], knownIds: Set<number>): boolean {
     if (!added) return false;
@@ -79,18 +56,21 @@ function hasUnknownFolders(added: BatchChangePayload['added'], knownIds: Set<num
 }
 
 export const metadataActions = {
-    // ... (notifyTagUpdate same)
     loadSmartFolders: async () => {
         try {
             const { invoke } = await import('@tauri-apps/api/core');
             const folders = (await invoke('get_smart_folders')) as SmartFolder[];
             setMetadataState('smartFolders', folders);
-        } catch (err) {
-            console.error('Failed to load smart folders:', err);
+        } catch (error) {
+            console.error('Failed to load smart folders:', error);
         }
     },
 
-    saveSmartFolder: async (name: string, query: SearchGroup | null, id?: number) => {
+    saveSmartFolder: async (
+        name: string,
+        query: SearchGroup | null,
+        id?: number
+    ): Promise<ActionResult> => {
         try {
             const { invoke } = await import('@tauri-apps/api/core');
             if (id) {
@@ -99,20 +79,34 @@ export const metadataActions = {
                 await invoke('save_smart_folder', { name, query: JSON.stringify(query) });
             }
             await metadataActions.loadSmartFolders();
-        } catch (err) {
-            console.error('Failed to save smart folder:', err);
-            throw err;
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Failed to save smart folder:', error);
+            return {
+                success: false,
+                error: {
+                    code: ErrorCode.IO_ERROR,
+                    message: 'Failed to save smart folder'
+                }
+            };
         }
     },
 
-    deleteSmartFolder: async (id: number) => {
+    deleteSmartFolder: async (id: number): Promise<ActionResult> => {
         try {
             const { invoke } = await import('@tauri-apps/api/core');
             await invoke('delete_smart_folder', { id });
             await metadataActions.loadSmartFolders();
-        } catch (err) {
-            console.error('Failed to delete smart folder:', err);
-            throw err;
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Failed to delete smart folder:', error);
+            return {
+                success: false,
+                error: {
+                    code: ErrorCode.IO_ERROR,
+                    message: 'Failed to delete smart folder'
+                }
+            };
         }
     },
 
@@ -134,8 +128,8 @@ export const metadataActions = {
         try {
             const tags = await tagService.getAllTags();
             setMetadataState('tags', tags);
-        } catch (err) {
-            console.error('Failed to load tags:', err);
+        } catch (error) {
+            console.error('Failed to load tags:', error);
         }
     },
 
@@ -143,8 +137,8 @@ export const metadataActions = {
         try {
             const locations = await getLocations();
             setMetadataState('locations', locations);
-        } catch (err) {
-            console.error('Failed to load locations:', err);
+        } catch (error) {
+            console.error('Failed to load locations:', error);
         }
     },
 
@@ -171,8 +165,8 @@ export const metadataActions = {
                 folder_counts: folderMap,
                 folder_counts_recursive: folderRecursiveMap
             });
-        } catch (err) {
-            console.error('Failed to load library stats:', err);
+        } catch (error) {
+            console.error('Failed to load library stats:', error);
         }
     },
 
@@ -188,8 +182,6 @@ export const metadataActions = {
     handleBatchChange: (payload: BatchChangePayload) => {
         const knownIds = new Set(metadataState.locations.map(location => location.id));
         let needsRefresh = payload.needs_refresh ?? false;
-
-        showBatchChangeToasts(payload);
 
         if (hasUnknownFolders(payload.added, knownIds)) {
             needsRefresh = true;

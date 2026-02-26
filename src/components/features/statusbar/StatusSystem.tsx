@@ -6,11 +6,9 @@ import { CircleCheck, PaintRoller, Settings } from 'lucide-solid';
 
 export const StatusSystem: Component = () => {
     const system = useSystem();
-    const [thumbnailQueue] = createSignal(0);
+    // Thumbnail queue represents real backend state from systemStore
+    const thumbnailQueue = () => system.thumbnailProgress();
     const [isPopoverOpen, setIsPopoverOpen] = createSignal(false);
-
-    // TODO: Wire up to real backend event "thumbnail:queue-status"
-    // Mocking or listening to existing events
 
     return (
         <div class="statusbar-section statusbar-system">
@@ -29,7 +27,7 @@ export const StatusSystem: Component = () => {
                         </Button>
                     }
                 >
-                    <Match when={system.progress() || thumbnailQueue() > 0}>
+                    <Match when={system.progress() || thumbnailQueue()}>
                         <Button
                             variant="ghost"
                             size="icon-sm"
@@ -47,7 +45,7 @@ export const StatusSystem: Component = () => {
                 <div class="system-popover ui-popover-content">
                     <div class="popover-header">System Activity</div>
                     <div class="popover-content">
-                        <Show when={!system.progress() && thumbnailQueue() === 0}>
+                        <Show when={!system.progress() && !thumbnailQueue()}>
                             <div class="empty-state">No background tasks running.</div>
                         </Show>
 
@@ -63,19 +61,28 @@ export const StatusSystem: Component = () => {
                             </div>
                         </Show>
 
-                        {/* Add Thumbnail Logic Here Later */}
+                        <Show when={thumbnailQueue()}>
+                            <div class="task-row">
+                                <Loader size="sm" />
+                                <div>
+                                    <div class="task-name">Generating Thumbnails</div>
+                                    <div class="task-status">
+                                        {thumbnailQueue()?.processed} / {thumbnailQueue()?.total}
+                                    </div>
+                                </div>
+                            </div>
+                        </Show>
                     </div>
                 </div>
             </Show>
 
             <div class="statusbar-divider" />
 
-            {/* Settings Trigger */}
             <Button
                 variant="ghost"
                 size="icon-sm"
                 title="Settings (Cmd+,)"
-                onClick={() => window.dispatchEvent(new CustomEvent('app:open-settings'))}
+                onClick={() => system.openSettings(true)}
             >
                 <Settings size={12} />
             </Button>
@@ -84,7 +91,7 @@ export const StatusSystem: Component = () => {
                 variant="ghost"
                 size="icon-sm"
                 title="Design System"
-                onClick={() => window.dispatchEvent(new CustomEvent('app:open-design-system'))}
+                onClick={() => system.openDesignSystem(true)}
             >
                 <PaintRoller size={12} />
             </Button>

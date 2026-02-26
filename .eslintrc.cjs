@@ -15,7 +15,15 @@ module.exports = {
         ecmaVersion: 'latest',
         sourceType: 'module'
     },
-    plugins: ['solid', '@typescript-eslint', 'prettier'],
+    plugins: ['solid', '@typescript-eslint', 'prettier', 'import'],
+    settings: {
+        'import/resolver': {
+            typescript: {
+                alwaysTryTypes: true,
+                project: './tsconfig.json'
+            }
+        }
+    },
     rules: {
         /*
          * Format & basic style
@@ -71,6 +79,30 @@ module.exports = {
          * Stylistic preferences (Prettier will override formatting rules)
          */
         'object-curly-spacing': ['error', 'always'],
-        'array-bracket-spacing': ['error', 'never']
+        'array-bracket-spacing': ['error', 'never'],
+
+        /*
+         * Architectural Guardrails (Sprint 0)
+         */
+        'import/no-cycle': 'error',
+        'import/no-restricted-paths': [
+            'error',
+            {
+                zones: [
+                    {
+                        target: '**/components/**',
+                        from: '**/core/tauri/**',
+                        message:
+                            'UI components must not call Tauri services directly. Use an Action in the Core layer instead.'
+                    },
+                    {
+                        target: '**/core/store/**',
+                        from: '**/components/ui/**',
+                        message:
+                            'Stores must not use UI elements/toasts directly. Return an error or use Domain Events.'
+                    }
+                ]
+            }
+        ]
     }
 };

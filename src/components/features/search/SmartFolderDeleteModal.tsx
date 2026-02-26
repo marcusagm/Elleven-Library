@@ -30,21 +30,20 @@ export const SmartFolderDeleteModal: Component<
     /**
      * Handles the smart folder deletion confirmation.
      */
-    const handleConfirm = async () => {
+    const handleConfirm = () => {
         if (!componentProperties.folder) {
             return;
         }
 
         const folderName = componentProperties.folder.name;
-        try {
-            await metadata.deleteSmartFolder(componentProperties.folder.id);
-            notification.success('Smart Folder Deleted', `Removed "${folderName}"`);
-        } catch (error) {
-            console.error('Delete failed:', error);
-            notification.error('Failed to Delete Smart Folder');
-        } finally {
+        metadata.deleteSmartFolder(componentProperties.folder.id).then(result => {
+            if (result.success) {
+                notification.success('Smart Folder Deleted', `Removed "${folderName}"`);
+            } else {
+                notification.error(result.error?.message || 'Failed to Delete Smart Folder');
+            }
             componentProperties.onClose();
-        }
+        });
     };
 
     return (

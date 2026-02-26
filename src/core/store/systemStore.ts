@@ -6,6 +6,7 @@ import { tauriService } from '../tauri/services';
 import { metadataActions } from './metadataStore';
 import { type BatchChangePayload } from './libraryStore';
 import { initStreamingToken } from '../../lib/hls-player';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 
 export interface ProgressPayload {
     total: number;
@@ -15,9 +16,12 @@ export interface ProgressPayload {
 
 const [loading, setLoading] = createSignal(true);
 const [progress, setProgress] = createSignal<ProgressPayload | null>(null);
+const [thumbnailProgress, setThumbnailProgress] = createSignal<ProgressPayload | null>(null);
 const [rootPath, setRootPath] = createSignal<string | null>(null);
 const [initialized, setInitialized] = createSignal(false);
 const [supportedFormats, setSupportedFormats] = createSignal<FileFormat[]>([]);
+const [isSettingsOpen, setIsSettingsOpen] = createSignal(false);
+const [isDesignSystemOpen, setIsDesignSystemOpen] = createSignal(false);
 
 export const systemActions = {
     initialize: async () => {
@@ -76,6 +80,10 @@ export const systemActions = {
                 });
             });
 
+            listen<ProgressPayload>('thumbnail:queue-status', e => {
+                systemActions.updateThumbnailProgress(e.payload);
+            });
+
             listen<BatchChangePayload>('library:batch-change', e => {
                 const payload = e.payload;
 
@@ -118,7 +126,66 @@ export const systemActions = {
 
     setLoading: (isLoading: boolean) => {
         setLoading(isLoading);
+    },
+
+    updateThumbnailProgress: (payload: ProgressPayload) => {
+        setThumbnailProgress(payload);
+    },
+
+    openSettings: (open = true) => {
+        setIsSettingsOpen(open);
+    },
+
+    openDesignSystem: async (open = true) => {
+        if (!open) {
+            setIsDesignSystemOpen(false);
+            return;
+        }
+
+        try {
+            const label = 'design-system';
+            const existing = await WebviewWindow.getByLabel(label);
+            if (existing) {
+                await existing.setFocus();
+                return;
+            }
+
+            const webview = new WebviewWindow(label, {
+                url: 'index.html#design-system',
+                title: 'Mundam Design System',
+                width: 1200,
+                height: 900
+            });
+
+            webview.once('tauri://error', error => {
+                console.error('Webview error:', error);
+            });
+
+            setIsDesignSystemOpen(true);
+        } catch (error) {
+            console.error('Failed to open design system window:', error);
+        }
+    },
+
+    runDbMaintenance: async () => {
+        await tauriService.runDbMaintenance();
+    },
+
+    cleanupCache: async (maxAgeDays?: number) => {
+        return await tauriService.cleanupCache(maxAgeDays);
+    },
+
+    clearCache: async () => {
+        return await tauriService.clearCache();
     }
 };
 
-export { loading, progress, rootPath, supportedFormats };
+export {
+    loading,
+    progress,
+    thumbnailProgress,
+    rootPath,
+    supportedFormats,
+    isSettingsOpen,
+    isDesignSystemOpen
+};
