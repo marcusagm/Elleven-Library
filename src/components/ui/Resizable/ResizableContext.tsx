@@ -100,35 +100,85 @@ export const createResizableState = (
         return { sizeBefore, sizeAfter };
     };
 
+    /**
+     * Finds the IDs and states of panels adjacent to a given handle element.
+     *
+     * @param handleElement - The handle element to check neighbors for.
+     * @returns {{ before: PanelState; after: PanelState } | null} The adjacent panels.
+     */
+    const findAdjacentPanels = (
+        handleElement: HTMLElement
+    ): { before: PanelState; after: PanelState } | null => {
+        const beforeSibling = handleElement.previousElementSibling as HTMLElement;
+        const afterSibling = handleElement.nextElementSibling as HTMLElement;
+
+        if (!beforeSibling || !afterSibling) return null;
+
+        const panelBeforeIdentifier = beforeSibling.getAttribute('data-panel-id');
+        const panelAfterIdentifier = afterSibling.getAttribute('data-panel-id');
+
+        if (!panelBeforeIdentifier || !panelAfterIdentifier) return null;
+
+        const panelBefore = store.panels.find(panel => panel.id === panelBeforeIdentifier);
+        const panelAfter = store.panels.find(panel => panel.id === panelAfterIdentifier);
+
+        if (!panelBefore || !panelAfter) return null;
+
+        return { before: panelBefore, after: panelAfter };
+    };
+
+    /**
+     * Applies min/max constraints to the new calculated sizes of two panels.
+     *
+     * @param requestedSizeBefore - Calculated size for the preceding panel.
+     * @param panelBefore - Configuration of the preceding panel.
+     * @param panelAfter - Configuration of the succeeding panel.
+     * @param combinedSizeInitial - Total percentage available for both panels.
+     * @returns {{ sizeBefore: number; sizeAfter: number }} Constrained sizes.
+     */
+    const applySizeConstraints = (
+        requestedSizeBefore: number,
+        panelBefore: PanelState,
+        panelAfter: PanelState,
+        combinedSizeInitial: number
+    ): { sizeBefore: number; sizeAfter: number } => {
+        let sizeBefore = requestedSizeBefore;
+        let sizeAfter = combinedSizeInitial - requestedSizeBefore;
+
+        if (sizeBefore < panelBefore.minSize) {
+            sizeBefore = panelBefore.minSize;
+            sizeAfter = combinedSizeInitial - sizeBefore;
+        } else if (sizeBefore > panelBefore.maxSize) {
+            sizeBefore = panelBefore.maxSize;
+            sizeAfter = combinedSizeInitial - sizeBefore;
+        }
+
+        if (sizeAfter < panelAfter.minSize) {
+            sizeAfter = panelAfter.minSize;
+            sizeBefore = combinedSizeInitial - sizeAfter;
+        } else if (sizeAfter > panelAfter.maxSize) {
+            sizeAfter = panelAfter.maxSize;
+            sizeBefore = combinedSizeInitial - sizeAfter;
+        }
+
+        return { sizeBefore, sizeAfter };
+    };
+
     const startResize = (handleElement: HTMLElement, event: PointerEvent) => {
         const containerElement = handleElement.parentElement;
         if (!containerElement) return;
 
+        const adjacentPanels = findAdjacentPanels(handleElement);
+        if (!adjacentPanels) return;
+
         const isHorizontal = direction() === 'horizontal';
-
-        // Find adjacent panels via DOM siblings to ensure correct order regardless of registration timing
-        const beforeElement = handleElement.previousElementSibling as HTMLElement;
-        const afterElement = handleElement.nextElementSibling as HTMLElement;
-
-        if (!beforeElement || !afterElement) return;
-
-        const panelBeforeId = beforeElement.getAttribute('data-panel-id');
-        const panelAfterId = afterElement.getAttribute('data-panel-id');
-
-        if (!panelBeforeId || !panelAfterId) return;
-
-        const panelBefore = store.panels.find(panel => panel.id === panelBeforeId);
-        const panelAfter = store.panels.find(panel => panel.id === panelAfterId);
-
-        if (!panelBefore || !panelAfter) return;
-
         const containerRect = containerElement.getBoundingClientRect();
         const containerSizePx = isHorizontal ? containerRect.width : containerRect.height;
 
         const initialSizes = calculateInitialSizes(
             containerElement,
-            panelBeforeId,
-            panelAfterId,
+            adjacentPanels.before.id,
+            adjacentPanels.after.id,
             isHorizontal,
             containerSizePx
         );
@@ -138,33 +188,31 @@ export const createResizableState = (
         handleElement.setPointerCapture(event.pointerId);
 
         const startPosition = isHorizontal ? event.clientX : event.clientY;
-        const combinedSize = initialSizes.sizeBefore + initialSizes.sizeAfter;
+        const combinedSizeInitial = initialSizes.sizeBefore + initialSizes.sizeAfter;
 
         const handlePointerMove = (moveEvent: PointerEvent) => {
             const currentPosition = isHorizontal ? moveEvent.clientX : moveEvent.clientY;
             const deltaPercent = ((currentPosition - startPosition) / containerSizePx) * 100;
 
-            let newSizeBefore = initialSizes.sizeBefore + deltaPercent;
-            let newSizeAfter = initialSizes.sizeAfter - deltaPercent;
+            const constrainedSizes = applySizeConstraints(
+                initialSizes.sizeBefore + deltaPercent,
+                adjacentPanels.before,
+                adjacentPanels.after,
+                combinedSizeInitial
+            );
 
-            if (newSizeBefore < panelBefore.minSize) {
-                newSizeBefore = panelBefore.minSize;
-                newSizeAfter = combinedSize - newSizeBefore;
-            } else if (newSizeBefore > panelBefore.maxSize) {
-                newSizeBefore = panelBefore.maxSize;
-                newSizeAfter = combinedSize - newSizeBefore;
-            }
-
-            if (newSizeAfter < panelAfter.minSize) {
-                newSizeAfter = panelAfter.minSize;
-                newSizeBefore = combinedSize - newSizeAfter;
-            } else if (newSizeAfter > panelAfter.maxSize) {
-                newSizeAfter = panelAfter.maxSize;
-                newSizeBefore = combinedSize - newSizeAfter;
-            }
-
-            setStore('panels', panel => panel.id === panelBeforeId, 'size', newSizeBefore);
-            setStore('panels', panel => panel.id === panelAfterId, 'size', newSizeAfter);
+            setStore(
+                'panels',
+                panel => panel.id === adjacentPanels.before.id,
+                'size',
+                constrainedSizes.sizeBefore
+            );
+            setStore(
+                'panels',
+                panel => panel.id === adjacentPanels.after.id,
+                'size',
+                constrainedSizes.sizeAfter
+            );
         };
 
         const handlePointerUp = (upEvent: PointerEvent) => {
