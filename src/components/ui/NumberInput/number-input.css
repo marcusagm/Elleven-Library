@@ -11,7 +11,7 @@
   text-align: center; /* Center the number since buttons are on sides */
 }
 
-.ui-number-input-btn {
+.ui-number-input-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,12 +26,12 @@
   transition: all var(--transition-fast);
 }
 
-.ui-number-input-btn:hover:not(:disabled) {
+.ui-number-input-button:hover:not(:disabled) {
   background-color: var(--bg-surface-3);
   color: var(--text-primary);
 }
 
-.ui-number-input-btn:disabled {
+.ui-number-input-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -39,6 +39,6 @@
 /* Adjust wrapper to ensure buttons fit */
 .ui-number-input-wrapper .ui-input-icon {
     /* Ensure icon container doesn't block clicks */
-    pointer-events: auto; 
+    pointer-events: auto;
     cursor: default;
 }
