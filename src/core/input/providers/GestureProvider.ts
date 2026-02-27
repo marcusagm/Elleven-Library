@@ -8,10 +8,6 @@ import { dispatchToken } from '../dispatcher';
 import { inputStore } from '../store/inputStore';
 import type { GesturePayload, SwipeDirection } from '../types';
 
-// =============================================================================
-// Configuration
-// =============================================================================
-
 interface GestureConfig {
     throttleMs: number;
     minSwipeDistance: number;
@@ -22,15 +18,10 @@ const DEFAULT_CONFIG: GestureConfig = {
     minSwipeDistance: 30
 };
 
-// =============================================================================
-// Provider State
-// =============================================================================
-
 let attached = false;
-let config = { ...DEFAULT_CONFIG };
-let lastGestureTs = 0;
+let globalConfig = { ...DEFAULT_CONFIG };
+let lastGestureTimestamp = 0;
 
-// Touch tracking
 interface TouchPoint {
     id: number;
     x: number;
@@ -54,24 +45,19 @@ interface RotateTracking {
     lastAngle: number;
 }
 
-let touchTracking: TouchTracking | null = null;
-let pinchTracking: PinchTracking | null = null;
-let rotateTracking: RotateTracking | null = null;
+let currentTouchTracking: TouchTracking | null = null;
+let currentPinchTracking: PinchTracking | null = null;
+let currentRotateTracking: RotateTracking | null = null;
 
-// Gesture callbacks
 type GestureCallback = (payload: GesturePayload) => void;
-let gestureCallback: GestureCallback | null = null;
-
-// =============================================================================
-// Helpers
-// =============================================================================
+let globalGestureCallback: GestureCallback | null = null;
 
 function shouldDispatch(): boolean {
-    if (config.throttleMs <= 0) return true;
+    if (globalConfig.throttleMs <= 0) return true;
 
-    const now = Date.now();
-    if (now - lastGestureTs >= config.throttleMs) {
-        lastGestureTs = now;
+    const currentTimestamp = Date.now();
+    if (currentTimestamp - lastGestureTimestamp >= globalConfig.throttleMs) {
+        lastGestureTimestamp = currentTimestamp;
         return true;
     }
     return false;
@@ -80,144 +66,132 @@ function shouldDispatch(): boolean {
 function computeAveragePoint(points: TouchPoint[]): { x: number; y: number } {
     let sumX = 0;
     let sumY = 0;
-    for (const p of points) {
-        sumX += p.x;
-        sumY += p.y;
+    for (const point of points) {
+        sumX += point.x;
+        sumY += point.y;
     }
     return { x: sumX / points.length, y: sumY / points.length };
 }
 
-function computeDistance(p1: TouchPoint, p2: TouchPoint): number {
-    return Math.hypot(p2.x - p1.x, p2.y - p1.y);
+function computeDistance(point1: TouchPoint, point2: TouchPoint): number {
+    return Math.hypot(point2.x - point1.x, point2.y - point1.y);
 }
 
-function computeAngle(p1: TouchPoint, p2: TouchPoint): number {
-    return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+function computeAngle(point1: TouchPoint, point2: TouchPoint): number {
+    return Math.atan2(point2.y - point1.y, point2.x - point1.x);
 }
 
 function emitGesture(payload: GesturePayload): void {
-    if (gestureCallback) {
-        gestureCallback(payload);
+    if (globalGestureCallback) {
+        globalGestureCallback(payload);
     }
 
-    // Also dispatch to shortcut system
     const token = createGestureToken(payload.gesture, payload.meta as Record<string, unknown>);
     dispatchToken(token, payload.event);
 }
 
-// =============================================================================
-// Event Handlers
-// =============================================================================
+function handlePinch(touches: TouchPoint[], event: TouchEvent): void {
+    if (!currentPinchTracking || !shouldDispatch()) return;
+
+    const distance = computeDistance(touches[0], touches[1]);
+    const scale = distance / (currentPinchTracking.startDist || 1);
+    currentPinchTracking.lastDist = distance;
+
+    const center = {
+        x: (touches[0].x + touches[1].x) / 2,
+        y: (touches[0].y + touches[1].y) / 2
+    };
+
+    emitGesture({
+        gesture: 'pinch',
+        meta: { scale, center, incremental: true },
+        event
+    });
+}
+
+function handleRotate(touches: TouchPoint[], event: TouchEvent): void {
+    if (!currentRotateTracking || !shouldDispatch()) return;
+
+    const angle = computeAngle(touches[0], touches[1]);
+    const deltaRadians = angle - currentRotateTracking.startAngle;
+    const deltaDegrees = deltaRadians * (180 / Math.PI);
+    currentRotateTracking.lastAngle = angle;
+
+    const center = {
+        x: (touches[0].x + touches[1].x) / 2,
+        y: (touches[0].y + touches[1].y) / 2
+    };
+
+    emitGesture({
+        gesture: 'rotate',
+        meta: { angle: deltaDegrees, center, incremental: true },
+        event
+    });
+}
 
 function onTouchStart(event: TouchEvent): void {
     if (!inputStore.enabled()) return;
     if (!event.touches || event.touches.length === 0) return;
 
-    const now = Date.now();
-    const touches: TouchPoint[] = Array.from(event.touches).map(t => ({
-        id: t.identifier,
-        x: t.clientX,
-        y: t.clientY
+    const currentTimestamp = Date.now();
+    const touches: TouchPoint[] = Array.from(event.touches).map(touch => ({
+        id: touch.identifier,
+        x: touch.clientX,
+        y: touch.clientY
     }));
 
-    touchTracking = {
-        startTime: now,
+    currentTouchTracking = {
+        startTime: currentTimestamp,
         startTouches: touches,
         lastTouches: [...touches],
         moved: false
     };
 
-    // Initialize pinch/rotate tracking for 2-finger gestures
     if (touches.length === 2) {
-        const dist = computeDistance(touches[0], touches[1]);
+        const distance = computeDistance(touches[0], touches[1]);
         const angle = computeAngle(touches[0], touches[1]);
-
-        pinchTracking = { startDist: dist, lastDist: dist };
-        rotateTracking = { startAngle: angle, lastAngle: angle };
+        currentPinchTracking = { startDist: distance, lastDist: distance };
+        currentRotateTracking = { startAngle: angle, lastAngle: angle };
     } else {
-        pinchTracking = null;
-        rotateTracking = null;
+        currentPinchTracking = null;
+        currentRotateTracking = null;
     }
 }
 
 function onTouchMove(event: TouchEvent): void {
     if (!inputStore.enabled()) return;
-    if (!touchTracking || !event.touches) return;
+    if (!currentTouchTracking || !event.touches) return;
 
-    const touches: TouchPoint[] = Array.from(event.touches).map(t => ({
-        id: t.identifier,
-        x: t.clientX,
-        y: t.clientY
+    const touches: TouchPoint[] = Array.from(event.touches).map(touch => ({
+        id: touch.identifier,
+        x: touch.clientX,
+        y: touch.clientY
     }));
 
-    touchTracking.lastTouches = touches;
-    touchTracking.moved = true;
+    currentTouchTracking.lastTouches = touches;
+    currentTouchTracking.moved = true;
 
-    // Handle 2-finger gestures
-    if (touches.length === 2 && pinchTracking && shouldDispatch()) {
-        const dist = computeDistance(touches[0], touches[1]);
-        const scale = dist / (pinchTracking.startDist || 1);
-        pinchTracking.lastDist = dist;
-
-        const center = {
-            x: (touches[0].x + touches[1].x) / 2,
-            y: (touches[0].y + touches[1].y) / 2
-        };
-
-        emitGesture({
-            gesture: 'pinch',
-            meta: { scale, center, incremental: true },
-            event
-        });
-    }
-
-    if (touches.length === 2 && rotateTracking && shouldDispatch()) {
-        const angle = computeAngle(touches[0], touches[1]);
-        const deltaRad = angle - rotateTracking.startAngle;
-        const deltaDeg = deltaRad * (180 / Math.PI);
-        rotateTracking.lastAngle = angle;
-
-        const center = {
-            x: (touches[0].x + touches[1].x) / 2,
-            y: (touches[0].y + touches[1].y) / 2
-        };
-
-        emitGesture({
-            gesture: 'rotate',
-            meta: { angle: deltaDeg, center, incremental: true },
-            event
-        });
+    if (touches.length === 2) {
+        handlePinch(touches, event);
+        handleRotate(touches, event);
     }
 }
 
-function onTouchEnd(event: TouchEvent): void {
-    if (!inputStore.enabled()) return;
-    if (!touchTracking) return;
+function detectSwipe(data: TouchTracking, event: TouchEvent): boolean {
+    const startAverage = computeAveragePoint(data.startTouches);
+    const endAverage = computeAveragePoint(data.lastTouches);
+    const deltaX = endAverage.x - startAverage.x;
+    const deltaY = endAverage.y - startAverage.y;
+    const absoluteDeltaX = Math.abs(deltaX);
+    const absoluteDeltaY = Math.abs(deltaY);
 
-    const data = touchTracking;
-    const startTouches = data.startTouches;
-    const lastTouches = data.lastTouches;
-    const fingers = Math.min(startTouches.length, lastTouches.length);
-
-    if (fingers <= 0) {
-        touchTracking = null;
-        return;
-    }
-
-    const startAvg = computeAveragePoint(startTouches);
-    const endAvg = computeAveragePoint(lastTouches);
-    const deltaX = endAvg.x - startAvg.x;
-    const deltaY = endAvg.y - startAvg.y;
-    const absDeltaX = Math.abs(deltaX);
-    const absDeltaY = Math.abs(deltaY);
-
-    // Check if it was a swipe
     if (
         data.moved &&
-        (absDeltaX >= config.minSwipeDistance || absDeltaY >= config.minSwipeDistance)
+        (absoluteDeltaX >= globalConfig.minSwipeDistance ||
+            absoluteDeltaY >= globalConfig.minSwipeDistance)
     ) {
         let direction: SwipeDirection;
-        if (absDeltaX >= absDeltaY) {
+        if (absoluteDeltaX >= absoluteDeltaY) {
             direction = deltaX > 0 ? 'right' : 'left';
         } else {
             direction = deltaY > 0 ? 'down' : 'up';
@@ -226,20 +200,23 @@ function onTouchEnd(event: TouchEvent): void {
         emitGesture({
             gesture: 'swipe',
             meta: {
-                fingers,
+                fingers: Math.min(data.startTouches.length, data.lastTouches.length),
                 direction,
-                dx: deltaX,
-                dy: deltaY,
+                deltaX,
+                deltaY,
                 duration: Date.now() - data.startTime,
                 final: true
             },
             event
         });
+        return true;
     }
+    return false;
+}
 
-    // Emit final pinch
-    if (pinchTracking && pinchTracking.startDist) {
-        const finalScale = pinchTracking.lastDist / pinchTracking.startDist;
+function finalizeGestures(event: TouchEvent): void {
+    if (currentPinchTracking && currentPinchTracking.startDist) {
+        const finalScale = currentPinchTracking.lastDist / currentPinchTracking.startDist;
         emitGesture({
             gesture: 'pinch',
             meta: { scale: finalScale, final: true },
@@ -247,25 +224,35 @@ function onTouchEnd(event: TouchEvent): void {
         });
     }
 
-    // Emit final rotate
-    if (rotateTracking && typeof rotateTracking.lastAngle === 'number') {
-        const deltaDeg = (rotateTracking.lastAngle - rotateTracking.startAngle) * (180 / Math.PI);
+    if (currentRotateTracking && typeof currentRotateTracking.lastAngle === 'number') {
+        const deltaDegrees =
+            (currentRotateTracking.lastAngle - currentRotateTracking.startAngle) * (180 / Math.PI);
         emitGesture({
             gesture: 'rotate',
-            meta: { angle: deltaDeg, final: true },
+            meta: { angle: deltaDegrees, final: true },
             event
         });
     }
-
-    // Reset tracking
-    touchTracking = null;
-    pinchTracking = null;
-    rotateTracking = null;
 }
 
-// =============================================================================
-// Provider Creation
-// =============================================================================
+function onTouchEnd(event: TouchEvent): void {
+    if (!inputStore.enabled()) return;
+    if (!currentTouchTracking) return;
+
+    const fingers = Math.min(
+        currentTouchTracking.startTouches.length,
+        currentTouchTracking.lastTouches.length
+    );
+
+    if (fingers > 0) {
+        detectSwipe(currentTouchTracking, event);
+        finalizeGestures(event);
+    }
+
+    currentTouchTracking = null;
+    currentPinchTracking = null;
+    currentRotateTracking = null;
+}
 
 export interface GestureProviderOptions {
     throttleMs?: number;
@@ -273,56 +260,39 @@ export interface GestureProviderOptions {
     onGesture?: GestureCallback;
 }
 
-/**
- * Create and attach the gesture provider
- */
 export function createGestureProvider(options?: GestureProviderOptions): () => void {
     if (attached) {
         console.warn('[GestureProvider] Already attached');
         return () => {};
     }
 
-    if (typeof window === 'undefined') {
-        return () => {};
-    }
+    if (typeof window === 'undefined') return () => {};
 
-    // Apply options
-    if (options?.throttleMs !== undefined) {
-        config.throttleMs = options.throttleMs;
-    }
-    if (options?.minSwipeDistance !== undefined) {
-        config.minSwipeDistance = options.minSwipeDistance;
-    }
-    if (options?.onGesture) {
-        gestureCallback = options.onGesture;
-    }
+    if (options?.throttleMs !== undefined) globalConfig.throttleMs = options.throttleMs;
+    if (options?.minSwipeDistance !== undefined)
+        globalConfig.minSwipeDistance = options.minSwipeDistance;
+    if (options?.onGesture) globalGestureCallback = options.onGesture;
 
-    // Attach listeners
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: false });
     window.addEventListener('touchend', onTouchEnd, { passive: true });
 
     attached = true;
 
-    const cleanup = () => {
+    return () => {
         window.removeEventListener('touchstart', onTouchStart);
         window.removeEventListener('touchmove', onTouchMove);
         window.removeEventListener('touchend', onTouchEnd);
 
-        touchTracking = null;
-        pinchTracking = null;
-        rotateTracking = null;
-        gestureCallback = null;
-        config = { ...DEFAULT_CONFIG };
+        currentTouchTracking = null;
+        currentPinchTracking = null;
+        currentRotateTracking = null;
+        globalGestureCallback = null;
+        globalConfig = { ...DEFAULT_CONFIG };
         attached = false;
     };
-
-    return cleanup;
 }
 
-/**
- * Check if gesture provider is attached
- */
 export function isGestureProviderAttached(): boolean {
     return attached;
 }

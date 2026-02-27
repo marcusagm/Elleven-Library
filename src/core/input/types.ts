@@ -105,8 +105,8 @@ export interface GesturePayload {
     meta: {
         fingers?: number;
         direction?: SwipeDirection;
-        dx?: number;
-        dy?: number;
+        deltaX?: number;
+        deltaY?: number;
         scale?: number;
         angle?: number;
         center?: { x: number; y: number };

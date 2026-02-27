@@ -1,7 +1,7 @@
 # Plano de Implementação: Padronização de Actions e Desacoplamento UI/Store
 
 **Data:** 2026-02-26  
-**Status:** Planejamento  
+**Status:** Em Execução (Sprints 0-4 Concluídas, Sprint 5 Parcial)  
 **Objetivo:** Isolar a lógica de negócio da camada de visão (Solid.js), garantindo que os componentes sejam puramente UI (Presentational) e que as mutações de estado ocorram exclusivamente através de `actions` tipadas e validadas por schemas.
 
 ---
@@ -34,9 +34,9 @@ A base da visualização dos ativos e gestão de estado de foco.
 3.  **Acoplamento DnD:** O `AssetCard` gerencia sinais locais de `dragCounter` e consulta o `dndRegistry` diretamente para decidir se é um `dropTarget`.
 
 **Plano de Ação para Interação 1:**
-- [ ] Criar `src/core/store/selection/schemas.ts` com schemas para `SelectionPayload`.
-- [ ] Mover a lógica de DnD (handlers de eventos) do `AssetCard.tsx` para um utilitário ou hook especializado, deixando o card apenas com a responsabilidade de "sinalizar" ser um drop target.
-- [ ] Centralizar mutações de seleção (toggle, range, clear) na `selectionStore`, garantindo que a UI apenas dispare intenções.
+- [x] Criar `src/core/store/selection/schemas.ts` com schemas para `SelectionPayload`.
+- [x] Mover a lógica de DnD (handlers de eventos) do `AssetCard.tsx` para um utilitário ou hook especializado, deixando o card apenas com a responsabilidade de "sinalizar" ser um drop target.
+- [x] Centralizar mutações de seleção (toggle, range, clear) na `selectionStore`, garantindo que a UI apenas dispare intenções.
 
 ### Interação 2: Navegação e Gerenciamento de Biblioteca
 Foco na estrutura de arquivos, pastas e sincronização com o backend.
@@ -53,11 +53,11 @@ Foco na estrutura de arquivos, pastas e sincronização com o backend.
 4.  **Lógica Oculta em Callbacks:** O `onDelete` em `FolderContextMenu` transporta objetos pesados (`TreeNode`) para a UI, violando a tipagem estrita de payloads.
 
 **Plano de Ação para Interação 2:**
-- [ ] Criar `src/core/store/library/schemas.ts` com schemas para `AddLocationPayload`, `RemoveLocationPayload` e `BatchChangePayload`.
-- [ ] Mover todas as chamadas `invoke` e lógica de `localStorage` para Actions nas stores correspondentes.
-- [ ] Implementar uma Action `addLocation` na `metadataStore` que orquestre internamente o I/O, o refresh de dados e o disparo de notificações.
-- [ ] Refatorar `FolderTreeSidebarPanel` para utilizar apenas IDs simples em seus eventos, delegando a busca de dados para a Store.
-- [ ] Centralizar a lógica de construção da hierarquia (Tree View) em um seletor especializado ou helper de domínio.
+- [x] Criar `src/core/store/library/schemas.ts` com schemas para `AddLocationPayload`, `RemoveLocationPayload` e `BatchChangePayload`.
+- [x] Mover todas as chamadas `invoke` e lógica de `localStorage` para Actions nas stores correspondentes.
+- [x] Implementar uma Action `addLocation` na `metadataStore` que orquestre internamente o I/O, o refresh de dados e o disparo de notificações.
+- [x] Refatorar `FolderTreeSidebarPanel` para utilizar apenas IDs simples em seus eventos, delegando a busca de dados para a Store.
+- [x] Centralizar a lógica de construção da hierarquia (Tree View) em um seletor especializado ou helper de domínio.
 
 ### Interação 3: Busca Avançada e Smart Folders
 O motor de inteligência de busca e persistência de consultas.
@@ -74,11 +74,11 @@ O motor de inteligência de busca e persistência de consultas.
 4.  **Orquestração Manual de Smart Folders:** Componentes como `SmartFolderDeleteModal` orquestram manualmente disparos de notificação e refresh de metadados após chamadas às actions.
 
 **Plano de Ação para Interação 3:**
-- [ ] Criar `src/core/store/filter/schemas.ts` com suporte recursivo para `SearchGroupSchema` e `CriterionSchema`.
-- [ ] Migrar a lógica de processamento de critérios de `useAdvancedSearch.ts` para Actions na `filterStore`.
-- [ ] Implementar um **Search Domain Service** para centralizar a geração de IDs de grupos e a normalização de critérios antes de chegarem à store.
-- [ ] Refatorar a gestão de Smart Folders na `metadataStore` para utilizar o **Domain Event Dispatcher** (emitindo `SMART_FOLDER_CREATED`, etc), removendo a necessidade de orquestração manual na UI.
-- [ ] Desacoplar os componentes em `src/components/features/search/fields` para que sejam puramente apresentacionais, recebendo valores e emitindo mudanças.
+- [x] Criar `src/core/store/filter/schemas.ts` com suporte recursivo para `SearchGroupSchema` e `CriterionSchema`.
+- [x] Migrar a lógica de processamento de critérios de `useAdvancedSearch.ts` para Actions na `filterStore`.
+- [x] Implementar um **Search Domain Service** para centralizar a geração de IDs de grupos e a normalização de critérios antes de chegarem à store.
+- [x] Refatorar a gestão de Smart Folders na `metadataStore` para utilizar o **Domain Event Dispatcher** (emitindo `SMART_FOLDER_CREATED`, etc), removendo a necessidade de orquestração manual na UI.
+- [x] Desacoplar os componentes em `src/components/features/search/fields` para que sejam puramente apresentacionais, recebendo valores e emitindo mudanças.
 
 ### Interação 4: Inspetor e Edição de Propriedades
 O painel de controle de metadados e visualização técnica dos ativos.
@@ -96,11 +96,11 @@ O painel de controle de metadados e visualização técnica dos ativos.
 4.  **Inconsistência de Reatividade:** Alguns componentes do inspetor usam `refetch()` local em vez de reagir a mudanças no estado global da Store.
 
 **Plano de Ação para Interação 4:**
-- [ ] Criar `TagMutationSchema` em `metadataStore` para lidar com adições/remoções em lote de forma atômica.
-- [ ] Mover lógicas de EXIF e tags de `createResource` em componentes para `actions` assíncronas na Store, mantendo o cache de metadados centralizado.
-- [ ] Implementar um **Domain Event Dispatcher** para que a Store apenas emita "TAG_UPDATED" e outros domínios reajam a isso sem acoplamento direto.
-- [ ] Mover disparos de `toast` para a camada de Hooks ou um **Notification Service** desacoplado.
-- [ ] Transformar `InspectorTags` em um componente puramente apresentacional que apenas emite eventos `onAddTags` e `onRemoveTags`.
+- [x] Criar `TagMutationSchema` em `metadataStore` para lidar com adições/remoções em lote de forma atômica.
+- [x] Mover lógicas de EXIF e tags de `createResource` em componentes para `actions` assíncronas na Store, mantendo o cache de metadados centralizado.
+- [x] Implementar um **Domain Event Dispatcher** para que a Store apenas emita "TAG_UPDATED" e outros domínios reajam a isso sem acoplamento direto.
+- [x] Mover disparos de `toast` para a camada de Hooks ou um **Notification Service** desacoplado.
+- [x] Transformar `InspectorTags` em um componente puramente apresentacional que apenas emite eventos `onAddTags` e `onRemoveTags`.
 
 ### Interação 5: ItemView e Visualizadores de Mídia
 O ambiente de visualização imersiva para diferentes formatos de ativos.
@@ -118,11 +118,11 @@ O ambiente de visualização imersiva para diferentes formatos de ativos.
 4.  **Efeitos Colaterais de Playback:** Lógicas de temporizador (Slideshow) residem no componente `ItemView.tsx`, tornando difícil o controle externo ou testes.
 
 **Plano de Ação para Interação 5:**
-- [ ] Criar `ViewerActions` no `viewportStore` ou um hook dedicado que encapsule lógicas de `navigateNext`, `navigatePrev` e `toggleSlideshow`.
-- [ ] Padronizar o `ItemViewContext` para aceitar apenas **Actions** e não setters diretos, validando mudanças de zoom/rotação via schemas.
-- [ ] Substituir eventos `window` por sinais ou métodos expostos pelo Context/Store.
-- [ ] Mover a lógica de temporização do Slideshow para uma Store (ex: `systemStore` ou `viewportStore`) para garantir consistência.
-- [ ] Garantir que renderers de mídia (Font, Model3D) utilizem payloads tipados para suas configurações específicas.
+- [x] Criar `ViewerActions` no `viewportStore` ou um hook dedicado que encapsule lógicas de `navigateNext`, `navigatePrev` e `toggleSlideshow`.
+- [x] Padronizar o `ItemViewContext` para aceitar apenas **Actions** e não setters diretos, validando mudanças de zoom/rotação via schemas.
+- [x] Substituir eventos `window` por sinais ou métodos expostos pelo Context/Store.
+- [x] Mover a lógica de temporização do Slideshow para uma Store (ex: `systemStore` ou `viewportStore`) para garantir consistência.
+- [/] Garantir que renderers de mídia (Font, Model3D) utilizem payloads tipados para suas configurações específicas. (Parcial)
 
 ### Interação 6: Configurações e Preferências
 O painel de controle e customização do aplicativo.
@@ -139,10 +139,10 @@ O painel de controle e customização do aplicativo.
 4.  **Acoplamento em Atalhos:** `KeyboardShortcutsPanel` acessa métodos brutos do `shortcutStore` para detecção de conflitos e persistência, sem validação de schema para os novos atalhos gravados.
 
 **Plano de Ação para Interação 6:**
-- [ ] Criar `src/core/store/settings/schemas.ts` com schemas para `AppearancePayload`, `CacheCleanupPayload` e `ShortcutEditPayload`.
-- [ ] Mover todas as chamadas ao `tauriService` para Actions na `systemStore` ou em uma nova `settingsStore`.
-- [ ] Implementar um **Settings Domain Service** para lidar com a lógica de gravação individual das preferências no backend.
-- [ ] Padronizar a detecção de conflitos de teclado para que retorne um `Result` (Success/Error) tipado, facilitando a exibição na UI.
+- [x] Criar `src/core/store/settings/schemas.ts` com schemas para `AppearancePayload`, `CacheCleanupPayload` e `ShortcutEditPayload`.
+- [x] Mover todas as chamadas ao `tauriService` para Actions na `systemStore` ou em uma nova `settingsStore`.
+- [x] Implementar um **Settings Domain Service** para lidar com a lógica de gravação individual das preferências no backend.
+- [x] Padronizar a detecção de conflitos de teclado para que retorne um `Result` (Success/Error) tipado, facilitando a exibição na UI.
 
 ### Interação 7: Status Bar e Eventos Globais
 A camada de feedback passivo e indicadores de saúde do sistema.
@@ -158,9 +158,9 @@ A camada de feedback passivo e indicadores de saúde do sistema.
 3.  **Mocks de Progresso:** Existem sinais locais "Mocados" no `StatusSystem` que deveriam estar ouvindo eventos reais do Tauri (ex: `thumbnail:queue-status`).
 
 **Plano de Ação para Interação 7:**
-- [ ] Criar Actions na `systemStore` para gerenciar a abertura/fechamento de modais globais, removendo os `CustomEvent` brutos.
-- [ ] Implementar Seletores Reativos (derived signals) na Store para contagens complexas, permitindo que a Status Bar seja apenas um consumidor de dados puros.
-- [ ] Conectar o listener de eventos do Tauri (`listen`) dentro do ciclo de vida da `systemStore` para reportar progresso de I/O em tempo real.
+- [x] Criar Actions na `systemStore` para gerenciar a abertura/fechamento de modais globais, removendo os `CustomEvent` brutos.
+- [x] Implementar Seletores Reativos (derived signals) na Store para contagens complexas, permitindo que a Status Bar seja apenas um consumidor de dados puros.
+- [x] Conectar o listener de eventos do Tauri (`listen`) dentro do ciclo de vida da `systemStore` para reportar progresso de I/O em tempo real.
 
 ### Interação 8: Sistema de Tags e Hierarquia
 A gestão de taxonomia e organização lógica.
@@ -177,10 +177,10 @@ A gestão de taxonomia e organização lógica.
 4.  **Construção de Nomes Únicos na UI:** A lógica `getUniqueTagName` valida contra o estado do componente/store, mas a regra de negócio de unicidade deveria ser garantida pela Store/Service.
 
 **Plano de Ação para Interação 8:**
-- [ ] Criar `src/core/store/metadata/tag-schemas.ts` para validar payloads de criação, renomeação e deleção (incluindo deleção recursiva).
-- [ ] Migrar a lógica de "Deleção Recursiva" para uma Action atômica na Store que utilize transações ou orquestração segura no backend.
-- [ ] Centralizar a lógica de "Snapshots" para Undo em um serviço de **Domain Events** ou no histórico da Store.
-- [ ] Unificar a gestão de estados de expansão (Folders e Tags) em uma sub-store de `uiState` persistente.
+- [x] Criar `src/core/store/metadata/tag-schemas.ts` para validar payloads de criação, renomeação e deleção (incluindo deleção recursiva).
+- [x] Migrar a lógica de "Deleção Recursiva" para uma Action atômica na Store que utilize transações ou orquestração segura no backend.
+- [x] Centralizar a lógica de "Snapshots" para Undo em um serviço de **Domain Events** ou no histórico da Store.
+- [x] Unificar a gestão de estados de expansão (Folders e Tags) em uma sub-store de `uiState` persistente (`treeStore`).
 
 ### Interação 9: Engine de Viewport e Layout Workers
 O motor de alta performance para virtualização e renderização.
@@ -197,10 +197,10 @@ O motor de alta performance para virtualização e renderização.
 4.  **Dificuldade de Testabilidade:** Por depender de Workers nativos do navegador e I/O assíncrono, a lógica de layout é difícil de testar em isolamento.
 
 **Plano de Ação para Interação 9:**
-- [ ] Criar `src/core/viewport/schemas.ts` para validar o fluxo de dados entre o Worker e a Main Thread (especialmente `ItemPosition` e `LAYOUT_COMPLETE`).
-- [ ] Refatorar o `ViewportController` para ser um **Domain Service** puro, retornando dados que a Store então utiliza para atualizar sinais reativos oficiais.
-- [ ] Centralizar as instâncias de Workers em uma `serviceRegistry` para evitar vazamentos de memória ou múltiplas threads desnecessárias.
-- [ ] Padronizar os mecanismos de `RAF` e `Debounce` utilizando um padrão de "System Scheduler" para garantir que a performance do viewport não compita com outras animações do sistema.
+- [x] Criar `src/core/viewport/schemas.ts` para validar o fluxo de dados entre o Worker e a Main Thread (especialmente `ItemPosition` e `LAYOUT_COMPLETE`).
+- [x] Refatorar o `ViewportController` para ser um **Domain Service** puro, retornando dados que a Store então utiliza para atualizar sinais reativos oficiais.
+- [x] Centralizar as instâncias de Workers em uma `serviceRegistry` para evitar vazamentos de memória ou múltiplas threads desnecessárias.
+- [/] Padronizar os mecanismos de `RAF` e `Debounce` utilizando um padrão de "System Scheduler" (`scheduler.ts`) para garantir que a performance do viewport não compita com outras animações do sistema. (Parcial - Sprint 6)
 
 ### Interação 10: Arquitetura de Drag and Drop (DnD)
 O sistema de interação física entre diferentes domínios (Ativos ↔ Tags ↔ Pastas).
@@ -217,10 +217,10 @@ O sistema de interação física entre diferentes domínios (Ativos ↔ Tags ↔
 4.  **Complexidade de Reordenamento:** A lógica de cálculo de `order_index` e hierarquia em `TagDropStrategy.ts` é densa e deveria ser abstraída em um **Tag Domain Service**.
 
 **Plano de Ação para Interação 10:**
-- [ ] Converter `DragItem` para uma **Discriminated Union** (ex: `{ type: 'IMAGE'; payload: { ids: number[] } } | { type: 'TAG'; payload: TagDragPayload }`).
-- [ ] Criar Actions dedicadas na `libraryStore`/`filterStore` para processar resultados de Drop (ex: `applyTagToSelection`, `reorderTags`).
-- [ ] Remover todas as referências a `toast` e disparos manuais de refresh das `DropStrategy`. Elas devem retornar apenas uma "Intenção de Mudança" ou disparar um evento de domínio.
-- [ ] Encapsular a lógica de `dragCounter` e lookup de registro em um helper reativo para simplificar `AssetCard` e `TagTreeSidebarPanel`.
+- [x] Converter `DragItem` para uma **Discriminated Union** (ex: `{ type: 'IMAGE'; payload: { ids: number[] } } | { type: 'TAG'; payload: TagDragPayload }`).
+- [x] Criar Actions dedicadas na `libraryStore`/`filterStore` para processar resultados de Drop (ex: `applyTagToSelection`, `reorderTags`).
+- [x] Remover todas as referências a `toast` e disparos manuais de refresh das `DropStrategy`. Elas devem retornar apenas uma "Intenção de Mudança" ou disparar um evento de domínio.
+- [x] Encapsular a lógica de `dragCounter` e lookup de registro em um helper reativo para simplificar `AssetCard` e `TagTreeSidebarPanel`.
 
 ---
 
@@ -250,9 +250,12 @@ Revisar e limpar componentes que ainda realizam lógica de negócio:
 *   [ ] **Sidebar Panels:** Transformar painéis em consumidores passivos de estado.
 *   [ ] **Modais de Ação:** Remover chamadas diretas a APIs Tauri dos componentes, movendo-as para as stores.
 
-### Fase 5: Verificação e Segurança de Tipos
-*   [ ] **Eliminação de `any`:** Substituir os últimos ~30 `any` por tipos derivados de Schemas Zod.
-*   [ ] **Audit de Dependências Cíclicas:** Utilizar ferramentas de análise estática para garantir que stores não importem umas às outras de forma circular (usar Event Dispatchers se necessário).
+### Fase 5: Verificação, Segurança de Tipos e Limpeza Final (Sprints 6-8)
+*   [ ] **Eliminação total de `any` (Sprint 6):** Substituir todos os `any` remanescentes (atualmente 13) no diretório `src/core` por tipos derivados de Schemas Zod ou uniões discriminadas.
+*   [ ] **Refatoração de Complexidade (Sprint 6):** Reduzir a complexidade de `dispatcher.ts` e `normalizer.ts` para < 10.
+*   [ ] **Divisão de Arquivos God-Files (Sprint 7):** Decompor `libraryStore.ts`, `metadataStore.ts` e `filter/index.ts` em módulos de ações e estado < 300 linhas.
+*   [ ] **Remoção de `eslint-disable` (Sprint 7):** Corrigir as causas raízes de todos os linters ignorados.
+*   [ ] **Audit de Dependências Cíclicas (Sprint 8):** Utilizar ferramentas de análise estática para garantir que stores não importem umas às outras de forma circular.
 
 ---
 

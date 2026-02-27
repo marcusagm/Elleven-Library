@@ -33,7 +33,7 @@ export function createKeyState(key: string): Accessor<boolean> {
  * @example
  * const pressed = createPressedKeys();
  *
- * // Check if any modifier is pressed
+ * // Check if a modifier is pressed
  * const hasModifier = () =>
  *   pressed().has('Meta') || pressed().has('Ctrl') || pressed().has('Shift');
  */
@@ -43,7 +43,7 @@ export function createPressedKeys(): Accessor<Set<string>> {
 }
 
 /**
- * Check if any of the given keys are pressed
+ * Check if some of the given keys are pressed
  *
  * @example
  * const isModifierPressed = createAnyKeyPressed(['Meta', 'Ctrl']);

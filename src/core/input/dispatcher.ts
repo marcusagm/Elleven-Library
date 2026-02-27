@@ -3,7 +3,7 @@
  * Matches input tokens against registered shortcuts and dispatches actions
  */
 
-import type { InputToken, RegisteredShortcut, ShortcutPayload } from './types';
+import type { InputToken, RegisteredShortcut, ShortcutPayload, InputScope } from './types';
 import { inputStore } from './store/inputStore';
 import { shortcutStore } from './store/shortcutStore';
 import { tokensEqual } from './normalizer';
@@ -11,10 +11,6 @@ import { emitCommand } from './commandBus';
 
 // Re-export for backward API compatibility
 export { onCommand, clearCommandHandlers } from './commandBus';
-
-// =============================================================================
-// Focus Detection
-// =============================================================================
 
 const INPUT_ELEMENTS = ['INPUT', 'TEXTAREA', 'SELECT'];
 
@@ -33,22 +29,10 @@ function isInputFocused(target?: EventTarget | null): boolean {
     // If active element is no longer in the document, ignore it
     if (!document.contains(active)) return false;
 
-    // Check tag name
-    if (INPUT_ELEMENTS.includes(active.tagName)) {
-        return true;
-    }
-
-    // Check contenteditable
-    if (active.getAttribute('contenteditable') === 'true') {
-        return true;
-    }
-
-    return false;
+    return (
+        INPUT_ELEMENTS.includes(active.tagName) || active.getAttribute('contenteditable') === 'true'
+    );
 }
-
-// =============================================================================
-// Shortcut Matching
-// =============================================================================
 
 interface MatchResult {
     shortcut: RegisteredShortcut;
@@ -56,231 +40,273 @@ interface MatchResult {
 }
 
 /**
- * Find matching shortcuts for the current input state
+ * Calculates the priority threshold from blocking scopes.
  */
-function findMatches(token: InputToken): MatchResult[] {
-    // Determine active scopes and blocking threshold
-    const scopeStack = inputStore.scopeStack();
-    const activeScopeNames = scopeStack.map(s => s.name);
-    const sequenceBuffer = inputStore.sequenceBuffer();
-    const allShortcuts = shortcutStore.list();
-
-    // Calculate priority threshold from blocking scopes
-    // Any scope with blockLowerScopes=true will block shortcuts from scopes with lower priority
+function calculateCutoffPriority(scopeStack: InputScope[]): number {
     let cutoffPriority = -Infinity;
     for (const scope of scopeStack) {
         if (scope.blockLowerScopes && scope.priority > cutoffPriority) {
             cutoffPriority = scope.priority;
         }
     }
+    return cutoffPriority;
+}
 
-    const candidates: RegisteredShortcut[] = [];
+/**
+ * Checks if a shortcut is blocked by higher priority scopes.
+ */
+function isShortcutBlocked(
+    shortcut: RegisteredShortcut,
+    scopeStack: InputScope[],
+    cutoffPriority: number
+): boolean {
+    const activeScopeNames = scopeStack.map(scope => scope.name);
 
-    // Filter by scope and blocking
-    for (const shortcut of allShortcuts) {
-        // 1. Check if scope is active
-        if (shortcut.scope && !activeScopeNames.includes(shortcut.scope)) {
-            continue;
-        }
-
-        // 2. Check scope blocking
-        // Resolve shortcut's effective scope priority
-        // Global shortcuts have priority 0 (SCOPE_PRIORITIES.global)
-        let shortcutScopePriority = 0;
-        if (shortcut.scope) {
-            const scopeDef = scopeStack.find(s => s.name === shortcut.scope);
-            if (scopeDef) {
-                shortcutScopePriority = scopeDef.priority;
-            }
-        }
-
-        // If shortcut's scope priority is lower than the blocking threshold, ignore it
-        // EXCEPT for shortcuts with modifiers (Meta, Alt, Ctrl) which should typically
-        // bypass input-level blocking unless they are in the blocking scope themselves.
-        const hasModifiers = shortcut.tokens.some(t => {
-            const mods = t.meta?.modifiers;
-            return Array.isArray(mods) && mods.length > 0;
-        });
-
-        if (shortcutScopePriority < cutoffPriority && !hasModifiers) {
-            continue;
-        }
-
-        // Check enabledWhen condition
-        if (shortcut.enabledWhen) {
-            try {
-                if (!shortcut.enabledWhen()) continue;
-            } catch {
-                continue;
-            }
-        }
-
-        candidates.push(shortcut);
+    // 1. Check if scope is active
+    if (shortcut.scope && !activeScopeNames.includes(shortcut.scope)) {
+        return true;
     }
+
+    // 2. Check scope blocking
+    let shortcutScopePriority = 0;
+    if (shortcut.scope) {
+        const scopeDefinition = scopeStack.find(scope => scope.name === shortcut.scope);
+        if (scopeDefinition) {
+            shortcutScopePriority = scopeDefinition.priority;
+        }
+    }
+
+    // Shortcuts with modifiers typically bypass level-blocking
+    const hasModifiers = shortcut.tokens.some(token => {
+        const modifiers = token.meta?.modifiers;
+        return Array.isArray(modifiers) && modifiers.length > 0;
+    });
+
+    if (shortcutScopePriority < cutoffPriority && !hasModifiers) {
+        return true;
+    }
+
+    // Check enabledWhen condition
+    if (shortcut.enabledWhen) {
+        try {
+            if (!shortcut.enabledWhen()) return true;
+        } catch {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Matches a specific token against a shortcut's token sequence.
+ */
+function matchShortcutTokens(
+    shortcut: RegisteredShortcut,
+    currentToken: InputToken,
+    sequenceBuffer: InputToken[]
+): MatchResult | null {
+    const tokens = shortcut.tokens;
+    if (tokens.length === 0) return null;
+
+    // Single key match
+    if (tokens.length === 1 && tokensEqual(tokens[0], currentToken)) {
+        return { shortcut, matchType: 'single' };
+    }
+
+    // Sequence match (e.g., "g g" for go)
+    if (tokens.length > 1) {
+        const bufferWithCurrent = [...sequenceBuffer, currentToken];
+        const tail = bufferWithCurrent.slice(-tokens.length);
+
+        if (tail.length === tokens.length) {
+            const sequenceMatches = tokens.every((token, index) => tokensEqual(token, tail[index]));
+            if (sequenceMatches) {
+                return { shortcut, matchType: 'sequence' };
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Find matching shortcuts for the current input state
+ */
+function findMatches(token: InputToken): MatchResult[] {
+    const scopeStack = inputStore.scopeStack();
+    const sequenceBuffer = inputStore.sequenceBuffer();
+    const allShortcuts = shortcutStore.list();
+    const cutoffPriority = calculateCutoffPriority(scopeStack);
 
     const matches: MatchResult[] = [];
 
-    for (const shortcut of candidates) {
-        const tokens = shortcut.tokens;
-
-        if (tokens.length === 0) continue;
-
-        // Single key match
-        if (tokens.length === 1) {
-            if (tokensEqual(tokens[0], token)) {
-                matches.push({ shortcut, matchType: 'single' });
-                continue;
-            }
+    for (const shortcut of allShortcuts) {
+        if (isShortcutBlocked(shortcut, scopeStack, cutoffPriority)) {
+            continue;
         }
 
-        // Sequence match (e.g., "g g" for go)
-        if (tokens.length > 1) {
-            // Check if sequence buffer ends with this sequence
-            const bufferWithCurrent = [...sequenceBuffer, token];
-            const tail = bufferWithCurrent.slice(-tokens.length);
-
-            if (tail.length === tokens.length) {
-                let sequenceMatch = true;
-                for (let i = 0; i < tokens.length; i++) {
-                    if (!tokensEqual(tokens[i], tail[i])) {
-                        sequenceMatch = false;
-                        break;
-                    }
-                }
-
-                if (sequenceMatch) {
-                    matches.push({ shortcut, matchType: 'sequence' });
-                    continue;
-                }
-            }
+        const match = matchShortcutTokens(shortcut, token, sequenceBuffer);
+        if (match) {
+            matches.push(match);
         }
-
-        // Chord match (multiple keys pressed simultaneously)
-        // This requires all keys in the chord to be currently pressed
-        // Not typically used for keyboard shortcuts, but supported
     }
 
     return matches;
 }
 
 /**
+ * Compares two shortcut matches based on scope priority.
+ */
+function compareScopePriority(
+    matchA: MatchResult,
+    matchB: MatchResult,
+    scopeStack: InputScope[]
+): number {
+    const scopeA = scopeStack.find(scope => scope.name === matchA.shortcut.scope);
+    const scopeB = scopeStack.find(scope => scope.name === matchB.shortcut.scope);
+    const priorityA = scopeA?.priority ?? 0;
+    const priorityB = scopeB?.priority ?? 0;
+
+    return priorityB - priorityA;
+}
+
+/**
+ * Compares two shortcut matches based on shortcut-specific priority.
+ */
+function compareShortcutPriority(matchA: MatchResult, matchB: MatchResult): number {
+    const priorityA = matchA.shortcut.priority ?? 0;
+    const priorityB = matchB.shortcut.priority ?? 0;
+
+    return priorityB - priorityA;
+}
+
+/**
+ * Compares two shortcut matches based on sequence length/specificity.
+ */
+function compareSpecificity(matchA: MatchResult, matchB: MatchResult): number {
+    const lengthA = matchA.shortcut.tokens.length;
+    const lengthB = matchB.shortcut.tokens.length;
+
+    return lengthB - lengthA;
+}
+
+/**
+ * Comparison logic for sorting shortcuts by priority and specificity
+ */
+function compareShortcutMatches(
+    matchA: MatchResult,
+    matchB: MatchResult,
+    scopeStack: InputScope[]
+): number {
+    const scopePriorityDiff = compareScopePriority(matchA, matchB, scopeStack);
+    if (scopePriorityDiff !== 0) return scopePriorityDiff;
+
+    const shortcutPriorityDiff = compareShortcutPriority(matchA, matchB);
+    if (shortcutPriorityDiff !== 0) return shortcutPriorityDiff;
+
+    const specificityDiff = compareSpecificity(matchA, matchB);
+    if (specificityDiff !== 0) return specificityDiff;
+
+    const isDefaultA = matchA.shortcut.isDefault ?? true;
+    const isDefaultB = matchB.shortcut.isDefault ?? true;
+
+    if (isDefaultA !== isDefaultB) return isDefaultA ? 1 : -1;
+
+    return 0;
+}
+
+/**
  * Sort matches by priority and specificity
  */
 function sortMatches(matches: MatchResult[]): MatchResult[] {
-    return matches.sort((a, b) => {
-        // 1. Higher scope priority first (MOST IMPORTANT)
-        const scopeA = inputStore.scopeStack().find(s => s.name === a.shortcut.scope);
-        const scopeB = inputStore.scopeStack().find(s => s.name === b.shortcut.scope);
-        const scopePriorityA = scopeA?.priority ?? 0;
-        const scopePriorityB = scopeB?.priority ?? 0;
-        if (scopePriorityB !== scopePriorityA) return scopePriorityB - scopePriorityA;
+    const scopeStack = inputStore.scopeStack();
 
-        // 2. Higher shortcut priority first
-        const prioA = a.shortcut.priority ?? 0;
-        const prioB = b.shortcut.priority ?? 0;
-        if (prioB !== prioA) return prioB - prioA;
-
-        // 3. Longer sequences first (Specificity)
-        const lenA = a.shortcut.tokens.length;
-        const lenB = b.shortcut.tokens.length;
-        if (lenB !== lenA) return lenB - lenA;
-
-        // 4. Non-default shortcuts first (User overrides within same scope/priority)
-        const isDefaultA = a.shortcut.isDefault ?? true;
-        const isDefaultB = b.shortcut.isDefault ?? true;
-        if (isDefaultA !== isDefaultB) {
-            return isDefaultA ? 1 : -1; // Non-default (false) comes first
-        }
-
-        return 0;
-    });
+    return [...matches].sort((matchA, matchB) =>
+        compareShortcutMatches(matchA, matchB, scopeStack)
+    );
 }
-
-// =============================================================================
-// Dispatcher
-// =============================================================================
 
 /**
  * Handle an incoming token and dispatch matching shortcuts
  * Returns true if a shortcut was dispatched
  */
 export function dispatchToken(token: InputToken, event: Event | null): boolean {
-    if (!inputStore.enabled()) {
-        return false;
-    }
+    if (!inputStore.enabled()) return false;
 
-    // Update pressed keys state
-    if (token.kind === 'keyboard') {
-        inputStore.keyDown(token);
-    }
+    if (token.kind === 'keyboard') inputStore.keyDown(token);
 
-    // Check if we should ignore due to input focus
-    // Use event target if available for more robust focus detection during blur transitions
     const inputFocused = isInputFocused(event?.target);
-
-    // Find matches
     const matches = findMatches(token);
+    if (matches.length === 0) return false;
 
-    if (matches.length === 0) {
-        return false;
-    }
+    const sortedMatches = sortMatches(matches);
 
-    // Sort by priority
-    const sorted = sortMatches(matches);
-
-    // Find first match that should fire
-    for (const match of sorted) {
-        const { shortcut } = match;
-
-        // Check ignoreInputs flag
-        if (shortcut.ignoreInputs && inputFocused) {
-            // Special case: Escape always works for blur
-            if (token.id !== 'Escape') {
-                continue;
-            }
-        }
-
-        // Check if chord was already dispatched (for held keys)
-        if (match.matchType === 'chord') {
-            if (inputStore.isChordDispatched(shortcut.id)) {
-                continue;
-            }
-            inputStore.markChordDispatched(shortcut.id);
-        }
-
-        // Dispatch!
-        try {
-            if (shortcut.preventDefault && event && 'preventDefault' in event)
-                event.preventDefault();
-
-            const payload: ShortcutPayload = {
-                shortcutDef: shortcut,
-                sequence: inputStore.sequenceBuffer(),
-                meta: token.meta || {}
-            };
-
-            // Call handler if exists
-            if (shortcut.handler) {
-                shortcut.handler(event, payload);
-            }
-
-            // Emit command event if configured
-            if (shortcut.command) {
-                emitCommand(shortcut.command, payload);
-            }
-
-            // Clear sequence buffer on successful match
-            if (match.matchType === 'sequence') {
-                inputStore.clearSequenceBuffer();
-            }
-
+    for (const match of sortedMatches) {
+        if (executeMatchIfValid(match, token, event, inputFocused)) {
             return true;
-        } catch (err) {
-            console.error(`[InputDispatcher] Error dispatching shortcut ${shortcut.id}:`, err);
         }
     }
 
     return false;
+}
+
+/**
+ * Validates and executes a shortcut match.
+ */
+function executeMatchIfValid(
+    match: MatchResult,
+    token: InputToken,
+    event: Event | null,
+    inputFocused: boolean
+): boolean {
+    const { shortcut } = match;
+
+    // Check ignoreInputs flag
+    if (shortcut.ignoreInputs && inputFocused && token.id !== 'Escape') {
+        return false;
+    }
+
+    // Check if chord was already dispatched (for held keys)
+    if (match.matchType === 'chord' && inputStore.isChordDispatched(shortcut.id)) {
+        return false;
+    }
+
+    if (match.matchType === 'chord') {
+        inputStore.markChordDispatched(shortcut.id);
+    }
+
+    return performDispatch(match, event);
+}
+
+/**
+ * Performs the actual dispatching of a shortcut.
+ */
+function performDispatch(match: MatchResult, event: Event | null): boolean {
+    const { shortcut } = match;
+    try {
+        if (shortcut.preventDefault && event && 'preventDefault' in event) {
+            event.preventDefault();
+        }
+
+        const payload: ShortcutPayload = {
+            shortcutDef: shortcut,
+            sequence: inputStore.sequenceBuffer(),
+            meta: match.shortcut.tokens[0].meta || {} // Simplified meta extraction
+        };
+
+        if (shortcut.handler) shortcut.handler(event, payload);
+        if (shortcut.command) emitCommand(shortcut.command, payload);
+
+        if (match.matchType === 'sequence') {
+            inputStore.clearSequenceBuffer();
+        }
+
+        return true;
+    } catch (error) {
+        console.error(`[InputDispatcher] Error dispatching shortcut ${shortcut.id}:`, error);
+        return false;
+    }
 }
 
 /**

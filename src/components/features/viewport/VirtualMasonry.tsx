@@ -10,6 +10,7 @@ import {
     useGridKeyboardNav,
     useSelection
 } from '../../../core/hooks';
+import { scheduler } from '../../../core/utils/scheduler';
 import './viewport.css';
 
 interface VirtualMasonryProps {
@@ -23,33 +24,19 @@ interface VirtualMasonryProps {
  * VirtualMasonry - Worker-based Virtualized Masonry Layout
  *
  * Uses a Web Worker for layout calculations and Spatial Grid for O(1) visibility queries.
- * The main thread only renders items that are currently visible in the viewport.
- *
- * Supports two modes:
- * - masonry-v: Vertical masonry (Pinterest-style) - fixed column width, variable height
- * - masonry-h: Horizontal masonry (Flickr-style) - fixed row height, variable width
- *
- * Features:
- * - Keyboard navigation (Arrow keys, Home, End)
- * - Scroll-to-focus when navigating
- * - Space to select, Enter to open
  */
 export function VirtualMasonry(props: VirtualMasonryProps) {
-    const lib = useLibrary();
+    const library = useLibrary();
     const actions = useAssetCardActions();
     const selection = useSelection();
 
     const [scrollContainer, setScrollContainer] = createSignal<HTMLDivElement>();
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [containerWidth, setContainerWidth] = createSignal(0);
-    void containerWidth;
     const [containerHeight, setContainerHeight] = createSignal(0);
 
     // Convert items to Worker-friendly format (minimal data)
     const layoutItems = createMemo(() => toLayoutItems(props.items));
 
-    // Connect to the layout Worker with the specified mode (as accessor for reactivity)
+    // Connect to the layout Worker with the specified mode
     const layoutMode = () => props.mode || 'masonry-v';
     // eslint-disable-next-line solid/reactivity
     const viewport = useVirtualViewport(layoutMode, layoutItems, {
@@ -61,36 +48,35 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
         }
     });
 
-    // Create item lookup Map for O(1) access during render
     const itemsById = createMemo(() => {
         const map = new Map<number, ImageItem>();
         props.items.forEach(item => map.set(item.id, item));
         return map;
     });
 
-    // Keyboard navigation
     const keyboardNav = useGridKeyboardNav({
         visibleItems: viewport.visibleItems,
         allItems: () => props.items,
         containerHeight,
-        scrollContainer, // Pass accessor
-        onSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) =>
-            actions.handleSelect(id, modifiers),
-        onOpen: id => actions.handleOpen(id),
+        scrollContainer,
+        onSelect: (itemId: number, modifiers: { multi: boolean; shift: boolean }) =>
+            actions.handleSelect(itemId, modifiers),
+        onOpen: itemId => actions.handleOpen(itemId),
         isSelected: actions.isSelected,
         getSelectedIds: actions.getSelectedIds,
-        getItemRect: id => viewport.getItemPosition(id)
+        getItemRect: itemId => viewport.getItemPosition(itemId)
     });
 
-    // Wrap select to sync focus
-    const handleSelectWithFocus = (id: number, modifiers: { multi: boolean; shift: boolean }) => {
-        keyboardNav.syncFocusWithClick(id);
-        actions.handleSelect(id, modifiers);
+    const handleSelectWithFocus = (
+        itemId: number,
+        modifiers: { multi: boolean; shift: boolean }
+    ) => {
+        keyboardNav.syncFocusWithClick(itemId);
+        actions.handleSelect(itemId, modifiers);
     };
 
-    // DnD helper: get item info by ID (used by drag source for ghost creation)
-    const getItemInfo = (id: number) => {
-        const item = itemsById().get(id);
+    const getItemInfo = (itemId: number) => {
+        const item = itemsById().get(itemId);
         if (!item) return undefined;
         return {
             path: item.path,
@@ -98,16 +84,14 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
         };
     };
 
-    // Handle resize and scroll
-    // Track last width sent to Worker to prevent loops
     let lastReportedWidth = 0;
 
     onMount(() => {
-        const el = scrollContainer();
-        if (!el) return;
+        const element = scrollContainer();
+        if (!element) return;
 
         const observer = new ResizeObserver(entries => {
-            requestAnimationFrame(() => {
+            scheduler.schedule(() => {
                 const entry = entries[0];
                 if (!entry) return;
 
@@ -116,57 +100,46 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
 
                 setContainerHeight(height);
 
-                // Only resize if change is significant (> 5px)
-                // This prevents loops caused by scrollbar appearing/disappearing
                 if (width > 0 && Math.abs(width - lastReportedWidth) > 5) {
-                    setContainerWidth(width);
                     lastReportedWidth = width;
                     viewport.handleResize(width);
                 }
             });
         });
 
-        observer.observe(el);
+        observer.observe(element);
 
-        // Initial measure
-        const rect = el.getBoundingClientRect();
-        if (rect.width > 0) {
-            setContainerWidth(rect.width);
-            setContainerHeight(rect.height);
-            lastReportedWidth = rect.width;
-            viewport.handleResize(rect.width);
+        const initialRect = element.getBoundingClientRect();
+        if (initialRect.width > 0) {
+            setContainerHeight(initialRect.height);
+            lastReportedWidth = initialRect.width;
+            viewport.handleResize(initialRect.width);
         } else {
-            const estimated = window.innerWidth - 80;
-            if (estimated > 0) {
-                setContainerWidth(estimated);
-                lastReportedWidth = estimated;
-                viewport.handleResize(estimated);
+            const estimatedWidth = window.innerWidth - 80;
+            if (estimatedWidth > 0) {
+                lastReportedWidth = estimatedWidth;
+                viewport.handleResize(estimatedWidth);
             }
         }
 
         const handleScroll = () => {
-            const el = scrollContainer();
-            if (!el) return;
-            const currentScrollTop = el.scrollTop;
+            const containerElement = scrollContainer();
+            if (!containerElement) return;
 
-            // Notify Worker of scroll position
-            viewport.handleScroll(currentScrollTop, containerHeight());
+            viewport.handleScroll(containerElement.scrollTop, containerHeight());
 
-            // Load more when near bottom
-            const { scrollTop: sTop, scrollHeight, clientHeight } = el;
-            if (sTop + clientHeight >= scrollHeight - 500) {
-                lib.loadMore();
+            const { scrollTop, scrollHeight, clientHeight } = containerElement;
+            if (scrollTop + clientHeight >= scrollHeight - 500) {
+                library.loadMore();
             }
         };
 
-        el.addEventListener('scroll', handleScroll, { passive: true });
-
-        // Initial scroll notification
+        element.addEventListener('scroll', handleScroll, { passive: true });
         viewport.handleScroll(0, containerHeight());
 
         onCleanup(() => {
             observer.disconnect();
-            el.removeEventListener('scroll', handleScroll);
+            element.removeEventListener('scroll', handleScroll);
         });
     });
 
@@ -191,40 +164,35 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
                     class="virtual-track"
                     role="rowgroup"
                     style={{
-                        height: `${viewport.totalHeight()}px`
+                        height: `${viewport.totalHeight()}px`,
+                        position: 'relative'
                     }}
                 >
                     <For each={viewport.visibleItems()}>
-                        {pos => {
-                            // O(1) lookup from our Map
-                            const item = itemsById().get(pos.id);
+                        {position => {
+                            const item = itemsById().get(position.id);
                             if (!item) return null;
 
                             const isFocused = () => keyboardNav.focusedId() === item.id;
 
                             return (
                                 <AssetCard
-                                    // Identity
                                     id={item.id}
                                     filename={item.filename}
                                     path={item.path}
-                                    // Display
                                     thumbnailPath={item.thumbnail_path}
                                     width={item.width}
                                     height={item.height}
-                                    // State
                                     isSelected={selection.isItemSelected(item.id)}
                                     isFocused={isFocused()}
                                     style={{
                                         position: 'absolute',
-                                        transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-                                        width: `${pos.width}px`,
-                                        height: `${pos.height}px`
+                                        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+                                        width: `${position.width}px`,
+                                        height: `${position.height}px`
                                     }}
-                                    // Callbacks
                                     onSelect={handleSelectWithFocus}
                                     onOpen={actions.handleOpen}
-                                    // DnD - drag source only (drop handled at container level)
                                     getSelectedIds={actions.getSelectedIds}
                                     getItemInfo={getItemInfo}
                                 />

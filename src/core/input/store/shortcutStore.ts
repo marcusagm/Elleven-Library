@@ -3,376 +3,99 @@
  * Reactive state for registered shortcuts
  */
 
-import { createSignal } from 'solid-js';
+import { createSignal, createEffect } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import type {
     ShortcutDefinition,
     RegisteredShortcut,
     ShortcutActions,
     InputScopeName,
-    SerializedShortcut
+    SerializedShortcut,
+    InputToken
 } from '../types';
 import { normalizeKeysToTokens, canonicalizeShortcut } from '../normalizer';
-
-// =============================================================================
-// Default Shortcuts Definition
-// =============================================================================
-
-const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
-    // Global scope
-    {
-        name: 'Focus Search',
-        description: 'Focus the search input',
-        keys: 'Meta+KeyK',
-        scope: 'global',
-        command: 'app:focus-search',
-        category: 'Navigation',
-        ignoreInputs: false,
-        preventDefault: true // Works even in inputs
-    },
-    {
-        name: 'Select All',
-        description: 'Select all items',
-        keys: 'Meta+KeyA',
-        scope: 'global',
-        command: 'app:select-all',
-        category: 'Selection',
-        ignoreInputs: true
-    },
-    {
-        name: 'Deselect All',
-        description: 'Clear selection',
-        keys: 'Escape',
-        scope: 'global',
-        command: 'app:deselect-all',
-        category: 'Selection',
-        ignoreInputs: false // Escape always works
-    },
-    {
-        name: 'Settings',
-        description: 'Open application settings',
-        keys: 'Meta+Comma',
-        scope: 'global',
-        command: 'app:settings',
-        category: 'Application'
-    },
-    {
-        name: 'Clear Search / Blur',
-        description: 'Clear search query or blur input',
-        keys: 'Escape',
-        scope: 'search',
-        command: 'search:clear',
-        category: 'Search',
-        ignoreInputs: false
-    },
-
-    // Viewport Interaction
-    {
-        name: 'Move Up',
-        description: 'Navigate up in grid/list',
-        keys: 'ArrowUp',
-        scope: 'viewport',
-        command: 'viewport:move-up',
-        category: 'Navigation'
-    },
-    {
-        name: 'Move Down',
-        description: 'Navigate down in grid/list',
-        keys: 'ArrowDown',
-        scope: 'viewport',
-        command: 'viewport:move-down',
-        category: 'Navigation'
-    },
-    {
-        name: 'Move Left',
-        description: 'Navigate left in grid',
-        keys: 'ArrowLeft',
-        scope: 'viewport',
-        command: 'viewport:move-left',
-        category: 'Navigation'
-    },
-    {
-        name: 'Move Right',
-        description: 'Navigate right in grid',
-        keys: 'ArrowRight',
-        scope: 'viewport',
-        command: 'viewport:move-right',
-        category: 'Navigation'
-    },
-    {
-        name: 'Go to Start',
-        description: 'Navigate to first item',
-        keys: 'Home',
-        scope: 'viewport',
-        command: 'viewport:home',
-        category: 'Navigation'
-    },
-    {
-        name: 'Go to End',
-        description: 'Navigate to last item',
-        keys: 'End',
-        scope: 'viewport',
-        command: 'viewport:end',
-        category: 'Navigation'
-    },
-    {
-        name: 'Toggle Selection',
-        description: 'Select/deselect focused item',
-        keys: 'Space',
-        scope: 'viewport',
-        command: 'viewport:toggle-select',
-        category: 'Selection'
-    },
-    {
-        name: 'Open Item',
-        description: 'Open focused item',
-        keys: 'Enter',
-        scope: 'viewport',
-        command: 'viewport:open',
-        category: 'Navigation'
-    },
-    {
-        name: 'Add to Selection',
-        description: 'Add item to current selection',
-        keys: 'Shift+Space',
-        scope: 'viewport',
-        command: 'viewport:select-add',
-        category: 'Selection'
-    },
-    {
-        name: 'Select All Items',
-        description: 'Select all visible items',
-        keys: 'Meta+KeyA',
-        scope: 'viewport',
-        command: 'viewport:select-all',
-        category: 'Selection',
-        ignoreInputs: true
-    },
-
-    // Image Viewer scope
-    {
-        name: 'Close Viewer',
-        description: 'Close the image viewer',
-        keys: 'Escape',
-        scope: 'image-viewer',
-        command: 'viewer:close',
-        category: 'Viewer',
-        ignoreInputs: false
-    },
-    {
-        name: 'Zoom In',
-        description: 'Increase zoom level',
-        keys: 'Equal',
-        scope: 'image-viewer',
-        command: 'viewer:zoom-in',
-        category: 'Viewer'
-    },
-    {
-        name: 'Zoom Out',
-        description: 'Decrease zoom level',
-        keys: 'Minus',
-        scope: 'image-viewer',
-        command: 'viewer:zoom-out',
-        category: 'Viewer'
-    },
-    {
-        name: 'Fit to Screen',
-        description: 'Fit image to screen',
-        keys: 'Meta+Digit0',
-        scope: 'image-viewer',
-        command: 'viewer:fit-screen',
-        category: 'Viewer'
-    },
-    {
-        name: 'Original Size',
-        description: 'Show image at 100% zoom',
-        keys: 'Meta+Digit1',
-        scope: 'image-viewer',
-        command: 'viewer:original-size',
-        category: 'Viewer'
-    },
-    {
-        name: 'Pan Tool',
-        description: 'Activate pan tool',
-        keys: 'KeyH',
-        scope: 'image-viewer',
-        command: 'viewer:tool-pan',
-        category: 'Viewer'
-    },
-    {
-        name: 'Rotate Tool',
-        description: 'Activate rotate tool',
-        keys: 'KeyR',
-        scope: 'image-viewer',
-        command: 'viewer:tool-rotate',
-        category: 'Viewer'
-    },
-    {
-        name: 'Previous Item',
-        description: 'Go to previous item',
-        keys: 'ArrowLeft',
-        scope: 'image-viewer',
-        command: 'viewer:previous',
-        category: 'Viewer'
-    },
-    {
-        name: 'Next Item',
-        description: 'Go to next item',
-        keys: 'ArrowRight',
-        scope: 'image-viewer',
-        command: 'viewer:next',
-        category: 'Viewer'
-    },
-    {
-        name: 'Play/Pause Slideshow',
-        description: 'Toggle slideshow playback',
-        keys: 'Space',
-        scope: 'image-viewer',
-        command: 'viewer:slideshow-toggle',
-        category: 'Viewer'
-    },
-    {
-        name: 'Flip Horizontal',
-        description: 'Flip image horizontally',
-        keys: 'Shift+KeyH',
-        scope: 'image-viewer',
-        command: 'viewer:flip-h',
-        category: 'Viewer'
-    },
-    {
-        name: 'Flip Vertical',
-        description: 'Flip image vertically',
-        keys: 'Shift+KeyV',
-        scope: 'image-viewer',
-        command: 'viewer:flip-v',
-        category: 'Viewer'
-    },
-
-    // Search Scope
-    {
-        name: 'Close Search',
-        description: 'Close search or clear input',
-        keys: 'Escape',
-        scope: 'search',
-        command: 'search:close',
-        category: 'Search',
-        ignoreInputs: false
-    },
-    {
-        name: 'Next Result',
-        description: 'Select next search result',
-        keys: 'ArrowDown',
-        scope: 'search',
-        command: 'search:next',
-        category: 'Search',
-        ignoreInputs: false
-    },
-    {
-        name: 'Previous Result',
-        description: 'Select previous search result',
-        keys: 'ArrowUp',
-        scope: 'search',
-        command: 'search:prev',
-        category: 'Search',
-        ignoreInputs: false
-    },
-    {
-        name: 'Execute Result',
-        description: 'Open selected result',
-        keys: 'Enter',
-        scope: 'search',
-        command: 'search:exec',
-        category: 'Search',
-        ignoreInputs: false
-    },
-
-    // Modal scope
-    {
-        name: 'Close Modal',
-        description: 'Close the active modal',
-        keys: 'Escape',
-        scope: 'modal',
-        command: 'modal:close',
-        category: 'Modal',
-        ignoreInputs: false
-    },
-    {
-        name: 'Confirm Modal',
-        description: 'Confirm/Submit active modal',
-        keys: 'Enter',
-        scope: 'modal',
-        command: 'modal:confirm',
-        category: 'Modal',
-        ignoreInputs: false
-    }
-];
-
-// =============================================================================
-// Store Creation
-// =============================================================================
+import { DEFAULT_SHORTCUTS } from './defaults';
 
 function createShortcutStore() {
     const [shortcuts, setShortcuts] = createSignal<Map<string, RegisteredShortcut>>(new Map());
-    const [nextId, setNextId] = createSignal(1);
+    const [nextIdValue, setNextIdValue] = createSignal(1);
     const [customizations, setCustomizations] = createSignal<Map<string, string>>(new Map());
 
-    // =============================================================================
-    // Internal Helpers
-    // =============================================================================
-
-    function generateId(): string {
-        const id = `sc_${nextId()}`;
-        setNextId(prev => prev + 1);
+    function generateShortcutId(): string {
+        const id = `sc_${nextIdValue()}`;
+        setNextIdValue(previous => previous + 1);
         return id;
+    }
+
+    function resolveFinalKeys(definition: ShortcutDefinition, currentId: string): string {
+        const customKeys = customizations().get(currentId);
+        if (customKeys) return customKeys;
+
+        if (typeof definition.keys === 'string') return definition.keys;
+        return definition.keys.join(' ');
+    }
+
+    function calculateIgnoreInputs(definition: ShortcutDefinition, tokens: InputToken[]): boolean {
+        if (definition.ignoreInputs !== undefined) return definition.ignoreInputs;
+
+        const hasModifiers = tokens.some(token => {
+            const modifiers = token.meta?.modifiers;
+            return Array.isArray(modifiers) && modifiers.length > 0;
+        });
+
+        return !hasModifiers;
     }
 
     function createRegisteredShortcut(
         definition: ShortcutDefinition,
         handler?: ShortcutDefinition['handler']
     ): RegisteredShortcut {
-        const id = definition.id || generateId();
+        const currentId = definition.id || generateShortcutId();
         const finalHandler = handler || definition.handler;
-
-        // Apply customization if exists
-        const customKeys = customizations().get(id);
-        const finalKeys =
-            customKeys ||
-            (typeof definition.keys === 'string' ? definition.keys : definition.keys.join(' '));
-
+        const finalKeys = resolveFinalKeys(definition, currentId);
         const tokens = normalizeKeysToTokens(finalKeys);
 
         return {
             ...definition,
-            id,
+            id: currentId,
             handler: finalHandler,
             keys: finalKeys,
             tokens,
             normalizedKeys: canonicalizeShortcut(finalKeys),
             scope: definition.scope || 'global',
             priority: definition.priority ?? 0,
-            ignoreInputs:
-                definition.ignoreInputs ??
-                (tokens.some(token => {
-                    const mods = token.meta?.modifiers;
-                    return Array.isArray(mods) && mods.length > 0;
-                })
-                    ? false
-                    : true),
+            ignoreInputs: calculateIgnoreInputs(definition, tokens),
             preventDefault: definition.preventDefault ?? true,
             isDefault: definition.isDefault ?? true
         };
     }
 
-    // =============================================================================
-    // Actions
-    // =============================================================================
+    async function saveShortcutsToBackend() {
+        try {
+            const data: Record<string, string> = {};
+            const currentCustomizations = customizations();
+            const allShortcuts = shortcuts();
+
+            for (const [id, keys] of currentCustomizations) {
+                const shortcut = allShortcuts.get(id);
+                if (shortcut) {
+                    const storageKey = `${shortcut.name}::${shortcut.scope || 'global'}`;
+                    data[storageKey] = keys;
+                }
+            }
+
+            await invoke('set_setting', { key: 'shortcuts', value: data });
+        } catch (error) {
+            console.warn('[ShortcutStore] Failed to save shortcuts:', error);
+        }
+    }
 
     const actions: ShortcutActions = {
         register: (definition: ShortcutDefinition, handler?: ShortcutDefinition['handler']) => {
             const registered = createRegisteredShortcut(definition, handler);
 
-            setShortcuts(prev => {
-                const next = new Map(prev);
+            setShortcuts(previous => {
+                const next = new Map(previous);
                 next.set(registered.id, registered);
                 return next;
             });
@@ -381,8 +104,8 @@ function createShortcutStore() {
         },
 
         unregister: (id: string) => {
-            setShortcuts(prev => {
-                const next = new Map(prev);
+            setShortcuts(previous => {
+                const next = new Map(previous);
                 next.delete(id);
                 return next;
             });
@@ -395,14 +118,12 @@ function createShortcutStore() {
                 return;
             }
 
-            // Save customization
-            setCustomizations(prev => {
-                const next = new Map(prev);
+            setCustomizations(previous => {
+                const next = new Map(previous);
                 next.set(id, newKeys);
                 return next;
             });
 
-            // Update the registered shortcut
             const tokens = normalizeKeysToTokens(newKeys);
             const updated: RegisteredShortcut = {
                 ...current,
@@ -412,55 +133,51 @@ function createShortcutStore() {
                 isDefault: false
             };
 
-            setShortcuts(prev => {
-                const next = new Map(prev);
+            setShortcuts(previous => {
+                const next = new Map(previous);
                 next.set(id, updated);
                 return next;
             });
 
-            if (persist) {
-                saveToBackend();
-            }
+            if (persist) saveShortcutsToBackend();
         },
 
         resetToDefault: (id: string) => {
-            const defaultDef = DEFAULT_SHORTCUTS.find(
-                d => d.id === id || d.name === shortcuts().get(id)?.name
+            const defaultDefinition = DEFAULT_SHORTCUTS.find(
+                definition => definition.id === id || definition.name === shortcuts().get(id)?.name
             );
-            if (!defaultDef) {
+
+            if (!defaultDefinition) {
                 console.warn(`[ShortcutStore] Cannot reset: no default found for ${id}`);
                 return;
             }
 
-            // Remove customization
-            setCustomizations(prev => {
-                const next = new Map(prev);
+            setCustomizations(previous => {
+                const next = new Map(previous);
                 next.delete(id);
                 return next;
             });
 
-            // Re-register with default
-            const registered = createRegisteredShortcut({ ...defaultDef, id });
-            setShortcuts(prev => {
-                const next = new Map(prev);
+            const registered = createRegisteredShortcut({ ...defaultDefinition, id });
+            setShortcuts(previous => {
+                const next = new Map(previous);
                 next.set(id, registered);
                 return next;
             });
 
-            saveToBackend();
+            saveShortcutsToBackend();
         },
 
         resetAllToDefaults: () => {
             setCustomizations(new Map());
 
-            // Re-register all defaults
             const newShortcuts = new Map<string, RegisteredShortcut>();
-            for (const def of DEFAULT_SHORTCUTS) {
-                const registered = createRegisteredShortcut(def);
+            for (const definition of DEFAULT_SHORTCUTS) {
+                const registered = createRegisteredShortcut(definition);
                 newShortcuts.set(registered.id, registered);
             }
             setShortcuts(newShortcuts);
-            saveToBackend();
+            saveShortcutsToBackend();
         },
 
         list: () => {
@@ -468,73 +185,30 @@ function createShortcutStore() {
         },
 
         getByScope: (scope: InputScopeName) => {
-            return Array.from(shortcuts().values()).filter(s => s.scope === scope);
+            return Array.from(shortcuts().values()).filter(shortcut => shortcut.scope === scope);
         },
 
         detectConflicts: (keys: string, excludeId?: string, scope?: string) => {
             const normalized = canonicalizeShortcut(keys);
-            // Conflict exists if keys match AND scopes match
             const targetScope = scope || 'global';
 
             return Array.from(shortcuts().values())
-                .filter(s => {
-                    if (s.id === excludeId) return false;
-                    if (s.normalizedKeys !== normalized) return false;
-                    // Only flag conflict if scopes are the same
-                    // This allows shadowing (e.g. Modal Esc vs Global Esc)
-                    const sScope = s.scope || 'global';
-                    return sScope === targetScope;
+                .filter(shortcut => {
+                    if (shortcut.id === excludeId) return false;
+                    if (shortcut.normalizedKeys !== normalized) return false;
+                    const shortcutScope = shortcut.scope || 'global';
+                    return shortcutScope === targetScope;
                 })
-                .map(s => s.name);
+                .map(shortcut => shortcut.name);
         }
     };
 
-    // =============================================================================
-    // Initialization - Run immediately
-    // =============================================================================
-
-    // Register default shortcuts
-    for (const def of DEFAULT_SHORTCUTS) {
-        actions.register(def);
+    // Initialization
+    for (const definition of DEFAULT_SHORTCUTS) {
+        actions.register(definition);
     }
 
-    // =============================================================================
-    // Persistence Helpers
-    // =============================================================================
-
-    function serialize(): SerializedShortcut[] {
-        return Array.from(shortcuts().values()).map(s => ({
-            id: s.id,
-            name: s.name,
-            description: s.description,
-            keys: s.keys as string,
-            scope: s.scope || 'global',
-            category: s.category,
-            isCustom: !s.isDefault
-        }));
-    }
-
-    async function saveToBackend() {
-        try {
-            const data: Record<string, string> = {};
-            const custom = customizations();
-            const all = shortcuts();
-
-            for (const [id, keys] of custom) {
-                const s = all.get(id);
-                if (s) {
-                    const key = `${s.name}::${s.scope || 'global'}`;
-                    data[key] = keys;
-                }
-            }
-
-            await invoke('set_setting', { key: 'shortcuts', value: data });
-        } catch (e) {
-            console.warn('[ShortcutStore] Failed to save shortcuts:', e);
-        }
-    }
-
-    async function loadFromBackend() {
+    async function loadShortcutsFromBackend() {
         try {
             const saved = await invoke<Record<string, string> | null>('get_setting', {
                 key: 'shortcuts'
@@ -542,85 +216,61 @@ function createShortcutStore() {
             if (saved) {
                 for (const [key, keys] of Object.entries(saved)) {
                     const [name, scope] = key.split('::');
-
-                    // Find by name/scope in shortcuts (defaults are already registered)
                     const found = Array.from(shortcuts().values()).find(
-                        s => s.name === name && (s.scope || 'global') === (scope || 'global')
+                        shortcut =>
+                            shortcut.name === name &&
+                            (shortcut.scope || 'global') === (scope || 'global')
                     );
-
                     if (found) {
                         actions.edit(found.id, keys, false);
                     }
                 }
             }
-        } catch (e) {
-            console.warn('[ShortcutStore] Failed to load shortcuts:', e);
+        } catch (error) {
+            console.warn('[ShortcutStore] Failed to load shortcuts:', error);
         }
     }
 
-    // Initial Load from Backend
-    loadFromBackend();
-
-    // =============================================================================
-    // Getters
-    // =============================================================================
-
-    function getById(id: string): RegisteredShortcut | undefined {
-        return shortcuts().get(id);
-    }
-
-    function getByCommand(command: string): RegisteredShortcut | undefined {
-        return Array.from(shortcuts().values()).find(s => s.command === command);
-    }
-
-    function getCategories(): string[] {
-        const cats = new Set<string>();
-        for (const s of shortcuts().values()) {
-            if (s.category) cats.add(s.category);
-        }
-        return Array.from(cats).sort();
-    }
-
-    function getDefault(id: string): ShortcutDefinition | undefined {
-        // Try to find by ID first, then by name match if ID was generated
-        const current = shortcuts().get(id);
-        if (!current) return undefined;
-
-        return DEFAULT_SHORTCUTS.find(d => d.id === id || (current && d.name === current.name));
-    }
-
-    function getByNameAndScope(
-        name: string,
-        scope: InputScopeName = 'global'
-    ): RegisteredShortcut | undefined {
-        return Array.from(shortcuts().values()).find(
-            s => s.name === name && (s.scope || 'global') === (scope || 'global')
-        );
-    }
+    createEffect(() => {
+        loadShortcutsFromBackend();
+    });
 
     return {
-        // State
         shortcuts,
         customizations,
-
-        // Actions
         ...actions,
-
-        // Getters
-        getById,
-        getByCommand,
-        getByNameAndScope,
-        getCategories,
-
-        // Persistence
-        serialize,
-        getDefault
+        getById: (id: string) => shortcuts().get(id),
+        getByCommand: (command: string) =>
+            Array.from(shortcuts().values()).find(s => s.command === command),
+        getByNameAndScope: (name: string, scope: InputScopeName = 'global') =>
+            Array.from(shortcuts().values()).find(
+                s => s.name === name && (s.scope || 'global') === (scope || 'global')
+            ),
+        getCategories: () => {
+            const categories = new Set<string>();
+            for (const shortcut of shortcuts().values()) {
+                if (shortcut.category) categories.add(shortcut.category);
+            }
+            return Array.from(categories).sort();
+        },
+        serialize: (): SerializedShortcut[] =>
+            Array.from(shortcuts().values()).map(shortcut => ({
+                id: shortcut.id,
+                name: shortcut.name,
+                description: shortcut.description,
+                keys: shortcut.keys as string,
+                scope: shortcut.scope || 'global',
+                category: shortcut.category,
+                isCustom: !shortcut.isDefault
+            })),
+        getDefault: (id: string): ShortcutDefinition | undefined => {
+            const current = shortcuts().get(id);
+            if (!current) return undefined;
+            return DEFAULT_SHORTCUTS.find(
+                definition => definition.id === id || definition.name === current.name
+            );
+        }
     };
 }
 
-// =============================================================================
-// Singleton Export
-// =============================================================================
-
-// Create store directly - signals work outside component context
 export const shortcutStore = createShortcutStore();

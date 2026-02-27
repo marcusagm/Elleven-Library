@@ -27,8 +27,7 @@ export interface DomainEvents {
 }
 
 class EventBus {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private listeners: Map<keyof DomainEvents, Set<EventCallback<any>>> = new Map();
+    private listeners: Map<keyof DomainEvents, Set<EventCallback<unknown>>> = new Map();
 
     /**
      * Subscribes to a specific domain event.
@@ -44,12 +43,16 @@ class EventBus {
         if (!this.listeners.has(event)) {
             this.listeners.set(event, new Set());
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        this.listeners.get(event)!.add(callback as EventCallback<any>);
+
+        const eventListeners = this.listeners.get(event)!;
+        const untypedCallback = callback as EventCallback<unknown>;
+        eventListeners.add(untypedCallback);
 
         return () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            this.listeners.get(event)?.delete(callback as EventCallback<any>);
+            const currentListeners = this.listeners.get(event);
+            if (currentListeners) {
+                currentListeners.delete(untypedCallback);
+            }
         };
     }
 

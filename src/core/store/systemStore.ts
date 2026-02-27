@@ -60,7 +60,7 @@ export const systemActions = {
                 systemActions.clearProgress();
                 // Refresh library to show new items
                 // We use a small delay or just call it directly
-                // Importing actions inside function to avoid circular dependency issues if any,
+                // Importing actions inside function to avoid potential circular dependency issues,
                 // though we are importing them at top level.
                 // Circular dependency libraryStore <-> systemStore might exist if not careful.
                 // libraryStore imports systemStore? Previous check showed unused import removed.

@@ -5,54 +5,15 @@
  */
 
 import type { InputToken, ModifierKey, Platform, TokenKind } from './types';
+import { detectPlatform, isMac } from './utils/platform';
+import { MODIFIER_ORDER, MODIFIER_ALIASES, KEY_CODE_MAP } from './utils/keys';
+import { formatKeyForDisplay } from './utils/display';
 
-// =============================================================================
-// Platform Detection
-// =============================================================================
-
-let cachedPlatform: Platform | null = null;
-
-export function detectPlatform(): Platform {
-    if (cachedPlatform) return cachedPlatform;
-
-    if (typeof navigator === 'undefined') {
-        cachedPlatform = 'windows';
-        return cachedPlatform;
-    }
-
-    const ua = navigator.userAgent.toLowerCase();
-
-    if (ua.includes('mac')) {
-        cachedPlatform = 'mac';
-    } else if (ua.includes('linux')) {
-        cachedPlatform = 'linux';
-    } else {
-        cachedPlatform = 'windows';
-    }
-
-    return cachedPlatform;
-}
-
-export function isMac(): boolean {
-    return detectPlatform() === 'mac';
-}
+export { detectPlatform, isMac };
 
 // =============================================================================
 // Modifier Helpers
 // =============================================================================
-
-const MODIFIER_ORDER: ModifierKey[] = ['Meta', 'Ctrl', 'Alt', 'Shift'];
-
-const MODIFIER_ALIASES: Record<string, ModifierKey> = {
-    cmd: 'Meta',
-    command: 'Meta',
-    meta: 'Meta',
-    ctrl: 'Ctrl',
-    control: 'Ctrl',
-    alt: 'Alt',
-    option: 'Alt',
-    shift: 'Shift'
-};
 
 export function normalizeModifier(mod: string): ModifierKey | null {
     const lower = mod.toLowerCase();
@@ -78,127 +39,95 @@ export function extractModifiersFromEvent(
 // Key Normalization
 // =============================================================================
 
-const KEY_CODE_MAP: Record<string, string> = {
-    // Letters are already in correct format (KeyA, KeyB, etc.)
-    // Numbers
-    '0': 'Digit0',
-    '1': 'Digit1',
-    '2': 'Digit2',
-    '3': 'Digit3',
-    '4': 'Digit4',
-    '5': 'Digit5',
-    '6': 'Digit6',
-    '7': 'Digit7',
-    '8': 'Digit8',
-    '9': 'Digit9',
-    // Special keys
-    escape: 'Escape',
-    esc: 'Escape',
-    enter: 'Enter',
-    return: 'Enter',
-    tab: 'Tab',
-    space: 'Space',
-    ' ': 'Space',
-    backspace: 'Backspace',
-    delete: 'Delete',
-    del: 'Delete',
-    insert: 'Insert',
-    ins: 'Insert',
-    home: 'Home',
-    end: 'End',
-    pageup: 'PageUp',
-    pagedown: 'PageDown',
-    pgup: 'PageUp',
-    pgdn: 'PageDown',
-    // Arrow keys
-    arrowup: 'ArrowUp',
-    arrowdown: 'ArrowDown',
-    arrowleft: 'ArrowLeft',
-    arrowright: 'ArrowRight',
-    up: 'ArrowUp',
-    down: 'ArrowDown',
-    left: 'ArrowLeft',
-    right: 'ArrowRight',
-    // Function keys
-    f1: 'F1',
-    f2: 'F2',
-    f3: 'F3',
-    f4: 'F4',
-    f5: 'F5',
-    f6: 'F6',
-    f7: 'F7',
-    f8: 'F8',
-    f9: 'F9',
-    f10: 'F10',
-    f11: 'F11',
-    f12: 'F12',
-    // Symbols
-    '+': 'Equal',
-    '=': 'Equal',
-    '-': 'Minus',
-    _: 'Minus',
-    '[': 'BracketLeft',
-    ']': 'BracketRight',
-    '{': 'BracketLeft',
-    '}': 'BracketRight',
-    '\\': 'Backslash',
-    '|': 'Backslash',
-    ';': 'Semicolon',
-    ':': 'Semicolon',
-    "'": 'Quote',
-    '"': 'Quote',
-    ',': 'Comma',
-    '<': 'Comma',
-    '.': 'Period',
-    '>': 'Period',
-    '/': 'Slash',
-    '?': 'Slash',
-    '`': 'Backquote',
-    '~': 'Backquote'
-};
-
+/**
+ * Normalizes a key name to standard Code values (KeyA, Digit0, Escape, etc.)
+ */
 export function normalizeKeyCode(key: string): string {
     if (!key) return key;
 
     const lower = key.toLowerCase();
 
-    // Check direct mapping
+    // 1. Direct mapping from KEY_CODE_MAP
     if (KEY_CODE_MAP[lower]) {
         return KEY_CODE_MAP[lower];
     }
 
-    // Already in KeyCode format (KeyA, Digit0, etc.)
-    if (/^Key[A-Z]$/i.test(key) || /^Digit[0-9]$/i.test(key)) {
-        return key.charAt(0).toUpperCase() + key.slice(1);
-    }
+    // 2. Pattern-based normalization
+    return applyPatternNormalization(key, lower);
+}
 
-    // Arrow keys
-    if (/^Arrow(Up|Down|Left|Right)$/i.test(key)) {
-        return 'Arrow' + key.slice(5);
+/**
+ * Helper to reduce complexity of normalizeKeyCode
+ */
+function normalizeAlphaNumeric(text: string): string | null {
+    if (/^Key[A-Z]$/i.test(text) || /^Digit[0-9]$/i.test(text)) {
+        return text.charAt(0).toUpperCase() + text.slice(1);
     }
+    return null;
+}
 
-    // Function keys
-    if (/^F([1-9]|1[0-2])$/i.test(key)) {
-        return key.toUpperCase();
+function normalizeArrowKeys(text: string): string | null {
+    if (/^Arrow(Up|Down|Left|Right)$/i.test(text)) {
+        const direction = text.slice(5).toLowerCase();
+        const capitalized = direction.charAt(0).toUpperCase() + direction.slice(1);
+        return `Arrow${capitalized}`;
     }
+    return null;
+}
 
-    // Numpad
-    if (/^Numpad/i.test(key)) {
-        return 'Numpad' + key.slice(6);
+function normalizeFunctionKeys(text: string): string | null {
+    if (/^F([1-9]|1[0-2])$/i.test(text)) {
+        return text.toUpperCase();
     }
+    return null;
+}
 
-    // Single letter -> KeyX
-    if (lower.length === 1 && lower >= 'a' && lower <= 'z') {
-        return `Key${lower.toUpperCase()}`;
+function normalizeNumpadKeys(text: string): string | null {
+    if (/^Numpad/i.test(text)) {
+        return 'Numpad' + text.slice(6);
     }
+    return null;
+}
 
-    // Single digit -> DigitX
-    if (lower.length === 1 && lower >= '0' && lower <= '9') {
-        return `Digit${lower}`;
+function normalizeSingleCharacter(lower: string): string | null {
+    if (lower.length === 1) {
+        if (lower >= 'a' && lower <= 'z') {
+            return `Key${lower.toUpperCase()}`;
+        }
+        if (lower >= '0' && lower <= '9') {
+            return `Digit${lower}`;
+        }
     }
+    return null;
+}
 
-    // Return as-is if no match (e.g., already normalized)
+/**
+ * Applies non-alphanumeric patterns for normalization.
+ */
+function applyNonAlphaPatterns(key: string, lower: string): string {
+    const arrowMatch = normalizeArrowKeys(key);
+    if (arrowMatch) return arrowMatch;
+
+    const functionMatch = normalizeFunctionKeys(key);
+    if (functionMatch) return functionMatch;
+
+    const numpadMatch = normalizeNumpadKeys(key);
+    if (numpadMatch) return numpadMatch;
+
+    const singleCharMatch = normalizeSingleCharacter(lower);
+    if (singleCharMatch) return singleCharMatch;
+
     return key;
+}
+
+/**
+ * Helper to reduce complexity of normalizeKeyCode
+ */
+function applyPatternNormalization(key: string, lower: string): string {
+    const alphaNumericMatch = normalizeAlphaNumeric(key);
+    if (alphaNumericMatch) return alphaNumericMatch;
+
+    return applyNonAlphaPatterns(key, lower);
 }
 
 // =============================================================================
@@ -221,11 +150,11 @@ export function parseShortcutString(shortcut: string): { modifiers: ModifierKey[
     const modifiers: ModifierKey[] = [];
     let key = '';
 
-    for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
+    for (let index = 0; index < parts.length; index++) {
+        const part = parts[index];
         const mod = normalizeModifier(part);
 
-        if (mod && i < parts.length - 1) {
+        if (mod && index < parts.length - 1) {
             // It's a modifier and not the last part
             if (!modifiers.includes(mod)) {
                 modifiers.push(mod);
@@ -363,25 +292,24 @@ export function tokenMatchesDefinition(token: InputToken, definitionId: string):
 export function normalizeKeysToTokens(keys: string | string[]): InputToken[] {
     const keyArray = Array.isArray(keys) ? keys : keys.split(/\s+/).filter(Boolean);
 
-    return keyArray.map(k => {
-        const canonical = canonicalizeShortcut(k);
-        const { modifiers, key } = parseShortcutString(k);
+    return keyArray.map(keyString => {
+        const canonical = canonicalizeShortcut(keyString);
+        const { modifiers, key } = parseShortcutString(keyString);
 
         // Detect kind based on content
         let kind: TokenKind = 'keyboard';
-
-        if (/^(pinch|rotate|swipe)/i.test(k)) {
+        if (/^(pinch|rotate|swipe)/i.test(keyString)) {
             kind = 'gesture';
-        } else if (/Wheel(Up|Down)$/i.test(k)) {
+        } else if (/Wheel(Up|Down)$/i.test(keyString)) {
             kind = 'wheel';
-        } else if (/(Click|RightClick|MiddleClick)$/i.test(k)) {
+        } else if (/(Click|RightClick|MiddleClick)$/i.test(keyString)) {
             kind = 'pointer';
         }
 
         return {
             kind,
             id: canonical,
-            raw: k,
+            raw: keyString,
             meta: { modifiers, key }
         };
     });
@@ -390,67 +318,6 @@ export function normalizeKeysToTokens(keys: string | string[]): InputToken[] {
 // =============================================================================
 // Display Formatting
 // =============================================================================
-
-const MAC_SYMBOLS: Record<string, string> = {
-    Meta: '⌘',
-    Ctrl: '⌃',
-    Alt: '⌥',
-    Shift: '⇧',
-    Enter: '↩',
-    Backspace: '⌫',
-    Delete: '⌦',
-    Escape: 'esc',
-    Tab: '⇥',
-    Space: '␣',
-    ArrowUp: '↑',
-    ArrowDown: '↓',
-    ArrowLeft: '←',
-    ArrowRight: '→'
-};
-
-const WINDOWS_SYMBOLS: Record<string, string> = {
-    Meta: 'Win',
-    Ctrl: 'Ctrl',
-    Alt: 'Alt',
-    Shift: 'Shift',
-    Enter: 'Enter',
-    Backspace: 'Backspace',
-    Delete: 'Del',
-    Escape: 'Esc',
-    Tab: 'Tab',
-    Space: 'Space',
-    ArrowUp: '↑',
-    ArrowDown: '↓',
-    ArrowLeft: '←',
-    ArrowRight: '→'
-};
-
-function formatKeyForDisplay(key: string, platform: Platform): string {
-    const symbols = platform === 'mac' ? MAC_SYMBOLS : WINDOWS_SYMBOLS;
-
-    if (symbols[key]) {
-        return symbols[key];
-    }
-
-    // Convert KeyX to X, DigitX to X
-    if (/^Key([A-Z])$/.test(key)) {
-        return key.slice(3);
-    }
-    if (/^Digit([0-9])$/.test(key)) {
-        return key.slice(5);
-    }
-
-    // Function keys
-    if (/^F[0-9]+$/.test(key)) {
-        return key;
-    }
-
-    // Special cases
-    if (key === 'Equal') return '+';
-    if (key === 'Minus') return '-';
-
-    return key;
-}
 
 /**
  * Format a shortcut for display in the UI

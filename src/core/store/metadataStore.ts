@@ -52,7 +52,7 @@ const [metadataState, setMetadataState] = createStore<MetadataState>({
     tagUpdateVersion: 0
 });
 
-/** Check if any added items belong to unknown folders */
+/** Check if some added items belong to unknown folders */
 function hasUnknownFolders(added: BatchChangePayload['added'], knownIds: Set<number>): boolean {
     if (!added) return false;
     return added.some(item => item.folder_id && !knownIds.has(item.folder_id));
@@ -181,42 +181,28 @@ export const metadataActions = {
      * Updates an existing tag and refreshes metadata.
      */
     updateTag: async (
-        id: number,
+        itemId: number,
         name?: string | null,
         color?: string | null,
         parentId?: number | null,
         orderIndex?: number | null
     ): Promise<ActionResult> => {
         try {
+            const finalName = name === null ? undefined : name;
+            const finalColor = color === null ? undefined : color;
+            const finalParentId = parentId === null ? undefined : parentId;
+            const finalOrderIndex = orderIndex === null ? undefined : orderIndex;
+
             await tagService.updateTag(
-                id,
-                name === null ? undefined : name,
-                color === null ? undefined : color,
-                parentId === null ? undefined : parentId,
-                orderIndex === null ? undefined : orderIndex
+                itemId,
+                finalName,
+                finalColor,
+                finalParentId,
+                finalOrderIndex
             );
 
-            // OPTIMIZATION: Update store locally
-            const tagUpdates: Partial<Tag> = {
-                ...(name !== null && name !== undefined && { name }),
-                ...(color !== null && color !== undefined && { color }),
-                ...(parentId !== undefined && { parent_id: parentId === 0 ? null : parentId }),
-                ...(orderIndex !== null && orderIndex !== undefined && { order_index: orderIndex })
-            };
-
-            setMetadataState('tags', (tag: Tag) => tag.id === id, tagUpdates);
-
-            // Notify based on change type
-            if (parentId !== undefined || orderIndex !== undefined) {
-                await metadataActions.loadTags();
-                metadataActions.notifyTagUpdate({ structural: true });
-            } else {
-                metadataActions.notifyTagUpdate({
-                    structural: false,
-                    stats: false,
-                    images: name !== null && name !== undefined
-                });
-            }
+            metadataActions.applyTagStoreUpdates(itemId, name, color, parentId, orderIndex);
+            metadataActions.resolveTagNotificationType(name, parentId, orderIndex);
 
             return { success: true, data: undefined };
         } catch (error) {
@@ -225,6 +211,51 @@ export const metadataActions = {
                 success: false,
                 error: { code: ErrorCode.IO_ERROR, message: 'Failed to update tag' }
             };
+        }
+    },
+
+    /**
+     * Applies local store updates after a tag modification.
+     */
+    applyTagStoreUpdates: (
+        itemId: number,
+        name?: string | null,
+        color?: string | null,
+        parentId?: number | null,
+        orderIndex?: number | null
+    ) => {
+        const tagUpdates: Partial<Tag> = {};
+
+        if (name !== null && name !== undefined) tagUpdates.name = name;
+        if (color !== null && color !== undefined) tagUpdates.color = color;
+        if (orderIndex !== null && orderIndex !== undefined) tagUpdates.order_index = orderIndex;
+
+        if (parentId !== undefined) {
+            tagUpdates.parent_id = parentId === 0 || parentId === null ? null : parentId;
+        }
+
+        setMetadataState('tags', (tag: Tag) => tag.id === itemId, tagUpdates);
+    },
+
+    /**
+     * Determines and triggers the correct notification after a tag update.
+     */
+    resolveTagNotificationType: async (
+        name?: string | null,
+        parentId?: number | null,
+        orderIndex?: number | null
+    ) => {
+        const isStructuralChange = parentId !== undefined || orderIndex !== undefined;
+
+        if (isStructuralChange) {
+            await metadataActions.loadTags();
+            metadataActions.notifyTagUpdate({ structural: true });
+        } else {
+            metadataActions.notifyTagUpdate({
+                structural: false,
+                stats: false,
+                images: name !== null && name !== undefined
+            });
         }
     },
 

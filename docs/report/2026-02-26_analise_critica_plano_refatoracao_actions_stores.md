@@ -105,40 +105,53 @@ A ordem atual começa por Viewport/Seleção e deixa DnD no fim. Em termos de de
 
 ### Ordem sugerida (mais segura)
 
-#### Sprint 0 — Fundamentos e guardrails (pré-requisito)
-- Definir `ActionResult`, erro padrão e policy de schemas.
-- Configurar lint arquitetural e métricas mínimas.
-- Criar feature flags e estratégia de rollback.
+#### Sprint 0 — Fundamentos e guardrails (Concluído ✅)
+- [x] Definir `ActionResult`, erro padrão e policy de schemas.
+- [x] Configurar lint arquitetural e métricas mínimas.
+- [x] Criar feature flags e estratégia de rollback.
 
-#### Sprint 1 — Eventos globais + Settings (baixo risco, alto ganho)
-- Interação 7 (Status/Eventos globais).
-- Interação 6 (Settings/Preferências).
+#### Sprint 1 — Eventos globais + Settings (Concluído ✅)
+- [x] Interação 7 (Status/Eventos globais).
+- [x] Interação 6 (Settings/Preferências).
 
 > Justificativa: remove acoplamentos óbvios (`window.dispatchEvent`, I/O em componente) e estabelece padrão de action com risco controlado.
 
-#### Sprint 2 — Library base + Selection
-- Interação 2 (Navegação/Biblioteca).
-- Interação 1 (Seleção/Viewport superficial).
+#### Sprint 2 — Library base + Selection (Concluído ✅)
+- [x] Interação 2 (Navegação/Biblioteca).
+- [x] Interação 1 (Seleção/Viewport superficial).
 
 > Justificativa: consolida mutações centrais de dados e prepara terreno para busca/tags.
 
-#### Sprint 3 — Tags + DnD (em conjunto)
-- Interação 8 (Tags/hierarquia).
-- Interação 10 (DnD).
+#### Sprint 3 — Tags + DnD (Concluído ✅)
+- [x] Interação 8 (Tags/hierarquia).
+- [x] Interação 10 (DnD).
 
 > Justificativa: DnD e tags são acoplados; separar cria retrabalho de contratos.
 
-#### Sprint 4 — Busca avançada + Inspector
-- Interação 3 (Busca/Smart folders).
-- Interação 4 (Inspector).
+#### Sprint 4 — Busca avançada + Inspector (Concluído ✅)
+- [x] Interação 3 (Busca/Smart folders).
+- [x] Interação 4 (Inspector).
 
 > Justificativa: ambos dependem de metadados estáveis e contratos já maturados.
 
-#### Sprint 5 — ItemView + Viewport engine
-- Interação 5 (ItemView).
-- Interação 9 (Viewport/Workers).
+#### Sprint 5 — ItemView + Viewport engine (Parcial ⏳)
+- [x] Interação 5 (ItemView).
+- [/] Interação 9 (Viewport/Workers). (Em andamento)
 
 > Justificativa: mudanças com maior risco de performance e UX devem ocorrer após estabilização dos contratos e observabilidade.
+
+#### Sprint 6 — Core Engine & Quality Refactoring (Concluída ✅)
+- [x] Concluir Integração do System Scheduler.
+- [x] Eliminar 13 `any` remanescentes no core.
+- [x] Resolver complexidade em `dispatcher.ts`, `normalizer.ts` e `shortcutStore.ts`.
+
+#### Sprint 7 — Modularidade & God-File Splitting (Pendente 🚀)
+- [ ] Dividir `libraryStore.ts`, `metadataStore.ts` e `filter/index.ts` em arquivos <300 linhas.
+- [ ] Resolver todos os `eslint-disable` e bugs de reatividade na UI.
+
+#### Sprint 8 — Excelência Absoluta & DoD (Pendente 🚀)
+- [ ] Zerar contagem de `any` e `lint warnings`.
+- [ ] Auditoria final de arquitetura e fechamento de documentação.
 
 ---
 

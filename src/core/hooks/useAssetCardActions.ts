@@ -13,11 +13,11 @@ import { type ImageItem } from '../../types';
 
 export interface AssetCardActions {
     /** Toggle selection for an item, optionally with multi-select or range-select */
-    handleSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) => void;
+    handleSelect: (itemId: number, modifiers: { multi: boolean; shift: boolean }) => void;
     /** Open item in detail/preview view */
-    handleOpen: (id: number) => void;
+    handleOpen: (itemId: number) => void;
     /** Check if an item is currently selected */
-    isSelected: (id: number) => boolean;
+    isSelected: (itemId: number) => boolean;
     /** Get all currently selected IDs (for DnD) */
     getSelectedIds: () => (number | string)[];
 }
@@ -27,21 +27,21 @@ export function useAssetCardActions(): AssetCardActions {
     const viewport = useViewport();
 
     return {
-        handleSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) => {
+        handleSelect: (itemId: number, modifiers: { multi: boolean; shift: boolean }) => {
             if (modifiers.shift) {
-                const allIds = libraryState.items.map((item: ImageItem) => item.id);
-                selection.selectRange(id, allIds);
+                const allIdentifiers = libraryState.items.map((item: ImageItem) => item.id);
+                selection.selectRange(itemId, allIdentifiers);
             } else {
-                selection.toggle(id, modifiers.multi);
+                selection.toggle(itemId, modifiers.multi);
             }
         },
 
-        handleOpen: (id: number) => {
-            viewport.openItem(id.toString());
+        handleOpen: (itemId: number) => {
+            viewport.openItem(itemId.toString());
         },
 
-        isSelected: (id: number) => {
-            return selection.selectedIds.includes(id);
+        isSelected: (itemId: number) => {
+            return selection.selectedIds.includes(itemId);
         },
 
         getSelectedIds: () => {

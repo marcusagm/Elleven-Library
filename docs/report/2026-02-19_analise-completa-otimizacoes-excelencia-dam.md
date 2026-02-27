@@ -3,7 +3,7 @@
 **Data:** 2026-02-19  
 **Escopo:** Frontend (Solid + TS), Backend (Rust + Tauri), arquitetura, performance, confiabilidade, segurança, DX e usabilidade DAM.  
 **Base de avaliação:** código atual + guias em `docs/guidelines`.  
-**Última atualização:** 2026-02-26 (conclusão da padronização total da biblioteca de componentes UI)
+**Última atualização:** 2026-02-27 (Conclusão das Sprints 0-4; Sprint 5 Parcial — Padronização Total de Actions e Stores)
 
 ---
 
@@ -197,9 +197,9 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 4. [x] Adicionar scripts de qualidade no frontend (`lint`, `typecheck`, `test`) e gate mínimo em CI. *(Concluído em 2026-02-20)*
 
 ### Fase 1 — Estruturação arquitetural (2–4 semanas)
-1. [ ] Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos.
-2. [✓] Quebrar arquivos >300 linhas em módulos por responsabilidade. *(Arquitetura de refatoração avançada foi aplicada em `hls-player`, metadata/buscas, `useVideoPlayer.ts`, `Table.tsx` e `Accordion.tsx` em 2026-02-24/25).*
-3. [✓] Eliminar `any` em fluxos principais. *(O core estrutural e UI components estão tipados).*
+1. [x] Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos. *(Concluído nas Sprints 0-4 em 2026-02-26)*.
+2. [✓] Quebrar arquivos >300 linhas em módulos por responsabilidade. *(Arquitetura de refatoração avançada aplicada em `hls-player`, metadata/buscas, `useVideoPlayer.ts`, `Table.tsx`, `Accordion.tsx` e Engine de Viewport em 2026-02-24/27).*
+3. [✓] Eliminar `any` em fluxos principais. *(O core estrutural e UI components estão 100% tipados).*
 4. [ ] Padronizar logging estruturado (níveis, contexto, correlação).
 
 ### Fase 2 — Performance e escala DAM (4–8 semanas)

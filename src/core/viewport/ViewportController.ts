@@ -31,9 +31,6 @@ export class ViewportController implements IViewportController {
     private worker: Worker;
     private disposed = false;
 
-    // Debounce resize for smoother performance
-    private resizeTimeout: ReturnType<typeof setTimeout> | null = null;
-
     // Pending position queries
     private pendingQueries = new Map<string, (pos: ItemPosition | null) => void>();
 
@@ -98,19 +95,17 @@ export class ViewportController implements IViewportController {
 
         viewportActions.setConfig({ containerWidth: width });
 
-        if (this.resizeTimeout) {
-            clearTimeout(this.resizeTimeout);
-        }
-
-        this.resizeTimeout = setTimeout(() => {
+        const resizeTask = () => {
             if (this.disposed) return;
-            this.resizeTimeout = null;
             viewportActions.updateFromWorker({ isCalculating: true });
             this.postMessage({
                 type: 'RESIZE',
                 payload: { width: viewportState.config.containerWidth }
             });
-        }, 50);
+        };
+
+        // Schedule worker update with debouncing behavior
+        scheduler.schedule(resizeTask);
     }
 
     /**
@@ -161,11 +156,6 @@ export class ViewportController implements IViewportController {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-
-        if (this.resizeTimeout !== null) {
-            clearTimeout(this.resizeTimeout);
-        }
-
         this.worker.terminate();
     }
 
@@ -235,10 +225,6 @@ export class ViewportController implements IViewportController {
     }
 }
 
-// ============================================================================
-// Factory Function
-// ============================================================================
-
 /**
  * Creates a new ViewportController instance.
  */
@@ -247,7 +233,6 @@ export function createViewportController(
     initialConfig: Partial<LayoutConfig> = {}
 ): ViewportController {
     const controller = new ViewportController();
-    // Use timeout or next tick? The constructor sends initial config, we can send mode right after.
     controller.setConfig({ mode, ...initialConfig });
     return controller;
 }

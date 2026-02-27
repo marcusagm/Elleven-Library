@@ -7,12 +7,13 @@ import { libraryActions } from '../store/libraryStore';
  * @returns {Object} Accessors and methods for filtering and sorting items.
  */
 export const useFilters = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const withRefresh = <T extends (...args: any[]) => void>(action: T) =>
-        ((...args: Parameters<T>) => {
-            action(...args);
+    const withRefresh =
+        <Args extends unknown[], R>(action: (...args: Args) => R) =>
+        (...args: Args) => {
+            const result = action(...args);
             libraryActions.refreshImages(true);
-        }) as T;
+            return result;
+        };
 
     return {
         get selectedTags() {

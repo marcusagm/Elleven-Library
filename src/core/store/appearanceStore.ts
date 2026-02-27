@@ -62,7 +62,7 @@ export const appearanceActions = {
         appearanceActions.apply();
 
         // Listen for changes from other windows (with cleanup)
-        // Dispose any previous listener before re-registering
+        // Dispose the previous listener before re-registering
         if (unlistenSyncEvent) {
             unlistenSyncEvent();
             unlistenSyncEvent = null;
