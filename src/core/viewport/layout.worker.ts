@@ -20,6 +20,7 @@ import type {
     WorkerInMessage,
     WorkerOutMessage
 } from './types';
+import { SetItemsMessageSchema, ConfigureMessageSchema } from './schemas';
 
 // ============================================================================
 // Worker State
@@ -52,26 +53,42 @@ self.onmessage = (e: MessageEvent<WorkerInMessage>) => {
 
     try {
         switch (msg.type) {
-            case 'SET_ITEMS':
-                items = msg.payload;
+            case 'SET_ITEMS': {
+                const parsed = SetItemsMessageSchema.parse(msg);
+                items = parsed.payload;
                 recalculateLayout();
                 break;
+            }
 
-            case 'CONFIGURE':
-                config = { ...config, ...msg.payload };
+            case 'CONFIGURE': {
+                // Merge partial/full configs manually mapped through runtime Zod if full
+                // Since CONFIGURE can be partial, we might need a Partial schema or carefully validate
+                // But the message type requires LayoutConfig. Let's merge first, then full-validate if strict.
+                // For performance, since CONFIGURE is rare, we parse the merged state.
+                const mergedConfig = { ...config, ...msg.payload };
+                config = ConfigureMessageSchema.shape.payload.parse(mergedConfig);
                 recalculateLayout();
                 break;
+            }
 
-            case 'RESIZE':
-                if (Math.abs(config.containerWidth - msg.payload.width) > 1) {
-                    config.containerWidth = msg.payload.width;
+            case 'RESIZE': {
+                // High-frequency UI event: TypeGuard only
+                const { width } = msg.payload;
+                if (typeof width === 'number' && Math.abs(config.containerWidth - width) > 1) {
+                    config.containerWidth = width;
                     recalculateLayout();
                 }
                 break;
+            }
 
-            case 'SCROLL':
-                handleScroll(msg.payload.scrollTop, msg.payload.viewportHeight);
+            case 'SCROLL': {
+                // 60FPS High-frequency event: TypeGuard only validation for performance
+                const { scrollTop, viewportHeight } = msg.payload;
+                if (typeof scrollTop === 'number' && typeof viewportHeight === 'number') {
+                    handleScroll(scrollTop, viewportHeight);
+                }
                 break;
+            }
 
             case 'INVALIDATE':
                 recalculateLayout();
@@ -79,13 +96,15 @@ self.onmessage = (e: MessageEvent<WorkerInMessage>) => {
 
             case 'QUERY_POSITION': {
                 const { id, requestId } = msg.payload;
-                const pos = positions.get(id) || null;
-                respond({ type: 'POSITION_RESULT', payload: { requestId, position: pos } });
+                if (typeof id === 'number' && typeof requestId === 'string') {
+                    const pos = positions.get(id) || null;
+                    respond({ type: 'POSITION_RESULT', payload: { requestId, position: pos } });
+                }
                 break;
             }
         }
     } catch (error) {
-        const errMsg = error instanceof Error ? error.message : 'Unknown error';
+        const errMsg = error instanceof Error ? error.message : 'Unknown validation/worker error';
         respond({ type: 'ERROR', payload: { message: errMsg } });
     }
 };

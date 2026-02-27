@@ -21,16 +21,12 @@ export interface Position {
 export type ViewportTool = 'pan' | 'rotate';
 
 interface ItemViewContextState {
-    zoom: Accessor<number>;
-    setZoom: Setter<number>;
     rotation: Accessor<number>;
     setRotation: Setter<number>;
     flip: Accessor<FlipState>;
     setFlip: Setter<FlipState>;
     tool: Accessor<ViewportTool>;
     setTool: Setter<ViewportTool>;
-    position: Accessor<Position>;
-    setPosition: Setter<Position>;
     mediaType: Accessor<MediaType>;
     setMediaType: Setter<MediaType>;
     // Slideshow
@@ -70,13 +66,9 @@ export interface ModelSettings {
 const ItemViewContext = createContext<ItemViewContextState>();
 
 export const ItemViewProvider: ParentComponent = props => {
-    // Zoom agora armazena a porcentagem real (ex: 100 = 100%).
-    // O valor inicial pode ser sobrescrito pelo renderizador (ex: ImageViewer setando Fit on load).
-    const [zoom, setZoom] = createSignal(100);
     const [rotation, setRotation] = createSignal(0);
     const [flip, setFlip] = createSignal<FlipState>({ horizontal: false, vertical: false });
     const [tool, setTool] = createSignal<ViewportTool>('pan');
-    const [position, setPosition] = createSignal<Position>({ x: 0, y: 0 });
     const [mediaType, setMediaType] = createSignal<MediaType>('unknown');
 
     // Timer / Slideshow
@@ -103,10 +95,8 @@ export const ItemViewProvider: ParentComponent = props => {
     const [resetTrigger, setResetTrigger] = createSignal(0);
 
     const reset = () => {
-        setZoom(100);
         setRotation(0);
         setFlip({ horizontal: false, vertical: false });
-        setPosition({ x: 0, y: 0 });
         setTool('pan');
         // DO NOT reset mediaType here
 
@@ -129,16 +119,12 @@ export const ItemViewProvider: ParentComponent = props => {
     };
 
     const value: ItemViewContextState = {
-        zoom,
-        setZoom,
         rotation,
         setRotation,
         flip,
         setFlip,
         tool,
         setTool,
-        position,
-        setPosition,
         mediaType,
         setMediaType,
         slideshowPlaying,

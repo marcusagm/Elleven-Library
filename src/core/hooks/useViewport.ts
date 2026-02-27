@@ -1,58 +1,71 @@
-import { createSignal, createRoot } from 'solid-js';
+import { viewportState, viewportActions } from '../store/viewportStore';
 
-export type ViewportMode = 'list' | 'item';
-
-function createViewportState() {
-    const [mode, setMode] = createSignal<ViewportMode>('list');
-    const [activeItemId, setActiveItemId] = createSignal<string | null>(null);
-    const [history, setHistory] = createSignal<string[]>([]);
-    const [historyIndex, setHistoryIndex] = createSignal(-1);
-
-    const openItem = (id: string) => {
-        setActiveItemId(id);
-        setMode('item');
-
-        // Simple history tracking
-        const newHistory = history().slice(0, historyIndex() + 1);
-        newHistory.push(id);
-        setHistory(newHistory);
-        setHistoryIndex(newHistory.length - 1);
-    };
-
-    const closeItem = () => {
-        setMode('list');
-        setActiveItemId(null);
-    };
-
-    const goBack = () => {
-        if (historyIndex() > 0) {
-            setHistoryIndex(prev => prev - 1);
-            setActiveItemId(history()[historyIndex()]);
-        } else if (mode() === 'item') {
-            closeItem();
-        }
-    };
-
-    const goForward = () => {
-        if (historyIndex() < history().length - 1) {
-            setHistoryIndex(prev => prev + 1);
-            setActiveItemId(history()[historyIndex()]);
-            setMode('item');
-        }
-    };
-
+/**
+ * useViewport
+ *
+ * Public API hook for the viewport and rendering engine.
+ * Provides access to navigation, virtualization state, and viewport modes.
+ */
+export const useViewport = () => {
     return {
-        mode,
-        activeItemId,
-        openItem,
-        closeItem,
-        goBack,
-        goForward,
-        canGoBack: () => historyIndex() > 0 || mode() === 'item',
-        canGoForward: () => historyIndex() < history().length - 1
+        // Navigation / Mode
+        get mode() {
+            return () => (viewportState.focusedItemId !== null ? 'item' : 'list');
+        },
+        get activeItemId() {
+            return () => (viewportState.focusedItemId ? String(viewportState.focusedItemId) : null);
+        },
+        get focusedItemId() {
+            return () => viewportState.focusedItemId;
+        },
+
+        openItem: (id: string | number) => {
+            viewportActions.setFocusedItem(Number(id));
+        },
+        closeItem: () => {
+            viewportActions.setFocusedItem(null);
+        },
+
+        // Navigation actions
+        nextItem: () => viewportActions.navigateToAsset('next'),
+        prevItem: () => viewportActions.navigateToAsset('prev'),
+
+        // NOTE: History navigation (goBack/goForward) is simplified
+        // to previous/next in the list to avoid duplicate state tracking.
+        goBack: () => viewportActions.setFocusedItem(null),
+        goForward: () => {}, // Deprecated in favor of list navigation
+
+        canGoBack: () => false,
+        canGoForward: () => false,
+
+        // Virtualization accessors
+        get isCalculating() {
+            return () => viewportState.isCalculating;
+        },
+        get visibleItems() {
+            return () => viewportState.visibleItems;
+        },
+        get totalHeight() {
+            return () => viewportState.totalHeight;
+        },
+        get scrollPosition() {
+            return () => viewportState.scrollPosition;
+        },
+
+        // Immersive Viewer (Zoom/Pan/Fit)
+        get zoom() {
+            return () => viewportState.zoom;
+        },
+        get fitToScreen() {
+            return () => viewportState.fitToScreen;
+        },
+        get pan() {
+            return () => viewportState.pan;
+        },
+
+        setZoom: viewportActions.setZoom,
+        setFitToScreen: viewportActions.setFitToScreen,
+        setPan: viewportActions.setPan,
+        resetView: viewportActions.resetView
     };
-}
-
-const viewportState = createRoot(createViewportState);
-
-export const useViewport = () => viewportState;
+};

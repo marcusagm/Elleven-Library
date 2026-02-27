@@ -1,5 +1,6 @@
 import { Component, onMount, createSignal, onCleanup } from 'solid-js';
 import { useItemViewContext } from '../../ItemViewContext';
+import { useViewport } from '../../../../../core/hooks';
 
 interface ImageViewerProps {
     src: string;
@@ -7,8 +8,9 @@ interface ImageViewerProps {
 }
 
 export const ImageViewer: Component<ImageViewerProps> = props => {
-    const { zoom, setZoom, rotation, setRotation, flip, tool, position, setPosition, reset } =
-        useItemViewContext();
+    const { rotation, setRotation, flip, tool, reset } = useItemViewContext();
+
+    const viewport = useViewport();
 
     let imgRef: HTMLImageElement | undefined;
     let containerRef: HTMLDivElement | undefined;
@@ -35,8 +37,8 @@ export const ImageViewer: Component<ImageViewerProps> = props => {
         // or just fit entirely. User requested "percentage of zoom corresponding to size on open".
         const bestFit = Math.min(widthRatio, heightRatio) * 100;
 
-        setZoom(bestFit);
-        setPosition({ x: 0, y: 0 });
+        viewport.setZoom(bestFit);
+        viewport.setPan(0, 0);
     };
 
     // Run fit only when image loads perfectly
@@ -57,7 +59,8 @@ export const ImageViewer: Component<ImageViewerProps> = props => {
         setIsDragging(true);
 
         if (tool() === 'pan') {
-            setStartPos({ x: e.clientX - position().x, y: e.clientY - position().y });
+            const currentPan = viewport.pan();
+            setStartPos({ x: e.clientX - currentPan.x, y: e.clientY - currentPan.y });
         } else if (tool() === 'rotate') {
             // Calculate initial angle relative to center
             if (!containerRef) return;
@@ -73,10 +76,7 @@ export const ImageViewer: Component<ImageViewerProps> = props => {
         if (!isDragging()) return;
 
         if (tool() === 'pan') {
-            setPosition({
-                x: e.clientX - startPos().x,
-                y: e.clientY - startPos().y
-            });
+            viewport.setPan(e.clientX - startPos().x, e.clientY - startPos().y);
         } else if (tool() === 'rotate') {
             if (!containerRef) return;
             const rect = containerRef.getBoundingClientRect();
@@ -96,8 +96,8 @@ export const ImageViewer: Component<ImageViewerProps> = props => {
     const handleWheel = (e: WheelEvent) => {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -10 : 10;
-        const nextZoom = Math.max(5, Math.min(500, zoom() + delta)); // 5% to 500%
-        setZoom(nextZoom);
+        const nextZoom = Math.max(5, Math.min(500, viewport.zoom() + delta)); // 5% to 500%
+        viewport.setZoom(nextZoom);
     };
 
     // Reset on unmount
@@ -132,7 +132,7 @@ export const ImageViewer: Component<ImageViewerProps> = props => {
                 onLoad={onImageLoad}
                 draggable={false}
                 style={{
-                    transform: `translate(${position().x}px, ${position().y}px) rotate(${rotation()}deg) scale(${zoom() / 100}) scaleX(${flip().horizontal ? -1 : 1}) scaleY(${flip().vertical ? -1 : 1})`,
+                    transform: `translate(${viewport.pan().x}px, ${viewport.pan().y}px) rotate(${rotation()}deg) scale(${viewport.zoom() / 100}) scaleX(${flip().horizontal ? -1 : 1}) scaleY(${flip().vertical ? -1 : 1})`,
                     'transform-origin': 'center',
                     transition: isDragging() ? 'none' : 'transform 0.1s ease-out',
                     'max-width': 'none',

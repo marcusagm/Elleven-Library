@@ -52,6 +52,6 @@ A persistent cache for EXIF and technical information.
 - [ ] **Cache Tests:** Verify `localStorage` persistence and eviction logic.
 
 ### Manual Verification
-- [ ] Advanced search builder works correctly with validation feedback.
-- [ ] Batch editing tags in the Inspector updates the grid and sidebar stats.
-- [ ] Smart folder creation/editing persists correctly.
+- [x] Advanced search builder works correctly with validation feedback.
+- [x] Batch editing tags in the Inspector updates the grid and sidebar stats.
+- [x] Smart folder creation/editing persists correctly.

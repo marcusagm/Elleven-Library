@@ -1,5 +1,6 @@
 import { Button, Select, Slider, ToggleGroup, ToggleGroupItem, Tooltip } from '../../../../ui';
 import { useItemViewContext, FlipState } from '../../ItemViewContext';
+import { useViewport } from '../../../../../core/hooks';
 import { ShortcutHint } from '../../common/ToolbarUtils';
 import { Component } from 'solid-js';
 import {
@@ -18,8 +19,6 @@ import {
 
 export const ImageToolbar: Component = () => {
     const {
-        zoom,
-        setZoom,
         tool,
         setTool,
         flip,
@@ -33,6 +32,8 @@ export const ImageToolbar: Component = () => {
     const toggleFlipH = () => setFlip((f: FlipState) => ({ ...f, horizontal: !f.horizontal }));
     const toggleFlipV = () => setFlip((f: FlipState) => ({ ...f, vertical: !f.vertical }));
 
+    const viewport = useViewport();
+
     const triggerFit = () => {
         window.dispatchEvent(new CustomEvent('viewport:fit'));
     };
@@ -44,7 +45,7 @@ export const ImageToolbar: Component = () => {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setZoom(Math.max(zoom() - 10, 5))}
+                        onClick={() => viewport.setZoom(Math.max(viewport.zoom() - 10, 5))}
                     >
                         <ZoomOut size={16} />
                     </Button>
@@ -54,22 +55,22 @@ export const ImageToolbar: Component = () => {
                     class="zoom-display"
                     style={{ 'min-width': '40px', 'text-align': 'center', 'font-size': '12px' }}
                 >
-                    {Math.round(zoom())}%
+                    {Math.round(viewport.zoom())}%
                 </div>
 
                 <Slider
-                    value={zoom()}
+                    value={viewport.zoom()}
                     minimumValue={5}
                     maximumValue={500}
                     showTicks={false}
-                    onValueChange={newZoomValue => setZoom(newZoomValue)}
+                    onValueChange={newZoomValue => viewport.setZoom(newZoomValue)}
                     class="zoom-slider"
                 />
                 <Tooltip position="bottom" content={<ShortcutHint name="Zoom In" />}>
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setZoom(Math.min(zoom() + 10, 500))}
+                        onClick={() => viewport.setZoom(Math.min(viewport.zoom() + 10, 500))}
                     >
                         <ZoomIn size={16} />
                     </Button>
@@ -81,7 +82,7 @@ export const ImageToolbar: Component = () => {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setZoom(100)}
+                        onClick={() => viewport.setZoom(100)}
                         class="zoom-btn"
                     >
                         <Maximize2 size={16} />

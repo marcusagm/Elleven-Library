@@ -43,8 +43,6 @@ const ItemViewContent: Component = () => {
         slideshowPlaying,
         slideshowDuration,
         setSlideshowPlaying,
-        zoom,
-        setZoom,
         setTool,
         setFlip
     } = useItemViewContext();
@@ -112,10 +110,10 @@ const ItemViewContent: Component = () => {
         setSlideshowPlaying(false);
     });
 
-    const zoomIn = () => setZoom(Math.min(zoom() + 10, 500));
-    const zoomOut = () => setZoom(Math.max(zoom() - 10, 5));
+    const zoomIn = () => viewport.setZoom(Math.min(viewport.zoom() + 10, 500));
+    const zoomOut = () => viewport.setZoom(Math.max(viewport.zoom() - 10, 5));
     const fitToScreen = () => window.dispatchEvent(new CustomEvent('viewport:fit'));
-    const originalSize = () => setZoom(100);
+    const originalSize = () => viewport.setZoom(100);
     const toggleFlipH = () => setFlip((f: FlipState) => ({ ...f, horizontal: !f.horizontal }));
     const toggleFlipV = () => setFlip((f: FlipState) => ({ ...f, vertical: !f.vertical }));
 
