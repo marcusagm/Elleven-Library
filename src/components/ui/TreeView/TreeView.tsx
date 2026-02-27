@@ -1,4 +1,4 @@
-import { Component, createSignal, splitProps, For } from 'solid-js';
+import { Component, createSignal, splitProps, For, createEffect } from 'solid-js';
 import { cn } from '../../../lib/utils';
 import { createId } from '../../../lib/primitives/createId';
 import { currentDragItem, DragItem } from '../../../core/dnd';
@@ -43,6 +43,13 @@ export const TreeView: Component<TreeViewProps<unknown>> = props => {
 
     const [isRootDragOverActive, setIsRootDragOverActive] = createSignal(false);
 
+    /** Clean up root drag active state when drag ends globally */
+    createEffect(() => {
+        if (!currentDragItem()) {
+            setIsRootDragOverActive(false);
+        }
+    });
+
     /** Unique identifier for the tree instance to manage ARIA and DOM associations */
     const uniqueTreeIdentifier = createId('tree');
 
@@ -83,6 +90,15 @@ export const TreeView: Component<TreeViewProps<unknown>> = props => {
 
     const handleRootDragOver = (event: DragOverEvent) => {
         event.preventDefault();
+
+        // If hovering directly over an item, the item handles its own highlighting.
+        // We only want the root highlight when dragging over the empty area of the tree.
+        const targetElement = event.target as HTMLElement;
+        const isOverItem = targetElement.closest('.ui-tree-item');
+        if (isOverItem) {
+            setIsRootDragOverActive(false);
+            return;
+        }
 
         const activeDragSource = currentDragItem();
 

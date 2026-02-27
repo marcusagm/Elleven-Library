@@ -9,7 +9,7 @@
   position: relative;
   flex: 1;
   min-height: 1.25rem; /* Ensure at least one row's worth of drop space if empty */
-  padding: 0 0 var(--p-space-xxs) 0;
+  padding: 0 0 5px 0;
 }
 
 .ui-tree:focus-visible {

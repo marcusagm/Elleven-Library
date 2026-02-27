@@ -1,5 +1,5 @@
 import { Button } from '../../ui';
-import { Component, createMemo, createSignal } from 'solid-js';
+import { Component, createMemo, createSignal, untrack } from 'solid-js';
 import { Tag as TagIcon, Plus } from 'lucide-solid';
 import {
     useMetadata,
@@ -41,39 +41,65 @@ export const TagTreeSidebarPanel: Component = () => {
     const [nodeToDelete, setNodeToDelete] = createSignal<TreeNode | null>(null);
 
     // --- Tree Construction ---
-    const tagTreeHierarchy = createMemo(() => {
+    /**
+     * Identifies structural changes (hierarchy, order, naming) to avoid rebuilding
+     * the entire tree when only visual properties like colors update.
+     */
+    const tagTreeStructuralHash = createMemo(() => {
         const allTags = metadata.tags || [];
-        const nodeMap = new Map<number, TreeNode>();
-        const rootNodes: TreeNode[] = [];
+        // We include name because it often dictates visual order or grouping
+        return allTags
+            .map(tag => `${tag.id}-${tag.parent_id}-${tag.order_index}-${tag.name}`)
+            .join('|');
+    });
 
-        // Phase 1: Create all nodes
-        allTags.forEach(tag => {
-            nodeMap.set(tag.id, {
-                id: tag.id,
-                label: tag.name,
-                children: [],
-                data: tag,
-                icon: TagIcon,
-                iconColor: tag.color || undefined,
-                badge: (
-                    <CountBadge
-                        showZero={true}
-                        count={metadata.stats.tag_counts.get(tag.id) || 0}
-                    />
-                )
+    const tagTreeHierarchy = createMemo(() => {
+        // Depend on structural changes only
+        tagTreeStructuralHash();
+
+        return untrack(() => {
+            const allTags = metadata.tags || [];
+            const nodeMap = new Map<number, TreeNode>();
+            const rootNodes: TreeNode[] = [];
+
+            // Phase 1: Create all nodes with reactive getters
+            allTags.forEach(tag => {
+                const tagId = tag.id;
+                nodeMap.set(tagId, {
+                    id: tagId,
+                    get label() {
+                        const current = metadata.tags.find(t => t.id === tagId);
+                        return current?.name || '';
+                    },
+                    children: [],
+                    data: tag,
+                    icon: TagIcon,
+                    get iconColor() {
+                        const current = metadata.tags.find(t => t.id === tagId);
+                        return current?.color || undefined;
+                    },
+                    get badge() {
+                        return (
+                            <CountBadge
+                                showZero={true}
+                                count={metadata.stats.tag_counts.get(tagId) || 0}
+                            />
+                        );
+                    }
+                });
             });
-        });
 
-        // Phase 2: Build hierarchy relationships
-        allTags.forEach(tag => {
-            if (tag.parent_id && nodeMap.has(tag.parent_id)) {
-                nodeMap.get(tag.parent_id)!.children!.push(nodeMap.get(tag.id)!);
-            } else {
-                rootNodes.push(nodeMap.get(tag.id)!);
-            }
-        });
+            // Phase 2: Build hierarchy relationships
+            allTags.forEach(tag => {
+                if (tag.parent_id && nodeMap.has(tag.parent_id)) {
+                    nodeMap.get(tag.parent_id)!.children!.push(nodeMap.get(tag.id)!);
+                } else {
+                    rootNodes.push(nodeMap.get(tag.id)!);
+                }
+            });
 
-        return rootNodes;
+            return rootNodes;
+        });
     });
 
     // --- Domain Logic Handlers ---

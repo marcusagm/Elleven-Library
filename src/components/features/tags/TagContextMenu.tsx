@@ -33,8 +33,6 @@ export const TagContextMenu: Component<TagContextMenuProps> = properties => {
      * @param {string} newColor - The new hexadecimal color code.
      */
     const handleColorChange = async (tagId: number, newColor: string) => {
-        // Explicitly pass null for name to indicate no change, or let undefined handle it.
-        // The store action will pass this to tagService.
         await metadata.updateTag(tagId, null, newColor);
     };
 

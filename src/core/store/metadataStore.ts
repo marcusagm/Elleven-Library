@@ -110,18 +110,33 @@ export const metadataActions = {
         }
     },
 
-    notifyTagUpdate: () => {
+    /**
+     * Notifies the system of a tag update.
+     * @param options - Configuration for what needs refreshing.
+     */
+    notifyTagUpdate: (
+        options: { structural?: boolean; stats?: boolean; images?: boolean } = {}
+    ) => {
+        const { structural = true, stats = true, images = true } = options;
+
         setMetadataState('tagUpdateVersion', v => v + 1);
-        metadataActions.loadStats();
+
+        if (stats) {
+            metadataActions.loadStats();
+        }
 
         // Check if we need to refresh the library
-        import('./filterStore').then(({ filterState }) => {
-            if (filterState.filterUntagged || filterState.selectedTags.length > 0) {
-                import('./libraryStore').then(({ libraryActions }) => {
-                    libraryActions.refreshImages(true);
-                });
-            }
-        });
+        if (images) {
+            import('./filterStore').then(({ filterState }) => {
+                const isFilteringByTags =
+                    filterState.filterUntagged || filterState.selectedTags.length > 0;
+                if (isFilteringByTags) {
+                    import('./libraryStore').then(({ libraryActions }) => {
+                        libraryActions.refreshImages(structural); // If not structural, don't force re-fetch if possible
+                    });
+                }
+            });
+        }
     },
 
     loadTags: async () => {
@@ -177,8 +192,35 @@ export const metadataActions = {
                 parentId === null ? undefined : parentId,
                 orderIndex === null ? undefined : orderIndex
             );
-            await metadataActions.loadTags();
-            metadataActions.notifyTagUpdate();
+
+            // OPTIMIZATION: Update store locally instead of full loadTags()
+            const tagUpdates: Partial<Tag> = {};
+            if (name !== undefined && name !== null) tagUpdates.name = name;
+            if (color !== undefined && color !== null) tagUpdates.color = color;
+            if (parentId !== undefined) tagUpdates.parent_id = parentId === 0 ? null : parentId;
+            if (orderIndex !== undefined && orderIndex !== null)
+                tagUpdates.order_index = orderIndex;
+
+            setMetadataState('tags', (tag: Tag) => tag.id === id, tagUpdates);
+
+            // Determine if the change was "structural"
+            // - parentId/orderIndex changes definitely are.
+            // - name change might be if we sort by name or if it's used key titles.
+            const isStructural = parentId !== undefined || orderIndex !== undefined;
+            const nameChanged = name !== undefined && name !== null;
+
+            if (isStructural) {
+                // For structural changes, re-fetch to ensure sync with DB ordering/hierarchy
+                await metadataActions.loadTags();
+                metadataActions.notifyTagUpdate({ structural: true, stats: true, images: true });
+            } else if (nameChanged) {
+                // Name changed but not position
+                metadataActions.notifyTagUpdate({ structural: false, stats: false, images: true });
+            } else {
+                // Visual change only (color)
+                metadataActions.notifyTagUpdate({ structural: false, stats: false, images: false });
+            }
+
             return { success: true, data: undefined };
         } catch (error) {
             console.error('Failed to update tag:', error);
