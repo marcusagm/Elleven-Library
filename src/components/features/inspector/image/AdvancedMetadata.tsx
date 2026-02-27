@@ -2,24 +2,19 @@ import { Component, createResource, Show, For } from 'solid-js';
 import { type ImageItem } from '../../../../types';
 import { AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { List, Loader2 } from 'lucide-solid';
-import { tagService } from '../../../../lib/tags';
+import { useMetadata } from '../../../../core/hooks';
 import './AdvancedMetadata.css';
 
 interface AdvancedMetadataProps {
     item: ImageItem;
 }
 
-const fetchExif = async (path: string) => {
-    try {
-        return await tagService.getImageExif(path);
-    } catch (e) {
-        console.error('Failed to load EXIF:', e);
-        return {};
-    }
-};
-
 export const AdvancedMetadata: Component<AdvancedMetadataProps> = props => {
-    const [exif] = createResource(() => props.item.path, fetchExif);
+    const metadata = useMetadata();
+    const [exif] = createResource(
+        () => ({ id: props.item.id, path: props.item.path }),
+        async ({ id, path }) => await metadata.getAssetExif(id, path)
+    );
 
     return (
         <AccordionItem value="advanced">

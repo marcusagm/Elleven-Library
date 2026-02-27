@@ -1,18 +1,20 @@
 import { createSignal, createMemo, createEffect } from 'solid-js';
-import { SearchCriterion, LogicalOperator, SearchGroup } from '../../../core/store/filterStore';
-import { createId } from '../../../lib/primitives/createId';
-import { SEARCH_FIELDS, OPERATORS_FOR_TYPE } from './searchConstants';
-import { computeDisplayValue } from './searchHelpers';
+import {
+    type SearchCriterion,
+    type LogicalOperator,
+    type SearchGroup,
+    filterActions
+} from '../../../core/store/filter';
+import { SEARCH_FIELDS, OPERATORS_FOR_TYPE } from '../../../core/store/filter/constants';
 import { fromISO } from '../../../utils/format';
 import { supportedFormats } from '../../../core/store/systemStore';
-import { criterionHandlerRegistry } from './fields';
 
 export type SearchValue = string | number | null | Date;
 
 /**
  * Custom hook that manages the complex state and logic for the Advanced Search system.
  * Handles the construction, validation, and editing of multiple search criteria,
- * including integration with specialized field handlers and metadata resolution.
+ * relying on filterStore actions for domain logic and validation.
  *
  * @param metadata - Contextual information from stores (e.g., tags, locations).
  * @param queryOptions - Configuration for visibility and initial query state.
@@ -30,7 +32,7 @@ export const useAdvancedSearch = (
         initialQuery: () => SearchGroup | undefined;
     }
 ) => {
-    // Top-level state management
+    // Top-level state management (local for the editor session)
     const [criteria, setCriteria] = createSignal<SearchCriterion[]>([]);
     const [matchMode, setMatchMode] = createSignal<LogicalOperator>('and');
 
@@ -68,15 +70,7 @@ export const useAdvancedSearch = (
             const initialQuery = queryOptions.initialQuery();
             if (initialQuery) {
                 setMatchMode(initialQuery.logicalOperator);
-                const initialCriteriaList = initialQuery.items
-                    .filter(item => !('items' in item))
-                    .map(item => ({
-                        ...(item as SearchCriterion),
-                        displayValue:
-                            (item as SearchCriterion).displayValue ||
-                            computeDisplayValue(item as SearchCriterion, metadata)
-                    }));
-                setCriteria(initialCriteriaList);
+                setCriteria(initialQuery.items.filter(item => 'key' in item) as SearchCriterion[]);
             } else {
                 setCriteria([]);
                 setMatchMode('and');
@@ -118,34 +112,10 @@ export const useAdvancedSearch = (
         }
     });
 
-    /**
-     * Internal utility to validate a set of criterion values against their corresponding field handler.
-     *
-     * @param field - The selected field definition.
-     * @param operator - The comparison operator.
-     * @param value - Primary value.
-     * @param value2 - Secondary value (for ranges).
-     * @param unitMultiplier - Optional unit multiplier.
-     * @returns A map of validation errors.
-     */
-    const validateCriterionValues = (
-        field: ReturnType<typeof selectedField>,
-        operator: string,
-        value: SearchValue,
-        value2: SearchValue,
-        unitMultiplier?: string
-    ) => {
-        if (!field) return { value: 'Invalid field' };
-        const handlerName = field.value === 'size' ? 'size' : field.type || 'text';
-        const fieldHandler = criterionHandlerRegistry[handlerName];
-        if (!fieldHandler) return {};
-        return fieldHandler.validate(value, value2, operator, unitMultiplier);
-    };
-
-    /** Validates the current 'Add mode' builder state. */
+    /** Validates the current 'Add mode' builder state using store logic. */
     const validateCurrentBuilderState = () => {
-        const activeErrors = validateCriterionValues(
-            selectedField(),
+        const activeErrors = filterActions.validateCriterion(
+            currentKey(),
             currentOperator(),
             currentValue(),
             currentValue2(),
@@ -170,10 +140,8 @@ export const useAdvancedSearch = (
                 setEditingValue(Number(criterionItem.value[0]) / multiplier);
                 setEditingValue2(Number(criterionItem.value[1]) / multiplier);
             } else if (['added_at', 'created_at', 'modified_at'].includes(criterionItem.key)) {
-                const startDateObject = fromISO(String(criterionItem.value[0]));
-                const endDateObject = fromISO(String(criterionItem.value[1]));
-                setEditingValue(startDateObject as unknown as SearchValue);
-                setEditingValue2(endDateObject as unknown as SearchValue);
+                setEditingValue(fromISO(String(criterionItem.value[0])) as unknown as SearchValue);
+                setEditingValue2(fromISO(String(criterionItem.value[1])) as unknown as SearchValue);
             } else {
                 setEditingValue(criterionItem.value[0] as SearchValue);
                 setEditingValue2(criterionItem.value[1] as SearchValue);
@@ -183,8 +151,7 @@ export const useAdvancedSearch = (
                 const multiplier = Number(criterionItem.unitMultiplier || '1048576');
                 setEditingValue(Number(criterionItem.value) / multiplier);
             } else if (['added_at', 'created_at', 'modified_at'].includes(criterionItem.key)) {
-                const dateValueObject = fromISO(String(criterionItem.value));
-                setEditingValue(dateValueObject as unknown as SearchValue);
+                setEditingValue(fromISO(String(criterionItem.value)) as unknown as SearchValue);
             } else {
                 setEditingValue(criterionItem.value as SearchValue);
             }
@@ -200,60 +167,41 @@ export const useAdvancedSearch = (
         const originalCriterion = criteria().find(criterion => criterion.id === activeEditingId);
         if (!originalCriterion) return;
 
-        const fieldDefinition = SEARCH_FIELDS.find(field => field.value === originalCriterion.key);
-        const handlerName =
-            originalCriterion.key === 'size' ? 'size' : fieldDefinition?.type || 'text';
-        const fieldHandler = criterionHandlerRegistry[handlerName];
-
-        const validationErrorsMap = fieldHandler.validate(
+        const activeErrors = filterActions.validateCriterion(
+            originalCriterion.key,
+            originalCriterion.operator,
             editingValue(),
             editingValue2(),
-            originalCriterion.operator,
             editingUnitMultiplier()
         );
 
-        if (Object.keys(validationErrorsMap).length > 0) {
-            setEditingValidationErrors(validationErrorsMap);
+        if (Object.keys(activeErrors).length > 0) {
+            setEditingValidationErrors(activeErrors);
             return;
         }
 
-        const { finalValue, unitMultiplier } = fieldHandler.process(
+        const { finalValue, unitMultiplier } = filterActions.processCriterion(
+            originalCriterion.key,
+            originalCriterion.operator,
             editingValue(),
             editingValue2(),
-            originalCriterion.operator,
             editingUnitMultiplier()
         );
+
+        const partiallyUpdatedCriterion = {
+            ...originalCriterion,
+            value: finalValue as SearchCriterion['value'],
+            unitMultiplier
+        };
+
+        const displayValue = filterActions.formatCriterionDisplay(partiallyUpdatedCriterion);
 
         setCriteria(previousCriteriaList =>
             previousCriteriaList.map(criterion => {
                 if (criterion.id === activeEditingId) {
-                    const humanReadableString = fieldHandler.formatDisplay?.(
-                        editingValue(),
-                        editingValue2(),
-                        originalCriterion.operator,
-                        unitMultiplier,
-                        {
-                            locations: metadata.locations,
-                            tags: metadata.tags,
-                            supportedFormats: supportedFormats()
-                        }
-                    );
-
-                    const partiallyUpdatedCriterion = {
-                        ...criterion,
-                        value: finalValue as SearchCriterion['value'],
-                        unitMultiplier,
-                        displayValue: undefined // Forced invalidation for recalculated display.
-                    };
-
                     return {
                         ...partiallyUpdatedCriterion,
-                        displayValue:
-                            humanReadableString ||
-                            computeDisplayValue(
-                                partiallyUpdatedCriterion as SearchCriterion,
-                                metadata
-                            )
+                        displayValue
                     };
                 }
                 return criterion;
@@ -267,46 +215,24 @@ export const useAdvancedSearch = (
     const handleAddCriteria = () => {
         if (!validateCurrentBuilderState()) return;
 
-        const fieldDefinition = selectedField();
-        const handlerName = currentKey() === 'size' ? 'size' : fieldDefinition?.type || 'text';
-        const fieldHandler = criterionHandlerRegistry[handlerName];
-
-        const { finalValue, unitMultiplier } = fieldHandler.process(
+        const { finalValue, unitMultiplier } = filterActions.processCriterion(
+            currentKey(),
+            currentOperator(),
             currentValue(),
             currentValue2(),
-            currentOperator(),
             currentUnitMultiplier()
         );
 
-        const internalDisplayDescription = fieldHandler.formatDisplay?.(
-            currentValue(),
-            currentValue2(),
-            currentOperator(),
-            unitMultiplier,
-            {
-                locations: metadata.locations,
-                tags: metadata.tags,
-                supportedFormats: supportedFormats()
-            }
-        );
-
         const newCriterionObject: SearchCriterion = {
-            id: createId('criterion'),
+            id: `temp_${Math.random().toString(36).substr(2, 9)}`, // Temporary local ID
             key: currentKey(),
             operator: currentOperator(),
             value: finalValue as SearchCriterion['value'],
             unitMultiplier,
-            displayValue:
-                internalDisplayDescription ||
-                computeDisplayValue(
-                    {
-                        key: currentKey(),
-                        value: finalValue as SearchCriterion['value'],
-                        unitMultiplier
-                    },
-                    metadata
-                )
+            displayValue: '' // Will be updated below
         };
+
+        newCriterionObject.displayValue = filterActions.formatCriterionDisplay(newCriterionObject);
 
         setCriteria([...criteria(), newCriterionObject]);
 

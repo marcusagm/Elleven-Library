@@ -25,6 +25,8 @@
     "allow-remove-tag-from-image",
     "allow-get-tags-for-image",
     "allow-add-tags-to-images-batch",
+    "allow-remove-tags-from-images-batch",
+    "allow-replace-tags-for-images-batch",
     "allow-get-images-filtered",
     "allow-get-image-count-filtered",
     "allow-get-library-stats",

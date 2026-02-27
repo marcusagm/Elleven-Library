@@ -5,7 +5,7 @@ import { SidebarPanel } from '../../ui/SidebarPanel';
 import { SmartFolderContextMenu } from './SmartFolderContextMenu';
 import { AdvancedSearchModal } from './AdvancedSearchModal';
 import { SmartFolderDeleteModal } from './SmartFolderDeleteModal';
-import { SearchGroup } from '../../../core/store/filterStore';
+import { type SearchGroup } from '../../../core/store/filter';
 import { SmartFolder } from '../../../core/store/metadataStore';
 import { cn } from '../../../lib/utils';
 import './smart-folders.css';

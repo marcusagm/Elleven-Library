@@ -2,7 +2,7 @@ import { Component, Show } from 'solid-js';
 import { NumberInput } from '../../../ui/NumberInput';
 import { Select } from '../../../ui/Select';
 import { CriterionFieldRendererProperties } from './types';
-import { SIZE_UNITS } from '../searchConstants';
+import { SIZE_UNITS } from '../../../../core/store/filter/constants';
 
 /**
  * Renders a specialized input group for file size criteria.
@@ -90,7 +90,11 @@ export const sizeHandler: import('./types').SearchFieldHandler = {
             }
         }
 
-        if (!SIZE_UNITS.find(option => option.value === unitMultiplier)) {
+        if (
+            !SIZE_UNITS.find(
+                (option: { value: string; label: string }) => option.value === unitMultiplier
+            )
+        ) {
             validationErrors.unit = 'Unit is required';
         }
 
@@ -132,7 +136,9 @@ export const sizeHandler: import('./types').SearchFieldHandler = {
      */
     formatDisplay: (value1, value2, operator, unitMultiplier) => {
         const unitLabel =
-            SIZE_UNITS.find(option => option.value === unitMultiplier)?.label || 'bytes';
+            SIZE_UNITS.find(
+                (option: { value: string; label: string }) => option.value === unitMultiplier
+            )?.label || 'bytes';
         if (operator === 'between') {
             return `${value1} ${unitLabel} to ${value2} ${unitLabel}`;
         }

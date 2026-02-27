@@ -3,7 +3,7 @@ import { Component, createSignal, onMount } from 'solid-js';
 import { Select } from '../../ui/Select';
 import { Input } from '../../ui/Input';
 import { useSystem, useSettings, useNotification } from '../../../core/hooks';
-import { filterState, filterActions } from '../../../core/store/filterStore';
+import { filterState, filterActions } from '../../../core/store/filter';
 import { transcodeState, transcodeActions } from '../../../core/store/transcodeStore';
 import { type TranscodeQuality } from '../../../lib/stream-utils';
 import './general-panel.css';

@@ -30,6 +30,10 @@ export const useMetadata = () => {
         notifyTagUpdate: metadataActions.notifyTagUpdate,
         createTag: metadataActions.createTag,
         updateTag: metadataActions.updateTag,
-        deleteTag: metadataActions.deleteTagRecursive
+        deleteTag: metadataActions.deleteTagRecursive,
+        updateAssetsTags: metadataActions.updateAssetsTags,
+        updateAssetsMetadata: metadataActions.updateAssetsMetadata,
+        getAssetTags: metadataActions.getAssetTags,
+        getAssetExif: metadataActions.getAssetExif
     };
 };

@@ -122,6 +122,14 @@ export const tagService = {
         return await invoke('update_image_notes', { id, notes });
     },
 
+    removeTagsFromImagesBatch: async (imageIds: number[], tagIds: number[]): Promise<void> => {
+        return await invoke('remove_tags_from_images_batch', { imageIds, tagIds });
+    },
+
+    replaceTagsForImagesBatch: async (imageIds: number[], tagIds: number[]): Promise<void> => {
+        return await invoke('replace_tags_for_images_batch', { imageIds, tagIds });
+    },
+
     getImageExif: async (path: string): Promise<Record<string, string>> => {
         return await invoke('get_image_exif', { path });
     }

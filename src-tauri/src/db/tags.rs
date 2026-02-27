@@ -195,6 +195,68 @@ impl Db {
         Ok(())
     }
 
+    /// Batch removes multiple tags from multiple images in a single transaction.
+    pub async fn remove_tags_from_images_batch(
+        &self,
+        image_ids: Vec<i64>,
+        tag_ids: Vec<i64>,
+    ) -> Result<(), sqlx::Error> {
+        if image_ids.is_empty() || tag_ids.is_empty() {
+            return Ok(());
+        }
+
+        let mut tx = self.pool.begin().await?;
+
+        for img_id in &image_ids {
+            for tag_id in &tag_ids {
+                sqlx::query!(
+                    "DELETE FROM image_tags WHERE image_id = ? AND tag_id = ?",
+                    img_id,
+                    tag_id
+                )
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Batch replaces all tags for multiple images in a single transaction.
+    pub async fn replace_tags_for_images_batch(
+        &self,
+        image_ids: Vec<i64>,
+        tag_ids: Vec<i64>,
+    ) -> Result<(), sqlx::Error> {
+        if image_ids.is_empty() {
+            return Ok(());
+        }
+
+        let mut tx = self.pool.begin().await?;
+
+        for img_id in &image_ids {
+            // Remove all existing tags
+            sqlx::query!("DELETE FROM image_tags WHERE image_id = ?", img_id)
+                .execute(&mut *tx)
+                .await?;
+
+            // Add new tags
+            for tag_id in &tag_ids {
+                sqlx::query!(
+                    "INSERT INTO image_tags (image_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                    img_id,
+                    tag_id
+                )
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Calculates high-level library statistics.
     pub async fn get_library_stats(&self) -> Result<LibraryStats, sqlx::Error> {
         let total_images = sqlx::query_scalar!("SELECT COUNT(*) FROM images")

@@ -2,7 +2,7 @@ import { Button, Input, Modal } from '../../ui';
 import { Component, createSignal, createEffect } from 'solid-js';
 import { Search, Save } from 'lucide-solid';
 import { useFilters, useMetadata } from '../../../core/hooks';
-import { SearchGroup } from '../../../core/store/filterStore';
+import { SearchGroup } from '../../../core/store/filter';
 import { createId } from '../../../lib/primitives/createId';
 import { ActionResult } from '../../../core/types/actions';
 import { useAdvancedSearch } from './useAdvancedSearch';

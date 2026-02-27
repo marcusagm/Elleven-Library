@@ -1,10 +1,13 @@
+/* eslint-disable max-lines */
 import { createStore } from 'solid-js/store';
 import { Tag, tagService } from '../../lib/tags';
 import { getLocations } from '../../lib/db';
 import { type BatchChangePayload } from './libraryStore';
-import { type SearchGroup } from './filterStore';
 import { computeStatsFromBatchChange } from './statsHelpers';
 import { ActionResult, ErrorCode } from '../types/actions';
+import { eventBus } from '../utils/eventBus';
+import { metadataCache } from './metadata/cache';
+import { type SearchGroup } from './filter';
 
 interface FolderNode {
     id: number;
@@ -119,7 +122,7 @@ export const metadataActions = {
     ) => {
         const { structural = true, stats = true, images = true } = options;
 
-        setMetadataState('tagUpdateVersion', v => v + 1);
+        setMetadataState('tagUpdateVersion', version => version + 1);
 
         if (stats) {
             metadataActions.loadStats();
@@ -127,7 +130,7 @@ export const metadataActions = {
 
         // Check if we need to refresh the library
         if (images) {
-            import('./filterStore').then(({ filterState }) => {
+            import('./filter').then(({ filterState }) => {
                 const isFilteringByTags =
                     filterState.filterUntagged || filterState.selectedTags.length > 0;
                 if (isFilteringByTags) {
@@ -193,32 +196,26 @@ export const metadataActions = {
                 orderIndex === null ? undefined : orderIndex
             );
 
-            // OPTIMIZATION: Update store locally instead of full loadTags()
-            const tagUpdates: Partial<Tag> = {};
-            if (name !== undefined && name !== null) tagUpdates.name = name;
-            if (color !== undefined && color !== null) tagUpdates.color = color;
-            if (parentId !== undefined) tagUpdates.parent_id = parentId === 0 ? null : parentId;
-            if (orderIndex !== undefined && orderIndex !== null)
-                tagUpdates.order_index = orderIndex;
+            // OPTIMIZATION: Update store locally
+            const tagUpdates: Partial<Tag> = {
+                ...(name !== null && name !== undefined && { name }),
+                ...(color !== null && color !== undefined && { color }),
+                ...(parentId !== undefined && { parent_id: parentId === 0 ? null : parentId }),
+                ...(orderIndex !== null && orderIndex !== undefined && { order_index: orderIndex })
+            };
 
             setMetadataState('tags', (tag: Tag) => tag.id === id, tagUpdates);
 
-            // Determine if the change was "structural"
-            // - parentId/orderIndex changes definitely are.
-            // - name change might be if we sort by name or if it's used key titles.
-            const isStructural = parentId !== undefined || orderIndex !== undefined;
-            const nameChanged = name !== undefined && name !== null;
-
-            if (isStructural) {
-                // For structural changes, re-fetch to ensure sync with DB ordering/hierarchy
+            // Notify based on change type
+            if (parentId !== undefined || orderIndex !== undefined) {
                 await metadataActions.loadTags();
-                metadataActions.notifyTagUpdate({ structural: true, stats: true, images: true });
-            } else if (nameChanged) {
-                // Name changed but not position
-                metadataActions.notifyTagUpdate({ structural: false, stats: false, images: true });
+                metadataActions.notifyTagUpdate({ structural: true });
             } else {
-                // Visual change only (color)
-                metadataActions.notifyTagUpdate({ structural: false, stats: false, images: false });
+                metadataActions.notifyTagUpdate({
+                    structural: false,
+                    stats: false,
+                    images: name !== null && name !== undefined
+                });
             }
 
             return { success: true, data: undefined };
@@ -429,6 +426,102 @@ export const metadataActions = {
 
         if (needsRefresh) {
             metadataActions.refreshAll();
+        }
+    },
+
+    /**
+     * Batch updates tags for multiple assets.
+     */
+    updateAssetsTags: async (
+        assetIds: number[],
+        tagIds: number[],
+        mode: 'merge' | 'replace' | 'remove'
+    ): Promise<ActionResult> => {
+        try {
+            if (mode === 'merge') {
+                await tagService.addTagsToImagesBatch(assetIds, tagIds);
+            } else if (mode === 'remove') {
+                await tagService.removeTagsFromImagesBatch(assetIds, tagIds);
+            } else {
+                await tagService.replaceTagsForImagesBatch(assetIds, tagIds);
+            }
+
+            metadataActions.notifyTagUpdate({ stats: true, images: true });
+            eventBus.emit('metadata:changed', { type: 'tag', ids: tagIds });
+
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Batch tag update failed:', error);
+            return {
+                success: false,
+                error: { code: ErrorCode.IO_ERROR, message: 'Batch tag update failed' }
+            };
+        }
+    },
+
+    /**
+     * Batch updates metadata (rating, notes) for multiple assets.
+     */
+    updateAssetsMetadata: async (
+        assetIds: number[],
+        metadata: { rating?: number; notes?: string }
+    ): Promise<ActionResult> => {
+        try {
+            const updates = assetIds.flatMap(id => {
+                const results = [];
+                if (metadata.rating !== undefined) {
+                    results.push(tagService.updateImageRating(id, metadata.rating));
+                }
+                if (metadata.notes !== undefined) {
+                    results.push(tagService.updateImageNotes(id, metadata.notes));
+                }
+                return results;
+            });
+
+            await Promise.all(updates);
+
+            metadataActions.notifyTagUpdate({ stats: false, images: true });
+            eventBus.emit('assets:metadata-updated', {
+                assetIds: assetIds.map(String),
+                fields: Object.keys(metadata)
+            });
+
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Batch metadata update failed:', error);
+            return {
+                success: false,
+                error: { code: ErrorCode.IO_ERROR, message: 'Batch metadata update failed' }
+            };
+        }
+    },
+
+    /**
+     * Retrieves EXIF/Technical metadata for an asset, utilizing the local cache.
+     */
+    getAssetExif: async (assetId: number, path: string): Promise<Record<string, string>> => {
+        const cached = metadataCache.get<Record<string, string>>(String(assetId));
+        if (cached) return cached;
+
+        try {
+            const exif = await tagService.getImageExif(path);
+            metadataCache.set(String(assetId), exif);
+            return exif;
+        } catch (error) {
+            console.error(`Failed to load EXIF for asset ${assetId}:`, error);
+            return {};
+        }
+    },
+
+    /**
+     * Retrieves the tags associated with a specific asset.
+     */
+    getAssetTags: async (assetId: number): Promise<Tag[]> => {
+        try {
+            return await tagService.getTagsForImage(assetId);
+        } catch (error) {
+            console.error(`Failed to load tags for asset ${assetId}:`, error);
+            return [];
         }
     }
 };

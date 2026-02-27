@@ -1,4 +1,4 @@
-import { filterState, filterActions } from '../store/filterStore';
+import { filterState, filterActions } from '../store/filter';
 import { libraryActions } from '../store/libraryStore';
 
 /**

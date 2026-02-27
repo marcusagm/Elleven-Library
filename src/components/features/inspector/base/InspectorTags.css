@@ -102,3 +102,50 @@
     color: var(--text-secondary);
     border-color: var(--border-subtle);
 }
+
+.partial-tags-section {
+    margin-top: var(--p-space-s);
+    padding-top: var(--p-space-s);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.partial-tags-title {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--p-space-xs);
+}
+
+.partial-tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--p-space-xs);
+}
+
+.partial-tag-item {
+    background: var(--bg-surface-1);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-size: var(--p-font-size-xxs);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.7;
+}
+
+.partial-tag-item:hover {
+    background: var(--bg-surface-2);
+    border-color: var(--border-active);
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+.partial-tag-item .plus-icon {
+    font-size: 10px;
+    opacity: 0.6;
+}

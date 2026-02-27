@@ -138,3 +138,20 @@ pub async fn update_image_rating(db: State<'_, Arc<Db>>, id: i64, rating: i32) -
 pub async fn update_image_notes(db: State<'_, Arc<Db>>, id: i64, notes: String) -> AppResult<()> {
     Ok(db.update_image_notes(id, notes).await?)
 }
+#[tauri::command]
+pub async fn remove_tags_from_images_batch(
+    db: State<'_, Arc<Db>>,
+    image_ids: Vec<i64>,
+    tag_ids: Vec<i64>,
+) -> AppResult<()> {
+    Ok(db.remove_tags_from_images_batch(image_ids, tag_ids).await?)
+}
+
+#[tauri::command]
+pub async fn replace_tags_for_images_batch(
+    db: State<'_, Arc<Db>>,
+    image_ids: Vec<i64>,
+    tag_ids: Vec<i64>,
+) -> AppResult<()> {
+    Ok(db.replace_tags_for_images_batch(image_ids, tag_ids).await?)
+}

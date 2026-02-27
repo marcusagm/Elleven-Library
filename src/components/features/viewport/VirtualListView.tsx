@@ -7,7 +7,7 @@ import {
     useFilters,
     useAssetCardActions
 } from '../../../core/hooks';
-import { type SortField } from '../../../core/store/filterStore';
+import { type SortField } from '../../../core/store/filter';
 import { ImageItem } from '../../../types';
 import { formatFileSize, formatDate } from '../../../utils/format';
 import { assetDnD } from '../../../core/dnd';

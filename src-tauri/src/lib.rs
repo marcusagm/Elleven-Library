@@ -162,6 +162,8 @@ pub fn run() {
             library::commands::tags::get_image_count_filtered,
             library::commands::tags::update_image_rating,
             library::commands::tags::update_image_notes,
+            library::commands::tags::remove_tags_from_images_batch,
+            library::commands::tags::replace_tags_for_images_batch,
             library::commands::metadata::get_image_exif,
             thumbnails::commands::request_thumbnail_regenerate,
             thumbnails::commands::set_thumbnail_priority,

@@ -4,7 +4,7 @@ import { Dynamic } from 'solid-js/web';
 import { Plus, CircleQuestionMark } from 'lucide-solid';
 import { Select } from '../../ui/Select';
 import { Tooltip } from '../../ui/Tooltip';
-import { SEARCH_FIELDS } from './searchConstants';
+import { SEARCH_FIELDS } from '../../../core/store/filter/constants';
 import { criterionHandlerRegistry } from './fields';
 import { useAdvancedSearch, SearchValue } from './useAdvancedSearch';
 

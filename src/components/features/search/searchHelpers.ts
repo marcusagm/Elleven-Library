@@ -1,8 +1,8 @@
-import { SearchCriterion } from '../../../core/store/filterStore';
+import { SearchCriterion } from '../../../core/store/filter';
 import { criterionHandlerRegistry } from './fields';
 import { supportedFormats } from '../../../core/store/systemStore';
 import { SearchFieldHandler, StoreMetadata } from './fields/types';
-import { SEARCH_FIELDS } from './searchConstants';
+import { SEARCH_FIELDS } from '../../../core/store/filter/constants';
 
 /**
  * Checks if a given search value is considered empty.

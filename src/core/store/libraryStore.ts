@@ -1,10 +1,11 @@
+/* eslint-disable max-lines */
 import { createStore, reconcile } from 'solid-js/store';
 import { untrack } from 'solid-js';
 import { getImages } from '../../lib/db';
 import { invoke } from '@tauri-apps/api/core';
 import { tagService } from '../../lib/tags';
 import { ActionResult, ErrorCode } from '../types/actions';
-import { filterState, filterActions } from './filterStore';
+import { filterState, filterActions } from './filter';
 import { selectionState } from './selectionStore';
 import { type ImageItem } from '../../types';
 

@@ -1,44 +1,107 @@
 # Core Architecture Guidelines
 
-This document defines the patterns and constraints for the Mundam core layer (Stores, Actions, and Domain Logic).
+This document defines the patterns, constraints, and best practices for the Mundam core layer, ensuring long-term maintainability, type safety, and decoupling.
+
+---
 
 ## 🛡️ 1. Action Pattern
 
-All state mutations must occur through standardized actions. This ensures a unidirectional data flow and predictable state transitions.
+All state mutations and side effects must occur through standardized **Actions**. This ensures a unidirectional data flow and predictable state transitions.
 
 ### ActionResult and BaseError
-Every action must return an `ActionResult<TData, TError>`.
+Every action must return a `Promise<ActionResult<TData, TError>>`. This pattern avoids throwing exceptions for expected business errors and forces consumers to handle both success and failure.
 
 ```typescript
 import { ActionResult } from '../types/actions';
 
-export async function deleteAsset(id: string): Promise<ActionResult> {
-  // logic...
+export async function processMetadata(id: string): Promise<ActionResult<Metadata>> {
+    try {
+        // Validation and logic...
+        return { success: true, data: result };
+    } catch (error) {
+        return { 
+            success: false, 
+            error: { code: 'INTERNAL_ERROR', message: 'Failed to process' } 
+        };
+    }
 }
 ```
 
+### Error Codes
+System-wide error segments are defined in `ErrorCode`. Use specific codes so the UI can react appropriately (e.g., showing a specific error message for 404 vs 409).
+
+### Batch Actions
+When an operation affects multiple items (e.g., tagging 100 images), use **atomic batch commands**. Avoid looping through single-item actions in the UI. Batch actions ensure database consistency and performance by utilizing a single transaction or specialized backend commands (e.g., `metadataActions.updateAssetsTags`).
+
+---
+
 ## 🔍 2. Zod Integration & Validation
 
-We use Zod to validate all payloads coming from the UI or external sources (Tauri, LocalStorage).
+We use Zod for all "at-the-edge" validations—data coming from the UI, LocalStorage, or Tauri backend.
 
-### Schema Location
-- Each store should have a `schemas.ts` file in its directory.
-- Example: `src/core/store/library/schemas.ts`.
+### Schema Ownership
+- Each store/domain has a `schemas.ts` file (e.g., `src/core/store/filter/schemas.ts`).
+- **Suffix Rule:** All schemas must end with `Schema` (e.g., `CriterionSchema`).
+- **Derivation Rule:** Always derive TypeScript types from schemas using `z.infer`.
 
-### Naming Convention
-- Schemas should be named with the `Schema` suffix.
-- Example: `AddLocationSchema`.
-- Payloads should be derived from schemas: `type AddLocationPayload = z.infer<typeof AddLocationSchema>`.
+### Validation Strategy
+- **Fail Fast:** Actions must validate their input payloads as the first step using `Schema.safeParse()`.
+- **Transformation:** Use Zod's `.transform()` to normalize data (e.g., trimming strings) during validation.
 
-### Validation Policy
-- Validate all payloads in the action layer using `Schema.safeParse()`.
-- Convert Zod errors to `ActionResult` with `VALIDATION_ERROR` code.
+---
 
-## 🧱 3. Layer Constraints (Guardrails)
+## 📡 3. Domain Events & Event Bus
 
-To maintain a clean architecture, the following constraints are enforced:
+The `eventBus` is the primary mechanism for decoupling stores and notifying the UI about background changes without direct imports.
 
-1.  **UI Isolation:** UI components (`src/components/`) must never call `tauriService` or backend APIs directly. They must go through Actions.
-2.  **State Protection:** No component should import `setStore` or modify signals directly. Use exported actions.
-3.  **No UI in Stores:** Stores and Actions must not import `toast` or other UI-specific utilities. Use Domain Events or return error states for the UI to handle.
-4.  **No Circular Dependencies:** Stores should not import each other. Use a message bus or event dispatcher for cross-store communication.
+### Decoupling Principle
+Stores should not import or call each other directly to avoid circular dependencies. Instead:
+1. **Emit:** Store A performs an action and calls `eventBus.emit('domain:changed', payload)`.
+2. **Listen:** Store B or a UI Component subscribes via `eventBus.on('domain:changed', (data) => { ... })`.
+
+### Typesafety
+All events must be registered in the `DomainEvents` interface within `src/core/utils/eventBus.ts` to ensure type-safe payloads.
+
+---
+
+## 📦 4. Store & State Management
+
+Mundam uses **Solid.js Stores** for reactive state.
+
+### Design Principles
+1. **Atomic Mutations:** Actions should modify the store in discrete, logical steps.
+2. **Reactivity Control:** Use `untrack()` inside actions to read current state without creating unnecessary dependencies.
+3. **Derived State:** Prefer `createMemo` or simple getters for computed values instead of storing redundant data in the state.
+4. **Encapsulation:** Export only the State (via accessor) and the Actions. Never export `setStore`.
+
+---
+
+## 🪝 5. Public API (Hooks Layer)
+
+The `src/core/hooks` directory acts as the **Public API facade** for the UI.
+
+- Components should only import from hooks (e.g., `useMetadata`, `useLibrary`).
+- Hooks encapsulate multiple store accessors and actions into a cohesive interface.
+- **Rule:** If a component needs more than 3 different actions from a store, consider adding a simplified facade method to the hook.
+
+---
+
+## 🧱 6. Layer Constraints (Guardrails)
+
+To prevent architectural decay, the following constraints are strictly enforced:
+
+1.  **UI Isolation:** UI components (`src/components/`) must never call `invoke` or `tauriService` directly. They must use Hooks -> Actions.
+2.  **State Protection:** No code outside of the action layer should modify a store's state.
+3.  **Cross-Store Communication:** Use the **Event Bus** for communication between different store domains.
+4.  **No UI in Core:** Stores and Actions must remain "pure" from UI concerns. Never import `toast`, `modal`, or DOM-specific objects (like `window` or `document`) into actions unless explicitly abstracted.
+5.  **Service Abstraction:** Use the `tauriService` wrapper for all backend calls to provide a single place for error logging and type mapping.
+
+---
+
+## 🌐 7. Backend (Tauri) Abstraction
+
+The `tauriService` (`src/core/tauri/services.ts`) acts as our Anti-Corruption Layer (ACL) between the frontend and Rust.
+
+- Standardizes argument names (e.g., converting camelCase to snake_case for Rust).
+- Centralizes error logging for bridge failures.
+- Provides a mockable interface for potential unit testing of the business logic.

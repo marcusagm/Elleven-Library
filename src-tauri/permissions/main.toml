@@ -44,9 +44,20 @@ description = "Enables add_tags_to_images_batch"
 commands.allow = ["add_tags_to_images_batch"]
 
 [[permission]]
+identifier = "allow-remove-tags-from-images-batch"
+description = "Enables remove_tags_from_images_batch"
+commands.allow = ["remove_tags_from_images_batch"]
+
+[[permission]]
+identifier = "allow-replace-tags-for-images-batch"
+description = "Enables replace_tags_for_images_batch"
+commands.allow = ["replace_tags_for_images_batch"]
+
+[[permission]]
 identifier = "allow-get-images-filtered"
 description = "Enables get_images_filtered"
 commands.allow = ["get_images_filtered"]
+
 [[permission]]
 identifier = "allow-get-library-stats"
 description = "Enables get_library_stats"
