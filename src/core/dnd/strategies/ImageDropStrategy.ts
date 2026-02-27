@@ -1,43 +1,28 @@
-import { DropStrategy, DragItem } from '../dnd-core';
-import { tagService } from '../../../lib/tags';
-import { metadataActions, metadataState } from '../../store/metadataStore';
-import { toast } from '../../../components/ui';
+import { DropStrategy, DragItem, DndActionResult } from '../dnd-core';
+import { ErrorCode } from '../../types/actions';
 
-import { selectionState } from '../../store/selectionStore';
-
-// Strategy: Dropping anything ONTO an Image
+/**
+ * Strategy: Dropping items onto an Image target.
+ */
 export const ImageDropStrategy: DropStrategy = {
     accepts: (item: DragItem) => {
         // Only accept TAGS being dropped on images
         return item.type === 'TAG';
     },
 
-    onDrop: async (item: DragItem, targetId: number | string) => {
-        const targetImageId = Number(targetId);
-
+    onDrop: async (item: DragItem, targetId: number | string): Promise<DndActionResult> => {
         if (item.type === 'TAG') {
+            const { libraryActions } = await import('../../store/libraryStore');
+            const targetImageId = Number(targetId);
             const tagId = Number(item.payload.id);
 
-            try {
-                // If the target image is in the current selection, apply to ALL selected images
-                // Otherwise, just apply to the single target
-                let targetIds = [targetImageId];
-                if (selectionState.selectedIds.includes(targetImageId)) {
-                    targetIds = [...selectionState.selectedIds];
-                }
-
-                await tagService.addTagsToImagesBatch(targetIds, [tagId]);
-                metadataActions.notifyTagUpdate();
-
-                const tagName = metadataState.tags.find(t => t.id === tagId)?.name || 'Tag';
-                toast.success('Tag Applied', {
-                    description: `Added "${tagName}" to ${targetIds.length} item(s)`
-                });
-            } catch (err) {
-                console.error('Failed to assign tag to image:', err);
-                toast.error('Failed to Apply Tag');
-            }
+            // Emit intention to library store
+            return await libraryActions.applyTagToTarget(tagId, targetImageId);
         }
+        return {
+            success: false,
+            error: { code: ErrorCode.VALIDATION_ERROR, message: 'Invalid drag item type' }
+        };
     },
 
     onDragOver: (item: DragItem) => {

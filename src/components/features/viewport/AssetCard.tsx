@@ -1,12 +1,7 @@
-import { Component, JSX, createSignal, createEffect } from 'solid-js';
+import { Component, JSX, createEffect } from 'solid-js';
 import { ReferenceImage } from './ReferenceImage';
-import {
-    assetDragSource,
-    dndRegistry,
-    currentDragItem,
-    setDropTargetId,
-    currentDropTargetId
-} from '../../../core/dnd';
+import { assetDragSource } from '../../../core/dnd';
+import { useAssetDropZone } from '../../../core/hooks/useAssetDropZone';
 
 /**
  * AssetCard Props - Pure Component Interface
@@ -54,8 +49,8 @@ void assetDragSource;
  * Also accepts drops from tags (Tag-to-Image drop).
  */
 export const AssetCard: Component<AssetCardProps> = props => {
-    const [dragCounter, setDragCounter] = createSignal(0);
     let ref: HTMLDivElement | undefined;
+    const { isDropTarget, dragHandlers } = useAssetDropZone(() => props.id);
 
     // Sync native focus when virtual focus changes
     createEffect(() => {
@@ -63,72 +58,6 @@ export const AssetCard: Component<AssetCardProps> = props => {
             ref.focus({ preventScroll: true });
         }
     });
-
-    // Check if this card is the current drop target
-    const isDropTarget = () => currentDropTargetId() === props.id;
-
-    // Handle tag drops onto this image
-    const handleDragEnter = (e: DragEvent) => {
-        e.preventDefault();
-        const counter = dragCounter() + 1;
-        setDragCounter(counter);
-
-        if (counter === 1) {
-            const dragging = currentDragItem();
-            // Only accept TAG drops (not IMAGE drops)
-            if (dragging?.type === 'TAG') {
-                // Use IMAGE strategy - that's the strategy for DROP TARGETS that are images
-                const strategy = dndRegistry.get('IMAGE');
-                if (strategy?.onDragOver?.(dragging)) {
-                    setDropTargetId(props.id);
-                }
-            }
-        }
-    };
-
-    const handleDragOver = (e: DragEvent) => {
-        e.preventDefault();
-        const dragging = currentDragItem();
-        if (dragging?.type === 'TAG') {
-            e.dataTransfer!.dropEffect = 'copy';
-            // Ensure target is set if enter was missed
-            if (dragCounter() > 0 && currentDropTargetId() !== props.id) {
-                setDropTargetId(props.id);
-            }
-        }
-    };
-
-    const handleDragLeave = () => {
-        const counter = Math.max(0, dragCounter() - 1);
-        setDragCounter(counter);
-        if (counter === 0 && currentDropTargetId() === props.id) {
-            setDropTargetId(null);
-        }
-    };
-
-    const handleDrop = async (e: DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setDragCounter(0);
-        setDropTargetId(null);
-
-        try {
-            const json = e.dataTransfer?.getData('application/json');
-            if (json) {
-                const data = JSON.parse(json);
-                // Accept TAG drops - use IMAGE strategy (strategy for image drop targets)
-                if (data.type === 'TAG') {
-                    const strategy = dndRegistry.get('IMAGE');
-                    if (strategy?.accepts(data)) {
-                        // The strategy handles selection internally via selectionState
-                        await strategy.onDrop(data, props.id);
-                    }
-                }
-            }
-        } catch (err) {
-            console.error('Drop failed', err);
-        }
-    };
 
     return (
         <div
@@ -159,10 +88,7 @@ export const AssetCard: Component<AssetCardProps> = props => {
             onDblClick={() => props.onOpen(props.id)}
             onContextMenu={e => props.onContextMenu?.(e, props.id)}
             // Drop handlers for Tag-to-Image
-            onDragEnter={handleDragEnter}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            {...dragHandlers}
         >
             <div style={{ width: '100%', height: '100%', 'pointer-events': 'none' }}>
                 <ReferenceImage

@@ -1,7 +1,6 @@
 import { ConfirmModal } from '../../ui';
 import { Component, Show } from 'solid-js';
 import { TreeNode } from '../../ui/TreeView';
-import { tagService } from '../../../lib/tags';
 import { useMetadata, useNotification } from '../../../core/hooks';
 import './tag-delete-modal.css';
 
@@ -24,7 +23,7 @@ interface TagDeleteModalProperties {
  * @returns The rendered TagDeleteModal.
  */
 export const TagDeleteModal: Component<TagDeleteModalProperties> = componentProperties => {
-    const { loadTags } = useMetadata();
+    const { deleteTag, createTag } = useMetadata();
     const notification = useNotification();
 
     /**
@@ -56,32 +55,25 @@ export const TagDeleteModal: Component<TagDeleteModalProperties> = componentProp
         const tagName = node.label;
         const parentIdentifier = (node.data as Record<string, unknown>)?.parent_id as number;
         const tagColor = (node.data as Record<string, unknown>)?.color as string;
+        const tagIdentifier = Number(node.id);
 
-        try {
-            const descendantIdentifiers = getAllDescendantIdentifiers(node);
-            for (const childIdentifier of descendantIdentifiers) {
-                await tagService.deleteTag(childIdentifier);
-            }
-            await tagService.deleteTag(Number(node.id));
-            await loadTags();
+        const result = await deleteTag(tagIdentifier);
 
+        if (result.success) {
             notification.success('Tag Deleted', `Removed "${tagName}"`, {
                 label: 'Undo',
                 onClick: async () => {
-                    try {
-                        await tagService.createTag(tagName, parentIdentifier, tagColor);
-                        await loadTags();
-                        notification.success('Restored', `Tag "${tagName}" restored`);
-                    } catch {
-                        notification.error('Failed to restore tag');
+                    const restoreResult = await createTag(tagName, parentIdentifier, tagColor);
+                    if (restoreResult.success) {
+                        notification.success('Restore Successful', `Tag "${tagName}" restored`);
+                    } else {
+                        notification.error('Restore Failed');
                     }
                 }
             });
-        } catch (error) {
-            console.error('Delete failed:', error);
-            notification.error('Failed to Delete Tag');
-        } finally {
             componentProperties.onClose();
+        } else {
+            notification.error(result.error?.message || 'Failed to Delete Tag');
         }
     };
 

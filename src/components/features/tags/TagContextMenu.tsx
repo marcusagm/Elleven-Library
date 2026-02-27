@@ -3,7 +3,6 @@ import { Plus, Pencil, Palette, Trash2 } from 'lucide-solid';
 import { ContextMenu, ContextMenuItem } from '../../ui/ContextMenu';
 import { TreeNode } from '../../ui/TreeView';
 import { ColorPicker } from '../../ui/ColorPicker';
-import { tagService } from '../../../lib/tags';
 import { useMetadata } from '../../../core/hooks';
 
 interface TagContextMenuProps {
@@ -25,7 +24,7 @@ interface TagContextMenuProps {
  * @returns {import('solid-js').JSX.Element} The rendered context menu.
  */
 export const TagContextMenu: Component<TagContextMenuProps> = properties => {
-    const { loadTags } = useMetadata();
+    const metadata = useMetadata();
 
     /**
      * Updates a tag's color and refreshes the metadata.
@@ -34,8 +33,9 @@ export const TagContextMenu: Component<TagContextMenuProps> = properties => {
      * @param {string} newColor - The new hexadecimal color code.
      */
     const handleColorChange = async (tagId: number, newColor: string) => {
-        await tagService.updateTag(tagId, undefined, newColor);
-        await loadTags();
+        // Explicitly pass null for name to indicate no change, or let undefined handle it.
+        // The store action will pass this to tagService.
+        await metadata.updateTag(tagId, null, newColor);
     };
 
     const contextMenuItems = createMemo<ContextMenuItem[]>(() => {

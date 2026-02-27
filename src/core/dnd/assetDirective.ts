@@ -67,7 +67,16 @@ export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
             ids = [...selectedIds] as number[];
         }
 
-        const data: DragItem = { type: 'IMAGE', payload: { ids } };
+        const data: DragItem = {
+            type: 'IMAGE',
+            payload: {
+                id: item.id,
+                ids,
+                filename: item.filename,
+                path: item.path,
+                thumbnail_path: item.thumbnail_path
+            }
+        };
         setDragItem(data);
 
         e.dataTransfer.effectAllowed = 'copyMove';

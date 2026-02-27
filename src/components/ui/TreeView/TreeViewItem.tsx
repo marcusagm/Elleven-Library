@@ -1,7 +1,7 @@
 import { Component, createSignal, Show, For, JSX, createMemo } from 'solid-js';
 import { cn } from '../../../lib/utils';
-import { DragItem } from '../../../core/dnd';
-import { TreeViewItemProps, TreeNode } from './types';
+import { currentDragItem, DragItem } from '../../../core/dnd';
+import { TreeViewItemProps, TreeNode, TreeDropPosition } from './types';
 import { useTreeNavigation } from './hooks/useTreeNavigation';
 import { useTreeDragDrop } from './hooks/useTreeDragDrop';
 import { TreeViewToggle } from './components/TreeViewToggle';
@@ -158,7 +158,9 @@ export const TreeViewItem: Component<TreeViewItemProps<unknown>> = props => {
         dragType: () => props.dragType,
         acceptedDragTypes: () => props.acceptedDragTypes,
         isValidDrop: (dragged: DragItem, target: TreeNode<unknown>) =>
-            props.isValidDrop?.(dragged, target) ?? true
+            props.isValidDrop?.(dragged, target) ?? true,
+        onDrop: (item: DragItem, targetId: string | number, position: TreeDropPosition) =>
+            props.onDrop?.(item, targetId, position)
     };
     const dragDrop = useTreeDragDrop(dragDropOptions);
 
@@ -211,6 +213,33 @@ export const TreeViewItem: Component<TreeViewItemProps<unknown>> = props => {
                     role="group"
                     class="ui-tree-group"
                     aria-label={`Children of ${props.node.label}`}
+                    onDragOver={event => {
+                        const dragging = currentDragItem();
+                        if (
+                            dragging &&
+                            (props.acceptedDragTypes?.includes(dragging.type) ?? true)
+                        ) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (event.dataTransfer) {
+                                event.dataTransfer.dropEffect =
+                                    dragging.type === props.dragType ? 'move' : 'copy';
+                            }
+                        }
+                    }}
+                    onDrop={event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        /**
+                         * Dropping on the group container itself (not a specific child row)
+                         * is interpreted as a request to move the item INSIDE this parent node.
+                         */
+                        const rawJsonData = event.dataTransfer?.getData('application/json');
+                        if (rawJsonData && props.onDrop) {
+                            const droppedItem: DragItem = JSON.parse(rawJsonData);
+                            props.onDrop(droppedItem, props.node.id, 'inside');
+                        }
+                    }}
                 >
                     <For each={props.node.children}>
                         {(childNode, childIndex) => (

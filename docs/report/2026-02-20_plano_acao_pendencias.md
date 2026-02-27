@@ -2,7 +2,7 @@
 
 **Data:** 20 de Fevereiro de 2026
 **Status:** Planejamento (parcialmente em andamento)
-**Última atualização:** 2026-02-26 — Conclusão da refatoração de Sonner, ProgressBar e componentes UI base.
+**Última atualização:** 2026-02-27 — Refatoração TreeView como componente puro e correção de reordenamento hierárquico.
 **Baseado em:** `pendencias_consolidadas.md`
 
 Este documento elabora um plano detalhado de implementação para todas as pendências ativas mapeadas nos relatórios recentes do projeto **Mundam**. Para manter a manutenibilidade, o plano foi segmentado em partes menores, de modo que cada tópico representa uma evolução lógica, focada em recursos específicos, melhorias de arquitetura e otimizações de performance.
@@ -66,7 +66,7 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 **Motivação:** Interfaces inchadas podem dificultar a injeção reativa do Solid e as melhorias visuais do portfólio.
 
 ### [✓] 5.1 Refatoração Reativa: Actions e Store
-*   **Concluído:** Modularização de god files concluída (incluindo `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, `useVideoPlayer.ts`, `AdvancedSearchModal.tsx`, `Table.tsx`, `TreeView.tsx`, `Input.tsx`, `DropdownMenu.tsx`, `ContextMenu.tsx` e `Sonner.tsx`). Eliminação de `any` em stores e UI components críticos. Resolução de conflitos de atalhos (Meta+A).
+*   **Concluído:** Modularização de god files concluída (incluindo `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, `useVideoPlayer.ts`, `AdvancedSearchModal.tsx`, `Table.tsx`, `TreeView.tsx`, `Input.tsx`, `DropdownMenu.tsx`, `ContextMenu.tsx` e `Sonner.tsx`). Eliminação de `any` em stores e UI components críticos. Resolução de conflitos de atalhos (Meta+A). Refatoração do `TreeView` para componente 100% puro e agnóstico ao domínio.
    *Detalhes: `docs/plans/2026-02-23_15:09-frontend-code-quality-refactoring.md`, `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md`, `docs/plans/2026-02-24_15:51-table-component-refactoring.md`, `docs/plans/2026-02-24_19:09-tree-view-refactoring.md`, `docs/plans/2026-02-24_21:40-input-component-refactoring.md`, `docs/plans/2026-02-25_02:22-dropdown-context-menu-refactoring.md` e `docs/plans/2026-02-26_14:45-refactor-simple-ui-components-batch-2.md`*
 *   **Pendente:** Adequar inteiramente os patterns de `actions` exportadas dos Stores para mutações visuais exclusivas com tipagem segura, deixando componentes puramente UI.
 

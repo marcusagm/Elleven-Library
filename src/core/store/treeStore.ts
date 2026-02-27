@@ -1,18 +1,16 @@
 import { createStore } from 'solid-js/store';
-import { createEffect } from 'solid-js';
 
-const STORAGE_KEY = 'mundam_folder_expanded';
+const STORAGE_KEY_PREFIX = 'mundam_tree_expanded_';
 
 interface TreeState {
-    expandedIds: Set<string | number>;
+    [key: string]: Set<string | number>;
 }
 
 /**
- * Persists the tree expansion state across sessions.
- * Currently uses localStorage but could be migrated to a database or config file.
+ * Loads the initial state for a specific tree key from localStorage.
  */
-function loadInitialState(): Set<string | number> {
-    const saved = localStorage.getItem(STORAGE_KEY);
+function loadInitialState(key: string): Set<string | number> {
+    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}${key}`);
     if (!saved) return new Set();
     try {
         const parsed = JSON.parse(saved);
@@ -22,53 +20,56 @@ function loadInitialState(): Set<string | number> {
     }
 }
 
-const [treeState, setTreeState] = createStore<TreeState>({
-    expandedIds: loadInitialState()
-});
-
-/**
- * Persist state on change.
- */
-createEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(treeState.expandedIds)));
-});
+const [treeStoreState, setTreeStoreState] = createStore<TreeState>({});
 
 export const treeActions = {
     /**
-     * Toggles the expansion state of a specific node.
-     * @param id - The unique identifier of the tree node.
+     * Ensures a tree state exists for the given key and returns its current IDs.
      */
-    toggleExpansion: (id: string | number) => {
-        const nextSet = new Set(treeState.expandedIds);
+    initializeTree: (key: string) => {
+        if (!treeStoreState[key]) {
+            setTreeStoreState(key, loadInitialState(key));
+        }
+        return treeStoreState[key];
+    },
+
+    /**
+     * Toggles the expansion state of a node in a specific tree.
+     */
+    toggleExpansion: (key: string, id: string | number) => {
+        const currentSet = treeActions.initializeTree(key);
+        const nextSet = new Set(currentSet);
         if (nextSet.has(id)) {
             nextSet.delete(id);
         } else {
             nextSet.add(id);
         }
-        setTreeState('expandedIds', nextSet);
+        setTreeStoreState(key, nextSet);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}${key}`, JSON.stringify(Array.from(nextSet)));
     },
 
     /**
-     * Forces an expansion state for a node.
-     * @param id - The node identifier.
-     * @param isExpanded - Whether the node should be expanded.
+     * Forces an expansion state for a node in a specific tree.
      */
-    setExpanded: (id: string | number, isExpanded: boolean) => {
-        const nextSet = new Set(treeState.expandedIds);
+    setExpanded: (key: string, id: string | number, isExpanded: boolean) => {
+        const currentSet = treeActions.initializeTree(key);
+        const nextSet = new Set(currentSet);
         if (isExpanded) {
             nextSet.add(id);
         } else {
             nextSet.delete(id);
         }
-        setTreeState('expandedIds', nextSet);
+        setTreeStoreState(key, nextSet);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}${key}`, JSON.stringify(Array.from(nextSet)));
     },
 
     /**
-     * Clears all expansion state.
+     * Clears expansion state for a specific tree.
      */
-    clearAll: () => {
-        setTreeState('expandedIds', new Set());
+    clearAll: (key: string) => {
+        setTreeStoreState(key, new Set());
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}${key}`);
     }
 };
 
-export { treeState };
+export { treeStoreState };

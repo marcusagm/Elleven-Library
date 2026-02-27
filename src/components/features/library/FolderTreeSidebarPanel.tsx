@@ -30,7 +30,7 @@ export const FolderTreeSidebarPanel: Component = () => {
     const metadata = useMetadata();
     const filters = useFilters();
     const notification = useNotification();
-    const tree = useTree();
+    const tree = useTree('folders');
 
     // --- Component State ---
     const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);

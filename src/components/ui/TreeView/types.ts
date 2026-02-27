@@ -80,8 +80,12 @@ export interface TreeViewProps<T = unknown> {
     onRename?: (node: TreeNode<T>, newLabel: string) => void;
     /** Callback function invoked when rename/edit mode is exited without saving. */
     onEditCancel?: () => void;
-    /** Callback function invoked when a node is moved to a new position via drag-and-drop. */
-    onMove?: (node: TreeNode<T>, target: TreeNode<T> | 'root', position: TreeDropPosition) => void;
+    /** Callback function invoked when an item is dropped onto a target in the tree. */
+    onDrop?: (
+        item: DragItem,
+        targetId: string | number | 'root',
+        position: TreeDropPosition
+    ) => void;
     /** Optional custom validation function to determine if a specific drop operation is valid. */
     isValidDrop?: (dragged: DragItem, target: TreeNode<T>) => boolean;
 }

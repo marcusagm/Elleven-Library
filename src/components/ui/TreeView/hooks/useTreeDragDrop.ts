@@ -1,5 +1,5 @@
 import { createSignal, createMemo } from 'solid-js';
-import { currentDragItem, setDragItem, dndRegistry, DragItem } from '../../../../core/dnd';
+import { currentDragItem, setDragItem, DragItem } from '../../../../core/dnd';
 import { TreeNode, TreeDropPosition } from '../types';
 
 /**
@@ -18,6 +18,8 @@ interface TreeDragDropOptions {
     acceptedDragTypes: () => string[] | undefined;
     /** Function to perform custom business logic validation for a specific drop operation. */
     isValidDrop: (dragged: DragItem, target: TreeNode<unknown>) => boolean;
+    /** Callback function invoked when a drop operation is completed. */
+    onDrop?: (item: DragItem, targetId: string | number, position: TreeDropPosition) => void;
 }
 
 /**
@@ -112,12 +114,36 @@ export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
 
         event.stopPropagation();
         if (event.dataTransfer) {
-            const currentDragData: DragItem = {
-                // We trust the provided dragType matches our system's DragItem identifiers
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                type: selfDragType as any,
-                payload: { id: dragDropOptions.node().id }
-            };
+            const node = dragDropOptions.node();
+            /**
+             * Minimal interface for data properties we expect to find in tree nodes.
+             */
+            interface TreeData {
+                path?: string;
+                parent_id?: number | null;
+            }
+            const nodeData = node.data as TreeData;
+
+            const currentDragData: DragItem =
+                selfDragType === 'TAG'
+                    ? {
+                          type: 'TAG',
+                          payload: {
+                              id: Number(node.id),
+                              name: node.label,
+                              parent_id: nodeData?.parent_id
+                          }
+                      }
+                    : {
+                          type: 'IMAGE',
+                          // This case is rare for tree, but we follow the union
+                          payload: {
+                              id: Number(node.id),
+                              ids: [Number(node.id)],
+                              filename: node.label,
+                              path: nodeData?.path || ''
+                          }
+                      };
 
             setDragItem(currentDragData);
             event.dataTransfer.effectAllowed = 'move';
@@ -155,7 +181,7 @@ export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
         const boundingClientRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
         const mouseYPosition = event.clientY - boundingClientRect.top;
         const totalElementHeight = boundingClientRect.height;
-        const edgeThresholdDistance = totalElementHeight * 0.25;
+        const edgeThresholdDistance = totalElementHeight * 0.35;
 
         let calculatedDropPosition: TreeDropPosition = 'inside';
 
@@ -176,6 +202,7 @@ export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
         if (event.dataTransfer) {
             event.dataTransfer.dropEffect = isSiblingDragMatch ? 'move' : 'copy';
         }
+        event.stopPropagation();
     };
 
     /**
@@ -188,8 +215,7 @@ export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
 
     /**
      * Event handler for the 'drop' event.
-     * Resolves the dropped data, selects the appropriate DnD strategy from the registry,
-     * and performs the actual drop operation (reorder or assignment).
+     * Resolves the dropped data and invokes the onDrop callback.
      *
      * @param {DragEvent} event - The native browser drop event.
      */
@@ -208,15 +234,8 @@ export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
             const rawJsonData = event.dataTransfer?.getData('application/json');
             if (rawJsonData) {
                 const droppedItem: DragItem = JSON.parse(rawJsonData);
-
-                // We prioritize looking up a strategy for the target node type (the tree's dragType).
-                // If the tree does not define a specific type, we fall back to the dropped item's own strategy.
-                const hostTreeDragType = dragDropOptions.dragType();
-                const dropStrategy = dndRegistry.get(hostTreeDragType || droppedItem.type);
-
-                if (dropStrategy && dropStrategy.accepts(droppedItem)) {
-                    // TreeView component acts as a generic bridge to the DND strategy system
-                    await dropStrategy.onDrop(
+                if (dragDropOptions.onDrop) {
+                    dragDropOptions.onDrop(
                         droppedItem,
                         dragDropOptions.node().id,
                         finalDropPosition || 'inside'

@@ -27,6 +27,9 @@ export const useMetadata = () => {
         saveSmartFolder: metadataActions.saveSmartFolder,
         deleteSmartFolder: metadataActions.deleteSmartFolder,
         refreshAll: metadataActions.refreshAll,
-        notifyTagUpdate: metadataActions.notifyTagUpdate
+        notifyTagUpdate: metadataActions.notifyTagUpdate,
+        createTag: metadataActions.createTag,
+        updateTag: metadataActions.updateTag,
+        deleteTag: metadataActions.deleteTagRecursive
     };
 };

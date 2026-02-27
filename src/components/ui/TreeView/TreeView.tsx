@@ -1,7 +1,7 @@
 import { Component, createSignal, splitProps, For } from 'solid-js';
 import { cn } from '../../../lib/utils';
 import { createId } from '../../../lib/primitives/createId';
-import { dndRegistry, currentDragItem, DragItem } from '../../../core/dnd';
+import { currentDragItem, DragItem } from '../../../core/dnd';
 import { TreeViewProps } from './types';
 import { TreeViewItem } from './TreeViewItem';
 import './tree-view.css';
@@ -53,26 +53,27 @@ export const TreeView: Component<TreeViewProps<unknown>> = props => {
      * Handles dropping an item at the root of the tree (no specific target node).
      */
     const handleRootDropOperation = async (event: DragEvent) => {
-        // Only trigger drop on the root container itself, not bubbling children
-        if (event.target !== event.currentTarget) {
+        // Only trigger drop on the root container itself or its immediate children area,
+        // but not if a more specific TreeViewItem already handled it and stopped propagation.
+        if (event.defaultPrevented && event.target !== event.currentTarget) {
             return;
         }
 
         event.preventDefault();
+        event.stopPropagation();
         setIsRootDragOverActive(false);
 
         try {
             const rawJsonData = event.dataTransfer?.getData('application/json');
             if (rawJsonData) {
                 const droppedItem: DragItem = JSON.parse(rawJsonData);
-                const dropStrategy = dndRegistry.get(droppedItem.type);
 
                 // Check if this type is accepted at the root
                 const isAccepted =
                     localProperties.acceptedDragTypes?.includes(droppedItem.type) ?? true;
 
-                if (dropStrategy && isAccepted) {
-                    await dropStrategy.onDrop(droppedItem, 'root');
+                if (isAccepted && props.onDrop) {
+                    props.onDrop(droppedItem, 'root', 'inside');
                 }
             }
         } catch (error) {
@@ -85,12 +86,13 @@ export const TreeView: Component<TreeViewProps<unknown>> = props => {
 
         const activeDragSource = currentDragItem();
 
-        // Only visually highlight root drop if it's a valid root-level item according to accepted types
+        // If it's the tree's own type, it's a move (reorder), otherwise it's a copy (assignment)
         const isTypeAccepted =
             activeDragSource &&
             (localProperties.acceptedDragTypes?.includes(activeDragSource.type) ?? true);
 
-        const isValidRootTarget = event.target === event.currentTarget && isTypeAccepted;
+        // Accept drops on the background area of the tree
+        const isValidRootTarget = isTypeAccepted;
 
         if (isValidRootTarget) {
             setIsRootDragOverActive(true);

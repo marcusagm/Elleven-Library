@@ -2,6 +2,7 @@
 
 **Data:** 2026-02-26  
 **Status:** Concluída ✅  
+**Data da conclusão:** 2026-02-26 20:27
 **Objetivo:** Consolidar as mutações centrais de dados (pastas e arquivos) e a lógica de seleção, preparando o terreno para busca e tags.
 
 ---

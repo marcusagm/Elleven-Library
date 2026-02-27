@@ -58,8 +58,18 @@ export const ContextMenu: Component<ContextMenuProps> = props => {
      */
     createClickOutside(
         () => contentElement,
-        () => {
-            if (props.isOpen) props.onClose();
+        event => {
+            if (!props.isOpen) return;
+
+            // Check if the click target is within any context menu container or submenu.
+            // This is necessary because submenus are rendered in Portals and thus
+            // are not children of the root menu container.
+            const target = event.target as HTMLElement;
+            if (target && target.closest('.ui-context-menu-container, .ui-context-submenu')) {
+                return;
+            }
+
+            props.onClose();
         }
     );
 

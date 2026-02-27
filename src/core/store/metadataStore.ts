@@ -127,9 +127,196 @@ export const metadataActions = {
     loadTags: async () => {
         try {
             const tags = await tagService.getAllTags();
-            setMetadataState('tags', tags);
+            // Sort by order_index primarily
+            setMetadataState(
+                'tags',
+                tags.sort((a, b) => a.order_index - b.order_index)
+            );
         } catch (error) {
             console.error('Failed to load tags:', error);
+        }
+    },
+
+    /**
+     * Creates a new tag and refreshes metadata.
+     */
+    createTag: async (
+        name: string,
+        parentId?: number | null,
+        color?: string | null
+    ): Promise<ActionResult<number>> => {
+        try {
+            const id = await tagService.createTag(name, parentId, color);
+            await metadataActions.loadTags();
+            metadataActions.notifyTagUpdate();
+            return { success: true, data: id };
+        } catch (error) {
+            console.error('Failed to create tag:', error);
+            return {
+                success: false,
+                error: { code: ErrorCode.IO_ERROR, message: 'Failed to create tag' }
+            };
+        }
+    },
+
+    /**
+     * Updates an existing tag and refreshes metadata.
+     */
+    updateTag: async (
+        id: number,
+        name?: string | null,
+        color?: string | null,
+        parentId?: number | null,
+        orderIndex?: number | null
+    ): Promise<ActionResult> => {
+        try {
+            await tagService.updateTag(
+                id,
+                name === null ? undefined : name,
+                color === null ? undefined : color,
+                parentId === null ? undefined : parentId,
+                orderIndex === null ? undefined : orderIndex
+            );
+            await metadataActions.loadTags();
+            metadataActions.notifyTagUpdate();
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Failed to update tag:', error);
+            return {
+                success: false,
+                error: { code: ErrorCode.IO_ERROR, message: 'Failed to update tag' }
+            };
+        }
+    },
+
+    /**
+     * Deletes a tag and all its descendants recursively.
+     * @param id - The ID of the tag to delete.
+     */
+    deleteTagRecursive: async (id: number): Promise<ActionResult> => {
+        try {
+            const allTags = metadataState.tags;
+            const toDelete = new Set<number>([id]);
+
+            // Simple BFS to find all descendants
+            const queue = [id];
+            while (queue.length > 0) {
+                const currentId = queue.shift()!;
+                const children = allTags.filter(t => t.parent_id === currentId);
+                for (const child of children) {
+                    if (!toDelete.has(child.id)) {
+                        toDelete.add(child.id);
+                        queue.push(child.id);
+                    }
+                }
+            }
+
+            // Delete in chunks or parallel? Sequential for now to ensure consistency
+            // if DB has constraints, though usually it's fine.
+            for (const tagId of toDelete) {
+                await tagService.deleteTag(tagId);
+            }
+
+            await metadataActions.loadTags();
+            metadataActions.notifyTagUpdate();
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Failed to delete tags recursively:', error);
+            return {
+                success: false,
+                error: { code: ErrorCode.IO_ERROR, message: 'Failed to delete tag' }
+            };
+        }
+    },
+
+    /**
+     * Reorders multiple tags in a single operation.
+     */
+    reorderTags: async (updates: { id: number; order: number }[]): Promise<ActionResult> => {
+        try {
+            // Apply updates sequentially to the DB
+            await Promise.all(
+                updates.map(u => tagService.updateTag(u.id, null, null, undefined, u.order))
+            );
+            await metadataActions.loadTags();
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Failed to reorder tags:', error);
+            return {
+                success: false,
+                error: { code: ErrorCode.IO_ERROR, message: 'Failed to reorder tags' }
+            };
+        }
+    },
+
+    /**
+     * Moves a tag to a new parent or reorders it among siblings.
+     */
+    moveTag: async (
+        draggedTagId: number,
+        targetTagId: number | null,
+        position: 'before' | 'inside' | 'after'
+    ): Promise<ActionResult> => {
+        try {
+            const allTags = metadataState.tags;
+
+            // 1. Resolve new parent
+            let newParentId: number | null = null;
+            if (position === 'inside') {
+                newParentId = targetTagId;
+            } else if (targetTagId !== null) {
+                const targetTag = allTags.find(t => t.id === targetTagId);
+                newParentId = targetTag ? targetTag.parent_id : null;
+            }
+
+            // 2. Build new sibling list
+            const siblings = allTags
+                .filter(tag => tag.parent_id === newParentId && tag.id !== draggedTagId)
+                .sort((a, b) => a.order_index - b.order_index || a.name.localeCompare(b.name));
+
+            let insertIndex = siblings.length;
+            if (position !== 'inside') {
+                const targetIndex = siblings.findIndex(tag => tag.id === targetTagId);
+                if (targetIndex !== -1) {
+                    insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
+                }
+            }
+
+            const draggedTag = allTags.find(t => t.id === draggedTagId);
+            if (!draggedTag) throw new Error('Dragged tag not found');
+
+            siblings.splice(insertIndex, 0, draggedTag);
+
+            // 3. Create and execute updates
+            const updates = siblings.map((tag, index) => {
+                const newOrder = index * 100;
+                const isDragged = tag.id === draggedTagId;
+
+                // Only update if parent changed or order changed.
+                // NOTE: We pass 0 for newParentId if it's null, as the Rust backend
+                // interprets 0 as a signal to set parent_id to NULL.
+                if (isDragged || tag.order_index !== newOrder) {
+                    return tagService.updateTag(
+                        tag.id,
+                        null,
+                        null,
+                        isDragged ? (newParentId ?? 0) : tag.parent_id,
+                        newOrder
+                    );
+                }
+                return Promise.resolve();
+            });
+
+            await Promise.all(updates);
+            await metadataActions.loadTags();
+
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Failed to move tag:', error);
+            return {
+                success: false,
+                error: { code: ErrorCode.IO_ERROR, message: 'Failed to move tag' }
+            };
         }
     },
 

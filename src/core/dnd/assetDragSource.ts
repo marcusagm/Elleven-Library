@@ -50,7 +50,16 @@ export function assetDragSource(el: HTMLElement, accessor: () => AssetDragSource
         }
 
         // Set drag data
-        const data: DragItem = { type: 'IMAGE', payload: { ids } };
+        const data: DragItem = {
+            type: 'IMAGE',
+            payload: {
+                id,
+                ids,
+                filename: params.id.toString(), // We don't have filename in params, but it's used for UI feedback
+                path: params.path,
+                thumbnail_path: params.thumbnailPath
+            }
+        };
         setDragItem(data);
 
         e.dataTransfer.effectAllowed = 'copyMove';

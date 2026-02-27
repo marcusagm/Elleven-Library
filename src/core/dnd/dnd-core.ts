@@ -1,24 +1,52 @@
-// Define types for Draggable Items
+import { ActionResult } from '../types/actions';
+
+// --- Result Types for DnD ---
+
+export interface DndSuccessData {
+    tagName?: string;
+    count?: number;
+}
+
+export type DndActionResult = ActionResult<DndSuccessData | void>;
+
+// --- Discriminated Union for Dragged Items ---
+
+export interface ImageDragPayload {
+    id: number;
+    ids: number[]; // For batch operations
+    filename: string;
+    path: string;
+    thumbnail_path?: string | null;
+}
+
 export interface TagDragPayload {
     id: number;
-    name?: string;
+    name: string;
+    parent_id?: number | null;
+    color?: string | null;
 }
 
-export interface DragItem {
-    type: 'IMAGE' | 'TAG';
-    payload: TagDragPayload | Record<string, unknown>;
-}
+export type DragItem =
+    | { type: 'IMAGE'; payload: ImageDragPayload }
+    | { type: 'TAG'; payload: TagDragPayload };
 
-// Strategy Interface
+// --- Strategy Interface ---
+
 export interface DropStrategy {
     /** Determines if this strategy can handle the given dragged item. */
     accepts(item: DragItem): boolean;
-    /** Performs the actual drop operation logic. */
+
+    /**
+     * Performs the actual drop operation logic.
+     * Strategies should avoid direct side-effects like toasing and instead
+     * trigger store actions that return ActionResults.
+     */
     onDrop(
         item: DragItem,
         targetId: number | string,
         position?: 'before' | 'inside' | 'after'
-    ): Promise<void>;
+    ): Promise<DndActionResult>;
+
     /** Optional hook to determine if the current drag position is a valid drop target. */
     onDragOver?(item: DragItem): boolean;
 }
@@ -36,10 +64,10 @@ class DndStrategyRegistry {
     }
 }
 
-import { createSignal } from 'solid-js';
-
 export const dndRegistry = new DndStrategyRegistry();
 
-// Global Drag State (Signal for Reactivity)
+// --- Global Drag State ---
+// Using imports from solid-js since this file is part of the core logic
+import { createSignal } from 'solid-js';
 export const [currentDragItem, setDragItem] = createSignal<DragItem | null>(null);
 export const [currentDropTargetId, setDropTargetId] = createSignal<number | string | null>(null);

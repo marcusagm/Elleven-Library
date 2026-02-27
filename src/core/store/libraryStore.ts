@@ -3,7 +3,9 @@ import { untrack } from 'solid-js';
 import { getImages } from '../../lib/db';
 import { invoke } from '@tauri-apps/api/core';
 import { tagService } from '../../lib/tags';
+import { ActionResult, ErrorCode } from '../types/actions';
 import { filterState, filterActions } from './filterStore';
+import { selectionState } from './selectionStore';
 import { type ImageItem } from '../../types';
 
 export interface BatchChangeAddedItem extends ImageItem {
@@ -316,6 +318,103 @@ export const libraryActions = {
         } catch (err) {
             console.error('Failed to remove location:', err);
             return { success: false, error: err };
+        }
+    },
+
+    /**
+     * Applies a specific tag to a batch of images.
+     */
+    applyTagToImages: async (
+        imageIds: number[],
+        tagId: number
+    ): Promise<ActionResult<{ tagName: string; count: number }>> => {
+        if (imageIds.length === 0) {
+            return {
+                success: false,
+                error: { code: ErrorCode.VALIDATION_ERROR, message: 'No items provided' }
+            };
+        }
+
+        try {
+            const { metadataActions, metadataState } = await import('./metadataStore');
+            await tagService.addTagsToImagesBatch(imageIds, [tagId]);
+            await metadataActions.loadStats();
+
+            // Refresh library view if filtering by tags
+            if (filterState.selectedTags.length > 0) {
+                await libraryActions.refreshImages(false);
+            }
+
+            const tagName = metadataState.tags.find(tag => tag.id === tagId)?.name || 'Tag';
+            return {
+                success: true,
+                data: {
+                    tagName,
+                    count: imageIds.length
+                }
+            };
+        } catch (error) {
+            console.error('Failed to apply tags to images:', error);
+            return {
+                success: false,
+                error: { code: ErrorCode.IO_ERROR, message: 'Failed to apply tags' }
+            };
+        }
+    },
+
+    /**
+     * Applies a specific tag to all currently selected images.
+     */
+    applyTagToSelection: async (
+        tagId: number
+    ): Promise<ActionResult<{ tagName: string; count: number }>> => {
+        return libraryActions.applyTagToImages(selectionState.selectedIds, tagId);
+    },
+
+    /**
+     * Intelligently applies a tag based on a drop target and current selection.
+     */
+    applyTagToTarget: async (
+        tagId: number,
+        targetImageId: number
+    ): Promise<ActionResult<{ tagName: string; count: number }>> => {
+        let targetIds = [targetImageId];
+        if (selectionState.selectedIds.includes(targetImageId)) {
+            targetIds = [...selectionState.selectedIds];
+        }
+        return libraryActions.applyTagToImages(targetIds, tagId);
+    },
+
+    /**
+     * Removes a specific tag from all currently selected images.
+     */
+    removeTagFromSelection: async (tagId: number): Promise<ActionResult> => {
+        const selectedIds = selectionState.selectedIds;
+        if (selectedIds.length === 0) {
+            return {
+                success: false,
+                error: { code: ErrorCode.VALIDATION_ERROR, message: 'No items selected' }
+            };
+        }
+
+        try {
+            const { metadataActions } = await import('./metadataStore');
+            // tagService currently doesn't have a batch remove by tag ID,
+            // we'll have to do it individually or update service.
+            // For now, let's keep it simple as the backend usually handles singles better or we can extend it later.
+            await Promise.all(selectedIds.map(id => tagService.removeTagFromImage(id, tagId)));
+            await metadataActions.loadStats();
+            // If we are filtering by tags, we might need a refresh
+            if (filterState.selectedTags.length > 0) {
+                await libraryActions.refreshImages(false);
+            }
+            return { success: true, data: undefined };
+        } catch (error) {
+            console.error('Failed to remove tags from selection:', error);
+            return {
+                success: false,
+                error: { code: ErrorCode.IO_ERROR, message: 'Failed to remove tags' }
+            };
         }
     }
 };
