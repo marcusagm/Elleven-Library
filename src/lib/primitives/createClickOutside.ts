@@ -18,7 +18,7 @@ export function createClickOutside(
         const target = event.target as Node;
         const elements = Array.isArray(el) ? el : [el];
 
-        // Check if click is inside any of the elements
+        // Check if click is inside unknown of the elements
         const isInside = elements.some(element => {
             return element && typeof element.contains === 'function' && element.contains(target);
         });

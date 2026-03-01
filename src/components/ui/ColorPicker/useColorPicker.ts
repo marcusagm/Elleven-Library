@@ -31,7 +31,7 @@ export const useColorPicker = (properties: ColorPickerProps) => {
             brightness: 100
         });
 
-    // Track if any part of the picker is being dragged
+    // Track if unknown part of the picker is being dragged
     const [isDragging, setIsDragging] = createSignal(false);
 
     // Internal state for the hexadecimal input field text to allow partial typing

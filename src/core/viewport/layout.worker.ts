@@ -1,5 +1,4 @@
 /// <reference lib="webworker" />
-/* eslint-disable complexity, max-lines */
 
 /**
  * Layout Worker
@@ -48,61 +47,66 @@ let totalHeight = 0;
 // Message Handler
 // ============================================================================
 
-self.onmessage = (e: MessageEvent<WorkerInMessage>) => {
-    const msg = e.data;
+function handleSetItems(msg: Extract<WorkerInMessage, { type: 'SET_ITEMS' }>) {
+    items = SetItemsMessageSchema.parse(msg).payload;
+    recalculateLayout();
+}
 
+function handleConfigureMsg(msg: Extract<WorkerInMessage, { type: 'CONFIGURE' }>) {
+    const mergedConfig = { ...config, ...msg.payload };
+    config = ConfigureMessageSchema.shape.payload.parse(mergedConfig);
+    recalculateLayout();
+}
+
+function handleResizeMsg(msg: Extract<WorkerInMessage, { type: 'RESIZE' }>) {
+    const { width } = msg.payload;
+    if (typeof width === 'number' && Math.abs(config.containerWidth - width) > 1) {
+        config.containerWidth = width;
+        recalculateLayout();
+    }
+}
+
+function handleScrollMsg(msg: Extract<WorkerInMessage, { type: 'SCROLL' }>) {
+    const { scrollTop, viewportHeight } = msg.payload;
+    if (typeof scrollTop === 'number' && typeof viewportHeight === 'number') {
+        handleScroll(scrollTop, viewportHeight);
+    }
+}
+
+function handleQueryPositionMsg(msg: Extract<WorkerInMessage, { type: 'QUERY_POSITION' }>) {
+    const { id, requestId } = msg.payload;
+    if (typeof id === 'number' && typeof requestId === 'string') {
+        const pos = positions.get(id) || null;
+        respond({ type: 'POSITION_RESULT', payload: { requestId, position: pos } });
+    }
+}
+
+function handleMessage(msg: WorkerInMessage) {
+    switch (msg.type) {
+        case 'SET_ITEMS':
+            handleSetItems(msg);
+            break;
+        case 'CONFIGURE':
+            handleConfigureMsg(msg);
+            break;
+        case 'RESIZE':
+            handleResizeMsg(msg);
+            break;
+        case 'SCROLL':
+            handleScrollMsg(msg);
+            break;
+        case 'INVALIDATE':
+            recalculateLayout();
+            break;
+        case 'QUERY_POSITION':
+            handleQueryPositionMsg(msg);
+            break;
+    }
+}
+
+self.onmessage = function (e: MessageEvent<WorkerInMessage>) {
     try {
-        switch (msg.type) {
-            case 'SET_ITEMS': {
-                const parsed = SetItemsMessageSchema.parse(msg);
-                items = parsed.payload;
-                recalculateLayout();
-                break;
-            }
-
-            case 'CONFIGURE': {
-                // Merge partial/full configs manually mapped through runtime Zod if full
-                // Since CONFIGURE can be partial, we might need a Partial schema or carefully validate
-                // But the message type requires LayoutConfig. Let's merge first, then full-validate if strict.
-                // For performance, since CONFIGURE is rare, we parse the merged state.
-                const mergedConfig = { ...config, ...msg.payload };
-                config = ConfigureMessageSchema.shape.payload.parse(mergedConfig);
-                recalculateLayout();
-                break;
-            }
-
-            case 'RESIZE': {
-                // High-frequency UI event: TypeGuard only
-                const { width } = msg.payload;
-                if (typeof width === 'number' && Math.abs(config.containerWidth - width) > 1) {
-                    config.containerWidth = width;
-                    recalculateLayout();
-                }
-                break;
-            }
-
-            case 'SCROLL': {
-                // 60FPS High-frequency event: TypeGuard only validation for performance
-                const { scrollTop, viewportHeight } = msg.payload;
-                if (typeof scrollTop === 'number' && typeof viewportHeight === 'number') {
-                    handleScroll(scrollTop, viewportHeight);
-                }
-                break;
-            }
-
-            case 'INVALIDATE':
-                recalculateLayout();
-                break;
-
-            case 'QUERY_POSITION': {
-                const { id, requestId } = msg.payload;
-                if (typeof id === 'number' && typeof requestId === 'string') {
-                    const pos = positions.get(id) || null;
-                    respond({ type: 'POSITION_RESULT', payload: { requestId, position: pos } });
-                }
-                break;
-            }
-        }
+        handleMessage(e.data);
     } catch (error) {
         const errMsg = error instanceof Error ? error.message : 'Unknown validation/worker error';
         respond({ type: 'ERROR', payload: { message: errMsg } });

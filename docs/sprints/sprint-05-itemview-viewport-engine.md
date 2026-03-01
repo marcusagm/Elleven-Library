@@ -13,13 +13,13 @@
 - [x] **Desacoplamento de Visualização:**
     - Mover navegação (next/prev) para `viewportActions.navigateToAsset`.
     - Mover controle de zoom/fit para Actions no `viewportStore` ou Context.
-- [~] **Padronização de Renderers:**
+- [x] **Padronização de Renderers:**
     - Garantir que `ImageViewer`, `FontRenderer`, etc., usem payloads tipados para suas configurações.
     - `ImageViewer` concluído.
-    - `FontRenderer` pendente.
-    - `ModelRenderer` pendente.
-    - `AudioRenderer` pendente.
-    - `VideoRenderer` pendente.
+    - `FontRenderer` concluído.
+    - `ModelRenderer` concluído.
+    - `AudioRenderer` concluído.
+    - `VideoRenderer` concluído.
 
 ### Interação 9: Viewport Engine (Workers)
 - [x] **Segurança de Comunicação (Main-Worker):**

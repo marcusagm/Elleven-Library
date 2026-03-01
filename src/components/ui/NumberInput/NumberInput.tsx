@@ -104,7 +104,7 @@ export const NumberInput: Component<NumberInputProps> = props => {
             return;
         }
 
-        // Block any character that is not a digit.
+        // Block unknown character that is not a digit.
         if (!/^[0-9]$/.test(event.key)) {
             event.preventDefault();
         }

@@ -117,7 +117,7 @@ export const MenuList: Component<MenuListProps> = props => {
                             if (item.type === 'submenu') {
                                 setActiveSubmenuIndex(index());
                             } else {
-                                // Close any active submenu when hovering another item
+                                // Close unknown active submenu when hovering another item
                                 setActiveSubmenuIndex(null);
                             }
                         }}

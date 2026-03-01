@@ -14,7 +14,7 @@ const checkIsSearchValueEmpty = (value: unknown) =>
 /**
  * Internal delegate to format a value using a specific type handler.
  *
- * @param handler - The designated field handler (if any).
+ * @param handler - The designated field handler (if unknown).
  * @param value - The raw search value.
  * @param operator - The comparison operator.
  * @param unitMultiplier - Optional numeric multiplier.

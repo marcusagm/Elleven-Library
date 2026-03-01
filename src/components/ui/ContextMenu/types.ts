@@ -52,7 +52,7 @@ export interface SeparatorContextMenuItem {
 
 /**
  * Discriminated union of all possible context menu items.
- * Ensures type safety and eliminates the need for 'as any' casts.
+ * Ensures type safety and eliminates the need for 'as unknown' casts.
  */
 export type ContextMenuItem =
     | ActionContextMenuItem

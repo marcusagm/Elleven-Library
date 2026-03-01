@@ -2,7 +2,7 @@ import { JSX, Accessor } from 'solid-js';
 
 /**
  * Defines the expansion behavior of the accordion.
- * - 'single': Permits only one item to be expanded at any given time.
+ * - 'single': Permits only one item to be expanded at unknown given time.
  * - 'multiple': Allows multiple items to be expanded simultaneously.
  */
 export type AccordionType = 'single' | 'multiple';

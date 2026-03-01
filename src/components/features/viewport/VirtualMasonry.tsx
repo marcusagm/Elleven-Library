@@ -38,8 +38,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
 
     // Connect to the layout Worker with the specified mode
     const layoutMode = () => props.mode || 'masonry-v';
-    // eslint-disable-next-line solid/reactivity
-    const viewport = useVirtualViewport(layoutMode, layoutItems, {
+    const viewport = useVirtualViewport(layoutMode, () => layoutItems(), {
         get gap() {
             return props.gap;
         },

@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import { reconcile } from 'solid-js/store';
 import { untrack } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
@@ -15,7 +14,11 @@ const { setLibraryState } = libraryStateInternal;
 const BATCH_SIZE = APP_CONFIG.BATCH_SIZE;
 let currentOffset = 0;
 
+import { itemActions } from './itemActions';
+
 export const libraryActions = {
+    ...itemActions,
+
     fetchLibraryBatch: async (offset: number) => {
         const isUntagged = filterState.filterUntagged;
         const folderId = filterState.selectedFolderId;
@@ -110,28 +113,6 @@ export const libraryActions = {
         }
     },
 
-    updateItemRating: async (id: number, rating: number) => {
-        try {
-            setLibraryState('items', i => i.id === id, 'rating', rating);
-            await tagService.updateImageRating(id, rating);
-        } catch (err) {
-            console.error(`Failed to update rating for ${id}:`, err);
-        }
-    },
-
-    updateItemNotes: async (id: number, notes: string) => {
-        try {
-            setLibraryState('items', i => i.id === id, 'notes', notes);
-            await tagService.updateImageNotes(id, notes);
-        } catch (err) {
-            console.error(`Failed to update notes for ${id}:`, err);
-        }
-    },
-
-    updateThumbnail: (id: number, path: string) => {
-        setLibraryState('items', item => item.id === id, 'thumbnail_path', path);
-    },
-
     handleBatchChange: (payload: BatchChangePayload) => {
         if (payload.removed && payload.removed.length > 0) {
             const removedIds = new Set(payload.removed.map(removedItem => removedItem.id));
@@ -208,16 +189,6 @@ export const libraryActions = {
                     libraryActions.refreshImages(false);
                 }
             });
-        }
-    },
-
-    setThumbnailPriority: async (ids: number[]) => {
-        try {
-            if (ids.length > 0) {
-                await invoke('set_thumbnail_priority', { ids });
-            }
-        } catch (err) {
-            console.error('Failed to set thumbnail priority:', err);
         }
     },
 

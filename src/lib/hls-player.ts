@@ -29,7 +29,7 @@ export interface HlsPlayerState {
     isLoading: boolean;
     /** Whether the player has encountered an error */
     hasError: boolean;
-    /** Error message if any */
+    /** Error message if unknown */
     errorMessage: string | null;
     /** Current buffered percentage */
     buffered: number;
@@ -44,7 +44,7 @@ let cachedStreamingToken: string | null = null;
 /**
  * Initialize the streaming session token by fetching it from the backend.
  *
- * Must be called once during app initialization before any streaming URLs
+ * Must be called once during app initialization before unknown streaming URLs
  * are constructed. The token is cached for the lifetime of the session.
  */
 export async function initStreamingToken(): Promise<void> {
@@ -56,7 +56,7 @@ export async function initStreamingToken(): Promise<void> {
  * Get the current streaming token, or empty string if not yet initialized.
  *
  * Prefer calling `initStreamingToken()` during app boot to ensure
- * the token is available before any streaming requests.
+ * the token is available before unknown streaming requests.
  */
 export function getStreamingToken(): string {
     return cachedStreamingToken ?? '';

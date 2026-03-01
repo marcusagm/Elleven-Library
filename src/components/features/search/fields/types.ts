@@ -95,7 +95,7 @@ export interface SearchFieldHandler {
      * @param value2 - The secondary raw value.
      * @param operator - The comparison operator.
      * @param unitMultiplier - The unit multiplier.
-     * @returns The processed value (often an array or string) and any final unit multiplier.
+     * @returns The processed value (often an array or string) and unknown final unit multiplier.
      */
     process: (
         value: SearchValue,

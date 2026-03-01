@@ -7,15 +7,15 @@
 ## 🏗️ 1. Interaction Breakdown
 
 ### Final Audit & Verification
-- **[ ] Global `any` Count:** Verify `python3 .agent/scripts/count_any.py` returns **0**.
-- **[ ] Global Lint Check:** Verify `npm run lint` returns **0 problems**.
-- **[ ] `eslint-disable` Audit:** Verify no `eslint-disable` remains in the project (except for external library bridges if strictly necessary, zero expected).
-- **[ ] Architecture Audit:** Ensure all files follow the `max-lines` (300) and `complexity` (10) rules.
+- [x] **Global `any` Count:** Verify `python3 .agent/scripts/count_any.py` returns **0**.
+- [x] **Global Lint Check:** Verify `npm run lint` returns **0 problems**.
+- [x] **`eslint-disable` Audit:** Verify no `eslint-disable` remains in the project (except for external library bridges if strictly necessary, zero expected).
+- [x] **Architecture Audit:** Ensure all files follow the `max-lines` (300) and `complexity` (10) rules.
 
 ### Documentation & Reporting
-- **[ ] Update Roadmap:** Mark all phases as completed.
-- **[ ] Final Report:** Create `docs/report/2026-02-27_projeto_concluido_excelencia.md`.
-- **[ ] Cleanup:** Remove temporary files like `tmp/test_zod.ts`.
+- [x] **Update Roadmap:** Mark all phases as completed.
+- [x] **Final Report:** Create `docs/report/2026-02-27_projeto_concluido_excelencia.md`.
+- [x] **Cleanup:** Remove temporary files like `tmp/test_zod.ts`.
 
 ---
 
@@ -29,9 +29,9 @@
 
 ## 📋 3. Verification & DoD
 
-1. [ ] **Clean Pipeline:** CI (lint/typecheck) passes perfectly.
-2. [ ] **Architecture Integrity:** No circular dependencies between stores.
-3. [ ] **UX Excellence:** App is smooth, responsive, and robust.
+1. [x] **Clean Pipeline:** CI (lint/typecheck) passes perfectly.
+2. [x] **Architecture Integrity:** No circular dependencies between stores.
+3. [x] **UX Excellence:** App is smooth, responsive, and robust.
 
 ---
 

@@ -61,7 +61,7 @@ export const ContextMenu: Component<ContextMenuProps> = props => {
         event => {
             if (!props.isOpen) return;
 
-            // Check if the click target is within any context menu container or submenu.
+            // Check if the click target is within unknown context menu container or submenu.
             // This is necessary because submenus are rendered in Portals and thus
             // are not children of the root menu container.
             const target = event.target as HTMLElement;

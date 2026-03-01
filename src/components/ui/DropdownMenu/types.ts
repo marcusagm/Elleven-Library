@@ -72,7 +72,7 @@ export interface SeparatorMenuItem {
 
 /**
  * Discriminated union of all possible dropdown menu item types.
- * This ensures type safety and eliminates the need for 'as any' casts.
+ * This ensures type safety and eliminates the need for 'as unknown' casts.
  */
 export type DropdownMenuItem =
     | ActionMenuItem

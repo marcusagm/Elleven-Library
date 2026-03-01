@@ -2604,8 +2604,17 @@ export const DesignSystemGuide: Component = () => {
                                     </label>
                                     <Select
                                         value={toastPos()}
-                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                        onValueChange={val => setToastPos(val as any)}
+                                        onValueChange={val =>
+                                            setToastPos(
+                                                val as
+                                                    | 'top-left'
+                                                    | 'top-center'
+                                                    | 'top-right'
+                                                    | 'bottom-left'
+                                                    | 'bottom-center'
+                                                    | 'bottom-right'
+                                            )
+                                        }
                                         options={[
                                             { label: 'Top Left', value: 'top-left' },
                                             { label: 'Top Center', value: 'top-center' },

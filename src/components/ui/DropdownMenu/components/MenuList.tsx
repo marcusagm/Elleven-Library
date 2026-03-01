@@ -34,7 +34,7 @@ interface MenuListProps {
 
 /**
  * Internal recursive menu list that handles keyboard navigation and item rendering.
- * Uses discriminated unions to ensure type safety without 'as any' casts.
+ * Uses discriminated unions to ensure type safety without 'as unknown' casts.
  */
 export const MenuList: Component<MenuListProps> = props => {
     /** Index of the currently hovered or keyboard-focused submenu. */

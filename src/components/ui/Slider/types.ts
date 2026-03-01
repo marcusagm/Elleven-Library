@@ -61,7 +61,7 @@ export interface SliderContextValue {
     isDisabled: Accessor<boolean>;
     /** Accessor that returns the current orientation (horizontal/vertical). */
     orientation: Accessor<SliderOrientation>;
-    /** Utility function to format any numeric value into its display string version. */
+    /** Utility function to format unknown numeric value into its display string version. */
     formatValue: (value: number) => string;
     /** Method to programmatically update the slider's value. */
     setValue: (value: number) => void;

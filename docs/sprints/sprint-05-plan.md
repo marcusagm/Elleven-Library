@@ -49,11 +49,11 @@ Focus: Thread safety, validation, and performance optimization.
 
 ## 📋 3. Verification & DoD
 
-1. [ ] **Navigation Isolation:** Individual navigation logic removed from UI, handled by Actions.
-2. [ ] **Worker Validation:** All worker messages are schema-validated.
-3. [ ] **Performance Check:** Maintain stable 60FPS during viewport operations with large libraries.
-4. [ ] **Memory Safety:** Verify workers are properly terminated on component unmount.
-5. [ ] **Clean Code:** 0 complexity lint errors in viewport logic.
+1. [x] **Navigation Isolation:** Individual navigation logic removed from UI, handled by Actions.
+2. [x] **Worker Validation:** All worker messages are schema-validated.
+3. [x] **Performance Check:** Maintain stable 60FPS during viewport operations with large libraries.
+4. [x] **Memory Safety:** Verify workers are properly terminated on component unmount.
+5. [x] **Clean Code:** 0 complexity lint errors in viewport logic.
 
 ---
 

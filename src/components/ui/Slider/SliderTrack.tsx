@@ -111,7 +111,7 @@ export const SliderTrack: Component<SliderTrackProperties> = componentProperties
         document.addEventListener('pointermove', handlePointerMove);
         document.addEventListener('pointerup', handlePointerUp);
 
-        // Notify any external listeners attached to the track about the pointer interaction.
+        // Notify unknown external listeners attached to the track about the pointer interaction.
         const externalPointerDownHandler = localProperties.onPointerDown;
         if (typeof externalPointerDownHandler === 'function') {
             // Double cast to bridge the gap between native events and potentially custom handler types.

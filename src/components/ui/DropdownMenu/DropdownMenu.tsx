@@ -67,7 +67,7 @@ export const DropdownMenu: Component<DropdownMenuProps> = props => {
     let floatingContentContainer: HTMLDivElement | undefined;
 
     /**
-     * Closes the menu and resets any navigation state.
+     * Closes the menu and resets unknown navigation state.
      */
     const handleClose = () => setIsMenuOpen(false);
 

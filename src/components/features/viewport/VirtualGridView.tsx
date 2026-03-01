@@ -35,8 +35,7 @@ export const VirtualGridView: Component = () => {
     );
 
     // Connect to the layout Worker in grid mode
-    // eslint-disable-next-line solid/reactivity
-    const viewport = useVirtualViewport('grid', layoutItems);
+    const viewport = useVirtualViewport('grid', () => layoutItems());
 
     const itemsById = createMemo(() => {
         const map = new Map<number, (typeof library.items)[0]>();

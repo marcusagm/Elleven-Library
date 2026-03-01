@@ -49,7 +49,7 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
     createConditionalScope(initialInputScopeIdentifier, isFocused, 1200);
 
     /**
-     * Utility to ensure any new value remains strictly between minimum and maximum bounds.
+     * Utility to ensure unknown new value remains strictly between minimum and maximum bounds.
      *
      * @param targetValue - The numeric value to be clamped.
      * @returns The clamped value.

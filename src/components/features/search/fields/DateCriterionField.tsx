@@ -96,7 +96,7 @@ export const dateHandler: import('./types').SearchFieldHandler = {
      * Creates a human-friendly display string for the date criterion.
      *
      * @param value1 - Formatted primary date string.
-     * @param value2 - Formatted secondary date string (if any).
+     * @param value2 - Formatted secondary date string (if unknown).
      * @param operator - Comparison operator for context.
      * @returns The localized display string.
      */

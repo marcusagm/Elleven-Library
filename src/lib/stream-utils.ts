@@ -101,7 +101,7 @@ export function needsHlsAudio(path: string): boolean {
 }
 
 /**
- * Check if a file needs any kind of transcoding
+ * Check if a file needs unknown kind of transcoding
  */
 export function needsTranscoding(path: string): boolean {
     const strategy = formatActions.getPlaybackStrategy(getExtension(path));
