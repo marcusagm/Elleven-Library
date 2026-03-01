@@ -1,7 +1,7 @@
 import { onCleanup, onMount } from 'solid-js';
 import { listen } from '@tauri-apps/api/event';
 import { useNotification } from './useNotification';
-import { type BatchChangePayload } from '../store/libraryStore';
+import { type BatchChangePayload } from '../store/library';
 
 /**
  * Hook that listens for background library changes and triggers notifications.

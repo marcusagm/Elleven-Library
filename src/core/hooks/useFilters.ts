@@ -1,5 +1,5 @@
 import { filterState, filterActions } from '../store/filter';
-import { libraryActions } from '../store/libraryStore';
+import { libraryActions } from '../store/library';
 
 /**
  * Hook providing access to filter state and actions for the application content.

@@ -1,4 +1,4 @@
-import { onCleanup, createEffect } from 'solid-js';
+import { onCleanup, createEffect, on } from 'solid-js';
 import { ImageItem } from '../../types';
 import {
     dndRegistry,
@@ -27,11 +27,14 @@ export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
     let dragCounter = 0;
 
     // Reset internal state if the element is recycled for a different item (virtualization)
-    createEffect(() => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        accessor().item.id;
-        dragCounter = 0;
-    });
+    createEffect(
+        on(
+            () => accessor().item.id,
+            () => {
+                dragCounter = 0;
+            }
+        )
+    );
 
     // Sync class with GLOBAL reactive target state
     // This solves the virtualization bug where reused DOM nodes would keep old highlights
@@ -197,14 +200,4 @@ export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
         el.removeEventListener('dragleave', handleDragLeave);
         el.removeEventListener('drop', handleDrop);
     });
-}
-
-// Add TypeScript support for the directive
-declare module 'solid-js' {
-    // eslint-disable-next-line @typescript-eslint/no-namespace
-    namespace JSX {
-        interface Directives {
-            assetDnD: AssetDnDParams;
-        }
-    }
 }

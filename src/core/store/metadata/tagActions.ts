@@ -1,141 +1,37 @@
-/* eslint-disable max-lines */
-import { createStore } from 'solid-js/store';
-import { Tag, tagService } from '../../lib/tags';
-import { getLocations } from '../../lib/db';
-import { type BatchChangePayload } from './libraryStore';
-import { computeStatsFromBatchChange } from './statsHelpers';
-import { ActionResult, ErrorCode } from '../types/actions';
-import { eventBus } from '../utils/eventBus';
-import { metadataCache } from './metadata/cache';
-import { type SearchGroup } from './filter';
+import { metadataState, setMetadataState } from './metadataState';
+import { Tag, tagService } from '../../../lib/tags';
+import { ActionResult, ErrorCode } from '../../types/actions';
+import { eventBus } from '../../utils/eventBus';
+import { metadataCache } from './cache';
 
-interface FolderNode {
-    id: number;
-    path: string;
-    name: string;
-    parent_id: number | null;
-    is_root: boolean;
+// Using a similar method to avoid circular reference issues with locationActions.js
+let locationRefs = { loadStats: async () => {} };
+export function initTagRefs(locations: { loadStats: () => Promise<void> }) {
+    locationRefs = locations;
 }
 
-export interface SmartFolder {
-    id: number;
-    name: string;
-    query_json: string;
-    created_at: string;
-}
-
-interface MetadataState {
-    tags: Tag[];
-    locations: FolderNode[];
-    smartFolders: SmartFolder[];
-    libraryStats: {
-        total_images: number;
-        untagged_images: number;
-        tag_counts: Map<number, number>;
-        folder_counts: Map<number, number>;
-        folder_counts_recursive: Map<number, number>;
-    };
-    tagUpdateVersion: number;
-}
-
-const [metadataState, setMetadataState] = createStore<MetadataState>({
-    tags: [],
-    locations: [],
-    smartFolders: [],
-    libraryStats: {
-        total_images: 0,
-        untagged_images: 0,
-        tag_counts: new Map(),
-        folder_counts: new Map(),
-        folder_counts_recursive: new Map()
-    },
-    tagUpdateVersion: 0
-});
-
-/** Check if some added items belong to unknown folders */
-function hasUnknownFolders(added: BatchChangePayload['added'], knownIds: Set<number>): boolean {
-    if (!added) return false;
-    return added.some(item => item.folder_id && !knownIds.has(item.folder_id));
-}
-
-export const metadataActions = {
-    loadSmartFolders: async () => {
-        try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const folders = (await invoke('get_smart_folders')) as SmartFolder[];
-            setMetadataState('smartFolders', folders);
-        } catch (error) {
-            console.error('Failed to load smart folders:', error);
-        }
-    },
-
-    saveSmartFolder: async (
-        name: string,
-        query: SearchGroup | null,
-        id?: number
-    ): Promise<ActionResult> => {
-        try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            if (id) {
-                await invoke('update_smart_folder', { id, name, query: JSON.stringify(query) });
-            } else {
-                await invoke('save_smart_folder', { name, query: JSON.stringify(query) });
-            }
-            await metadataActions.loadSmartFolders();
-            return { success: true, data: undefined };
-        } catch (error) {
-            console.error('Failed to save smart folder:', error);
-            return {
-                success: false,
-                error: {
-                    code: ErrorCode.IO_ERROR,
-                    message: 'Failed to save smart folder'
-                }
-            };
-        }
-    },
-
-    deleteSmartFolder: async (id: number): Promise<ActionResult> => {
-        try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('delete_smart_folder', { id });
-            await metadataActions.loadSmartFolders();
-            return { success: true, data: undefined };
-        } catch (error) {
-            console.error('Failed to delete smart folder:', error);
-            return {
-                success: false,
-                error: {
-                    code: ErrorCode.IO_ERROR,
-                    message: 'Failed to delete smart folder'
-                }
-            };
-        }
-    },
-
+export const tagActions = {
     /**
      * Notifies the system of a tag update.
      * @param options - Configuration for what needs refreshing.
      */
-    notifyTagUpdate: (
-        options: { structural?: boolean; stats?: boolean; images?: boolean } = {}
-    ) => {
-        const { structural = true, stats = true, images = true } = options;
+    notifyTagUpdate: (options: { stats?: boolean; images?: boolean } = {}) => {
+        const { stats = true, images = true } = options;
 
         setMetadataState('tagUpdateVersion', version => version + 1);
 
         if (stats) {
-            metadataActions.loadStats();
+            locationRefs.loadStats();
         }
 
         // Check if we need to refresh the library
         if (images) {
-            import('./filter').then(({ filterState }) => {
+            import('../filter').then(({ filterState }) => {
                 const isFilteringByTags =
                     filterState.filterUntagged || filterState.selectedTags.length > 0;
                 if (isFilteringByTags) {
-                    import('./libraryStore').then(({ libraryActions }) => {
-                        libraryActions.refreshImages(structural); // If not structural, don't force re-fetch if possible
+                    import('../library').then(({ libraryActions }) => {
+                        libraryActions.refreshImages(false);
                     });
                 }
             });
@@ -165,8 +61,8 @@ export const metadataActions = {
     ): Promise<ActionResult<number>> => {
         try {
             const id = await tagService.createTag(name, parentId, color);
-            await metadataActions.loadTags();
-            metadataActions.notifyTagUpdate();
+            await tagActions.loadTags();
+            tagActions.notifyTagUpdate();
             return { success: true, data: id };
         } catch (error) {
             console.error('Failed to create tag:', error);
@@ -201,8 +97,8 @@ export const metadataActions = {
                 finalOrderIndex
             );
 
-            metadataActions.applyTagStoreUpdates(itemId, name, color, parentId, orderIndex);
-            metadataActions.resolveTagNotificationType(name, parentId, orderIndex);
+            tagActions.applyTagStoreUpdates(itemId, name, color, parentId, orderIndex);
+            tagActions.resolveTagNotificationType(name, parentId, orderIndex);
 
             return { success: true, data: undefined };
         } catch (error) {
@@ -248,11 +144,10 @@ export const metadataActions = {
         const isStructuralChange = parentId !== undefined || orderIndex !== undefined;
 
         if (isStructuralChange) {
-            await metadataActions.loadTags();
-            metadataActions.notifyTagUpdate({ structural: true });
+            await tagActions.loadTags();
+            tagActions.notifyTagUpdate({});
         } else {
-            metadataActions.notifyTagUpdate({
-                structural: false,
+            tagActions.notifyTagUpdate({
                 stats: false,
                 images: name !== null && name !== undefined
             });
@@ -287,8 +182,8 @@ export const metadataActions = {
                 await tagService.deleteTag(tagId);
             }
 
-            await metadataActions.loadTags();
-            metadataActions.notifyTagUpdate();
+            await tagActions.loadTags();
+            tagActions.notifyTagUpdate();
             return { success: true, data: undefined };
         } catch (error) {
             console.error('Failed to delete tags recursively:', error);
@@ -308,7 +203,7 @@ export const metadataActions = {
             await Promise.all(
                 updates.map(u => tagService.updateTag(u.id, null, null, undefined, u.order))
             );
-            await metadataActions.loadTags();
+            await tagActions.loadTags();
             return { success: true, data: undefined };
         } catch (error) {
             console.error('Failed to reorder tags:', error);
@@ -378,7 +273,7 @@ export const metadataActions = {
             });
 
             await Promise.all(updates);
-            await metadataActions.loadTags();
+            await tagActions.loadTags();
 
             return { success: true, data: undefined };
         } catch (error) {
@@ -387,76 +282,6 @@ export const metadataActions = {
                 success: false,
                 error: { code: ErrorCode.IO_ERROR, message: 'Failed to move tag' }
             };
-        }
-    },
-
-    loadLocations: async () => {
-        try {
-            const locations = await getLocations();
-            setMetadataState('locations', locations);
-        } catch (error) {
-            console.error('Failed to load locations:', error);
-        }
-    },
-
-    loadStats: async () => {
-        try {
-            const stats = await tagService.getLibraryStats();
-            const tagMap = new Map();
-            stats.tag_counts.forEach(c => tagMap.set(c.tag_id, c.count));
-
-            const folderMap = new Map();
-            stats.folder_counts.forEach(c => folderMap.set(c.folder_id, c.count));
-
-            const folderRecursiveMap = new Map();
-            if (stats.folder_counts_recursive) {
-                stats.folder_counts_recursive.forEach(c =>
-                    folderRecursiveMap.set(c.folder_id, c.count)
-                );
-            }
-
-            setMetadataState('libraryStats', {
-                total_images: stats.total_images,
-                untagged_images: stats.untagged_images,
-                tag_counts: tagMap,
-                folder_counts: folderMap,
-                folder_counts_recursive: folderRecursiveMap
-            });
-        } catch (error) {
-            console.error('Failed to load library stats:', error);
-        }
-    },
-
-    refreshAll: async () => {
-        await Promise.all([
-            metadataActions.loadTags(),
-            metadataActions.loadLocations(),
-            metadataActions.loadStats(),
-            metadataActions.loadSmartFolders()
-        ]);
-    },
-
-    handleBatchChange: (payload: BatchChangePayload) => {
-        const knownIds = new Set(metadataState.locations.map(location => location.id));
-        let needsRefresh = payload.needs_refresh ?? false;
-
-        if (hasUnknownFolders(payload.added, knownIds)) {
-            needsRefresh = true;
-        }
-
-        setMetadataState('libraryStats', stats => {
-            const result = computeStatsFromBatchChange(
-                stats,
-                payload,
-                metadataState.locations,
-                knownIds
-            );
-            needsRefresh = needsRefresh || result.needsRefresh;
-            return result.newStats;
-        });
-
-        if (needsRefresh) {
-            metadataActions.refreshAll();
         }
     },
 
@@ -477,7 +302,7 @@ export const metadataActions = {
                 await tagService.replaceTagsForImagesBatch(assetIds, tagIds);
             }
 
-            metadataActions.notifyTagUpdate({ stats: true, images: true });
+            tagActions.notifyTagUpdate({ stats: true, images: true });
             eventBus.emit('metadata:changed', { type: 'tag', ids: tagIds });
 
             return { success: true, data: undefined };
@@ -511,7 +336,7 @@ export const metadataActions = {
 
             await Promise.all(updates);
 
-            metadataActions.notifyTagUpdate({ stats: false, images: true });
+            tagActions.notifyTagUpdate({ stats: false, images: true });
             eventBus.emit('assets:metadata-updated', {
                 assetIds: assetIds.map(String),
                 fields: Object.keys(metadata)
@@ -556,5 +381,3 @@ export const metadataActions = {
         }
     }
 };
-
-export { metadataState };

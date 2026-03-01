@@ -8,7 +8,7 @@
 
 import { useSelection } from './useSelection';
 import { useViewport } from './useViewport';
-import { libraryState } from '../store/libraryStore';
+import { libraryState } from '../store/library';
 import { type ImageItem } from '../../types';
 
 export interface AssetCardActions {

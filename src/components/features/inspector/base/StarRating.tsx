@@ -10,7 +10,7 @@ interface StarRatingProps {
 }
 
 export const StarRating: Component<StarRatingProps> = props => {
-    const max = props.max || 5;
+    const max = () => props.max || 5;
     const [hoverRating, setHoverRating] = createSignal(0);
 
     const displayRating = createMemo(() => hoverRating() || props.rating);
@@ -37,10 +37,10 @@ export const StarRating: Component<StarRatingProps> = props => {
             role="slider"
             aria-label="Rating"
             aria-valuemin="0"
-            aria-valuemax={max}
+            aria-valuemax={max()}
             aria-valuenow={props.rating}
         >
-            <For each={Array.from({ length: max }, (_, i) => i + 1)}>
+            <For each={Array.from({ length: max() }, (_, i) => i + 1)}>
                 {starValue => (
                     <button
                         type="button"

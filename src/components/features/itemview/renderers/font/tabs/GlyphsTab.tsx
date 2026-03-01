@@ -27,9 +27,8 @@ export const GlyphsTab: Component<{ fontFamily: string }> = props => {
                                 // User probably wants to see detail. Let's use fontSize but clamp it if too big for box?
                                 // Actually, let's use a fixed large size relative to box, or let user control it.
                                 // Let's use fontSettings.fontSize but separate it?
-                                // For now, respect toolbar.
-                                'line-height': 1,
-                                'font-weight': fontSettings().fontWeight
+                                'line-height': '1',
+                                'font-weight': `${fontSettings().fontWeight}`
                             }}
                         >
                             {char}

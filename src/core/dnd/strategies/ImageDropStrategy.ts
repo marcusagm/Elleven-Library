@@ -12,7 +12,7 @@ export const ImageDropStrategy: DropStrategy = {
 
     onDrop: async (item: DragItem, targetId: number | string): Promise<DndActionResult> => {
         if (item.type === 'TAG') {
-            const { libraryActions } = await import('../../store/libraryStore');
+            const { libraryActions } = await import('../../store/library');
             const targetImageId = Number(targetId);
             const tagId = Number(item.payload.id);
 

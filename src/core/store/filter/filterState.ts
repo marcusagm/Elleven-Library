@@ -1,0 +1,95 @@
+import { createStore } from 'solid-js/store';
+import { APP_CONFIG } from '../../../config/constants';
+import { type SearchGroup } from './schemas';
+
+export type SortField =
+    | 'modified_at'
+    | 'added_at'
+    | 'created_at'
+    | 'filename'
+    | 'format'
+    | 'size'
+    | 'rating';
+export type SortOrder = 'asc' | 'desc';
+export type ViewLayout = 'masonry-v' | 'masonry-h' | 'grid' | 'list';
+
+export interface FilterSnapshot {
+    selectedTags: number[];
+    selectedFolderId: number | null;
+    folderRecursiveView: boolean;
+    filterUntagged: boolean;
+    searchQuery: string;
+    advancedSearch: SearchGroup | null;
+    sortBy: SortField;
+    sortOrder: SortOrder;
+}
+
+export interface FilterState extends FilterSnapshot {
+    layout: ViewLayout;
+    thumbSize: number;
+
+    // History
+    history: FilterSnapshot[];
+    historyIndex: number;
+    historyLimit: number;
+}
+
+export const STORAGE_KEY = 'mundam-filter-preference';
+
+export const defaultSnapshot: FilterSnapshot = {
+    selectedTags: [],
+    selectedFolderId: null,
+    folderRecursiveView: false,
+    filterUntagged: false,
+    searchQuery: '',
+    advancedSearch: null,
+    sortBy: 'modified_at',
+    sortOrder: 'desc'
+};
+
+const defaultState: FilterState = {
+    ...defaultSnapshot,
+    layout: 'masonry-v',
+    thumbSize: APP_CONFIG.THUMBNAIL_SIZE,
+    history: [{ ...defaultSnapshot }],
+    historyIndex: 0,
+    historyLimit: 50 // Default
+};
+
+const getPersisted = (): Partial<FilterState> => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved) : {};
+    } catch {
+        return {};
+    }
+};
+
+const persisted = getPersisted();
+
+export const [filterState, setFilterState] = createStore<FilterState>({
+    ...defaultState,
+    ...persisted,
+    // Don't persist these
+    selectedTags: [],
+    selectedFolderId: null,
+    filterUntagged: false,
+    searchQuery: '',
+    advancedSearch: null,
+    history: [{ ...defaultSnapshot }],
+    historyIndex: 0
+});
+
+export const filterStateInternal = { setFilterState };
+
+export const persist = (newState: Partial<FilterState>) => {
+    const toSave = {
+        sortBy: filterState.sortBy,
+        sortOrder: filterState.sortOrder,
+        layout: filterState.layout,
+        thumbSize: filterState.thumbSize,
+        historyLimit: filterState.historyLimit,
+        ...newState
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+};

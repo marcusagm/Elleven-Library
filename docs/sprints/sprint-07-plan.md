@@ -7,29 +7,29 @@
 ## 🏗️ 1. Interaction Breakdown
 
 ### Modular Store Refactoring (God-File Disposal)
-- **[ ] Splitting `libraryStore.ts` (>400 lines):**
-  - [ ] Extract `libraryActions.ts`.
-  - [ ] Extract `libraryState.ts` and `schemas.ts`.
-- **[ ] Splitting `metadataStore.ts` (>500 lines):**
-  - [ ] Extract `tagActions.ts`.
-  - [ ] Extract `searchActions.ts`.
-  - [ ] Extract `locationActions.ts`.
-- **[ ] Splitting `filter/index.ts` (>400 lines):**
-  - [ ] Extract `filterActions.ts` and `filterState.ts`.
+- **[x] Splitting `libraryStore.ts` (>400 lines):**
+  - [x] Extract `libraryActions.ts`.
+  - [x] Extract `libraryState.ts` and `schemas.ts`.
+- **[x] Splitting `metadataStore.ts` (>500 lines):**
+  - [x] Extract `tagActions.ts`.
+  - [x] Extract `searchActions.ts`.
+  - [x] Extract `locationActions.ts`.
+- **[x] Splitting `filter/index.ts` (>400 lines):**
+  - [x] Extract `filterActions.ts` and `filterState.ts`.
 
 ### UI Quality & Reactivity
-- **[ ] Component Cleanup:**
-  - [ ] Fix `StarRating.tsx` (reactive props).
-  - [ ] Fix `GlyphsTab.tsx` (CSS units).
-  - [ ] Fix `EmptyState.tsx` (reactive icon).
-  - [ ] Fix `AudioPlayerContext.tsx` (reactive playerProps).
-- **[ ] `KeyboardShortcutsPanel` Refactoring:**
-  - [ ] Reduce complexity (currently 12).
-  - [ ] Wrap event handlers in functions for reactivity.
+- **[x] Component Cleanup:**
+  - [x] Fix `StarRating.tsx` (reactive props).
+  - [x] Fix `GlyphsTab.tsx` (CSS units).
+  - [x] Fix `EmptyState.tsx` (reactive icon).
+  - [x] Fix `AudioPlayerContext.tsx` (reactive playerProps).
+- **[x] `KeyboardShortcutsPanel` Refactoring:**
+  - [x] Reduce complexity (currently 12).
+  - [x] Wrap event handlers in functions for reactivity.
 
 ### Directive Cleanup
-- **[ ] `assetDirective.ts` & `assetDragSource.ts`:**
-  - [ ] Remove `eslint-disable` by refactoring to pure SolidJS patterns.
+- **[x] `assetDirective.ts` & `assetDragSource.ts`:**
+  - [x] Remove `eslint-disable` by refactoring to pure SolidJS patterns.
 
 ---
 
@@ -47,10 +47,10 @@
 
 ## 📋 3. Verification & DoD
 
-1. [ ] **Zero `eslint-disable`:** All massive files split to <300 lines.
-2. [ ] **Reactivity Correctness:** All warnings about reactive variables fixed.
-3. [ ] **Final Build:** App builds and runs without any lint warnings.
-4. [ ] **Architecture Check:** All components follow the feature-colocation and hook-facade rules.
+1. [x] **Zero `eslint-disable`:** All massive files split to <300 lines.
+2. [x] **Reactivity Correctness:** All warnings about reactive variables fixed.
+3. [x] **Final Build:** App builds and runs without any lint warnings.
+4. [x] **Architecture Check:** All components follow the feature-colocation and hook-facade rules.
 
 ---
 

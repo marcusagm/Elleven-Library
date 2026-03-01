@@ -1,4 +1,4 @@
-import { metadataState, metadataActions } from '../store/metadataStore';
+import { metadataState, metadataActions } from '../store/metadata';
 
 export const useMetadata = () => {
     return {

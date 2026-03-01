@@ -117,13 +117,3 @@ export function assetDragSource(el: HTMLElement, accessor: () => AssetDragSource
         el.removeEventListener('dragend', handleDragEnd);
     });
 }
-
-// TypeScript directive declaration
-declare module 'solid-js' {
-    // eslint-disable-next-line @typescript-eslint/no-namespace
-    namespace JSX {
-        interface Directives {
-            assetDragSource: AssetDragSourceParams;
-        }
-    }
-}

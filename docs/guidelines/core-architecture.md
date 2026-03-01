@@ -66,7 +66,19 @@ All events must be registered in the `DomainEvents` interface within `src/core/u
 
 ## 📦 4. Store & State Management
 
-Mundam uses **Solid.js Stores** for reactive state.
+Mundam uses **Solid.js Stores** for reactive state. As domains grow, it is strictly forbidden to create "God-Files" (files exceeding 300-400 lines). Stores must be split into modular subunits to guarantee separation of concerns.
+
+### Modular Store Anatomy
+When organizing a store (e.g., `src/core/store/metadata/`), follow this directory structure:
+1. **State Definition (`*State.ts`)**: Contains the `createStore` initialization, interfaces, and the private setter (`setInternalState`). Must not contain business logic.
+2. **Domain Actions (`*Actions.ts`)**: Split actions logically into sub-domains (e.g., `tagActions.ts`, `locationActions.ts`, `searchActions.ts`) to keep files small and focused.
+3. **Schemas & Constants**: Keep validation rules and static lists isolated.
+4. **Proxy Index (`index.ts`)**: Aggregate and re-export the state and all actions to maintain a unified public API for consumer hooks without introducing breaking changes.
+
+### Resolving Circular Dependencies
+Splitting massive stores can introduce cyclic imports. To solve this safely:
+- Avoid importing `storeA/actions.ts` directly into `storeB/actions.ts` at the top level.
+- Use **late initialization/Dependency Injection** (e.g., exporting an `initRefs` function in the action file that the `index.ts` calls to link dependencies) or rely on the `eventBus` to orchestrate effects across boundaries.
 
 ### Design Principles
 1. **Atomic Mutations:** Actions should modify the store in discrete, logical steps.

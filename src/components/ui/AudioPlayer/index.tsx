@@ -119,7 +119,7 @@ const AudioPlayerContent: Component = () => {
 
 export const AudioPlayer: Component<AudioPlayerProps> = props => {
     return (
-        <AudioProvider playerProps={props}>
+        <AudioProvider {...props}>
             <AudioPlayerContent />
         </AudioProvider>
     );

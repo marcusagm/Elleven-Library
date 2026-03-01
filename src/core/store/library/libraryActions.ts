@@ -1,55 +1,21 @@
 /* eslint-disable max-lines */
-import { createStore, reconcile } from 'solid-js/store';
+import { reconcile } from 'solid-js/store';
 import { untrack } from 'solid-js';
-import { getImages } from '../../lib/db';
 import { invoke } from '@tauri-apps/api/core';
-import { tagService } from '../../lib/tags';
-import { ActionResult, ErrorCode } from '../types/actions';
-import { filterState, filterActions } from './filter';
-import { selectionState } from './selectionStore';
-import { type ImageItem } from '../../types';
+import { getImages } from '../../../lib/db';
+import { tagService } from '../../../lib/tags';
+import { ActionResult, ErrorCode } from '../../types/actions';
+import { filterState, filterActions } from '../filter';
+import { selectionState } from '../selectionStore';
+import { libraryState, libraryStateInternal } from './libraryState';
+import { BatchChangePayload } from './schemas';
+import { APP_CONFIG } from '../../../config/constants';
 
-export interface BatchChangeAddedItem extends ImageItem {
-    folder_id: number;
-    old_folder_id?: number;
-}
-
-export interface BatchChangeRemovedItem {
-    id: number;
-    folder_id: number;
-    tag_ids: number[];
-}
-
-export interface BatchChangePayload {
-    added?: BatchChangeAddedItem[];
-    removed?: BatchChangeRemovedItem[];
-    updated?: BatchChangeAddedItem[];
-    needs_refresh?: boolean;
-}
-
-interface LibraryState {
-    items: ImageItem[];
-    isFetching: boolean;
-    isRefreshing: boolean;
-    totalItems: number; // useful for knowing if we reached end
-}
-
-import { APP_CONFIG } from '../../config/constants';
-
+const { setLibraryState } = libraryStateInternal;
 const BATCH_SIZE = APP_CONFIG.BATCH_SIZE;
 let currentOffset = 0;
 
-const [libraryState, setLibraryState] = createStore<LibraryState>({
-    items: [],
-    isFetching: false,
-    isRefreshing: false,
-    totalItems: 0
-});
-
 export const libraryActions = {
-    /**
-     * Internal helper to fetch a batch of images based on current filters.
-     */
     fetchLibraryBatch: async (offset: number) => {
         const isUntagged = filterState.filterUntagged;
         const folderId = filterState.selectedFolderId;
@@ -80,9 +46,6 @@ export const libraryActions = {
         return await getImages(BATCH_SIZE, offset, sortBy, sortOrder);
     },
 
-    /**
-     * Internal helper to async refresh the total items count.
-     */
     refreshTotalCount: () => {
         const isUntagged = filterState.filterUntagged;
         const folderId = filterState.selectedFolderId;
@@ -170,23 +133,18 @@ export const libraryActions = {
     },
 
     handleBatchChange: (payload: BatchChangePayload) => {
-        // 1. Handle Removals
         if (payload.removed && payload.removed.length > 0) {
             const removedIds = new Set(payload.removed.map(removedItem => removedItem.id));
             setLibraryState('items', items => items.filter(item => !removedIds.has(item.id)));
         }
 
-        // 2. Handle Additions
         if (payload.added && payload.added.length > 0) {
-            // Trigger a soft refresh to integrate new items in the correct order/position
-            // reconcile will handle merging existing ones
             libraryActions.refreshImages(false);
         }
 
-        // 3. Handle Updates (Moves and Renames)
         if (payload.updated && payload.updated.length > 0) {
             const updatedItems = payload.updated;
-            import('./metadataStore').then(({ metadataState }) => {
+            import('../metadata').then(({ metadataState }) => {
                 const { selectedFolderId, recursive, locations, currentItems } = untrack(() => ({
                     selectedFolderId: filterState.selectedFolderId,
                     recursive: filterState.folderRecursiveView,
@@ -194,13 +152,11 @@ export const libraryActions = {
                     currentItems: libraryState.items
                 }));
 
-                // Optimization: Create a Map for O(1) parent lookup instead of Array.find O(N)
                 const locationMap = new Map(locations.map(location => [location.id, location]));
 
                 const isChildOf = (childId: number, rootId: number): boolean => {
                     let current: number | null = childId;
                     let depth = 0;
-                    // Use constant to prevent infinite loops (though DAG should prevent it)
                     while (current && depth < APP_CONFIG.MAX_FOLDER_DEPTH) {
                         if (current === rootId) return true;
                         const node = locationMap.get(current);
@@ -224,7 +180,6 @@ export const libraryActions = {
 
                     if (isNowInView) {
                         if (wasKnown) {
-                            // Update in place (Rename or Move within same recursive tree)
                             setLibraryState(
                                 'items',
                                 i => i.id === item.id,
@@ -237,11 +192,9 @@ export const libraryActions = {
                                 })
                             );
                         } else {
-                            // Moved INTO this folder view from outside
                             someMovedIn = true;
                         }
                     } else if (wasKnown) {
-                        // Was here, but moved OUT
                         toRemoveIDs.push(item.id);
                     }
                 }
@@ -252,7 +205,6 @@ export const libraryActions = {
                 }
 
                 if (someMovedIn) {
-                    // Re-fetch to get items moved in
                     libraryActions.refreshImages(false);
                 }
             });
@@ -269,16 +221,12 @@ export const libraryActions = {
         }
     },
 
-    /**
-     * Adds a new root location to the library.
-     * Triggers directory picker and starts indexing.
-     */
     addLocation: async () => {
         try {
             const { open } = await import('@tauri-apps/plugin-dialog');
-            const { metadataActions } = await import('./metadataStore');
-            const { tauriService } = await import('../tauri/services');
-            const { addLocation: dbAddLocation } = await import('../../lib/db');
+            const { metadataActions } = await import('../metadata');
+            const { tauriService } = await import('../../tauri/services');
+            const { addLocation: dbAddLocation } = await import('../../../lib/db');
 
             const selectedPath = await open({
                 directory: true,
@@ -300,19 +248,13 @@ export const libraryActions = {
         }
     },
 
-    /**
-     * Removes a root location from the library.
-     * @param locationId - The unique ID of the location to remove.
-     */
     removeLocation: async (locationId: number) => {
         try {
-            const { metadataActions } = await import('./metadataStore');
+            const { metadataActions } = await import('../metadata');
             await invoke('remove_location', { locationId });
 
-            // Atomic refresh of related metadata
             await Promise.all([metadataActions.loadLocations(), metadataActions.loadStats()]);
 
-            // Refresh library view
             await libraryActions.refreshImages(true);
 
             return { success: true };
@@ -322,9 +264,6 @@ export const libraryActions = {
         }
     },
 
-    /**
-     * Applies a specific tag to a batch of images.
-     */
     applyTagToImages: async (
         imageIds: number[],
         tagId: number
@@ -337,11 +276,10 @@ export const libraryActions = {
         }
 
         try {
-            const { metadataActions, metadataState } = await import('./metadataStore');
+            const { metadataActions, metadataState } = await import('../metadata');
             await tagService.addTagsToImagesBatch(imageIds, [tagId]);
             await metadataActions.loadStats();
 
-            // Refresh library view if filtering by tags
             if (filterState.selectedTags.length > 0) {
                 await libraryActions.refreshImages(false);
             }
@@ -363,18 +301,12 @@ export const libraryActions = {
         }
     },
 
-    /**
-     * Applies a specific tag to all currently selected images.
-     */
     applyTagToSelection: async (
         tagId: number
     ): Promise<ActionResult<{ tagName: string; count: number }>> => {
         return libraryActions.applyTagToImages(selectionState.selectedIds, tagId);
     },
 
-    /**
-     * Intelligently applies a tag based on a drop target and current selection.
-     */
     applyTagToTarget: async (
         tagId: number,
         targetImageId: number
@@ -386,9 +318,6 @@ export const libraryActions = {
         return libraryActions.applyTagToImages(targetIds, tagId);
     },
 
-    /**
-     * Removes a specific tag from all currently selected images.
-     */
     removeTagFromSelection: async (tagId: number): Promise<ActionResult> => {
         const selectedIds = selectionState.selectedIds;
         if (selectedIds.length === 0) {
@@ -399,13 +328,9 @@ export const libraryActions = {
         }
 
         try {
-            const { metadataActions } = await import('./metadataStore');
-            // tagService currently doesn't have a batch remove by tag ID,
-            // we'll have to do it individually or update service.
-            // For now, let's keep it simple as the backend usually handles singles better or we can extend it later.
+            const { metadataActions } = await import('../metadata');
             await Promise.all(selectedIds.map(id => tagService.removeTagFromImage(id, tagId)));
             await metadataActions.loadStats();
-            // If we are filtering by tags, we might need a refresh
             if (filterState.selectedTags.length > 0) {
                 await libraryActions.refreshImages(false);
             }
@@ -419,5 +344,3 @@ export const libraryActions = {
         }
     }
 };
-
-export { libraryState };

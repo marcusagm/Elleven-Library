@@ -1,5 +1,4 @@
 /**
-import { Button, Kbd } from '../../ui';
  * Keyboard Shortcuts Panel
  * Settings panel for viewing and editing keyboard shortcuts
  */
@@ -27,6 +26,46 @@ const SCOPE_LABELS: Record<string, string> = {
     modal: 'Modal'
 };
 
+function groupShortcutsByScope(shortcuts: RegisteredShortcut[]): Map<string, RegisteredShortcut[]> {
+    const groups = new Map<string, RegisteredShortcut[]>();
+    for (const shortcut of shortcuts) {
+        const scope = shortcut.scope || 'global';
+        if (!groups.has(scope)) {
+            groups.set(scope, []);
+        }
+        groups.get(scope)!.push(shortcut);
+    }
+    return groups;
+}
+
+function buildOrderedScopeGroups(groups: Map<string, RegisteredShortcut[]>): ScopeGroup[] {
+    const order = ['global', 'image-viewer', 'viewport', 'search', 'modal'];
+    const result: ScopeGroup[] = [];
+
+    for (const scope of order) {
+        const scopedShortcuts = groups.get(scope);
+        if (scopedShortcuts && scopedShortcuts.length > 0) {
+            result.push({
+                scope,
+                label: SCOPE_LABELS[scope] || scope,
+                shortcuts: scopedShortcuts.sort((a, b) => a.name.localeCompare(b.name))
+            });
+        }
+    }
+
+    for (const [scope, scopedShortcuts] of groups) {
+        if (!order.includes(scope) && scopedShortcuts.length > 0) {
+            result.push({
+                scope,
+                label: SCOPE_LABELS[scope] || scope,
+                shortcuts: scopedShortcuts.sort((a, b) => a.name.localeCompare(b.name))
+            });
+        }
+    }
+
+    return result;
+}
+
 export const KeyboardShortcutsPanel: Component = () => {
     const [editingId, setEditingId] = createSignal<string | null>(null);
     const [recordedKeys, setRecordedKeys] = createSignal<string | null>(null);
@@ -35,43 +74,8 @@ export const KeyboardShortcutsPanel: Component = () => {
     // Group shortcuts by scope
     const groupedShortcuts = createMemo((): ScopeGroup[] => {
         const shortcuts = shortcutStore.list();
-        const groups = new Map<string, RegisteredShortcut[]>();
-
-        for (const shortcut of shortcuts) {
-            const scope = shortcut.scope || 'global';
-            if (!groups.has(scope)) {
-                groups.set(scope, []);
-            }
-            groups.get(scope)!.push(shortcut);
-        }
-
-        // Sort groups by priority
-        const order = ['global', 'image-viewer', 'viewport', 'search', 'modal'];
-        const result: ScopeGroup[] = [];
-
-        for (const scope of order) {
-            const shortcuts = groups.get(scope);
-            if (shortcuts && shortcuts.length > 0) {
-                result.push({
-                    scope,
-                    label: SCOPE_LABELS[scope] || scope,
-                    shortcuts: shortcuts.sort((a, b) => a.name.localeCompare(b.name))
-                });
-            }
-        }
-
-        // Add any remaining scopes
-        for (const [scope, shortcuts] of groups) {
-            if (!order.includes(scope) && shortcuts.length > 0) {
-                result.push({
-                    scope,
-                    label: SCOPE_LABELS[scope] || scope,
-                    shortcuts: shortcuts.sort((a, b) => a.name.localeCompare(b.name))
-                });
-            }
-        }
-
-        return result;
+        const groups = groupShortcutsByScope(shortcuts);
+        return buildOrderedScopeGroups(groups);
     });
 
     const startEditing = (shortcutId: string) => {
@@ -161,6 +165,19 @@ export const KeyboardShortcutsPanel: Component = () => {
     );
 };
 
+function isTerminalEnter(e: KeyboardEvent): boolean {
+    return e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey;
+}
+
+function extractModifiers(e: KeyboardEvent): ModifierKey[] {
+    const modifiers: ModifierKey[] = [];
+    if (e.metaKey) modifiers.push('Meta');
+    if (e.ctrlKey) modifiers.push('Ctrl');
+    if (e.altKey) modifiers.push('Alt');
+    if (e.shiftKey) modifiers.push('Shift');
+    return modifiers;
+}
+
 interface ShortcutRowProps {
     shortcut: RegisteredShortcut;
     isEditing: boolean;
@@ -206,18 +223,13 @@ const ShortcutRow: Component<ShortcutRowProps> = props => {
             }
 
             // Handle Enter to save
-            if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+            if (isTerminalEnter(e)) {
                 props.onSave();
                 return;
             }
 
             // Build the key combination
-            const modifiers: ModifierKey[] = [];
-            if (e.metaKey) modifiers.push('Meta');
-            if (e.ctrlKey) modifiers.push('Ctrl');
-            if (e.altKey) modifiers.push('Alt');
-            if (e.shiftKey) modifiers.push('Shift');
-
+            const modifiers = extractModifiers(e);
             const key = e.code || e.key;
             const canonical = buildCanonicalId(modifiers, key);
 
@@ -245,7 +257,7 @@ const ShortcutRow: Component<ShortcutRowProps> = props => {
                     <button
                         type="button"
                         class="shortcut-keys-button"
-                        onClick={props.onStartEdit}
+                        onClick={() => props.onStartEdit()}
                         title="Click to edit"
                     >
                         <ShortcutKeys keys={displayKeys()} />
@@ -275,7 +287,7 @@ const ShortcutRow: Component<ShortcutRowProps> = props => {
                                 <button
                                     type="button"
                                     class="shortcut-action-btn save"
-                                    onClick={props.onSave}
+                                    onClick={() => props.onSave()}
                                     disabled={!props.recordedKeys || props.conflicts.length > 0}
                                     title="Save"
                                 >
@@ -284,7 +296,7 @@ const ShortcutRow: Component<ShortcutRowProps> = props => {
                                 <button
                                     type="button"
                                     class="shortcut-action-btn cancel"
-                                    onClick={props.onCancel}
+                                    onClick={() => props.onCancel()}
                                     title="Cancel"
                                 >
                                     <X size={14} />
@@ -305,7 +317,7 @@ const ShortcutRow: Component<ShortcutRowProps> = props => {
                     <button
                         type="button"
                         class="shortcut-reset-btn"
-                        onClick={props.onReset}
+                        onClick={() => props.onReset()}
                         title="Reset to default"
                     >
                         <RotateCcw size={12} />

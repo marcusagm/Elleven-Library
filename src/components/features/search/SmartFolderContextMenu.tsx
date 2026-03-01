@@ -1,7 +1,7 @@
 import { Component, createMemo } from 'solid-js';
 import { Edit, Trash2 } from 'lucide-solid';
 import { ContextMenu, ContextMenuItem } from '../../ui/ContextMenu';
-import { SmartFolder } from '../../../core/store/metadataStore';
+import { SmartFolder } from '../../../core/store/metadata';
 
 /**
  * Properties for the SmartFolderContextMenu component.

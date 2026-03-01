@@ -1,6 +1,6 @@
 import { ConfirmModal } from '../../ui';
 import { Component } from 'solid-js';
-import { SmartFolder } from '../../../core/store/metadataStore';
+import { SmartFolder } from '../../../core/store/metadata';
 import { useMetadata, useNotification } from '../../../core/hooks';
 
 /**

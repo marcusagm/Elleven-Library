@@ -20,7 +20,7 @@ export const TagDropStrategy: DropStrategy = {
         }
 
         if (item.type === 'IMAGE') {
-            const { libraryActions } = await import('../../store/libraryStore');
+            const { libraryActions } = await import('../../store/library');
             const { selectionState } = await import('../../store/selectionStore');
 
             let imageIds = [item.payload.id];
@@ -34,7 +34,7 @@ export const TagDropStrategy: DropStrategy = {
         }
 
         if (item.type === 'TAG') {
-            const { metadataActions } = await import('../../store/metadataStore');
+            const { metadataActions } = await import('../../store/metadata');
             const draggedTagId = Number(item.payload.id);
             return await metadataActions.moveTag(draggedTagId, targetTagId, position);
         }

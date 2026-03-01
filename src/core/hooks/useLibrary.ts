@@ -1,5 +1,5 @@
 import { createMemo } from 'solid-js';
-import { libraryState, libraryActions } from '../store/libraryStore';
+import { libraryState, libraryActions } from '../store/library';
 
 const itemsCountMemo = createMemo(() => libraryState.items.length);
 

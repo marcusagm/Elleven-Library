@@ -6,11 +6,18 @@ type AudioContextType = ReturnType<typeof useAudioPlayer> & { props: AudioPlayer
 
 const AudioPlayerContext = createContext<AudioContextType>();
 
-export const AudioProvider = (props: { children: JSX.Element; playerProps: AudioPlayerProps }) => {
-    const logic = useAudioPlayer(props.playerProps);
+export const AudioProvider = (props: AudioPlayerProps & { children: JSX.Element }) => {
+    const logic = useAudioPlayer(props);
 
     return (
-        <AudioPlayerContext.Provider value={{ ...logic, props: props.playerProps }}>
+        <AudioPlayerContext.Provider
+            value={{
+                ...logic,
+                get props() {
+                    return props;
+                }
+            }}
+        >
             {props.children}
         </AudioPlayerContext.Provider>
     );

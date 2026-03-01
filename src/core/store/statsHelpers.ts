@@ -8,7 +8,7 @@ import {
     type BatchChangePayload,
     type BatchChangeAddedItem,
     type BatchChangeRemovedItem
-} from './libraryStore';
+} from './library';
 
 interface FolderNode {
     id: number;

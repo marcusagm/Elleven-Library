@@ -3,8 +3,8 @@ import { type FileFormat } from './formatStore';
 import { listen } from '@tauri-apps/api/event';
 import { addLocation, initDb } from '../../lib/db';
 import { tauriService } from '../tauri/services';
-import { metadataActions } from './metadataStore';
-import { type BatchChangePayload } from './libraryStore';
+import { metadataActions } from './metadata';
+import { type BatchChangePayload } from './library';
 import { initStreamingToken } from '../../lib/hls-player';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 
@@ -39,12 +39,12 @@ export const systemActions = {
             setSupportedFormats(formats);
 
             // Auto-select root path if locations exist
-            import('./metadataStore').then(({ metadataState }) => {
+            import('./metadata').then(({ metadataState }) => {
                 if (metadataState.locations.length > 0) {
                     const main = metadataState.locations[0];
                     setRootPath(main.path);
                     // Trigger initial load
-                    import('./libraryStore').then(({ libraryActions }) => {
+                    import('./library').then(({ libraryActions }) => {
                         libraryActions.refreshImages(true);
                     });
                     metadataActions.loadStats();
@@ -65,9 +65,9 @@ export const systemActions = {
                 // Circular dependency libraryStore <-> systemStore might exist if not careful.
                 // libraryStore imports systemStore? Previous check showed unused import removed.
                 // libraryStore DOES NOT import systemStore anymore.
-                // systemStore imports metadataStore.
+                // systemStore imports metadata.
                 // We need libraryActions here.
-                import('./libraryStore').then(({ libraryActions }) => {
+                import('./library').then(({ libraryActions }) => {
                     libraryActions.refreshImages(true);
                 });
                 metadataActions.loadStats();
@@ -75,7 +75,7 @@ export const systemActions = {
             });
 
             listen<{ id: number; path: string }>('thumbnail:ready', e => {
-                import('./libraryStore').then(({ libraryActions }) => {
+                import('./library').then(({ libraryActions }) => {
                     libraryActions.updateThumbnail(e.payload.id, e.payload.path);
                 });
             });
@@ -87,12 +87,12 @@ export const systemActions = {
             listen<BatchChangePayload>('library:batch-change', e => {
                 const payload = e.payload;
 
-                import('./libraryStore').then(({ libraryActions }) => {
+                import('./library').then(({ libraryActions }) => {
                     libraryActions.handleBatchChange(payload);
                 });
 
                 // Also update stats
-                import('./metadataStore').then(({ metadataActions }) => {
+                import('./metadata').then(({ metadataActions }) => {
                     metadataActions.handleBatchChange(payload);
                 });
             });
