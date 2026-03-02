@@ -671,7 +671,7 @@ pub fn spawn_server(
     tauri::async_runtime::spawn(async move {
         let server = StreamingServer::new(DEFAULT_PORT, app_handle, database, session_token);
         if let Err(server_error) = server.start(token).await {
-            eprintln!("ERROR: HLS streaming server failed: {}", server_error);
+            tracing::error!("HLS streaming server failed: {}", server_error);
         }
     })
 }

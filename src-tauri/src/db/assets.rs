@@ -150,7 +150,7 @@ impl Db {
 
         for (folder_id, img) in items {
             if let Err(e) = self.save_asset_internal(&mut tx, folder_id, &img).await {
-                eprintln!("Failed to save asset in batch: {}", e);
+                tracing::error!("Failed to save asset in batch: {}", e);
             }
         }
         tx.commit().await?;

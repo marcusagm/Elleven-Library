@@ -93,7 +93,7 @@ mod tests {
             // Check for JPEG header
             assert_eq!(&data[0..2], &[0xFF, 0xD8]);
         } else {
-            eprintln!(
+            tracing::error!(
                 "Skipping test_extract_corel_painter_preview: Sample file not found at {:?}",
                 path
             );

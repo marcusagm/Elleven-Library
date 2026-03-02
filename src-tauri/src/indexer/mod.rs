@@ -45,7 +45,7 @@ impl Indexer {
         let path = normalize_path(root_path);
         let mut registry = self.registry.lock().await;
         if let Some(token) = registry.watchers.remove(&path) {
-            println!("DEBUG: Stopping watcher for root: {}", path);
+            tracing::debug!("Stopping watcher for root: {}", path);
             token.cancel();
         }
     }

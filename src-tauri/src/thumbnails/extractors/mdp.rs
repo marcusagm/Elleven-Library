@@ -106,7 +106,7 @@ pub fn extract_mdp_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std
     match extract_mdp_thumbnail(path) {
         Ok(result) => return Ok(result),
         Err(thumbnail_error) => {
-            println!("MDP: Thumbnail extraction failed ({thumbnail_error}), trying full render.");
+            tracing::debug!("MDP: Thumbnail extraction failed ({thumbnail_error}), trying full render.");
         }
     }
 
@@ -741,7 +741,7 @@ mod tests {
             "file-samples/Imagens/Design/MediBang Paint - Firealpaca/aula_silhueta.mdp",
         );
         if !path.exists() {
-            println!("Skipping: sample file not found at {:?}", path);
+            tracing::debug!("Skipping: sample file not found at {:?}", path);
             return;
         }
 
@@ -759,7 +759,7 @@ mod tests {
             "file-samples/Imagens/Design/MediBang Paint - Firealpaca/aula_silhueta.mdp",
         );
         if !path.exists() {
-            println!("Skipping: sample file not found at {:?}", path);
+            tracing::debug!("Skipping: sample file not found at {:?}", path);
             return;
         }
 
@@ -780,7 +780,7 @@ mod tests {
             "file-samples/Imagens/Design/MediBang Paint - Firealpaca/checkerboard5.mdp",
         );
         if !path.exists() {
-            println!("Skipping: sample file not found at {:?}", path);
+            tracing::debug!("Skipping: sample file not found at {:?}", path);
             return;
         }
 
@@ -797,7 +797,7 @@ mod tests {
             "file-samples/Imagens/Design/MediBang Paint - Firealpaca/yohaku_370x320.mdp",
         );
         if !path.exists() {
-            println!("Skipping: sample file not found at {:?}", path);
+            tracing::debug!("Skipping: sample file not found at {:?}", path);
             return;
         }
 

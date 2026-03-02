@@ -86,7 +86,7 @@ pub fn handler<R: tauri::Runtime>(
             }
         }
         Err(e) => {
-            eprintln!("TRANSCODE_ERROR: {:?}", e);
+            tracing::error!("Transcoding failed: {}", e);
             error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Transcoding failed: {}", e).into_bytes(),

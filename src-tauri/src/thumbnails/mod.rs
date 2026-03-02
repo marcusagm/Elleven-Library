@@ -133,19 +133,19 @@ pub fn generate_thumbnail<R: tauri::Runtime>(
         .is_ok()
         {
             let elapsed = start.elapsed();
-            println!(
+            tracing::debug!(
                 "THUMB (FFmpeg Priority): SUCCESS | {:?} | {:?}",
                 elapsed,
                 input_path.file_name().unwrap_or_default()
             );
             return Ok(hashed_filename.to_string());
         }
-        println!("THUMB (FFmpeg Priority): FAILED - Falling back to Native");
+        tracing::debug!("THUMB (FFmpeg Priority): FAILED - Falling back to Native");
     }
 
     let result = match strategy {
         ThumbnailStrategy::Ffmpeg => {
-            println!(
+            tracing::debug!(
                 "THUMB: Ffmpeg Strategy Final Failure for {:?}",
                 input_path.file_name()
             );
@@ -211,7 +211,7 @@ pub fn generate_thumbnail<R: tauri::Runtime>(
     };
 
     let elapsed = start.elapsed();
-    println!(
+    tracing::debug!(
         "THUMB: {:?} | {:?} | {:?}",
         strategy,
         elapsed,

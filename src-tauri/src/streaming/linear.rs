@@ -49,7 +49,7 @@ impl LinearManager {
                             return Ok(session.temp_dir.clone());
                         }
                         Ok(Some(status)) => {
-                            eprintln!("Linear ffmpeg exited prematurely: {}", status);
+                            tracing::error!("Linear ffmpeg exited prematurely: {}", status);
                             // It exited, so we need to restart it? Or maybe it finished?
                             // For HLS Live of a file, if it finished, the playlist is complete.
                             // We can still serve files from temp dir.
@@ -62,7 +62,7 @@ impl LinearManager {
                             // Else, fall through to restart
                         }
                         Err(e) => {
-                            eprintln!("Error checking child status: {}", e);
+                            tracing::error!("Error checking child status: {}", e);
                             // Fall through to restart
                         }
                     }
@@ -187,7 +187,7 @@ impl LinearManager {
 
         for key in to_remove {
             if let Some(mut session) = sessions.remove(&key) {
-                println!("INFO: Cleaning up linear session for {}", key);
+                tracing::info!("Cleaning up linear session for {}", key);
                 // Kill process
                 if let Some(mut child) = session.child.take() {
                     let _ = child.kill().await;

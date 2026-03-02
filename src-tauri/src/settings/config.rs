@@ -37,9 +37,10 @@ pub async fn load_config(db: &Db) -> AppConfig {
             .unwrap_or(4);
         // Use half the threads for background work, minimum 1
         config.thumbnail_threads = std::cmp::max(1, available / 2);
-        println!(
-            "INFO: Auto-detected {} threads. Using {} for background tasks.",
-            available, config.thumbnail_threads
+        tracing::info!(
+            "Auto-detected {} threads. Using {} for background tasks.",
+            available,
+            config.thumbnail_threads
         );
     }
 

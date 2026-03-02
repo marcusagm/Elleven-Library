@@ -12,7 +12,7 @@ pub fn generate_raw_thumbnail(
     output_path: &Path,
     size_px: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("THUMB: Processing RAW via Specialized FFmpeg: {:?}", input_path);
+    tracing::debug!("THUMB: Processing RAW via Specialized FFmpeg: {:?}", input_path);
 
     let ffmpeg_path = get_ffmpeg_path(None)
         .ok_or("FFmpeg binary not found")?;
@@ -45,7 +45,7 @@ pub fn generate_raw_thumbnail(
     if !output.status.success() {
         let _stderr = String::from_utf8_lossy(&output.stderr);
         // Fallback: If -map 0:v:0 fails, try without it (for RAWs that FFmpeg decodes directly like some DNGs)
-        println!("THUMB: FFmpeg -map 0:v:0 failed, trying simple conversion for {:?}", input_path);
+        tracing::debug!("THUMB: FFmpeg -map 0:v:0 failed, trying simple conversion for {:?}", input_path);
 
         let simple_args = [
             "-hide_banner",

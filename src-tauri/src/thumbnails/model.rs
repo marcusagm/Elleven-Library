@@ -39,7 +39,7 @@ pub fn generate_model_preview(
                 // Success
             }
             Err(e) => {
-                eprintln!(
+                tracing::error!(
                     "Model3D Warning: Could not create 3D Preview (GLB) for {:?}. Reason: {}",
                     input_path.file_name(),
                     e
@@ -71,7 +71,7 @@ pub fn generate_model_preview(
 
     if icon_source.exists() {
         if let Err(e) = std::fs::copy(&icon_source, &icon_dest) {
-            eprintln!(
+            tracing::error!(
                 "Model3D Error: Failed to copy icon {:?} to {:?}: {}",
                 icon_source, icon_dest, e
             );

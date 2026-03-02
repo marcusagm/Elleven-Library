@@ -124,8 +124,8 @@ fn parse_sai2_header<R: Read + Seek>(reader: &mut R) -> Result<Sai2Header, Sai2E
         return Err(Sai2Error::InvalidMagic);
     }
 
-    println!(
-        "DEBUG: Header Dump (u32): {:?}",
+    tracing::debug!(
+        "Header Dump (u32): {:?}",
         header_buffer
             .chunks(4)
             .map(|c| u32::from_le_bytes(c.try_into().unwrap_or([0; 4])))
@@ -139,12 +139,12 @@ fn parse_sai2_header<R: Read + Seek>(reader: &mut R) -> Result<Sai2Header, Sai2E
     if let Ok(n) = reader.read(&mut scan_buffer) {
         for i in 0..n.saturating_sub(4) {
             if &scan_buffer[i..i + 4] == b"thum" {
-                println!("DEBUG: Found 'thum' at offset {}", i);
+                tracing::debug!("Found 'thum' at offset {}", i);
                 // try to parse size
                 if i + 16 <= n {
                     let size_slice = &scan_buffer[i + 8..i + 16];
                     let size = u64::from_le_bytes(size_slice.try_into().unwrap_or([0; 8]));
-                    println!("DEBUG: 'thum' size: {}", size);
+                    tracing::debug!("'thum' size: {}", size);
                 }
             }
         }
@@ -394,7 +394,7 @@ fn extract_jpeg_from_jssf<R: Read + Seek>(
 // ---------------------------------------------------------------------------
 // Helper: Scan the file for chunks by signature ("thum" or "view") when header count is unreliable.
 fn scan_for_chunks<R: Read + Seek>(reader: &mut R) -> Result<Vec<ChunkDescriptor>, Sai2Error> {
-    println!("DEBUG: Starting brute-force chunk scan...");
+    tracing::debug!("Starting brute-force chunk scan...");
     let mut descriptors = Vec::new();
     let mut buffer = Vec::new();
     reader.seek(SeekFrom::Start(0))?;
@@ -415,9 +415,11 @@ fn scan_for_chunks<R: Read + Seek>(reader: &mut R) -> Result<Vec<ChunkDescriptor
 
             if data_offset + data_size <= buffer.len() as u64 {
                 let tag_str = String::from_utf8_lossy(potential_tag);
-                println!(
-                    "DEBUG: Scanner found valid {:?} chunk at offset {} with size {}",
-                    tag_str, i, data_size
+                tracing::debug!(
+                    "Scanner found valid {:?} chunk at offset {} with size {}",
+                    tag_str,
+                    i,
+                    data_size
                 );
 
                 let mut type_tag = [0u8; 4];
@@ -431,8 +433,8 @@ fn scan_for_chunks<R: Read + Seek>(reader: &mut R) -> Result<Vec<ChunkDescriptor
             }
         }
     }
-    println!(
-        "DEBUG: Scanner finished. Found {} candidate chunks.",
+    tracing::debug!(
+        "Scanner finished. Found {} candidate chunks.",
         descriptors.len()
     );
     Ok(descriptors)
@@ -466,9 +468,11 @@ pub fn extract_sai2_preview(
     let header = parse_sai2_header(&mut file)?;
 
     // Log the header to verify offsets are correct now
-    println!(
-        "DEBUG: SAI2 Header Parsed: {}x{}, chunks: {}",
-        header.canvas_width, header.canvas_height, header.chunk_count
+    tracing::debug!(
+        "SAI2 Header Parsed: {}x{}, chunks: {}",
+        header.canvas_width,
+        header.canvas_height,
+        header.chunk_count
     );
 
     // Strategy: Try standard parsing first (if count looks valid), otherwise Scan
@@ -476,23 +480,23 @@ pub fn extract_sai2_preview(
         match parse_chunk_list(&mut file, header.chunk_count) {
             Ok(d) => d,
             Err(e) => {
-                println!(
-                    "DEBUG: Standard chunk parsing failed ({}). Falling back to scanner.",
+                tracing::debug!(
+                    "Standard chunk parsing failed ({}). Falling back to scanner.",
                     e
                 );
                 scan_for_chunks(&mut file)?
             }
         }
     } else {
-        println!(
-            "DEBUG: Invalid chunk count ({}). Using scanner.",
+        tracing::debug!(
+            "Invalid chunk count ({}). Using scanner.",
             header.chunk_count
         );
         scan_for_chunks(&mut file)?
     };
 
     if chunk_descriptors.is_empty() {
-        println!("DEBUG: Scanner found no chunks.");
+        tracing::debug!("Scanner found no chunks.");
         return Err(Box::new(Sai2Error::ThumbnailNotFound));
     }
 
@@ -518,9 +522,10 @@ pub fn extract_sai2_preview(
 
         let canvas_entries_result = iterate_canvas_data(&mut file, descriptor);
         if let Err(e) = canvas_entries_result {
-            println!(
-                "DEBUG: Failed to iterate canvas data for chunk {}: {}",
-                type_string, e
+            tracing::debug!(
+                "Failed to iterate canvas data for chunk {}: {}",
+                type_string,
+                e
             );
             continue;
         }
@@ -531,23 +536,25 @@ pub fn extract_sai2_preview(
                 CANVAS_TYPE_VIEW | CANVAS_TYPE_THUMBNAIL_LOSSY => {
                     match extract_jpeg_from_jssf(&mut file, entry) {
                         Ok(jpeg_data) => {
-                            println!(
-                                "DEBUG: Extracted JPEG from {} chunk (type 0x{:X}, size: {})",
+                            tracing::debug!(
+                                "Extracted JPEG from {} chunk (type 0x{:X}, size: {})",
                                 type_string,
                                 entry.canvas_type,
                                 jpeg_data.len()
                             );
                             return Ok((jpeg_data, "image/jpeg".to_string()));
                         }
-                        Err(e) => println!(
-                            "DEBUG: Failed to extract JPEG from {} (type 0x{:X}): {}",
-                            type_string, entry.canvas_type, e
+                        Err(e) => tracing::debug!(
+                            "Failed to extract JPEG from {} (type 0x{:X}): {}",
+                            type_string,
+                            entry.canvas_type,
+                            e
                         ),
                     }
                 }
                 CANVAS_TYPE_THUMBNAIL_LOSSLESS => {
-                    println!(
-                        "DEBUG: SAI2 Found DPCM thumbnail in {} chunk (unsupported). Skipping...",
+                    tracing::debug!(
+                        "SAI2 Found DPCM thumbnail in {} chunk (unsupported). Skipping...",
                         type_string
                     );
                     // TODO: Implement DPCM decoding (Phase 2)
@@ -558,6 +565,6 @@ pub fn extract_sai2_preview(
         }
     }
 
-    println!("DEBUG: SAI2 No usable thumbnail found after scanning chunks.");
+    tracing::debug!("SAI2 No usable thumbnail found after scanning chunks.");
     Err(Box::new(Sai2Error::ThumbnailNotFound))
 }

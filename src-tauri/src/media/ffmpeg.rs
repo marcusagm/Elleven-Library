@@ -146,7 +146,7 @@ pub fn generate_with_ffmpeg(
 
     if !is_video {
         if let Err(e) = run_ffmpeg(None) {
-            eprintln!("FFmpeg asset conversion failed for {}: {}", input_str, e);
+            tracing::error!("FFmpeg asset conversion failed for {}: {}", input_str, e);
             return Err(AppError::Transcoding(format!("FFmpeg failed: {}", e)));
         }
         if !output_path.exists() {
@@ -160,7 +160,7 @@ pub fn generate_with_ffmpeg(
     if let Err(e1) = run_ffmpeg(Some("00:00:01")) {
         if let Err(e2) = run_ffmpeg(Some("00:00:00")) {
             if let Err(e3) = run_ffmpeg(None) {
-                eprintln!(
+                tracing::error!(
                     "Thumbnail ffmpeg failed for {}: 1s err: {}, 0s err: {}, no-seek err: {}",
                     input_str, e1, e2, e3
                 );

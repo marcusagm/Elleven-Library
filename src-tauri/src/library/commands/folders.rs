@@ -23,7 +23,7 @@ pub async fn add_location(
     app: AppHandle,
     db: State<'_, Arc<Db>>,
 ) -> AppResult<FolderNode> {
-    println!(
+    tracing::debug!(
         "COMMAND: add_location (add_root) called with path: {}",
         path
     );
@@ -66,7 +66,7 @@ pub async fn add_location(
 
     // Attempt to adopt orphaned roots
     if let Err(e) = db.adopt_orphaned_children(id, &path).await {
-        eprintln!("Warning: Failed to adopt orphaned children: {}", e);
+        tracing::warn!("Failed to adopt orphaned children: {}", e);
     }
 
     // Start indexing in background
@@ -121,13 +121,13 @@ pub async fn remove_location(
         let thumb_path = thumbnails_dir.join(&thumb_filename);
         if thumb_path.exists() {
             if let Err(e) = std::fs::remove_file(&thumb_path) {
-                eprintln!("Failed to delete thumbnail {:?}: {}", thumb_path, e);
+                tracing::error!("Failed to delete thumbnail {:?}: {}", thumb_path, e);
             } else {
                 deleted_count += 1;
             }
         }
     }
-    println!("DEBUG: Deleted {} thumbnail files", deleted_count);
+    tracing::debug!("Deleted {} thumbnail files", deleted_count);
 
     // Delete from database
     db.delete_folder(location_id).await?;
@@ -149,7 +149,7 @@ pub async fn remove_location(
     );
     indexer.stop_watcher(&location_path).await;
 
-    println!("DEBUG: Folder {} deleted successfully", location_id);
+    tracing::debug!("Folder {} deleted successfully", location_id);
     Ok(())
 }
 

@@ -27,13 +27,13 @@ pub fn generate_raw_thumbnail(
     });
 
     if let Ok(Some(thumbnail_data)) = quick_result {
-        println!("THUMB: Extracted with quickraw (Fidelity): {:?}", input_path);
+        tracing::debug!("THUMB: Extracted with quickraw (Fidelity): {:?}", input_path);
         if let Ok(img) = load_from_memory(&thumbnail_data) {
             return process_image(img, output_path, size_px);
         }
     } else {
         // Panic or Error occurred in quickraw. Fall back to Brute-force.
-        println!("THUMB: quickraw failed/panicked. Falling back to Brute-force: {:?}", input_path);
+        tracing::debug!("THUMB: quickraw failed/panicked. Falling back to Brute-force: {:?}", input_path);
     }
 
     // --- FALLBACK: BRUTE-FORCE JPEG SCAN ---
@@ -70,7 +70,7 @@ fn brute_force_fallback(
     }
 
     if let Some(img) = best_img {
-        println!("THUMB: Brute-force found preview ({}x{}) in {:?}", img.width(), img.height(), input_path);
+        tracing::debug!("THUMB: Brute-force found preview ({}x{}) in {:?}", img.width(), img.height(), input_path);
         return process_image(img, output_path, size_px);
     }
 

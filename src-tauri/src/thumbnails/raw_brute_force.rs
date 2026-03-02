@@ -12,7 +12,7 @@ pub fn generate_raw_thumbnail(
     output_path: &Path,
     size_px: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("THUMB: Brute-force extracting preview from RAW: {:?}", input_path);
+    tracing::debug!("THUMB: Brute-force extracting preview from RAW: {:?}", input_path);
 
     // 1. Open file with memory mapping for maximum speed
     let file = std::fs::File::open(input_path)?;
@@ -48,7 +48,7 @@ pub fn generate_raw_thumbnail(
     }
 
     if let Some(img) = best_img {
-        println!("THUMB: Found preview ({}x{}) in {:?}", img.width(), img.height(), input_path);
+        tracing::debug!("THUMB: Found preview ({}x{}) in {:?}", img.width(), img.height(), input_path);
         return process_image(img, output_path, size_px);
     }
 

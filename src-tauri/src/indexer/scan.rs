@@ -25,7 +25,7 @@ pub async fn run_scan(
     let root_path = root_path.canonicalize().unwrap_or(root_path);
     let root_str = normalize_path(&root_path.to_string_lossy());
 
-    println!("DEBUG: Indexer::start_scan for {}", root_str);
+    tracing::debug!("Indexer::start_scan for {}", root_str);
     let root_for_watcher = root_path.clone();
 
     // 1. Initial Quick Scan - Collect files and folders
@@ -73,8 +73,8 @@ pub async fn run_scan(
     }
 
     let total_files = files_to_process.len() + clean_count;
-    println!(
-        "DEBUG: Indexer found {} assets ({} changed, {} unchanged) and {} folders",
+    tracing::debug!(
+        "Indexer found {} assets ({} changed, {} unchanged) and {} folders",
         total_files,
         files_to_process.len(),
         clean_count,
@@ -84,18 +84,18 @@ pub async fn run_scan(
     // Ensure root is in the set
     unique_dirs.insert(root_str.clone());
 
-    println!(
-        "DEBUG: Ensuring folder hierarchy for {} folders...",
+    tracing::debug!(
+        "Ensuring folder hierarchy for {} folders...",
         unique_dirs.len()
     );
     // 2. Ensure Hierarchy Exists
     let folder_map = match ensure_folder_hierarchy(&db, unique_dirs, &root_str).await {
         Ok(map) => {
-            println!("DEBUG: Folder hierarchy ensured ({} entries)", map.len());
+            tracing::debug!("Folder hierarchy ensured ({} entries)", map.len());
             map
         }
         Err(e) => {
-            eprintln!("Failed to ensure folder hierarchy: {}", e);
+            tracing::error!("Failed to ensure folder hierarchy: {}", e);
             HashMap::new()
         }
     };
@@ -112,7 +112,7 @@ pub async fn run_scan(
         for (id, path) in db_folders {
             let normalized_db_path = normalize_path(&path);
             if !valid_paths.contains(&normalized_db_path) {
-                println!("DEBUG: Pruning orphaned folder: {}", normalized_db_path);
+                tracing::debug!("Pruning orphaned folder: {}", normalized_db_path);
                 let _ = db.delete_folder(id).await;
             }
         }
@@ -164,7 +164,7 @@ pub async fn run_scan(
                         .save_assets_batch(std::mem::take(&mut batch))
                         .await
                     {
-                        eprintln!("Failed to save assets batch: {}", e);
+                        tracing::error!("Failed to save assets batch: {}", e);
                     }
                 }
             }
@@ -172,7 +172,7 @@ pub async fn run_scan(
             // Final save for remaining items in batch if the loop finished but batch isn't empty
             if !batch.is_empty() {
                 if let Err(e) = db_worker.save_assets_batch(batch).await {
-                    eprintln!("Failed to save final assets batch: {}", e);
+                    tracing::error!("Failed to save final assets batch: {}", e);
                 }
             }
 
@@ -239,7 +239,7 @@ async fn ensure_folder_hierarchy(
             Ok(id) => {
                 path_to_id.insert(dir_path, id);
             }
-            Err(e) => eprintln!("Failed to upsert folder '{}': {}", dir_path, e),
+            Err(e) => tracing::error!("Failed to upsert folder '{}': {}", dir_path, e),
         }
     }
     Ok(path_to_id)

@@ -17,7 +17,7 @@ impl TranscodeCache {
     pub fn new(app_data_dir: &Path) -> Self {
         let cache_dir = app_data_dir.join("transcoded");
         if let Err(e) = fs::create_dir_all(&cache_dir) {
-            eprintln!("WARN: Failed to create transcoding cache dir: {}", e);
+            tracing::error!("Failed to create transcoding cache dir: {}", e);
         }
         Self { cache_dir }
     }

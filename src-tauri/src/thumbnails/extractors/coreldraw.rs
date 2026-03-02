@@ -8,7 +8,7 @@ use std::path::Path;
 pub fn extract_coreldraw_preview(
     path: &Path,
 ) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
-    println!("CDR [DEBUG]: Analyzing file: {:?}", path);
+    tracing::debug!("CDR [DEBUG]: Analyzing file: {:?}", path);
     let mut candidates: Vec<(Vec<u8>, String)> = Vec::new();
 
     // 1. Try format-specific extraction
@@ -17,23 +17,23 @@ pub fn extract_coreldraw_preview(
     if file.read_exact(&mut magic).is_ok() {
         // Modern ZIP
         if magic == [0x50, 0x4B, 0x03, 0x04] {
-            println!("CDR [DEBUG]: Format detected: Modern ZIP");
+            tracing::debug!("CDR [DEBUG]: Format detected: Modern ZIP");
             match extract_zip_best_quality(path) {
                 Ok(res) => candidates.push(res),
-                Err(e) => println!("CDR [DEBUG]: ZIP extraction failed: {}", e),
+                Err(e) => tracing::debug!("CDR [DEBUG]: ZIP extraction failed: {}", e),
             }
         }
         // Legacy RIFF
         else if magic == *b"RIFF" {
-            println!("CDR [DEBUG]: Format detected: Legacy RIFF");
+            tracing::debug!("CDR [DEBUG]: Format detected: Legacy RIFF");
             match extract_riff_previews(path) {
                 Ok(mut res) => candidates.append(&mut res),
-                Err(e) => println!("CDR [DEBUG]: RIFF extraction failed: {}", e),
+                Err(e) => tracing::debug!("CDR [DEBUG]: RIFF extraction failed: {}", e),
             }
         }
         // WL.. signature (CorelDRAW v3-v5)
         else if magic[0] == 0x57 && magic[1] == 0x4C {
-            println!("CDR [DEBUG]: Format detected: Legacy Corel (v3-v5) WL signature");
+            tracing::debug!("CDR [DEBUG]: Format detected: Legacy Corel (v3-v5) WL signature");
             if let Ok(thumb) = extract_wl_thumbnail(path) {
                 candidates.push(thumb);
             }
@@ -42,7 +42,7 @@ pub fn extract_coreldraw_preview(
 
     // 2. Always run fallback "lucky scan" for embedded BMPs in binary files
     if candidates.is_empty() || is_legacy_format(path) {
-        println!("CDR [DEBUG]: Running fallback BMP/Image scan...");
+        tracing::debug!("CDR [DEBUG]: Running fallback BMP/Image scan...");
         if let Ok(mut res) = scan_for_embedded_images(path) {
             candidates.append(&mut res)
         }
@@ -50,7 +50,7 @@ pub fn extract_coreldraw_preview(
 
     // 3. Select Best Candidate
     if let Some(best) = candidates.into_iter().max_by_key(|(data, _)| data.len()) {
-        println!(
+        tracing::debug!(
             "CDR [DEBUG]: Best preview found. Size: {} bytes",
             best.0.len()
         );
@@ -90,7 +90,7 @@ fn extract_zip_best_quality(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
     for candidate in candidates {
         if let Ok(mut entry) = archive.by_name(candidate) {
             let size = entry.size();
-            println!(
+            tracing::debug!(
                 "CDR [DEBUG]: Found candidate '{}' size: {} bytes",
                 candidate, size
             );
@@ -423,7 +423,7 @@ fn scan_for_embedded_images(
                 let png_data = buffer[i..end_pos].to_vec();
                 if png_data.len() > 60 {
                     // Min PNG size
-                    println!(
+                    tracing::debug!(
                         "CDR [DEBUG]: Found embedded PNG at {}. Size: {}",
                         i,
                         png_data.len()
@@ -456,7 +456,7 @@ fn extract_wl_thumbnail(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::e
         return Err("Invalid WL header dimensions".into());
     }
 
-    println!("CDR [DEBUG]: WL Thumbnail detected: {}x{}", width, height);
+    tracing::debug!("CDR [DEBUG]: WL Thumbnail detected: {}x{}", width, height);
 
     let stride = width.div_ceil(32) * 4;
     let data_size = (stride * height) as usize;

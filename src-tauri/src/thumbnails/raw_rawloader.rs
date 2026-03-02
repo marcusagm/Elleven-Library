@@ -18,7 +18,7 @@ pub fn generate_raw_thumbnail(
     output_path: &Path,
     size_px: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("THUMB: Processing RAW with rawloader: {:?}", input_path);
+    tracing::debug!("THUMB: Processing RAW with rawloader: {:?}", input_path);
 
     // Decode the RAW file using rawloader
     // rawloader handles opening the file internally

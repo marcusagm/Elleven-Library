@@ -430,22 +430,22 @@ mod tests {
                     let entry = entry.unwrap();
                     let path = entry.path();
                     if path.is_file() {
-                        println!("\nTesting: {:?}", path);
+                        tracing::debug!("\nTesting: {:?}", path);
                         match extract_raw_preview(&path) {
                             Ok((data, mime)) => {
-                                println!(
+                                tracing::debug!(
                                     "  extract_raw_preview OK: {} bytes, mime: {}",
                                     data.len(),
                                     mime
                                 );
                                 match image::load_from_memory(&data) {
-                                    Ok(_) => println!("    -> image::load_from_memory SUCCESS"),
+                                    Ok(_) => tracing::debug!("    -> image::load_from_memory SUCCESS"),
                                     Err(e) => {
-                                        println!("    -> image::load_from_memory FAIL: {}", e)
+                                        tracing::debug!("    -> image::load_from_memory FAIL: {}", e)
                                     }
                                 }
                             }
-                            Err(e) => println!("  extract_raw_preview ERR: {:?}", e),
+                            Err(e) => tracing::debug!("  extract_raw_preview ERR: {:?}", e),
                         }
                     }
                 }

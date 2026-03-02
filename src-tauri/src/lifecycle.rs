@@ -107,20 +107,15 @@ impl LifecycleRegistry {
             token.cancel();
 
             // Wait up to 5 seconds for the task to finish gracefully
-            match timeout(Duration::from_secs(5), handle).await {
+            let mut handle = handle;
+            match timeout(Duration::from_secs(5), &mut handle).await {
                 Ok(Ok(_)) => info!(task = %name, "Task stopped gracefully"),
                 Ok(Err(join_error)) => {
                     error!(task = %name, error = %join_error, "Task panicked during shutdown")
                 }
                 Err(_) => {
                     warn!(task = %name, "Task shutdown timed out after 5s. Forcing abort.");
-                    // The handle can't actually be aborted easily because JoinHandle in tauri async runtime
-                    // is an alias for tokio::task::JoinHandle which *does* have an abort method!
-                    // Wait, we don't have the handle anymore after passing it to timeout?
-                    // Actually, `timeout` takes the future. We passed `handle`. We don't have it to call abort.
-                    // Wait, timeout takes the future by value if it's not a reference. But it's fine,
-                    // if timeout drops the JoinHandle, it detaches the task, it doesn't abort it in tokio.
-                    // To abort, we need to call abort on the handle before dropping.
+                    handle.abort();
                 }
             }
             true
@@ -147,19 +142,20 @@ impl LifecycleRegistry {
         };
 
         let task_count = tasks.len();
-        for (name, (_token, handle)) in tasks {
+        for (name, (_token, mut handle)) in tasks {
             info!(task = %name, "Awaiting task...");
 
             // Abort fallback on timeout
-            let _ = match timeout(Duration::from_secs(5), handle).await {
+            match timeout(Duration::from_secs(5), &mut handle).await {
                 Ok(Ok(_)) => info!(task = %name, "Task stopped gracefully"),
                 Ok(Err(join_error)) => {
                     error!(task = %name, error = %join_error, "Task panicked during shutdown")
                 }
                 Err(_) => {
-                    warn!(task = %name, "Task shutdown timed out after 5s. Dropping handle (detached/aborted).");
+                    warn!(task = %name, "Task shutdown timed out after 5s. Forcing abort.");
+                    handle.abort();
                 }
-            };
+            }
         }
         info!("Full shutdown complete ({} tasks stopped)", task_count);
     }

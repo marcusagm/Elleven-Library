@@ -64,7 +64,7 @@ impl ProcessManager {
         if let Some(info) = self.processes.remove(key) {
             // Log cancellation
             let elapsed = info.started_at.elapsed();
-            println!("INFO: Cancelled segment {} after {:?}", key, elapsed);
+            tracing::info!("Cancelled segment {} after {:?}", key, elapsed);
 
             // Kill the process if we have an ID
             if let Some(pid) = info.process_id {
@@ -93,7 +93,7 @@ impl ProcessManager {
         }
 
         for key in to_remove {
-            println!("WARN: Cleaning up stale process for {}", key);
+            tracing::warn!("Cleaning up stale process for {}", key);
             self.cancel(&key); // This will remove from map AND kill process
         }
     }

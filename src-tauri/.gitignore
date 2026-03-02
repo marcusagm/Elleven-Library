@@ -11,5 +11,8 @@ elleven.db
 elleven.db-shm
 elleven.db-wal
 
+dev.db-shm
+dev.db-wal
+
 # OS
 .DS_Store

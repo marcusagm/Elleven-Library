@@ -299,9 +299,11 @@ impl Db {
         let folder = self.get_folder_by_path(old_path).await?;
 
         if let Some(id) = folder {
-            println!(
-                "DEBUG: DB - Renaming folder ID {} from '{}' to '{}'",
-                id, old_path, new_path
+            tracing::debug!(
+                "DB - Renaming folder ID {} from '{}' to '{}'",
+                id,
+                old_path,
+                new_path
             );
 
             let res = sqlx::query!(

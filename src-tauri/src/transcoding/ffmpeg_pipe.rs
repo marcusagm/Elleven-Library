@@ -77,7 +77,7 @@ impl FfmpegTranscoder {
             Ok(output)
         } else {
             let stderr = String::from_utf8_lossy(&result.stderr);
-            eprintln!("FFMPEG_STDERR: {}", stderr);
+            tracing::error!("FFMPEG_STDERR: {}", stderr);
             Err(TranscodeError::TranscodeFailed(format!(
                 "FFmpeg exited with status: {:?}, stderr: {}",
                 result.status.code(),
@@ -204,6 +204,6 @@ mod tests {
     fn test_ffmpeg_detection() {
         // This test checks if we can find FFmpeg via the centralized path detection
         let found = crate::media::ffmpeg::get_ffmpeg_path::<tauri::Wry>(None);
-        println!("FFmpeg found at: {:?}", found);
+        tracing::debug!("FFmpeg found at: {:?}", found);
     }
 }

@@ -11,7 +11,7 @@ use tauri::Manager;
 /// Returns error if database or watcher registry is not initialized.
 #[tauri::command]
 pub async fn start_indexing(path: String, app: tauri::AppHandle) -> AppResult<()> {
-    println!("COMMAND: start_indexing called with path: {}", path);
+    tracing::info!("COMMAND: start_indexing called with path: {}", path);
 
     // Get DB from state with safety
     let db = app

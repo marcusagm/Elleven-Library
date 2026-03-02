@@ -74,7 +74,7 @@ impl Db {
     ///
     /// Returns `Err` if the maintenance queries fail.
     pub async fn run_maintenance(&self) -> AppResult<()> {
-        println!("DEBUG: DB - Running Maintenance (VACUUM + ANALYZE)");
+        tracing::debug!("DB - Running Maintenance (VACUUM + ANALYZE)");
         sqlx::query("VACUUM").execute(&self.pool).await?;
         sqlx::query("ANALYZE").execute(&self.pool).await?;
         Ok(())

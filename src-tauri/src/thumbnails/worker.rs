@@ -300,14 +300,14 @@ impl ThumbnailWorker {
                 match result {
                     Ok(filename) => {
                         if let Err(e) = db.update_thumbnail_path(id, &filename).await {
-                            eprintln!("Error updating DB for thumbnail: {}", e);
+                            tracing::error!("Error updating DB for thumbnail: {}", e);
                         } else {
                             let _ = app
                                 .emit("thumbnail:ready", ThumbnailPayload { id, path: filename });
                         }
                     }
                     Err(err_msg) => {
-                        eprintln!("Thumbnail error for ID {}: {}", id, err_msg);
+                        tracing::error!("Thumbnail error for ID {}: {}", id, err_msg);
                         let _ = db.record_thumbnail_error(id, err_msg).await;
                     }
                 }

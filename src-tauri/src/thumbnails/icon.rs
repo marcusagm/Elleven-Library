@@ -177,9 +177,6 @@ pub fn get_or_generate_icon(
     let webp_data = encoder.encode(85.0);
     std::fs::write(&icon_path, &*webp_data)?;
 
-    println!(
-        "DEBUG: Icon fallback Total took: {:?}",
-        start_total.elapsed()
-    );
+    tracing::debug!("Icon fallback Total took: {:?}", start_total.elapsed());
     Ok(relative_path_string)
 }

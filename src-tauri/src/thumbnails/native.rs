@@ -61,7 +61,7 @@ pub fn generate_thumbnail_fast(
             (img.to_rgba8().into_raw(), w, h)
         }
     };
-    println!("DEBUG: Native Decode took: {:?}", start_decode.elapsed());
+    tracing::debug!("Native Decode took: {:?}", start_decode.elapsed());
 
     // Calculate new dimensions maintaining aspect ratio
     let aspect = width as f32 / height as f32;
@@ -87,15 +87,15 @@ pub fn generate_thumbnail_fast(
     resizer
         .resize(&src_image, &mut dst_image, Some(&options))
         .map_err(|e| e.to_string())?;
-    println!("DEBUG: Native Resize took: {:?}", start_resize.elapsed());
+    tracing::debug!("Native Resize took: {:?}", start_resize.elapsed());
 
     // Encode to WebP using native webp crate
     let start_encode = std::time::Instant::now();
     let buffer = dst_image.buffer();
     encode_webp_native(buffer, new_w, new_h, output_path)?;
-    println!("DEBUG: Native Encode took: {:?}", start_encode.elapsed());
+    tracing::debug!("Native Encode took: {:?}", start_encode.elapsed());
 
-    println!("DEBUG: Native Total took: {:?}", start_total.elapsed());
+    tracing::debug!("Native Total took: {:?}", start_total.elapsed());
 
     Ok(())
 }

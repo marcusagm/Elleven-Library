@@ -17,7 +17,7 @@ impl ThumbnailPriorityState {
     /// Overwrites the current priority queue with the new IDs, keeping them
     /// at the front so they are processed First (LIFO per block).
     pub fn set_priority(&self, ids: Vec<i64>) {
-        if dbg!(ids.is_empty()) {
+        if ids.is_empty() {
             return;
         }
 

@@ -15,7 +15,7 @@ pub fn generate_raw_thumbnail(
     output_path: &Path,
     size_px: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("THUMB: Processing RAW with rsraw: {:?}", input_path);
+    tracing::debug!("THUMB: Processing RAW with rsraw: {:?}", input_path);
 
     // Load the RAW file
     let file = std::fs::File::open(input_path)?;
