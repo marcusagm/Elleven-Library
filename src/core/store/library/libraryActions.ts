@@ -248,12 +248,9 @@ export const libraryActions = {
 
         try {
             const { metadataActions, metadataState } = await import('../metadata');
-            await tagService.addTagsToAssetsBatch(assetIds, [tagId]);
-            await metadataActions.loadStats();
 
-            if (filterState.selectedTags.length > 0) {
-                await libraryActions.refreshAssets(false);
-            }
+            // Reusing updateAssetsTags which properly triggers notifications and emits events
+            await metadataActions.updateAssetsTags(assetIds, [tagId], 'merge');
 
             const tagName = metadataState.tags.find(tag => tag.id === tagId)?.name || 'Tag';
             return {
@@ -300,11 +297,8 @@ export const libraryActions = {
 
         try {
             const { metadataActions } = await import('../metadata');
-            await Promise.all(selectedIds.map(id => tagService.removeTagFromAsset(id, tagId)));
-            await metadataActions.loadStats();
-            if (filterState.selectedTags.length > 0) {
-                await libraryActions.refreshAssets(false);
-            }
+            // Reusing updateAssetsTags to properly emit events and bump tagUpdateVersion
+            await metadataActions.updateAssetsTags(selectedIds, [tagId], 'remove');
             return { success: true, data: undefined };
         } catch (error) {
             console.error('Failed to remove tags from selection:', error);

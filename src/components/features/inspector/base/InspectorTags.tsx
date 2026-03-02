@@ -20,8 +20,15 @@ export const InspectorTags: Component<InspectorTagsProps> = properties => {
         return [];
     });
 
+    // Combine target IDs with the update version to trigger refetches
+    // when tags are modified via Drag and Drop or batch operations.
+    const resourceTrigger = createMemo(() => ({
+        ids: targetIds(),
+        version: metadata.tagUpdateVersion
+    }));
+
     // Resource for tags of the selected item(s)
-    const [itemTagsByAsset, { refetch }] = createResource(targetIds, async ids => {
+    const [itemTagsByAsset, { refetch }] = createResource(resourceTrigger, async ({ ids }) => {
         if (ids.length === 0) return new Map<number, Tag[]>();
 
         const results = await Promise.all(
