@@ -24,3 +24,13 @@ pub async fn set_setting(
 pub async fn run_db_maintenance(db: State<'_, std::sync::Arc<Db>>) -> AppResult<()> {
     db.run_maintenance().await
 }
+
+#[tauri::command]
+pub fn send_telemetry_log(level: String, component: String, message: String) {
+    match level.to_lowercase().as_str() {
+        "error" => tracing::error!(component = %component, "{}", message),
+        "warn" => tracing::warn!(component = %component, "{}", message),
+        "debug" => tracing::debug!(component = %component, "{}", message),
+        _ => tracing::info!(component = %component, "{}", message),
+    }
+}

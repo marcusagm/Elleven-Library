@@ -62,6 +62,11 @@ Stores should not import or call each other directly to avoid circular dependenc
 ### Typesafety
 All events must be registered in the `DomainEvents` interface within `src/core/utils/eventBus.ts` to ensure type-safe payloads.
 
+### LifecycleManager & Backend Communication
+For events that are emitted by the Rust Backend (Tauri IPC), **never** call `listen` directly inside scattered UI components without cleanup.
+- **Centralized Handlers**: Use `LifecycleManager.ts` to connect critical App events and gracefully unsubscribe them `onCleanup()`.
+- **Telemetry Bridge**: The `LifecycleManager` also serves as the IPC bridge to send critical frontend `tracing` logs (e.g., render times, UI crashes) to the Rust backend, ensuring a single unified timeline.
+
 ---
 
 ## 📦 4. Store & State Management
@@ -115,5 +120,5 @@ To prevent architectural decay, the following constraints are strictly enforced:
 The `tauriService` (`src/core/tauri/services.ts`) acts as our Anti-Corruption Layer (ACL) between the frontend and Rust.
 
 - Standardizes argument names (e.g., converting camelCase to snake_case for Rust).
-- Centralizes error logging for bridge failures.
+- Centralizes error logging for bridge failures and forwards frontend performance traces via IPC to the Rust `tracing` context.
 - Provides a mockable interface for potential unit testing of the business logic.

@@ -91,6 +91,35 @@ if !path.exists() {
 
 - **Logging**: Errors should be logged at the point of origin or in the command handler if they indicate critical failures.
 
+### Telemetry & Tracing
+
+We use the `tracing` ecosystem instead of raw `println!` macros. This ensures structured logging, trace correlation, and potential OpenTelemetry (OTLP) integration in development.
+
+- **Use `tracing` macros (`info!`, `debug!`, `warn!`, `error!`)**: Never use `println!` in library code or commands unless it's a CLI-specific stdout output.
+- **Instrument Commands**: Tauri commands and heavy I/O operations should be annotated with `#[tracing::instrument]` to automatically track span lifecycles.
+- **OTLP Feature**: In development, we can enable OpenTelemetry exporters to visualize bottlenecks (like heavy SQLite transactions or File System delays) via Jaeger/Prometheus without bloating the production binary.
+
+```rust
+// ✅ Correct Example: Using tracing instrumentation
+use tracing::{info, instrument, error};
+
+#[tauri::command]
+#[instrument(skip(db), err)]
+pub async fn ingest_assets(db: State<'_, Arc<Db>>, path: String) -> AppResult<usize> {
+    info!("Starting ingestion for path: {}", path);
+    match db.ingest(&path).await {
+        Ok(count) => {
+            info!("Successfully ingested {} items", count);
+            Ok(count)
+        },
+        Err(e) => {
+            error!("Failed to ingest: {:?}", e);
+            Err(e.into())
+        }
+    }
+}
+```
+
 ### Async/Await
 
 - Use `.await` responsibly. Avoid blocking the async runtime (Tokio) with heavy CPU-bound tasks. Use `tokio::task::spawn_blocking` for heavy synchronous operations like image processing or file I/O.

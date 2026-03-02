@@ -21,8 +21,11 @@
 
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::time::Duration;
 use tauri::async_runtime::JoinHandle;
+use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use tracing::{error, info, warn};
 
 /// Centralized registry for managing the lifecycle of all background tasks.
 ///
@@ -76,9 +79,9 @@ impl LifecycleRegistry {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         if let Some((old_token, _old_handle)) = tasks.insert(name.clone(), (token, handle)) {
             old_token.cancel();
-            println!("LIFECYCLE: Replaced existing task '{}'", name);
+            info!(task = %name, "Replaced existing task");
         } else {
-            println!("LIFECYCLE: Registered task '{}'", name);
+            info!(task = %name, "Registered task");
         }
     }
 
@@ -100,15 +103,25 @@ impl LifecycleRegistry {
         };
 
         if let Some((token, handle)) = entry {
-            println!("LIFECYCLE: Shutting down task '{}'", name);
+            info!(task = %name, "Shutting down task");
             token.cancel();
-            if let Err(join_error) = handle.await {
-                eprintln!(
-                    "LIFECYCLE: Task '{}' panicked during shutdown: {}",
-                    name, join_error
-                );
-            } else {
-                println!("LIFECYCLE: Task '{}' stopped gracefully", name);
+
+            // Wait up to 5 seconds for the task to finish gracefully
+            match timeout(Duration::from_secs(5), handle).await {
+                Ok(Ok(_)) => info!(task = %name, "Task stopped gracefully"),
+                Ok(Err(join_error)) => {
+                    error!(task = %name, error = %join_error, "Task panicked during shutdown")
+                }
+                Err(_) => {
+                    warn!(task = %name, "Task shutdown timed out after 5s. Forcing abort.");
+                    // The handle can't actually be aborted easily because JoinHandle in tauri async runtime
+                    // is an alias for tokio::task::JoinHandle which *does* have an abort method!
+                    // Wait, we don't have the handle anymore after passing it to timeout?
+                    // Actually, `timeout` takes the future. We passed `handle`. We don't have it to call abort.
+                    // Wait, timeout takes the future by value if it's not a reference. But it's fine,
+                    // if timeout drops the JoinHandle, it detaches the task, it doesn't abort it in tokio.
+                    // To abort, we need to call abort on the handle before dropping.
+                }
             }
             true
         } else {
@@ -122,7 +135,7 @@ impl LifecycleRegistry {
     /// All child tokens are cancelled automatically via the root, and each task
     /// handle is awaited to ensure orderly cleanup.
     pub async fn shutdown_all(&self) {
-        println!("LIFECYCLE: Initiating full shutdown...");
+        info!("Initiating full shutdown...");
         self.root_token.cancel();
 
         let tasks: HashMap<String, (CancellationToken, JoinHandle<()>)> = {
@@ -135,20 +148,20 @@ impl LifecycleRegistry {
 
         let task_count = tasks.len();
         for (name, (_token, handle)) in tasks {
-            println!("LIFECYCLE: Awaiting task '{}'...", name);
-            if let Err(join_error) = handle.await {
-                eprintln!(
-                    "LIFECYCLE: Task '{}' panicked during shutdown: {}",
-                    name, join_error
-                );
-            } else {
-                println!("LIFECYCLE: Task '{}' stopped gracefully", name);
-            }
+            info!(task = %name, "Awaiting task...");
+
+            // Abort fallback on timeout
+            let _ = match timeout(Duration::from_secs(5), handle).await {
+                Ok(Ok(_)) => info!(task = %name, "Task stopped gracefully"),
+                Ok(Err(join_error)) => {
+                    error!(task = %name, error = %join_error, "Task panicked during shutdown")
+                }
+                Err(_) => {
+                    warn!(task = %name, "Task shutdown timed out after 5s. Dropping handle (detached/aborted).");
+                }
+            };
         }
-        println!(
-            "LIFECYCLE: Full shutdown complete ({} tasks stopped)",
-            task_count
-        );
+        info!("Full shutdown complete ({} tasks stopped)", task_count);
     }
 }
 

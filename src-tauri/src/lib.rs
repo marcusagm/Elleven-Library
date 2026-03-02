@@ -40,6 +40,15 @@ fn get_streaming_token(token_state: tauri::State<'_, StreamingSessionToken>) -> 
 #[allow(clippy::expect_used)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize structured tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::Level::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
     let builder = tauri::Builder::default();
     crate::protocols::register_all(builder)
         .setup(|app| {
@@ -107,7 +116,7 @@ pub fn run() {
 
                         // Start Watchers for Existing Roots
                         if let Ok(roots) = db_arc.get_all_root_folders().await {
-                            println!("INFO: Starting watchers for {} roots", roots.len());
+                            tracing::info!("Starting watchers for {} roots", roots.len());
                             for (_id, path) in roots {
                                 let indexer = Indexer::new(
                                     handle.clone(),
@@ -135,7 +144,7 @@ pub fn run() {
                             streaming_handle,
                         );
                     }
-                    Err(db_error) => eprintln!("Failed to initialize database: {}", db_error),
+                    Err(db_error) => tracing::error!("Failed to initialize database: {}", db_error),
                 }
             });
 
@@ -180,6 +189,7 @@ pub fn run() {
             settings::commands::get_setting,
             settings::commands::set_setting,
             settings::commands::run_db_maintenance,
+            settings::commands::send_telemetry_log,
             library::commands::formats::get_library_supported_formats,
             media::commands::get_audio_waveform_data,
             // Transcoding commands
@@ -196,6 +206,20 @@ pub fn run() {
             // Streaming security
             get_streaming_token
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                // Ensure graceful shutdown of all background tasks
+                if let Some(lifecycle) = app_handle.try_state::<std::sync::Arc<LifecycleRegistry>>()
+                {
+                    tracing::info!(
+                        "Application exit requested. Starting graceful background shutdown."
+                    );
+                    tauri::async_runtime::block_on(async {
+                        lifecycle.shutdown_all().await;
+                    });
+                }
+            }
+        });
 }

@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { type FileFormat } from '../store/formatStore';
+import { LifecycleManager } from '../utils/LifecycleManager';
 
 // Define strict types for Tauri commands
 export interface StartIndexingArgs {
@@ -14,8 +15,17 @@ export const tauriService = {
     startIndexing: async (args: StartIndexingArgs): Promise<void> => {
         try {
             await invoke('start_indexing', { path: args.path });
+            LifecycleManager.logTelemetry(
+                'info',
+                'tauriService',
+                `Started indexing for: ${args.path}`
+            );
         } catch (error) {
-            console.error("Tauri command 'start_indexing' failed:", error);
+            LifecycleManager.logTelemetry(
+                'error',
+                'tauriService',
+                `Command 'start_indexing' failed: ${String(error)}`
+            );
             throw error;
         }
     },
@@ -29,7 +39,11 @@ export const tauriService = {
         try {
             return await invoke('get_library_supported_formats');
         } catch (error) {
-            console.error('Failed to load formats:', error);
+            LifecycleManager.logTelemetry(
+                'error',
+                'tauriService',
+                `Failed to load formats: ${String(error)}`
+            );
             return [];
         }
     },
@@ -37,8 +51,17 @@ export const tauriService = {
     runDbMaintenance: async (): Promise<void> => {
         try {
             await invoke('run_db_maintenance');
+            LifecycleManager.logTelemetry(
+                'info',
+                'tauriService',
+                'DB Maintenance completed successfully'
+            );
         } catch (error) {
-            console.error('Failed to run DB maintenance:', error);
+            LifecycleManager.logTelemetry(
+                'error',
+                'tauriService',
+                `Failed to run DB maintenance: ${String(error)}`
+            );
             throw error;
         }
     },
@@ -47,7 +70,11 @@ export const tauriService = {
         try {
             return await invoke('get_setting', { key });
         } catch (error) {
-            console.error(`Failed to get setting ${key}:`, error);
+            LifecycleManager.logTelemetry(
+                'error',
+                'tauriService',
+                `Failed to get setting ${key}: ${String(error)}`
+            );
             return null;
         }
     },
@@ -56,7 +83,11 @@ export const tauriService = {
         try {
             await invoke('set_setting', { key, value });
         } catch (error) {
-            console.error(`Failed to set setting ${key}:`, error);
+            LifecycleManager.logTelemetry(
+                'error',
+                'tauriService',
+                `Failed to set setting ${key}: ${String(error)}`
+            );
             throw error;
         }
     },
@@ -71,25 +102,49 @@ export const tauriService = {
         try {
             return await invoke('get_cache_stats');
         } catch (error) {
-            console.error('Failed to get cache stats:', error);
+            LifecycleManager.logTelemetry(
+                'error',
+                'tauriService',
+                `Failed to get cache stats: ${String(error)}`
+            );
             return { directory: '', size_bytes: 0, file_count: 0 };
         }
     },
 
     cleanupCache: async (maxAgeDays?: number): Promise<number> => {
         try {
-            return await invoke('cleanup_cache', { maxAgeDays });
+            const result: number = await invoke('cleanup_cache', { maxAgeDays });
+            LifecycleManager.logTelemetry(
+                'info',
+                'tauriService',
+                `Cache cleaned. Cleared ${result} entries.`
+            );
+            return result;
         } catch (error) {
-            console.error('Failed to cleanup cache:', error);
+            LifecycleManager.logTelemetry(
+                'error',
+                'tauriService',
+                `Failed to cleanup cache: ${String(error)}`
+            );
             throw error;
         }
     },
 
     clearCache: async (): Promise<number> => {
         try {
-            return await invoke('clear_cache');
+            const result: number = await invoke('clear_cache');
+            LifecycleManager.logTelemetry(
+                'info',
+                'tauriService',
+                `Cache entirely cleared. Removed ${result} entries.`
+            );
+            return result;
         } catch (error) {
-            console.error('Failed to clear cache:', error);
+            LifecycleManager.logTelemetry(
+                'error',
+                'tauriService',
+                `Failed to clear cache: ${String(error)}`
+            );
             throw error;
         }
     }
