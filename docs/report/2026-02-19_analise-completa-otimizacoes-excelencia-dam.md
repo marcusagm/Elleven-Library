@@ -3,7 +3,7 @@
 **Data:** 2026-02-19  
 **Escopo:** Frontend (Solid + TS), Backend (Rust + Tauri), arquitetura, performance, confiabilidade, segurança, DX e usabilidade DAM.  
 **Base de avaliação:** código atual + guias em `docs/guidelines`.  
-**Última atualização:** 2026-03-01 (Conclusão definitiva de todas as Sprints 0-8. Padronização Global e Validação Estática Sem Falhas)
+**Última atualização:** 2026-03-02 (Conclusão das Sprints 1, 2 e 3: Observabilidade, Refatoramento Core e Indexing Performance)
 
 ---
 
@@ -202,13 +202,13 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 1. [x] Refatorar stores para camada de aplicação (use-cases) e contratos tipados de eventos. *(Concluído nas Sprints 0-4 em 2026-02-26)*.
 2. [✓] Quebrar arquivos >300 linhas em módulos por responsabilidade. *(Arquitetura de refatoração avançada aplicada em `hls-player`, metadata/buscas, `useVideoPlayer.ts`, `Table.tsx`, `Accordion.tsx` e Engine de Viewport em 2026-02-24/27).*
 3. [✓] Eliminar `any` em fluxos principais. *(O core estrutural e UI components estão 100% tipados).*
-4. [ ] Padronizar logging estruturado (níveis, contexto, correlação).
+4. [x] Padronizar logging estruturado (níveis, contexto, correlação). *(Concluído na Sprint 1 via `tracing` e telemetria)*
 
 ### Fase 2 — Performance e escala DAM (4–8 semanas)
-1. [ ] Estratégia de chunking/lazy loading por domínio de tela.
-2. [ ] Pipeline de indexação observável com métricas e tracing.
-3. [ ] Cache inteligente por formato e priorização adaptativa de thumbnails.
-4. [ ] Banco: revisar índices para consultas de filtro/ordenação mais frequentes (p95/p99).
+1. [x] Estratégia de chunking/lazy loading por domínio de tela. *(Concluído na Sprint 3 no Viewport com RAF e scheduler)*
+2. [x] Pipeline de indexação observável com métricas e tracing. *(Concluído na Sprint 1 via setup OTLP base)*
+3. [x] Cache inteligente por formato e priorização adaptativa de thumbnails. *(Concluído na Sprint 3 via Fila LIFO mutável)*
+4. [x] Banco: revisar índices para consultas de filtro/ordenação mais frequentes (p95/p99). *(Concluído na Sprint 3 via novas otimizações no SQLite)*
 
 ### Fase 3 — Diferenciação “state of the art” (8+ semanas)
 1. [ ] Busca semântica (embeddings) híbrida com filtros estruturados.
