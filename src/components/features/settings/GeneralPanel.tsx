@@ -8,7 +8,12 @@ import { transcodeState, transcodeActions } from '../../../core/store/transcodeS
 import { type TranscodeQuality } from '../../../lib/stream-utils';
 import './general-panel.css';
 
-// Helper to format bytes
+/**
+ * Formats a given number of bytes into a human-readable string (e.g., KB, MB, GB).
+ *
+ * @param {number} bytes - The number of bytes to format.
+ * @returns {string} The formatted memory string.
+ */
 function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
     const k = 1024;

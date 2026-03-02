@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup, For, createMemo, Show } from 'solid-js';
+import { createSignal, onMount, onCleanup, For, createMemo, Show, untrack } from 'solid-js';
 import { AssetCard } from './AssetCard';
 import { EmptyState } from './EmptyState';
 import { type AssetItem } from '../../../types';
@@ -12,6 +12,10 @@ import {
 } from '../../../core/hooks';
 import { scheduler } from '../../../core/utils/scheduler';
 import './viewport.css';
+
+const SCROLL_LOAD_MORE_THRESHOLD = 500;
+const RESIZE_DEBOUNCE_THRESHOLD = 5;
+const FALLBACK_SIDEBAR_WIDTH = 80;
 
 interface VirtualMasonryProps {
     items: AssetItem[];
@@ -99,7 +103,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
 
                 setContainerHeight(height);
 
-                if (width > 0 && Math.abs(width - lastReportedWidth) > 5) {
+                if (width > 0 && Math.abs(width - lastReportedWidth) > RESIZE_DEBOUNCE_THRESHOLD) {
                     lastReportedWidth = width;
                     viewport.handleResize(width);
                 }
@@ -114,23 +118,35 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
             lastReportedWidth = initialRect.width;
             viewport.handleResize(initialRect.width);
         } else {
-            const estimatedWidth = window.innerWidth - 80;
+            const estimatedWidth = window.innerWidth - FALLBACK_SIDEBAR_WIDTH;
             if (estimatedWidth > 0) {
                 lastReportedWidth = estimatedWidth;
                 viewport.handleResize(estimatedWidth);
             }
         }
 
+        let isScrollScheduled = false;
+
         const handleScroll = () => {
-            const containerElement = scrollContainer();
-            if (!containerElement) return;
+            if (isScrollScheduled) return;
+            isScrollScheduled = true;
 
-            viewport.handleScroll(containerElement.scrollTop, containerHeight());
+            const currentContainerHeight = untrack(() => containerHeight());
 
-            const { scrollTop, scrollHeight, clientHeight } = containerElement;
-            if (scrollTop + clientHeight >= scrollHeight - 500) {
-                library.loadMore();
-            }
+            scheduler.schedule(() =>
+                untrack(() => {
+                    isScrollScheduled = false;
+                    const containerElement = scrollContainer();
+                    if (!containerElement) return;
+
+                    viewport.handleScroll(containerElement.scrollTop, currentContainerHeight);
+
+                    const { scrollTop, scrollHeight, clientHeight } = containerElement;
+                    if (scrollTop + clientHeight >= scrollHeight - SCROLL_LOAD_MORE_THRESHOLD) {
+                        library.loadMore();
+                    }
+                })
+            );
         };
 
         element.addEventListener('scroll', handleScroll, { passive: true });

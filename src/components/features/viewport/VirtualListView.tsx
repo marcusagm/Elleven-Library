@@ -13,8 +13,25 @@ import { formatFileSize, formatDate } from '../../../utils/format';
 import { assetDnD } from '../../../core/dnd';
 import { EmptyState } from './EmptyState';
 import { createConditionalScope } from '../../../core/input';
+import { scheduler } from '../../../core/utils/scheduler';
 
 const COLUMN_STORAGE_KEY = 'mundam-viewport-columns-v1';
+
+const THUMBNAIL_SCALE_FACTOR = 5;
+const THUMBNAIL_ASPECT_RATIO = 0.75;
+const LIST_MIN_ROW_HEIGHT = 32;
+const LIST_ROW_PADDING = 8;
+const SCROLL_LOAD_MORE_THRESHOLD = 500;
+
+const DEFAULT_COLS = {
+    thumbnailPadding: 16,
+    filename: 300,
+    rating: 100,
+    format: 80,
+    size: 100,
+    width: 120,
+    date: 160
+} as const;
 
 interface ColumnConfig {
     width: number;
@@ -58,7 +75,9 @@ export const VirtualListView: Component = () => {
             const current =
                 prev[key] ||
                 ({
-                    width: columns().find(col => col.accessorKey === key)?.width || 150,
+                    width:
+                        columns().find(col => col.accessorKey === key)?.width ||
+                        DEFAULT_COLS.filename,
                     hidden: false
                 } as ColumnConfig);
             return {
@@ -76,15 +95,20 @@ export const VirtualListView: Component = () => {
         return columnConfigs()[key]?.hidden ?? defaultHidden;
     };
 
-    const listThumbWidth = createMemo(() => Math.floor(filters.thumbSize / 5));
-    const listThumbHeight = createMemo(() => Math.floor(listThumbWidth() * 0.75));
-    const rowHeight = createMemo(() => Math.max(32, listThumbHeight() + 8));
+    const listThumbWidth = createMemo(() => Math.floor(filters.thumbSize / THUMBNAIL_SCALE_FACTOR));
+    const listThumbHeight = createMemo(() => Math.floor(listThumbWidth() * THUMBNAIL_ASPECT_RATIO));
+    const rowHeight = createMemo(() =>
+        Math.max(LIST_MIN_ROW_HEIGHT, listThumbHeight() + LIST_ROW_PADDING)
+    );
 
     const columns = createMemo<Column<AssetItem>[]>(() => [
         {
             header: '',
             accessorKey: 'thumbnail_path',
-            width: getColumnWidth('thumbnail_path', listThumbWidth() + 16),
+            width: getColumnWidth(
+                'thumbnail_path',
+                listThumbWidth() + DEFAULT_COLS.thumbnailPadding
+            ),
             align: 'center',
             resizable: true,
             toggleable: false,
@@ -113,14 +137,14 @@ export const VirtualListView: Component = () => {
             sortable: true,
             resizable: true,
             toggleable: false,
-            width: getColumnWidth('filename', 300)
+            width: getColumnWidth('filename', DEFAULT_COLS.filename)
         },
         {
             header: 'Rating',
             accessorKey: 'rating',
             sortable: true,
             resizable: true,
-            width: getColumnWidth('rating', 100),
+            width: getColumnWidth('rating', DEFAULT_COLS.rating),
             hidden: isColumnHidden('rating', false),
             align: 'center',
             cell: item => (
@@ -134,7 +158,7 @@ export const VirtualListView: Component = () => {
             accessorKey: 'format',
             sortable: true,
             resizable: true,
-            width: getColumnWidth('format', 80),
+            width: getColumnWidth('format', DEFAULT_COLS.format),
             hidden: isColumnHidden('format', false),
             align: 'center',
             cell: item => (
@@ -146,7 +170,7 @@ export const VirtualListView: Component = () => {
             accessorKey: 'size',
             sortable: true,
             resizable: true,
-            width: getColumnWidth('size', 100),
+            width: getColumnWidth('size', DEFAULT_COLS.size),
             hidden: isColumnHidden('size', false),
             align: 'right',
             cell: item => <span>{formatFileSize(item.size)}</span>
@@ -155,7 +179,7 @@ export const VirtualListView: Component = () => {
             header: 'Dimensions',
             accessorKey: 'width',
             resizable: true,
-            width: getColumnWidth('width', 120),
+            width: getColumnWidth('width', DEFAULT_COLS.width),
             hidden: isColumnHidden('width', false),
             align: 'center',
             cell: item => (
@@ -167,7 +191,7 @@ export const VirtualListView: Component = () => {
             accessorKey: 'created_at',
             sortable: true,
             resizable: true,
-            width: getColumnWidth('created_at', 160),
+            width: getColumnWidth('created_at', DEFAULT_COLS.date),
             hidden: isColumnHidden('created_at', true),
             cell: item => <span class="list-view-date-cell">{formatDate(item.created_at)}</span>
         },
@@ -176,7 +200,7 @@ export const VirtualListView: Component = () => {
             accessorKey: 'modified_at',
             sortable: true,
             resizable: true,
-            width: getColumnWidth('modified_at', 160),
+            width: getColumnWidth('modified_at', DEFAULT_COLS.date),
             hidden: isColumnHidden('modified_at', true),
             cell: item => <span class="list-view-date-cell">{formatDate(item.modified_at)}</span>
         },
@@ -185,7 +209,7 @@ export const VirtualListView: Component = () => {
             accessorKey: 'added_at',
             sortable: true,
             resizable: true,
-            width: getColumnWidth('added_at', 160),
+            width: getColumnWidth('added_at', DEFAULT_COLS.date),
             hidden: isColumnHidden('added_at', true),
             cell: item => <span class="list-view-date-cell">{formatDate(item.added_at)}</span>
         }
@@ -193,27 +217,32 @@ export const VirtualListView: Component = () => {
 
     const handleSort = (key: string) => {
         if (filters.sortBy === key) {
-            // Cycle: asc -> desc -> asc
             const nextOrder = filters.sortOrder === 'asc' ? 'desc' : 'asc';
             filters.setSortOrder(nextOrder);
         } else {
             filters.setSortBy(key as SortField);
-            filters.setSortOrder('desc'); // Default to desc for new columns (usually more useful for dates/size)
+            filters.setSortOrder('desc');
         }
     };
+
+    let isScrollScheduled = false;
 
     const handleScroll = (event: Event) => {
         const target = event.currentTarget as HTMLDivElement;
-        if (target.scrollTop + target.clientHeight >= target.scrollHeight - 500) {
-            lib.loadMore();
+
+        if (!isScrollScheduled) {
+            isScrollScheduled = true;
+            scheduler.schedule(() => {
+                if (
+                    target.scrollTop + target.clientHeight >=
+                    target.scrollHeight - SCROLL_LOAD_MORE_THRESHOLD
+                ) {
+                    lib.loadMore();
+                }
+                isScrollScheduled = false;
+            });
         }
     };
-
-    // Navigation logic for Table is currently internal or via Table props.
-    // Table component needs to expose a way to be driven by external shortcuts OR use shortcuts internally.
-    // Assuming Table handles its own focus/navigation, we just need to ensure it respects scopes?
-    // If Table uses native onKeyDown, it won't respect our 'asset-viewer' scope which blocks.
-    // So Table MUST be refactored to use useShortcuts "viewport" scope.
 
     return (
         <div class="virtual-list-view">

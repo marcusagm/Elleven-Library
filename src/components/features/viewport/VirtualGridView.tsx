@@ -1,4 +1,13 @@
-import { Component, createSignal, onMount, onCleanup, For, createMemo, Show } from 'solid-js';
+import {
+    Component,
+    createSignal,
+    onMount,
+    onCleanup,
+    For,
+    createMemo,
+    Show,
+    untrack
+} from 'solid-js';
 import { AssetCard } from './AssetCard';
 import { EmptyState } from './EmptyState';
 import {
@@ -11,6 +20,9 @@ import {
 import { scheduler } from '../../../core/utils/scheduler';
 import type { LayoutItemInput } from '../../../core/viewport';
 import './grid-view.css';
+
+const SCROLL_LOAD_MORE_THRESHOLD = 500;
+const RESIZE_DEBOUNCE_THRESHOLD = 5;
 
 /**
  * VirtualGridView - Worker-based Virtualized Grid Layout
@@ -89,7 +101,7 @@ export const VirtualGridView: Component = () => {
 
                 setContainerHeight(height);
 
-                if (width > 0 && Math.abs(width - lastReportedWidth) > 5) {
+                if (width > 0 && Math.abs(width - lastReportedWidth) > RESIZE_DEBOUNCE_THRESHOLD) {
                     lastReportedWidth = width;
                     viewport.handleResize(width);
                 }
@@ -105,16 +117,28 @@ export const VirtualGridView: Component = () => {
             viewport.handleResize(initialRect.width);
         }
 
+        let isScrollScheduled = false;
+
         const handleScroll = () => {
-            const containerElement = scrollContainer();
-            if (!containerElement) return;
+            if (isScrollScheduled) return;
+            isScrollScheduled = true;
 
-            viewport.handleScroll(containerElement.scrollTop, containerHeight());
+            const currentContainerHeight = untrack(() => containerHeight());
 
-            const { scrollTop, scrollHeight, clientHeight } = containerElement;
-            if (scrollTop + clientHeight >= scrollHeight - 500) {
-                library.loadMore();
-            }
+            scheduler.schedule(() =>
+                untrack(() => {
+                    isScrollScheduled = false;
+                    const containerElement = scrollContainer();
+                    if (!containerElement) return;
+
+                    viewport.handleScroll(containerElement.scrollTop, currentContainerHeight);
+
+                    const { scrollTop, scrollHeight, clientHeight } = containerElement;
+                    if (scrollTop + clientHeight >= scrollHeight - SCROLL_LOAD_MORE_THRESHOLD) {
+                        library.loadMore();
+                    }
+                })
+            );
         };
 
         element.addEventListener('scroll', handleScroll, { passive: true });

@@ -1,12 +1,12 @@
 use crate::db::Db;
 use crate::thumbnails::priority::ThumbnailPriorityState;
-use crate::thumbnails::{generate_thumbnail, get_thumbnail_filename};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter};
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
+use tracing::{debug, error, info};
 
 /// Background worker that continuously generates thumbnails for indexed assets.
 ///
@@ -62,204 +62,256 @@ impl ThumbnailWorker {
         let config = self.config.clone();
         let priority_state = self.priority_state.clone();
 
+        let light_q = Arc::new(tokio::sync::Mutex::new(std::collections::VecDeque::new()));
+        let heavy_q = Arc::new(tokio::sync::Mutex::new(std::collections::VecDeque::new()));
+        let notify_light = Arc::new(tokio::sync::Notify::new());
+        let notify_heavy = Arc::new(tokio::sync::Notify::new());
+
+        // --- 1. LIGHT THREAD POOL WORKER ---
+        let db_light = db.clone();
+        let app_light = app.clone();
+        let thumb_dir_light = thumb_dir.clone();
+        let token_light = token.clone();
+        let num_threads = config.thumbnail_threads;
+        let light_queue = light_q.clone();
+        let notify_light_queue = notify_light.clone();
+
+        tauri::async_runtime::spawn(async move {
+            Self::worker_loop(
+                light_queue,
+                notify_light_queue,
+                db_light,
+                app_light,
+                thumb_dir_light,
+                token_light,
+                num_threads,
+                20,
+            )
+            .await;
+        });
+
+        // --- 2. HEAVY (FFMPEG) THREAD POOL WORKER ---
+        let db_heavy = db.clone();
+        let app_heavy = app.clone();
+        let thumb_dir_heavy = thumb_dir.clone();
+        let token_heavy = token.clone();
+        let heavy_threads = 2; // FFMPEG requires strict concurrency to avoid CPU exhaustion
+        let heavy_queue = heavy_q.clone();
+        let notify_heavy_queue = notify_heavy.clone();
+
+        tauri::async_runtime::spawn(async move {
+            Self::worker_loop(
+                heavy_queue,
+                notify_heavy_queue,
+                db_heavy,
+                app_heavy,
+                thumb_dir_heavy,
+                token_heavy,
+                heavy_threads,
+                4,
+            )
+            .await;
+        });
+
+        // --- 3. DISPATCHER LOOP ---
         tauri::async_runtime::spawn(async move {
             loop {
-                // Check for cancellation before starting a new batch
                 if token.is_cancelled() {
-                    println!("LIFECYCLE: ThumbnailWorker shutting down (token cancelled)");
+                    info!("LIFECYCLE: ThumbnailWorker Dispatcher shutting down");
                     break;
                 }
 
-                // 1. Check Priority Queue First
-                let priority_ids = priority_state
-                    .priority_ids
-                    .lock()
-                    .unwrap_or_else(|poisoned_error| poisoned_error.into_inner())
-                    .iter()
-                    .cloned()
-                    .collect::<Vec<i64>>();
+                let mut did_work = false;
 
-                let mut assets = Vec::new();
-                let mut is_priority_batch = false;
-
+                // 1. Check Priority Queue First (LIFO behavior per block)
+                let priority_ids = priority_state.take_batch(config.indexer_batch_size as usize);
                 if !priority_ids.is_empty() {
                     if let Ok(priority_imgs) =
                         db.get_assets_needing_thumbnails_by_ids(&priority_ids).await
                     {
                         if !priority_imgs.is_empty() {
-                            assets = priority_imgs;
-                            is_priority_batch = true;
+                            let asset_ids: Vec<i64> =
+                                priority_imgs.iter().map(|(id, _)| *id).collect();
+                            if let Err(e) = db.increment_thumbnail_attempts_batch(&asset_ids).await
+                            {
+                                error!("Failed to pre-increment thumbnail attempts: {}", e);
+                            }
+
+                            // Insert LIFO into isolated queues (push FRONT)
+                            for (id, path) in priority_imgs.into_iter().rev() {
+                                let is_heavy =
+                                    crate::thumbnails::get_thumbnail_strategy(Path::new(&path))
+                                        .is_heavy();
+                                if is_heavy {
+                                    heavy_q.lock().await.push_front((id, path));
+                                    notify_heavy.notify_one();
+                                } else {
+                                    light_q.lock().await.push_front((id, path));
+                                    notify_light.notify_one();
+                                }
+                            }
+                            did_work = true;
                         }
                     }
                 }
 
-                // 2. If no priority work, check regular queue
-                if assets.is_empty() {
+                let light_len = light_q.lock().await.len();
+                let heavy_len = heavy_q.lock().await.len();
+
+                // 2. Fetch Regular queue only if we have room
+                if light_len < 100 && heavy_len < 20 {
                     match db
                         .get_assets_needing_thumbnails(config.indexer_batch_size)
                         .await
                     {
                         Ok(imgs) => {
-                            assets = imgs;
-                        }
-                        Err(database_error) => {
-                            eprintln!("Thumbnail worker DB error: {}", database_error);
-                            // Wait before retrying, but respect cancellation
-                            tokio::select! {
-                                _ = token.cancelled() => {
-                                    println!("LIFECYCLE: ThumbnailWorker shutting down during error backoff");
-                                    break;
-                                }
-                                _ = sleep(Duration::from_secs(10)) => { continue; }
-                            }
-                        }
-                    }
-                }
-
-                if assets.is_empty() {
-                    // No work — wait briefly, but respect cancellation
-                    tokio::select! {
-                        _ = token.cancelled() => {
-                            println!("LIFECYCLE: ThumbnailWorker shutting down (idle)");
-                            break;
-                        }
-                        _ = sleep(Duration::from_secs(2)) => { continue; }
-                    }
-                }
-
-                if !is_priority_batch {
-                    println!(
-                        "DEBUG: Found {} assets needing thumbnails. Starting batch...",
-                        assets.len()
-                    );
-                }
-
-                // Pre-increment attempts for all assets in the batch to prevent poison pills
-                // from catching the worker in an infinite crash loop spanning restarts.
-                let asset_ids: Vec<i64> = assets.iter().map(|(id, _)| *id).collect();
-                if let Err(increment_error) =
-                    db.increment_thumbnail_attempts_batch(&asset_ids).await
-                {
-                    eprintln!(
-                        "Failed to pre-increment thumbnail attempts: {}",
-                        increment_error
-                    );
-                }
-
-                // Clone thumb_dir for the move closure
-                let thumb_dir_clone = thumb_dir.clone();
-                let num_threads = config.thumbnail_threads;
-                let app_for_blocking = app.clone();
-
-                // Use a blocking thread for CPU-intensive work
-                let db_updates = tauri::async_runtime::spawn_blocking(move || {
-                    use rayon::prelude::*;
-                    use rayon::ThreadPoolBuilder;
-
-                    // Create a limited thread pool
-                    let pool = match ThreadPoolBuilder::new().num_threads(num_threads).build() {
-                        Ok(thread_pool) => thread_pool,
-                        Err(pool_error) => {
-                            eprintln!("Failed to create thread pool: {}", pool_error);
-                            return Vec::new();
-                        }
-                    };
-
-                    pool.install(|| {
-                        assets
-                            .par_iter()
-                            .map(|(id, img_path)| {
-                                let input_path = Path::new(&img_path);
-                                if !input_path.exists() {
-                                    return (*id, Err("File not found".to_string()));
+                            if !imgs.is_empty() {
+                                let asset_ids: Vec<i64> = imgs.iter().map(|(id, _)| *id).collect();
+                                if let Err(e) =
+                                    db.increment_thumbnail_attempts_batch(&asset_ids).await
+                                {
+                                    error!("Failed to pre-increment thumbnail attempts: {}", e);
                                 }
 
-                                let thumb_name = get_thumbnail_filename(img_path);
+                                debug!("Dispatching {} assets needing thumbnails...", imgs.len());
 
-                                // Generate thumbnail
-                                match generate_thumbnail(
-                                    Some(&app_for_blocking),
-                                    input_path,
-                                    &thumb_dir_clone,
-                                    &thumb_name,
-                                    300,
-                                ) {
-                                    Ok(generated_filename) => (*id, Ok(generated_filename)),
-                                    Err(generation_error) => {
-                                        (*id, Err(generation_error.to_string()))
+                                // Insert FIFO into isolated queues (push BACK) - Background Tasks
+                                for (id, path) in imgs {
+                                    let is_heavy =
+                                        crate::thumbnails::get_thumbnail_strategy(Path::new(&path))
+                                            .is_heavy();
+                                    if is_heavy {
+                                        heavy_q.lock().await.push_back((id, path));
+                                        notify_heavy.notify_one();
+                                    } else {
+                                        light_q.lock().await.push_back((id, path));
+                                        notify_light.notify_one();
                                     }
                                 }
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                })
-                .await
-                .unwrap_or_else(|join_error| {
-                    eprintln!("Blocking task failed: {}", join_error);
-                    Vec::new()
-                });
-
-                #[derive(serde::Serialize, Clone)]
-                struct ThumbnailPayload {
-                    id: i64,
-                    path: String,
-                }
-
-                // Perform DB updates sequentially (async)
-                let mut error_count = 0;
-                let total_items = db_updates.len();
-
-                for (id, result) in db_updates {
-                    match result {
-                        Ok(filename) => {
-                            if let Err(update_error) = db.update_thumbnail_path(id, &filename).await
-                            {
-                                eprintln!("Error updating DB for thumbnail: {}", update_error);
-                                error_count += 1;
-                            } else {
-                                let payload = ThumbnailPayload {
-                                    id,
-                                    path: filename.clone(),
-                                };
-                                let _ = app.emit("thumbnail:ready", payload);
+                                did_work = true;
                             }
                         }
-                        Err(err_msg) => {
-                            eprintln!("Thumbnail error for ID {}: {}", id, err_msg);
-                            error_count += 1;
-                            if let Err(record_error) = db.record_thumbnail_error(id, err_msg).await
-                            {
-                                eprintln!(
-                                    "Failed to record thumbnail error in DB: {}",
-                                    record_error
-                                );
-                            }
+                        Err(database_error) => {
+                            error!("Thumbnail worker DB error: {}", database_error);
                         }
                     }
                 }
 
-                // Brief yield between batches with dynamic backoff for massive failures
-                if !is_priority_batch {
-                    if total_items > 0 && error_count == total_items {
-                        // 100% failure rate: back off significantly (e.g. out of memory, disk full, etc.)
-                        println!(
-                            "WARN: 100% failure rate in thumbnail batch. Backing off for 10s..."
-                        );
-                        sleep(Duration::from_secs(10)).await;
-                    } else if total_items > 0 && error_count > total_items / 2 {
-                        // > 50% failure rate: slow down to prevent thrashing
-                        println!(
-                            "WARN: >50% failure rate in thumbnail batch. Backing off for 5s..."
-                        );
-                        sleep(Duration::from_secs(5)).await;
-                    } else {
-                        // Normal brief yield
-                        sleep(Duration::from_millis(100)).await;
+                if !did_work {
+                    tokio::select! {
+                        _ = token.cancelled() => break,
+                        _ = sleep(Duration::from_millis(150)) => continue,
                     }
                 } else {
-                    sleep(Duration::from_millis(10)).await;
+                    tokio::task::yield_now().await;
                 }
             }
         })
+    }
+
+    /// Isolated background worker for processing thumbnails continuously
+    /// from a receiver, batching them into small chunks, and running a rayon pool.
+    async fn worker_loop(
+        queue: Arc<tokio::sync::Mutex<std::collections::VecDeque<(i64, String)>>>,
+        notify: Arc<tokio::sync::Notify>,
+        db: Arc<Db>,
+        app: AppHandle,
+        thumb_dir: PathBuf,
+        token: CancellationToken,
+        num_threads: usize,
+        batch_size_limit: usize,
+    ) {
+        let pool = match rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build()
+        {
+            Ok(p) => Arc::new(p),
+            Err(e) => {
+                error!("Failed to create isolated thread pool: {}", e);
+                return;
+            }
+        };
+
+        loop {
+            if token.is_cancelled() {
+                break;
+            }
+
+            let mut batch = Vec::new();
+            {
+                let mut q = queue.lock().await;
+                while batch.len() < batch_size_limit {
+                    if let Some(item) = q.pop_front() {
+                        batch.push(item);
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            if batch.is_empty() {
+                tokio::select! {
+                    _ = notify.notified() => continue,
+                    _ = token.cancelled() => break,
+                    _ = tokio::time::sleep(Duration::from_millis(500)) => continue,
+                }
+            }
+
+            let pool_clone = pool.clone();
+            let app_for_blocking = app.clone();
+            let thumb_dir_clone = thumb_dir.clone();
+
+            let db_updates = tauri::async_runtime::spawn_blocking(move || {
+                use rayon::prelude::*;
+                pool_clone.install(|| {
+                    batch
+                        .par_iter()
+                        .map(|(id, img_path)| {
+                            let input_path = std::path::Path::new(&img_path);
+                            if !input_path.exists() {
+                                return (*id, Err("File not found".to_string()));
+                            }
+
+                            let thumb_name = crate::thumbnails::get_thumbnail_filename(img_path);
+                            match crate::thumbnails::generate_thumbnail(
+                                Some(&app_for_blocking),
+                                input_path,
+                                &thumb_dir_clone,
+                                &thumb_name,
+                                300,
+                            ) {
+                                Ok(fname) => (*id, Ok(fname)),
+                                Err(e) => (*id, Err(e.to_string())),
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                })
+            })
+            .await
+            .unwrap_or_default();
+
+            #[derive(serde::Serialize, Clone)]
+            struct ThumbnailPayload {
+                id: i64,
+                path: String,
+            }
+
+            for (id, result) in db_updates {
+                match result {
+                    Ok(filename) => {
+                        if let Err(e) = db.update_thumbnail_path(id, &filename).await {
+                            eprintln!("Error updating DB for thumbnail: {}", e);
+                        } else {
+                            let _ = app
+                                .emit("thumbnail:ready", ThumbnailPayload { id, path: filename });
+                        }
+                    }
+                    Err(err_msg) => {
+                        eprintln!("Thumbnail error for ID {}: {}", id, err_msg);
+                        let _ = db.record_thumbnail_error(id, err_msg).await;
+                    }
+                }
+            }
+        }
     }
 }

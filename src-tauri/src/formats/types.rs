@@ -28,6 +28,19 @@ pub enum ThumbnailStrategy {
     None,
 }
 
+impl ThumbnailStrategy {
+    /// Determines whether the given strategy should be processed in an isolated Heavy queue.
+    pub fn is_heavy(&self) -> bool {
+        matches!(
+            self,
+            ThumbnailStrategy::Ffmpeg
+                | ThumbnailStrategy::Raw
+                | ThumbnailStrategy::NativeExtractor
+                | ThumbnailStrategy::Model3D
+        )
+    }
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum PlaybackStrategy {

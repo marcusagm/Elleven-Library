@@ -17,6 +17,7 @@ import { useTableNavigation } from './hooks/useTableNavigation';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu';
 import { Checkbox } from '../Checkbox';
 import type { TableProps, SortOrder } from './types';
+import { scheduler } from '../../../core/utils/scheduler';
 import './table.css';
 
 /** Constant representing the height of the table header in pixels */
@@ -178,9 +179,19 @@ export function Table<T>(props: TableProps<T>) {
     });
 
     /** Handles the scroll event to sync reactive scroll position */
+    let isScrollScheduled = false;
+
     const handleContainerScroll = (event: Event) => {
         const scrollableTarget = event.currentTarget as HTMLDivElement;
-        setScrollTop(scrollableTarget.scrollTop);
+
+        if (!isScrollScheduled) {
+            isScrollScheduled = true;
+            scheduler.schedule(() => {
+                setScrollTop(scrollableTarget.scrollTop);
+                isScrollScheduled = false;
+            });
+        }
+
         local.onScroll?.(event);
     };
 
