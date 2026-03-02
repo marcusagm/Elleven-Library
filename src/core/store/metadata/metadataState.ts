@@ -21,8 +21,8 @@ export interface MetadataState {
     locations: FolderNode[];
     smartFolders: SmartFolder[];
     libraryStats: {
-        total_images: number;
-        untagged_images: number;
+        total_assets: number;
+        untagged_assets: number;
         tag_counts: Map<number, number>;
         folder_counts: Map<number, number>;
         folder_counts_recursive: Map<number, number>;
@@ -35,8 +35,8 @@ export const [metadataState, setMetadataState] = createStore<MetadataState>({
     locations: [],
     smartFolders: [],
     libraryStats: {
-        total_images: 0,
-        untagged_images: 0,
+        total_assets: 0,
+        untagged_assets: 0,
         tag_counts: new Map(),
         folder_counts: new Map(),
         folder_counts_recursive: new Map()

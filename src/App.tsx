@@ -17,7 +17,7 @@ import { listen } from '@tauri-apps/api/event';
 import {
     dndRegistry,
     TagDropStrategy,
-    ImageDropStrategy,
+    AssetDropStrategy,
     currentDragItem,
     setDropTargetId
 } from './core/dnd';
@@ -101,7 +101,7 @@ function App() {
 
         // Register Strategies
         dndRegistry.register('TAG', TagDropStrategy);
-        dndRegistry.register('IMAGE', ImageDropStrategy);
+        dndRegistry.register('ASSET', AssetDropStrategy);
 
         // Listen for indexing completion (with proper cleanup)
         let unlistenIndexerComplete: (() => void) | null = null;

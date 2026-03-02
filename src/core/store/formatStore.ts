@@ -77,9 +77,9 @@ export const formatActions = {
     getMediaType: (filename: string): MediaType => {
         const fmt = formatActions.getFormat(filename);
         const cat = fmt?.type_category;
-        if (cat) return cat.toLowerCase() as MediaType; // Rust might return 'Image' (Pascal) if I didn't set rename correctly, but I set camelCase.
+        if (cat) return cat.toLowerCase() as MediaType; // Rust might return 'Asset' (Pascal) if I didn't set rename correctly, but I set camelCase.
         // Wait, let's verify casing. Rust Enum rename_all="camelCase" -> Image, Video... wait.
-        // camelCase of "Image" is "image". "Model3D" is "model3d" (or "model3D"?).
+        // camelCase of "Asset" is "asset". "Model3D" is "model3d" (or "model3D"?).
         // Default strum display might differ from serde? Serde handles serialization.
         return 'unknown';
     },

@@ -45,7 +45,7 @@ export const systemActions = {
                     setRootPath(main.path);
                     // Trigger initial load
                     import('./library').then(({ libraryActions }) => {
-                        libraryActions.refreshImages(true);
+                        libraryActions.refreshAssets(true);
                     });
                     metadataActions.loadStats();
                 }
@@ -68,7 +68,7 @@ export const systemActions = {
                 // systemStore imports metadata.
                 // We need libraryActions here.
                 import('./library').then(({ libraryActions }) => {
-                    libraryActions.refreshImages(true);
+                    libraryActions.refreshAssets(true);
                 });
                 metadataActions.loadStats();
                 metadataActions.loadLocations();

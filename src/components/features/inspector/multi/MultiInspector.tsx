@@ -1,12 +1,12 @@
 import { Component, For, Show } from 'solid-js';
-import { type ImageItem } from '../../../../types';
+import { type AssetItem } from '../../../../types';
 import { InspectorTags } from '../base/InspectorTags';
 import { Accordion, AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { Layers } from 'lucide-solid';
 import './MultiInspector.css';
 
 interface MultiInspectorProps {
-    items: ImageItem[];
+    items: AssetItem[];
 }
 
 export const MultiInspector: Component<MultiInspectorProps> = props => {

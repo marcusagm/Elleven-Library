@@ -1,4 +1,4 @@
-//! Tag management and image-tag relationship queries.
+//! Tag management and asset-tag relationship queries.
 
 use super::Db;
 use crate::db::models::{FolderCount, LibraryStats, Tag, TagCount};
@@ -94,7 +94,7 @@ impl Db {
         Ok(())
     }
 
-    /// Deletes a tag and removes all its associations with images.
+    /// Deletes a tag and removes all its associations with assets.
     ///
     /// # Errors
     ///
@@ -117,11 +117,11 @@ impl Db {
         Ok(tags)
     }
 
-    /// Associates a tag with an image.
-    pub async fn add_tag_to_image(&self, image_id: i64, tag_id: i64) -> Result<(), sqlx::Error> {
+    /// Associates a tag with an asset.
+    pub async fn add_tag_to_asset(&self, asset_id: i64, tag_id: i64) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "INSERT INTO image_tags (image_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
-            image_id,
+            "INSERT INTO asset_tags (asset_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+            asset_id,
             tag_id
         )
         .execute(&self.pool)
@@ -129,15 +129,15 @@ impl Db {
         Ok(())
     }
 
-    /// Removes an association between a tag and an image.
-    pub async fn remove_tag_from_image(
+    /// Removes an association between a tag and an asset.
+    pub async fn remove_tag_from_asset(
         &self,
-        image_id: i64,
+        asset_id: i64,
         tag_id: i64,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "DELETE FROM image_tags WHERE image_id = ? AND tag_id = ?",
-            image_id,
+            "DELETE FROM asset_tags WHERE asset_id = ? AND tag_id = ?",
+            asset_id,
             tag_id
         )
         .execute(&self.pool)
@@ -145,29 +145,29 @@ impl Db {
         Ok(())
     }
 
-    /// Gets all tags associated with a specific image.
-    pub async fn get_tags_for_image(&self, image_id: i64) -> Result<Vec<Tag>, sqlx::Error> {
+    /// Gets all tags associated with a specific asset.
+    pub async fn get_tags_for_asset(&self, asset_id: i64) -> Result<Vec<Tag>, sqlx::Error> {
         let tags = sqlx::query_as!(
             Tag,
             r#"SELECT t.id as "id!", t.name, t.parent_id, t.color, t.order_index as "order_index!"
                FROM tags t
-               JOIN image_tags it ON t.id = it.tag_id
-               WHERE it.image_id = ?
+               JOIN asset_tags it ON t.id = it.tag_id
+               WHERE it.asset_id = ?
                ORDER BY t.order_index ASC, t.name ASC"#,
-            image_id
+            asset_id
         )
         .fetch_all(&self.pool)
         .await?;
         Ok(tags)
     }
 
-    /// Batch associates multiple tags with multiple images in a single transaction.
-    pub async fn add_tags_to_images_batch(
+    /// Batch associates multiple tags with multiple assets in a single transaction.
+    pub async fn add_tags_to_assets_batch(
         &self,
-        image_ids: Vec<i64>,
+        asset_ids: Vec<i64>,
         tag_ids: Vec<i64>,
     ) -> Result<(), sqlx::Error> {
-        if image_ids.is_empty() || tag_ids.is_empty() {
+        if asset_ids.is_empty() || tag_ids.is_empty() {
             return Ok(());
         }
 
@@ -179,10 +179,10 @@ impl Db {
             .await
             .ok();
 
-        for img_id in &image_ids {
+        for img_id in &asset_ids {
             for tag_id in &tag_ids {
                 sqlx::query!(
-                    "INSERT INTO image_tags (image_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                    "INSERT INTO asset_tags (asset_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
                     img_id,
                     tag_id
                 )
@@ -195,22 +195,22 @@ impl Db {
         Ok(())
     }
 
-    /// Batch removes multiple tags from multiple images in a single transaction.
-    pub async fn remove_tags_from_images_batch(
+    /// Batch removes multiple tags from multiple assets in a single transaction.
+    pub async fn remove_tags_from_assets_batch(
         &self,
-        image_ids: Vec<i64>,
+        asset_ids: Vec<i64>,
         tag_ids: Vec<i64>,
     ) -> Result<(), sqlx::Error> {
-        if image_ids.is_empty() || tag_ids.is_empty() {
+        if asset_ids.is_empty() || tag_ids.is_empty() {
             return Ok(());
         }
 
         let mut tx = self.pool.begin().await?;
 
-        for img_id in &image_ids {
+        for img_id in &asset_ids {
             for tag_id in &tag_ids {
                 sqlx::query!(
-                    "DELETE FROM image_tags WHERE image_id = ? AND tag_id = ?",
+                    "DELETE FROM asset_tags WHERE asset_id = ? AND tag_id = ?",
                     img_id,
                     tag_id
                 )
@@ -223,28 +223,28 @@ impl Db {
         Ok(())
     }
 
-    /// Batch replaces all tags for multiple images in a single transaction.
-    pub async fn replace_tags_for_images_batch(
+    /// Batch replaces all tags for multiple assets in a single transaction.
+    pub async fn replace_tags_for_assets_batch(
         &self,
-        image_ids: Vec<i64>,
+        asset_ids: Vec<i64>,
         tag_ids: Vec<i64>,
     ) -> Result<(), sqlx::Error> {
-        if image_ids.is_empty() {
+        if asset_ids.is_empty() {
             return Ok(());
         }
 
         let mut tx = self.pool.begin().await?;
 
-        for img_id in &image_ids {
+        for img_id in &asset_ids {
             // Remove all existing tags
-            sqlx::query!("DELETE FROM image_tags WHERE image_id = ?", img_id)
+            sqlx::query!("DELETE FROM asset_tags WHERE asset_id = ?", img_id)
                 .execute(&mut *tx)
                 .await?;
 
             // Add new tags
             for tag_id in &tag_ids {
                 sqlx::query!(
-                    "INSERT INTO image_tags (image_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                    "INSERT INTO asset_tags (asset_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
                     img_id,
                     tag_id
                 )
@@ -259,19 +259,19 @@ impl Db {
 
     /// Calculates high-level library statistics.
     pub async fn get_library_stats(&self) -> Result<LibraryStats, sqlx::Error> {
-        let total_images = sqlx::query_scalar!("SELECT COUNT(*) FROM images")
+        let total_assets = sqlx::query_scalar!("SELECT COUNT(*) FROM assets")
             .fetch_one(&self.pool)
             .await? as i64;
 
-        let untagged_images = sqlx::query_scalar!(
-            "SELECT COUNT(*) FROM images WHERE id NOT IN (SELECT DISTINCT image_id FROM image_tags)"
+        let untagged_assets = sqlx::query_scalar!(
+            "SELECT COUNT(*) FROM assets WHERE id NOT IN (SELECT DISTINCT asset_id FROM asset_tags)"
         )
         .fetch_one(&self.pool)
         .await? as i64;
 
         let tag_counts = sqlx::query_as!(
             TagCount,
-            "SELECT tag_id, COUNT(*) as count FROM image_tags GROUP BY tag_id"
+            "SELECT tag_id, COUNT(*) as count FROM asset_tags GROUP BY tag_id"
         )
         .fetch_all(&self.pool)
         .await?;
@@ -291,8 +291,8 @@ impl Db {
             .collect();
 
         Ok(LibraryStats {
-            total_images,
-            untagged_images,
+            total_assets,
+            untagged_assets,
             tag_counts,
             folder_counts,
             folder_counts_recursive,

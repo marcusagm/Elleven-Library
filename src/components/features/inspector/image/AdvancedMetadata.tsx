@@ -1,12 +1,12 @@
 import { Component, createResource, Show, For } from 'solid-js';
-import { type ImageItem } from '../../../../types';
+import { type AssetItem } from '../../../../types';
 import { AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { List, Loader2 } from 'lucide-solid';
 import { useMetadata } from '../../../../core/hooks';
 import './AdvancedMetadata.css';
 
 interface AdvancedMetadataProps {
-    item: ImageItem;
+    item: AssetItem;
 }
 
 export const AdvancedMetadata: Component<AdvancedMetadataProps> = props => {

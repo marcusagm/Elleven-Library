@@ -27,7 +27,7 @@ import './tree-view.css';
  *   items={itemHierarchyList}
  *   onSelect={(node) => console.log(node.label)}
  *   dragType="TAG"
- *   acceptedDragTypes={['TAG', 'IMAGE']}
+ *   acceptedDragTypes={['TAG', 'ASSET']}
  * />
  */
 export const TreeView: Component<TreeViewProps<unknown>> = props => {

@@ -1,4 +1,4 @@
-use crate::db::models::{ImageMetadata, LibraryStats, Tag};
+use crate::db::models::{AssetMetadata, LibraryStats, Tag};
 use crate::db::Db;
 use crate::error::AppResult;
 use std::sync::Arc;
@@ -44,36 +44,36 @@ pub async fn get_library_stats(db: State<'_, Arc<Db>>) -> AppResult<LibraryStats
 }
 
 #[tauri::command]
-pub async fn add_tag_to_image(db: State<'_, Arc<Db>>, image_id: i64, tag_id: i64) -> AppResult<()> {
-    Ok(db.add_tag_to_image(image_id, tag_id).await?)
+pub async fn add_tag_to_asset(db: State<'_, Arc<Db>>, asset_id: i64, tag_id: i64) -> AppResult<()> {
+    Ok(db.add_tag_to_asset(asset_id, tag_id).await?)
 }
 
 #[tauri::command]
-pub async fn remove_tag_from_image(
+pub async fn remove_tag_from_asset(
     db: State<'_, Arc<Db>>,
-    image_id: i64,
+    asset_id: i64,
     tag_id: i64,
 ) -> AppResult<()> {
-    Ok(db.remove_tag_from_image(image_id, tag_id).await?)
+    Ok(db.remove_tag_from_asset(asset_id, tag_id).await?)
 }
 
 #[tauri::command]
-pub async fn get_tags_for_image(db: State<'_, Arc<Db>>, image_id: i64) -> AppResult<Vec<Tag>> {
-    Ok(db.get_tags_for_image(image_id).await?)
+pub async fn get_tags_for_asset(db: State<'_, Arc<Db>>, asset_id: i64) -> AppResult<Vec<Tag>> {
+    Ok(db.get_tags_for_asset(asset_id).await?)
 }
 
 #[tauri::command]
-pub async fn add_tags_to_images_batch(
+pub async fn add_tags_to_assets_batch(
     db: State<'_, Arc<Db>>,
-    image_ids: Vec<i64>,
+    asset_ids: Vec<i64>,
     tag_ids: Vec<i64>,
 ) -> AppResult<()> {
-    Ok(db.add_tags_to_images_batch(image_ids, tag_ids).await?)
+    Ok(db.add_tags_to_assets_batch(asset_ids, tag_ids).await?)
 }
 
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-pub async fn get_images_filtered(
+pub async fn get_assets_filtered(
     db: State<'_, Arc<Db>>,
     limit: i32,
     offset: i32,
@@ -86,9 +86,9 @@ pub async fn get_images_filtered(
     sort_order: Option<String>,
     advanced_query: Option<String>,
     search_query: Option<String>,
-) -> AppResult<Vec<ImageMetadata>> {
+) -> AppResult<Vec<AssetMetadata>> {
     Ok(db
-        .get_images_filtered(
+        .get_assets_filtered(
             limit,
             offset,
             tag_ids,
@@ -106,7 +106,7 @@ pub async fn get_images_filtered(
 
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-pub async fn get_image_count_filtered(
+pub async fn get_asset_count_filtered(
     db: State<'_, Arc<Db>>,
     tag_ids: Vec<i64>,
     match_all: bool,
@@ -117,7 +117,7 @@ pub async fn get_image_count_filtered(
     search_query: Option<String>,
 ) -> AppResult<i64> {
     Ok(db
-        .get_image_count_filtered(
+        .get_asset_count_filtered(
             tag_ids,
             match_all,
             untagged,
@@ -130,28 +130,28 @@ pub async fn get_image_count_filtered(
 }
 
 #[tauri::command]
-pub async fn update_image_rating(db: State<'_, Arc<Db>>, id: i64, rating: i32) -> AppResult<()> {
-    Ok(db.update_image_rating(id, rating).await?)
+pub async fn update_asset_rating(db: State<'_, Arc<Db>>, id: i64, rating: i32) -> AppResult<()> {
+    Ok(db.update_asset_rating(id, rating).await?)
 }
 
 #[tauri::command]
-pub async fn update_image_notes(db: State<'_, Arc<Db>>, id: i64, notes: String) -> AppResult<()> {
-    Ok(db.update_image_notes(id, notes).await?)
+pub async fn update_asset_notes(db: State<'_, Arc<Db>>, id: i64, notes: String) -> AppResult<()> {
+    Ok(db.update_asset_notes(id, notes).await?)
 }
 #[tauri::command]
-pub async fn remove_tags_from_images_batch(
+pub async fn remove_tags_from_assets_batch(
     db: State<'_, Arc<Db>>,
-    image_ids: Vec<i64>,
+    asset_ids: Vec<i64>,
     tag_ids: Vec<i64>,
 ) -> AppResult<()> {
-    Ok(db.remove_tags_from_images_batch(image_ids, tag_ids).await?)
+    Ok(db.remove_tags_from_assets_batch(asset_ids, tag_ids).await?)
 }
 
 #[tauri::command]
-pub async fn replace_tags_for_images_batch(
+pub async fn replace_tags_for_assets_batch(
     db: State<'_, Arc<Db>>,
-    image_ids: Vec<i64>,
+    asset_ids: Vec<i64>,
     tag_ids: Vec<i64>,
 ) -> AppResult<()> {
-    Ok(db.replace_tags_for_images_batch(image_ids, tag_ids).await?)
+    Ok(db.replace_tags_for_assets_batch(asset_ids, tag_ids).await?)
 }

@@ -3,7 +3,7 @@ import { setDropTargetId, currentDropTargetId, currentDragItem, DragItem } from 
 import { useDndHandlers } from './useDndHandlers';
 
 /**
- * Specialized hook for managing drop zone behavior on assets (ImageItems).
+ * Specialized hook for managing drop zone behavior on assets (AssetItems).
  * Handles drag counters to prevent flickering and coordinates with the DND handler.
  *
  * @param getAssetId - A reactive accessor for the asset ID. This ensures the hook
@@ -70,7 +70,7 @@ export const useAssetDropZone = (getAssetId: () => number) => {
                 const droppedItem: DragItem = JSON.parse(rawJsonData);
                 // Asset cards specifically only allow TAG drops for tag assignment
                 if (droppedItem.type === 'TAG') {
-                    await handleDrop(droppedItem, getTargetId(), 'IMAGE');
+                    await handleDrop(droppedItem, getTargetId(), 'ASSET');
                 }
             }
         } catch (error) {

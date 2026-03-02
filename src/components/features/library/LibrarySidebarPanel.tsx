@@ -16,7 +16,7 @@ export const LibrarySidebarPanel: Component = () => {
             >
                 <Layers size={16} />
                 <span style={{ flex: 1 }}>All Items</span>
-                <CountBadge count={metadata.stats.total_images} variant="secondary" />
+                <CountBadge count={metadata.stats.total_assets} variant="secondary" />
             </div>
             <div
                 class={`nav-item ${filters.filterUntagged ? 'active' : ''}`}
@@ -24,7 +24,7 @@ export const LibrarySidebarPanel: Component = () => {
             >
                 <Tag size={16} />
                 <span style={{ flex: 1 }}>Untagged</span>
-                <CountBadge count={metadata.stats.untagged_images} variant="secondary" />
+                <CountBadge count={metadata.stats.untagged_assets} variant="secondary" />
             </div>
         </SidebarPanel>
     );

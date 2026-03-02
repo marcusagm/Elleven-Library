@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[tauri::command]
-pub async fn get_image_exif(path: String) -> AppResult<HashMap<String, String>> {
+pub async fn get_asset_exif(path: String) -> AppResult<HashMap<String, String>> {
     // Check if file exists
     let path_buf = PathBuf::from(&path);
     if !path_buf.exists() {

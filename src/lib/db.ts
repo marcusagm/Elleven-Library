@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { type ImageItem } from '../types';
+import { type AssetItem } from '../types';
 
 // We primarily use the Rust backend for DB operations now.
 // This file wraps those invocations or provides legacy support where needed.
@@ -25,14 +25,14 @@ export async function getLocations() {
     return await invoke<FolderNode[]>('get_locations');
 }
 
-export async function getImages(
+export async function getAssets(
     limit: number = 100,
     offset: number = 0,
     sortBy?: string,
     sortOrder?: string
 ) {
     // Use the backend command which now handles the unified logic
-    return await invoke<ImageItem[]>('get_images_filtered', {
+    return await invoke<AssetItem[]>('get_assets_filtered', {
         limit,
         offset,
         tagIds: [],

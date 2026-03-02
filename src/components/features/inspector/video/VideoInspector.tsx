@@ -1,5 +1,5 @@
 import { Component, Show } from 'solid-js';
-import { type ImageItem } from '../../../../types';
+import { type AssetItem } from '../../../../types';
 import { Accordion, VideoPlayer as UIVideoPlayer, Loader } from '../../../ui';
 import { InspectorTags } from '../base/InspectorTags';
 import { CommonMetadata } from '../base/CommonMetadata';
@@ -7,7 +7,7 @@ import { useVideoSource } from '../../../../core/hooks/useVideoSource';
 import './VideoInspector.css';
 
 interface VideoInspectorProps {
-    item: ImageItem;
+    item: AssetItem;
 }
 
 /**

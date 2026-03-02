@@ -1,7 +1,7 @@
 import { reconcile } from 'solid-js/store';
 import { untrack } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
-import { getImages } from '../../../lib/db';
+import { getAssets } from '../../../lib/db';
 import { tagService } from '../../../lib/tags';
 import { ActionResult, ErrorCode } from '../../types/actions';
 import { filterState, filterActions } from '../filter';
@@ -32,7 +32,7 @@ export const libraryActions = {
             : undefined;
 
         if (anyFilter) {
-            return await tagService.getImagesFiltered(
+            return await tagService.getAssetsFiltered(
                 BATCH_SIZE,
                 offset,
                 filterState.selectedTags,
@@ -46,7 +46,7 @@ export const libraryActions = {
                 filterState.searchQuery
             );
         }
-        return await getImages(BATCH_SIZE, offset, sortBy, sortOrder);
+        return await getAssets(BATCH_SIZE, offset, sortBy, sortOrder);
     },
 
     refreshTotalCount: () => {
@@ -61,7 +61,7 @@ export const libraryActions = {
 
         if (anyFilter) {
             tagService
-                .getImagesFilteredCount(
+                .getAssetsFilteredCount(
                     filterState.selectedTags,
                     true,
                     isUntagged,
@@ -75,14 +75,14 @@ export const libraryActions = {
                 });
         } else {
             tagService
-                .getImagesFilteredCount([], true, false, undefined, false, undefined, undefined)
+                .getAssetsFilteredCount([], true, false, undefined, false, undefined, undefined)
                 .then(count => {
                     setLibraryState('totalItems', count);
                 });
         }
     },
 
-    refreshImages: async (reset = false) => {
+    refreshAssets: async (reset = false) => {
         if (libraryState.isRefreshing && reset) return;
         if (reset) setLibraryState('isRefreshing', true);
 
@@ -120,7 +120,7 @@ export const libraryActions = {
         }
 
         if (payload.added && payload.added.length > 0) {
-            libraryActions.refreshImages(false);
+            libraryActions.refreshAssets(false);
         }
 
         if (payload.updated && payload.updated.length > 0) {
@@ -186,7 +186,7 @@ export const libraryActions = {
                 }
 
                 if (someMovedIn) {
-                    libraryActions.refreshImages(false);
+                    libraryActions.refreshAssets(false);
                 }
             });
         }
@@ -209,7 +209,7 @@ export const libraryActions = {
                 await dbAddLocation(selectedPath);
                 await metadataActions.loadLocations();
                 await tauriService.startIndexing({ path: selectedPath });
-                await libraryActions.refreshImages(true);
+                await libraryActions.refreshAssets(true);
                 return { success: true, path: selectedPath };
             }
             return { success: false };
@@ -226,7 +226,7 @@ export const libraryActions = {
 
             await Promise.all([metadataActions.loadLocations(), metadataActions.loadStats()]);
 
-            await libraryActions.refreshImages(true);
+            await libraryActions.refreshAssets(true);
 
             return { success: true };
         } catch (err) {
@@ -235,11 +235,11 @@ export const libraryActions = {
         }
     },
 
-    applyTagToImages: async (
-        imageIds: number[],
+    applyTagToAssets: async (
+        assetIds: number[],
         tagId: number
     ): Promise<ActionResult<{ tagName: string; count: number }>> => {
-        if (imageIds.length === 0) {
+        if (assetIds.length === 0) {
             return {
                 success: false,
                 error: { code: ErrorCode.VALIDATION_ERROR, message: 'No items provided' }
@@ -248,11 +248,11 @@ export const libraryActions = {
 
         try {
             const { metadataActions, metadataState } = await import('../metadata');
-            await tagService.addTagsToImagesBatch(imageIds, [tagId]);
+            await tagService.addTagsToAssetsBatch(assetIds, [tagId]);
             await metadataActions.loadStats();
 
             if (filterState.selectedTags.length > 0) {
-                await libraryActions.refreshImages(false);
+                await libraryActions.refreshAssets(false);
             }
 
             const tagName = metadataState.tags.find(tag => tag.id === tagId)?.name || 'Tag';
@@ -260,11 +260,11 @@ export const libraryActions = {
                 success: true,
                 data: {
                     tagName,
-                    count: imageIds.length
+                    count: assetIds.length
                 }
             };
         } catch (error) {
-            console.error('Failed to apply tags to images:', error);
+            console.error('Failed to apply tags to assets:', error);
             return {
                 success: false,
                 error: { code: ErrorCode.IO_ERROR, message: 'Failed to apply tags' }
@@ -275,18 +275,18 @@ export const libraryActions = {
     applyTagToSelection: async (
         tagId: number
     ): Promise<ActionResult<{ tagName: string; count: number }>> => {
-        return libraryActions.applyTagToImages(selectionState.selectedIds, tagId);
+        return libraryActions.applyTagToAssets(selectionState.selectedIds, tagId);
     },
 
     applyTagToTarget: async (
         tagId: number,
-        targetImageId: number
+        targetAssetId: number
     ): Promise<ActionResult<{ tagName: string; count: number }>> => {
-        let targetIds = [targetImageId];
-        if (selectionState.selectedIds.includes(targetImageId)) {
+        let targetIds = [targetAssetId];
+        if (selectionState.selectedIds.includes(targetAssetId)) {
             targetIds = [...selectionState.selectedIds];
         }
-        return libraryActions.applyTagToImages(targetIds, tagId);
+        return libraryActions.applyTagToAssets(targetIds, tagId);
     },
 
     removeTagFromSelection: async (tagId: number): Promise<ActionResult> => {
@@ -300,10 +300,10 @@ export const libraryActions = {
 
         try {
             const { metadataActions } = await import('../metadata');
-            await Promise.all(selectedIds.map(id => tagService.removeTagFromImage(id, tagId)));
+            await Promise.all(selectedIds.map(id => tagService.removeTagFromAsset(id, tagId)));
             await metadataActions.loadStats();
             if (filterState.selectedTags.length > 0) {
-                await libraryActions.refreshImages(false);
+                await libraryActions.refreshAssets(false);
             }
             return { success: true, data: undefined };
         } catch (error) {

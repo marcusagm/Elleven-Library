@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE assets SET thumbnail_path = NULL, thumbnail_attempts = 0, thumbnail_last_error = NULL WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "3d08f99163adabf69861dcdeaf664b8ff4edfc0294b77117291b9b338e702347"
+}

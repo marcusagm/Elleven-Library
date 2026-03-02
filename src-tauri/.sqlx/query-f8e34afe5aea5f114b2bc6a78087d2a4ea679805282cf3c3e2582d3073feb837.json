@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT COUNT(*) FROM images WHERE id NOT IN (SELECT DISTINCT image_id FROM image_tags)",
+  "query": "SELECT COUNT(*) FROM assets WHERE id NOT IN (SELECT DISTINCT asset_id FROM asset_tags)",
   "describe": {
     "columns": [
       {
@@ -16,5 +16,5 @@
       false
     ]
   },
-  "hash": "3bf966308be9a1e82910af8a594301bba0b9c1ea371c94a323335cfe28e5629e"
+  "hash": "f8e34afe5aea5f114b2bc6a78087d2a4ea679805282cf3c3e2582d3073feb837"
 }

@@ -8,7 +8,7 @@ export const itemActions = {
     updateItemRating: async (id: number, rating: number) => {
         try {
             setLibraryState('items', i => i.id === id, 'rating', rating);
-            await tagService.updateImageRating(id, rating);
+            await tagService.updateAssetRating(id, rating);
         } catch (err) {
             console.error(`Failed to update rating for ${id}:`, err);
         }
@@ -17,7 +17,7 @@ export const itemActions = {
     updateItemNotes: async (id: number, notes: string) => {
         try {
             setLibraryState('items', i => i.id === id, 'notes', notes);
-            await tagService.updateImageNotes(id, notes);
+            await tagService.updateAssetNotes(id, notes);
         } catch (err) {
             console.error(`Failed to update notes for ${id}:`, err);
         }

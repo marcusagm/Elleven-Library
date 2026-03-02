@@ -79,28 +79,28 @@ impl ThumbnailWorker {
                     .cloned()
                     .collect::<Vec<i64>>();
 
-                let mut images = Vec::new();
+                let mut assets = Vec::new();
                 let mut is_priority_batch = false;
 
                 if !priority_ids.is_empty() {
                     if let Ok(priority_imgs) =
-                        db.get_images_needing_thumbnails_by_ids(&priority_ids).await
+                        db.get_assets_needing_thumbnails_by_ids(&priority_ids).await
                     {
                         if !priority_imgs.is_empty() {
-                            images = priority_imgs;
+                            assets = priority_imgs;
                             is_priority_batch = true;
                         }
                     }
                 }
 
                 // 2. If no priority work, check regular queue
-                if images.is_empty() {
+                if assets.is_empty() {
                     match db
-                        .get_images_needing_thumbnails(config.indexer_batch_size)
+                        .get_assets_needing_thumbnails(config.indexer_batch_size)
                         .await
                     {
                         Ok(imgs) => {
-                            images = imgs;
+                            assets = imgs;
                         }
                         Err(database_error) => {
                             eprintln!("Thumbnail worker DB error: {}", database_error);
@@ -116,7 +116,7 @@ impl ThumbnailWorker {
                     }
                 }
 
-                if images.is_empty() {
+                if assets.is_empty() {
                     // No work — wait briefly, but respect cancellation
                     tokio::select! {
                         _ = token.cancelled() => {
@@ -129,16 +129,16 @@ impl ThumbnailWorker {
 
                 if !is_priority_batch {
                     println!(
-                        "DEBUG: Found {} images needing thumbnails. Starting batch...",
-                        images.len()
+                        "DEBUG: Found {} assets needing thumbnails. Starting batch...",
+                        assets.len()
                     );
                 }
 
-                // Pre-increment attempts for all images in the batch to prevent poison pills
+                // Pre-increment attempts for all assets in the batch to prevent poison pills
                 // from catching the worker in an infinite crash loop spanning restarts.
-                let image_ids: Vec<i64> = images.iter().map(|(id, _)| *id).collect();
+                let asset_ids: Vec<i64> = assets.iter().map(|(id, _)| *id).collect();
                 if let Err(increment_error) =
-                    db.increment_thumbnail_attempts_batch(&image_ids).await
+                    db.increment_thumbnail_attempts_batch(&asset_ids).await
                 {
                     eprintln!(
                         "Failed to pre-increment thumbnail attempts: {}",
@@ -166,7 +166,7 @@ impl ThumbnailWorker {
                     };
 
                     pool.install(|| {
-                        images
+                        assets
                             .par_iter()
                             .map(|(id, img_path)| {
                                 let input_path = Path::new(&img_path);

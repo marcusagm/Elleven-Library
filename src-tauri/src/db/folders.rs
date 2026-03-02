@@ -137,7 +137,7 @@ impl Db {
         }
     }
 
-    /// Retrieves all thumbnail paths for images within a folder and all its descendants.
+    /// Retrieves all thumbnail paths for assets within a folder and all its descendants.
     pub async fn get_location_thumbnails(
         &self,
         location_id: i64,
@@ -148,7 +148,7 @@ impl Db {
                 UNION ALL
                 SELECT f.id FROM folders f JOIN family ON f.parent_id = family.id
              )
-             SELECT thumbnail_path FROM images WHERE folder_id IN family AND thumbnail_path IS NOT NULL"
+             SELECT thumbnail_path FROM assets WHERE folder_id IN family AND thumbnail_path IS NOT NULL"
         )
         .bind(location_id)
         .fetch_all(&self.pool)
@@ -157,7 +157,7 @@ impl Db {
         Ok(rows.into_iter().map(|(path,)| path).collect())
     }
 
-    /// Deletes a folder record. Images and child folders are handled by CASCADE.
+    /// Deletes a folder record. Assets and child folders are handled by CASCADE.
     pub async fn delete_folder(&self, folder_id: i64) -> Result<(), sqlx::Error> {
         sqlx::query!("DELETE FROM folders WHERE id = ?", folder_id)
             .execute(&self.pool)
@@ -200,7 +200,7 @@ impl Db {
         Ok(rows)
     }
 
-    /// Gets image counts for all folders, including files in subfolders.
+    /// Gets asset counts for all folders, including files in subfolders.
     pub async fn get_folder_counts_recursive(&self) -> Result<Vec<(i64, i64)>, sqlx::Error> {
         let rows = sqlx::query!(
             "WITH RECURSIVE folder_tree AS (
@@ -213,7 +213,7 @@ impl Db {
             )
             SELECT ft.root_id as \"folder_id!\", COUNT(i.id) as \"count!\"
             FROM folder_tree ft
-            LEFT JOIN images i ON i.folder_id = ft.child_id
+            LEFT JOIN assets i ON i.folder_id = ft.child_id
             GROUP BY ft.root_id"
         )
         .fetch_all(&self.pool)
@@ -222,10 +222,10 @@ impl Db {
         Ok(rows.into_iter().map(|r| (r.folder_id, r.count)).collect())
     }
 
-    /// Gets image counts for folders (direct children only).
+    /// Gets asset counts for folders (direct children only).
     pub async fn get_folder_counts_direct(&self) -> Result<Vec<(i64, i64)>, sqlx::Error> {
         let rows = sqlx::query!(
-            "SELECT folder_id as \"folder_id!\", COUNT(*) as \"count!\" FROM images GROUP BY folder_id"
+            "SELECT folder_id as \"folder_id!\", COUNT(*) as \"count!\" FROM assets GROUP BY folder_id"
         )
         .fetch_all(&self.pool)
         .await?;
@@ -286,7 +286,7 @@ impl Db {
         last_id.ok_or(sqlx::Error::RowNotFound)
     }
 
-    /// Renames a folder and recursively updates all paths for subfolders and images.
+    /// Renames a folder and recursively updates all paths for subfolders and assets.
     pub async fn rename_folder(
         &self,
         old_path: &str,
@@ -322,7 +322,7 @@ impl Db {
                             if let Some(target_id) = self.get_folder_by_path(new_path).await? {
                                 // Merge logic: Move children to target
                                 sqlx::query!(
-                                    "UPDATE images SET folder_id = ? WHERE folder_id = ?",
+                                    "UPDATE assets SET folder_id = ? WHERE folder_id = ?",
                                     target_id,
                                     id
                                 )
@@ -365,7 +365,7 @@ impl Db {
             .await?;
 
             sqlx::query(
-                "UPDATE images SET path = ? || SUBSTR(path, ? + 1) WHERE SUBSTR(path, 1, ? + 1) = ?"
+                "UPDATE assets SET path = ? || SUBSTR(path, ? + 1) WHERE SUBSTR(path, 1, ? + 1) = ?"
             )
             .bind(new_path)
             .bind(old_len)

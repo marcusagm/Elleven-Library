@@ -1,8 +1,8 @@
 import { createStore } from 'solid-js/store';
-import { type ImageItem } from '../../../types';
+import { type AssetItem } from '../../../types';
 
 interface LibraryState {
-    items: ImageItem[];
+    items: AssetItem[];
     isFetching: boolean;
     isRefreshing: boolean;
     totalItems: number; // useful for knowing if we reached end

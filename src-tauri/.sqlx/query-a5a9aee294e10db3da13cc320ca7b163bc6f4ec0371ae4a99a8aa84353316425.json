@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "DELETE FROM images WHERE id = ?",
+  "query": "DELETE FROM assets WHERE id = ?",
   "describe": {
     "columns": [],
     "parameters": {
@@ -8,5 +8,5 @@
     },
     "nullable": []
   },
-  "hash": "16399da14221d1e6650365a952a7e0efc64b9c80f0da8645d9b681870d1d0428"
+  "hash": "a5a9aee294e10db3da13cc320ca7b163bc6f4ec0371ae4a99a8aa84353316425"
 }

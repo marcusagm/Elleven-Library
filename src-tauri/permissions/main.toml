@@ -24,39 +24,39 @@ description = "Enables get_all_tags"
 commands.allow = ["get_all_tags"]
 
 [[permission]]
-identifier = "allow-add-tag-to-image"
-description = "Enables add_tag_to_image"
-commands.allow = ["add_tag_to_image"]
+identifier = "allow-add-tag-to-asset"
+description = "Enables add_tag_to_asset"
+commands.allow = ["add_tag_to_asset"]
 
 [[permission]]
-identifier = "allow-remove-tag-from-image"
-description = "Enables remove_tag_from_image"
-commands.allow = ["remove_tag_from_image"]
+identifier = "allow-remove-tag-from-asset"
+description = "Enables remove_tag_from_asset"
+commands.allow = ["remove_tag_from_asset"]
 
 [[permission]]
-identifier = "allow-get-tags-for-image"
-description = "Enables get_tags_for_image"
-commands.allow = ["get_tags_for_image"]
+identifier = "allow-get-tags-for-asset"
+description = "Enables get_tags_for_asset"
+commands.allow = ["get_tags_for_asset"]
 
 [[permission]]
-identifier = "allow-add-tags-to-images-batch"
-description = "Enables add_tags_to_images_batch"
-commands.allow = ["add_tags_to_images_batch"]
+identifier = "allow-add-tags-to-assets-batch"
+description = "Enables add_tags_to_assets_batch"
+commands.allow = ["add_tags_to_assets_batch"]
 
 [[permission]]
-identifier = "allow-remove-tags-from-images-batch"
-description = "Enables remove_tags_from_images_batch"
-commands.allow = ["remove_tags_from_images_batch"]
+identifier = "allow-remove-tags-from-assets-batch"
+description = "Enables remove_tags_from_assets_batch"
+commands.allow = ["remove_tags_from_assets_batch"]
 
 [[permission]]
-identifier = "allow-replace-tags-for-images-batch"
-description = "Enables replace_tags_for_images_batch"
-commands.allow = ["replace_tags_for_images_batch"]
+identifier = "allow-replace-tags-for-assets-batch"
+description = "Enables replace_tags_for_assets_batch"
+commands.allow = ["replace_tags_for_assets_batch"]
 
 [[permission]]
-identifier = "allow-get-images-filtered"
-description = "Enables get_images_filtered"
-commands.allow = ["get_images_filtered"]
+identifier = "allow-get-assets-filtered"
+description = "Enables get_assets_filtered"
+commands.allow = ["get_assets_filtered"]
 
 [[permission]]
 identifier = "allow-get-library-stats"
@@ -64,19 +64,19 @@ description = "Enables get_library_stats"
 commands.allow = ["get_library_stats"]
 
 [[permission]]
-identifier = "allow-update-image-rating"
-description = "Enables update_image_rating"
-commands.allow = ["update_image_rating"]
+identifier = "allow-update-asset-rating"
+description = "Enables update_asset_rating"
+commands.allow = ["update_asset_rating"]
 
 [[permission]]
-identifier = "allow-update-image-notes"
-description = "Enables update_image_notes"
-commands.allow = ["update_image_notes"]
+identifier = "allow-update-asset-notes"
+description = "Enables update_asset_notes"
+commands.allow = ["update_asset_notes"]
 
 [[permission]]
-identifier = "allow-get-image-exif"
-description = "Enables get_image_exif"
-commands.allow = ["get_image_exif"]
+identifier = "allow-get-asset-exif"
+description = "Enables get_asset_exif"
+commands.allow = ["get_asset_exif"]
 
 [[permission]]
 identifier = "allow-request-thumbnail-regenerate"
@@ -158,9 +158,9 @@ description = "Enables get_audio_waveform_data"
 commands.allow = ["get_audio_waveform_data"]
 
 [[permission]]
-identifier = "allow-get-image-count-filtered"
-description = "Enables get_image_count_filtered"
-commands.allow = ["get_image_count_filtered"]
+identifier = "allow-get-asset-count-filtered"
+description = "Enables get_asset_count_filtered"
+commands.allow = ["get_asset_count_filtered"]
 
 # Transcoding Commands
 [[permission]]

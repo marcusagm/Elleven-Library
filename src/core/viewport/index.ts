@@ -2,7 +2,7 @@
  * Viewport System Public API
  *
  * This module provides a high-performance virtualization system for
- * rendering large lists of items (images) in both masonry and grid layouts.
+ * rendering large lists of items (assets) in both masonry and grid layouts.
  *
  * Architecture:
  * - Web Worker handles all layout calculations off the main thread

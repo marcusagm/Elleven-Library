@@ -1,7 +1,7 @@
 use super::types::{AddedItemContext, BatchChangePayload, RemovedItemContext, WatcherRegistry};
-use crate::db::models::ImageMetadata;
+use crate::db::models::AssetMetadata;
 use crate::db::Db;
-use crate::indexer::metadata::get_image_metadata;
+use crate::indexer::metadata::get_asset_metadata;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -74,7 +74,7 @@ pub fn start_watcher(
         }
         let _watcher_ref = watcher; // Keep alive
 
-        let mut buffer_added: HashMap<String, ImageMetadata> = HashMap::new();
+        let mut buffer_added: HashMap<String, AssetMetadata> = HashMap::new();
         let mut buffer_added_folders: std::collections::HashSet<String> =
             std::collections::HashSet::new();
         let mut buffer_removed: std::collections::HashSet<String> =
@@ -141,8 +141,8 @@ pub fn start_watcher(
                                     let path = &event.paths[0];
                                     if path.is_dir() {
                                         buffer_added_folders.insert(path_str);
-                                    } else if is_image_file(path) {
-                                        if let Some(meta) = get_image_metadata(path) {
+                                    } else if is_asset_file(path) {
+                                        if let Some(meta) = get_asset_metadata(path) {
                                             buffer_added.insert(path_str, meta);
                                         }
                                     }
@@ -157,9 +157,9 @@ pub fn start_watcher(
                                         if path.is_dir() {
                                             buffer_removed.remove(&path_str);
                                             buffer_added_folders.insert(path_str);
-                                        } else if is_image_file(&path) {
+                                        } else if is_asset_file(&path) {
                                             buffer_removed.remove(&path_str);
-                                            if let Some(meta) = get_image_metadata(&path) {
+                                            if let Some(meta) = get_asset_metadata(&path) {
                                                 buffer_added.insert(path_str, meta);
                                             }
                                         }
@@ -197,15 +197,15 @@ pub fn start_watcher(
                             continue;
                         }
 
-                        // Image Heuristic: Metadata match
-                        if is_image_file(from_buf) {
+                        // Asset Heuristic: Metadata match
+                        if is_asset_file(from_buf) {
                             if let Ok(Some((size, created))) = db.get_file_comparison_data(&from_path).await {
-                                let image_match = buffer_added.iter().find(|(_, m)| {
+                                let asset_match = buffer_added.iter().find(|(_, m)| {
                                     m.size == size && m.created_at == created
                                 }).map(|(t, _)| t.clone());
 
-                                if let Some(to_path) = image_match {
-                                    println!("DEBUG: Watcher - Pairing split IMAGE RENAME: {} -> {}", from_path, to_path);
+                                if let Some(to_path) = asset_match {
+                                    println!("DEBUG: Watcher - Pairing split ASSET RENAME: {} -> {}", from_path, to_path);
                                     buffer_renamed.insert(from_path.clone(), to_path.clone());
                                     buffer_removed.remove(&from_path);
                                     buffer_added.remove(&to_path);
@@ -247,7 +247,7 @@ pub fn start_watcher(
                             };
 
                             if folder_id > 0 {
-                                match db.rename_image(&from, &to, &new_name, folder_id).await {
+                                match db.rename_asset(&from, &to, &new_name, folder_id).await {
                                     Ok(Some((meta, old_fid))) => {
                                         res_updated.push(AddedItemContext {
                                             metadata: meta,
@@ -256,7 +256,7 @@ pub fn start_watcher(
                                         });
                                     },
                                     _ => {
-                                        if let Some(meta) = get_image_metadata(&to_path) {
+                                        if let Some(meta) = get_asset_metadata(&to_path) {
                                             buffer_added.insert(to, meta);
                                         }
                                     }
@@ -272,19 +272,19 @@ pub fn start_watcher(
                         let path_clone = path.clone();
                         let app_data_dir = app_data_dir.clone();
 
-                        // Immediate UI feedback for images
-                        if let Ok(Some((img_id, fid, tags))) = db.get_image_context(&path_clone).await {
+                        // Immediate UI feedback for assets
+                        if let Ok(Some((img_id, fid, tags))) = db.get_asset_context(&path_clone).await {
                             res_removed.push(RemovedItemContext { id: img_id, folder_id: fid, tag_ids: tags });
                         }
 
                         tokio::spawn(async move {
                             tokio::time::sleep(Duration::from_secs(2)).await;
 
-                            // Before deleting, check if it's a folder or an image
-                            match db.get_image_context(&path_clone).await {
+                            // Before deleting, check if it's a folder or an asset
+                            match db.get_asset_context(&path_clone).await {
                                 Ok(Some((_img_id, _fid, _tags))) => {
                                     // Still in DB at this path? If so, it wasn't adopted.
-                                    if let Ok(Some((deleted_id, _, _))) = db.delete_image_by_path_returning_context(&path_clone).await {
+                                    if let Ok(Some((deleted_id, _, _))) = db.delete_asset_by_path_returning_context(&path_clone).await {
                                         println!("DEBUG: Watcher - Finalized removal for: {}", path_clone);
                                         let thumb = app_data_dir.join("thumbnails").join(format!("{}.webp", deleted_id));
                                         let _ = std::fs::remove_file(thumb);
@@ -315,11 +315,11 @@ pub fn start_watcher(
                         }
                     }
 
-                    // D. Process Added Images
+                    // D. Process Added Assets
                     for (path, meta) in buffer_added.drain() {
                         let parent = normalize_path(&Path::new(&path).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default());
                         if let Ok(fid) = db.ensure_folder_hierarchy(&parent).await {
-                            match db.save_image(fid, &meta).await {
+                            match db.save_asset(fid, &meta).await {
                                 Ok((id, old_fid, is_new)) => {
                                     let mut meta_with_id = meta.clone();
                                     meta_with_id.id = id;
@@ -364,6 +364,6 @@ fn normalize_path(path: &str) -> String {
     p.to_string()
 }
 
-fn is_image_file(path: &std::path::Path) -> bool {
+fn is_asset_file(path: &std::path::Path) -> bool {
     crate::formats::FileFormat::is_supported_extension(path)
 }

@@ -146,7 +146,7 @@ pub fn generate_with_ffmpeg(
 
     if !is_video {
         if let Err(e) = run_ffmpeg(None) {
-            eprintln!("FFmpeg image conversion failed for {}: {}", input_str, e);
+            eprintln!("FFmpeg asset conversion failed for {}: {}", input_str, e);
             return Err(AppError::Transcoding(format!("FFmpeg failed: {}", e)));
         }
         if !output_path.exists() {

@@ -1,7 +1,7 @@
 # Plano de Implementação: Padronização de Actions e Desacoplamento UI/Store
 
 **Data:** 2026-02-26  
-**Status:** Em Execução (Sprints 0-4 Concluídas, Sprint 5 Parcial)  
+**Status:** Concluído (Sprints 0-8 Executadas com Sucesso)  
 **Objetivo:** Isolar a lógica de negócio da camada de visão (Solid.js), garantindo que os componentes sejam puramente UI (Presentational) e que as mutações de estado ocorram exclusivamente através de `actions` tipadas e validadas por schemas.
 
 ---
@@ -122,7 +122,7 @@ O ambiente de visualização imersiva para diferentes formatos de ativos.
 - [x] Padronizar o `ItemViewContext` para aceitar apenas **Actions** e não setters diretos, validando mudanças de zoom/rotação via schemas.
 - [x] Substituir eventos `window` por sinais ou métodos expostos pelo Context/Store.
 - [x] Mover a lógica de temporização do Slideshow para uma Store (ex: `systemStore` ou `viewportStore`) para garantir consistência.
-- [/] Garantir que renderers de mídia (Font, Model3D) utilizem payloads tipados para suas configurações específicas. (Parcial)
+- [x] Garantir que renderers de mídia (Font, Model3D) utilizem payloads tipados para suas configurações específicas.
 
 ### Interação 6: Configurações e Preferências
 O painel de controle e customização do aplicativo.
@@ -200,7 +200,7 @@ O motor de alta performance para virtualização e renderização.
 - [x] Criar `src/core/viewport/schemas.ts` para validar o fluxo de dados entre o Worker e a Main Thread (especialmente `ItemPosition` e `LAYOUT_COMPLETE`).
 - [x] Refatorar o `ViewportController` para ser um **Domain Service** puro, retornando dados que a Store então utiliza para atualizar sinais reativos oficiais.
 - [x] Centralizar as instâncias de Workers em uma `serviceRegistry` para evitar vazamentos de memória ou múltiplas threads desnecessárias.
-- [/] Padronizar os mecanismos de `RAF` e `Debounce` utilizando um padrão de "System Scheduler" (`scheduler.ts`) para garantir que a performance do viewport não compita com outras animações do sistema. (Parcial - Sprint 6)
+- [x] Padronizar os mecanismos de `RAF` e `Debounce` utilizando um padrão de "System Scheduler" (`scheduler.ts`) para garantir que a performance do viewport não compita com outras animações do sistema.
 
 ### Interação 10: Arquitetura de Drag and Drop (DnD)
 O sistema de interação física entre diferentes domínios (Ativos ↔ Tags ↔ Pastas).
@@ -227,35 +227,35 @@ O sistema de interação física entre diferentes domínios (Ativos ↔ Tags ↔
 ## 3. Fases de Implementação
 
 ### Fase 1: Infraestrutura e Contratos (Base)
-*   [ ] **Definição de Tipos Globais:** Criar `src/core/types/actions.ts` para definir interfaces padrão de resposta e erro.
-*   [ ] **Padrão de Payload:** Estabelecer que todo payload complexo deve ser um objeto nomeado (ex: `DeleteAssetPayload`).
-*   [ ] **Integração Zod:** Adicionar `zod` e `zod-validation-error` ao projeto para validações de tempo de execução nos Payloads.
-*   [ ] **Factory de Actions:** (Opcional) Criar um utilitário `createSecureAction` para automatizar log de erros e validação de schema.
+*   [x] **Definição de Tipos Globais:** Criar `src/core/types/actions.ts` para definir interfaces padrão de resposta e erro.
+*   [x] **Padrão de Payload:** Estabelecer que todo payload complexo deve ser um objeto nomeado (ex: `DeleteAssetPayload`).
+*   [x] **Integração Zod:** Adicionar `zod` e `zod-validation-error` ao projeto para validações de tempo de execução nos Payloads.
+*   [x] **Factory de Actions:** (Opcional) Criar um utilitário `createSecureAction` para automatizar log de erros e validação de schema.
 
 ### Fase 2: Refatoração do "Core" (Stores Críticas)
 Refatorar as stores que possuem maior interdependência e complexidade:
-*   [ ] **`systemStore.ts`**: Remover lógicas de inicialização complexas de dentro dos componentes e centralizar em `systemActions.initialize`.
-*   [ ] **`libraryStore.ts`**: Padronizar as ações de gestão de arquivos e cache. Implementar Schemas para o `BatchChangePayload`.
-*   [ ] **`metadataStore.ts`**: Desacoplar a lógica de busca e filtros do componente `AdvancedSearchModal`.
+*   [x] **`systemStore.ts`**: Remover lógicas de inicialização complexas de dentro dos componentes e centralizar em `systemActions.initialize`.
+*   [x] **`libraryStore.ts`**: Padronizar as ações de gestão de arquivos e cache. Implementar Schemas para o `BatchChangePayload`.
+*   [x] **`metadataStore.ts`**: Desacoplar a lógica de busca e filtros do componente `AdvancedSearchModal`.
 
 ### Fase 3: Refatoração de Domínios Periféricos
 Aplicar o mesmo padrão nas stores de suporte:
-*   [ ] **`selectionStore.ts`**: Garantir tipagem estrita nos IDs e remover qualquer lógica de UI de dentro da store.
-*   [ ] **`appearanceStore.ts`**: Centralizar troca de temas e persistência.
-*   [ ] **`audioStore.ts` / `videoStore.ts`**: Isolar controle de playback dos elementos de mídia da UI.
+*   [x] **`selectionStore.ts`**: Garantir tipagem estrita nos IDs e remover qualquer lógica de UI de dentro da store.
+*   [x] **`appearanceStore.ts`**: Centralizar troca de temas e persistência.
+*   [x] **`audioStore.ts` / `videoStore.ts`**: Isolar controle de playback dos elementos de mídia da UI.
 
 ### Fase 4: Desacoplamento Total da UI (Pure Components)
 Revisar e limpar componentes que ainda realizam lógica de negócio:
-*   [ ] **Componentes de Lista (`Table`, `TreeView`):** Garantir que eles apenas recebam dados e emitam eventos.
-*   [ ] **Sidebar Panels:** Transformar painéis em consumidores passivos de estado.
-*   [ ] **Modais de Ação:** Remover chamadas diretas a APIs Tauri dos componentes, movendo-as para as stores.
+*   [x] **Componentes de Lista (`Table`, `TreeView`):** Garantir que eles apenas recebam dados e emitam eventos.
+*   [x] **Sidebar Panels:** Transformar painéis em consumidores passivos de estado.
+*   [x] **Modais de Ação:** Remover chamadas diretas a APIs Tauri dos componentes, movendo-as para as stores.
 
 ### Fase 5: Verificação, Segurança de Tipos e Limpeza Final (Sprints 6-8)
-*   [ ] **Eliminação total de `any` (Sprint 6):** Substituir todos os `any` remanescentes (atualmente 13) no diretório `src/core` por tipos derivados de Schemas Zod ou uniões discriminadas.
-*   [ ] **Refatoração de Complexidade (Sprint 6):** Reduzir a complexidade de `dispatcher.ts` e `normalizer.ts` para < 10.
-*   [ ] **Divisão de Arquivos God-Files (Sprint 7):** Decompor `libraryStore.ts`, `metadataStore.ts` e `filter/index.ts` em módulos de ações e estado < 300 linhas.
-*   [ ] **Remoção de `eslint-disable` (Sprint 7):** Corrigir as causas raízes de todos os linters ignorados.
-*   [ ] **Audit de Dependências Cíclicas (Sprint 8):** Utilizar ferramentas de análise estática para garantir que stores não importem umas às outras de forma circular.
+*   [x] **Eliminação total de `any` (Sprint 6):** Substituir todos os `any` remanescentes (atualmente 13) no diretório `src/core` por tipos derivados de Schemas Zod ou uniões discriminadas.
+*   [x] **Refatoração de Complexidade (Sprint 6):** Reduzir a complexidade de `dispatcher.ts` e `normalizer.ts` para < 10.
+*   [x] **Divisão de Arquivos God-Files (Sprint 7):** Decompor `libraryStore.ts`, `metadataStore.ts` e `filter/index.ts` em módulos de ações e estado < 300 linhas.
+*   [x] **Remoção de `eslint-disable` (Sprint 7):** Corrigir as causas raízes de todos os linters ignorados.
+*   [x] **Audit de Dependências Cíclicas (Sprint 8):** Utilizar ferramentas de análise estática para garantir que stores não importem umas às outras de forma circular.
 
 ---
 
@@ -272,8 +272,8 @@ Revisar e limpar componentes que ainda realizam lógica de negócio:
 
 ## 5. Critérios de Aceitação (Definition of Done)
 
-1.  [ ] Nenhuma store realiza mutação de estado fora de uma função exportada em `actions`.
-2.  [ ] Nenhum componente UI importa `setStore` ou sinais de escrita (setters) diretamente.
-3.  [ ] Todos os payloads de actions possuem uma interface TypeScript e um Schema de validação associado.
-4.  [ ] O número de ocorrências de `any` no diretório `src/core` é ZERO.
-5.  [ ] O build e o lint passam sem avisos de complexidade ou imports circulares.
+1.  [x] Nenhuma store realiza mutação de estado fora de uma função exportada em `actions`.
+2.  [x] Nenhum componente UI importa `setStore` ou sinais de escrita (setters) diretamente.
+3.  [x] Todos os payloads de actions possuem uma interface TypeScript e um Schema de validação associado.
+4.  [x] O número de ocorrências de `any` no diretório `src/core` é ZERO.
+5.  [x] O build e o lint passam sem avisos de complexidade ou imports circulares.

@@ -11,7 +11,7 @@ export const useFilters = () => {
         <Args extends unknown[], R>(action: (...args: Args) => R) =>
         (...args: Args) => {
             const result = action(...args);
-            libraryActions.refreshImages(true);
+            libraryActions.refreshAssets(true);
             return result;
         };
 

@@ -23,21 +23,21 @@ export const useMetadataNotifications = () => {
             if (addedCount > 0) {
                 notification.success(
                     'Library Sync',
-                    addedCount === 1 ? '1 image added' : `${addedCount} images added`
+                    addedCount === 1 ? '1 asset added' : `${addedCount} assets added`
                 );
             }
 
             if (removedCount > 0) {
                 notification.info(
                     'Library Sync',
-                    removedCount === 1 ? '1 image removed' : `${removedCount} images removed`
+                    removedCount === 1 ? '1 asset removed' : `${removedCount} assets removed`
                 );
             }
 
             if (updatedCount > 0) {
                 notification.info(
                     'Library Sync',
-                    updatedCount === 1 ? '1 image updated' : `${updatedCount} images updated`
+                    updatedCount === 1 ? '1 asset updated' : `${updatedCount} assets updated`
                 );
             }
         }).then(unlisten => {

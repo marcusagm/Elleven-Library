@@ -131,15 +131,15 @@ export const VirtualGridView: Component = () => {
             ref={setScrollContainer}
             class="grid-view-container"
             role="grid"
-            aria-label="Image gallery - grid layout"
+            aria-label="Assets gallery - grid layout"
             tabIndex={0}
         >
             <Show
                 when={library.items.length > 0}
                 fallback={
                     <EmptyState
-                        title="No images found"
-                        description="Try adjusting your filters or add images to your library."
+                        title="No assets found"
+                        description="Try adjusting your filters or add assets to your library."
                     />
                 }
             >

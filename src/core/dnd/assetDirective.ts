@@ -1,5 +1,5 @@
 import { onCleanup, createEffect, on } from 'solid-js';
-import { ImageItem } from '../../types';
+import { AssetItem } from '../../types';
 import {
     dndRegistry,
     setDragItem,
@@ -11,16 +11,16 @@ import {
 import { createDragGhost } from './ghost';
 
 export interface AssetDnDParams {
-    item: ImageItem;
+    item: AssetItem;
     selected: boolean;
     selectedIds: (number | string)[];
-    allItems: ImageItem[];
+    allItems: AssetItem[];
 }
 
 /**
  * SolidJS Directive for Asset Drag and Drop.
  * Encapsulates complex drag ghost creation, selection-aware dragging,
- * and drop target logic for tags and images.
+ * and drop target logic for tags and assets.
  */
 export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
     // Local reactive state for this specific element
@@ -71,7 +71,7 @@ export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
         }
 
         const data: DragItem = {
-            type: 'IMAGE',
+            type: 'ASSET',
             payload: {
                 id: item.id,
                 ids,
@@ -85,7 +85,7 @@ export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
         e.dataTransfer.effectAllowed = 'copyMove';
         e.dataTransfer.setData('application/json', JSON.stringify(data));
 
-        const draggedItems: ImageItem[] = [];
+        const draggedItems: AssetItem[] = [];
         const validPaths: string[] = [];
         const cleanPaths: string[] = [];
 
@@ -126,7 +126,7 @@ export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
         dragCounter++;
 
         if (dragCounter === 1) {
-            const strategy = dndRegistry.get('IMAGE');
+            const strategy = dndRegistry.get('ASSET');
             const dragging = currentDragItem();
             if (strategy && strategy.onDragOver && dragging && strategy.onDragOver(dragging)) {
                 setDropTargetId(accessor().item.id);
@@ -139,7 +139,7 @@ export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
         const dragging = currentDragItem();
         if (!dragging) return;
 
-        const strategy = dndRegistry.get('IMAGE');
+        const strategy = dndRegistry.get('ASSET');
         if (strategy && strategy.onDragOver && strategy.onDragOver(dragging)) {
             e.dataTransfer!.dropEffect = 'copy';
             // Ensure target is set if enter was missed or ID changed due to virtualization
@@ -169,7 +169,7 @@ export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
             const json = e.dataTransfer?.getData('application/json');
             if (json) {
                 const data = JSON.parse(json);
-                const strategy = dndRegistry.get('IMAGE');
+                const strategy = dndRegistry.get('ASSET');
                 if (strategy && strategy.accepts(data)) {
                     const { item } = accessor();
                     await strategy.onDrop(data, item.id);

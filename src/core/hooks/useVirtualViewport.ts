@@ -140,7 +140,7 @@ export function useVirtualViewport(
 }
 
 /**
- * Helper to convert ImageItem to LayoutItemInput for the Worker.
+ * Helper to convert AssetItem to LayoutItemInput for the Worker.
  * Only sends minimal data needed for layout calculation.
  */
 export function toLayoutItems<

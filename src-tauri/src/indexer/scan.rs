@@ -1,8 +1,8 @@
-use super::types::{IndexedImage, ProgressPayload, WatcherRegistry};
+use super::types::{IndexedAsset, ProgressPayload, WatcherRegistry};
 use super::watcher::start_watcher;
-use crate::db::models::ImageMetadata;
+use crate::db::models::AssetMetadata;
 use crate::db::Db;
-use crate::indexer::metadata::get_image_metadata;
+use crate::indexer::metadata::get_asset_metadata;
 use crate::lifecycle::LifecycleRegistry;
 use chrono::{DateTime, Utc};
 use std::collections::{HashMap, HashSet};
@@ -43,7 +43,7 @@ pub async fn run_scan(
 
         if entry.file_type().is_dir() {
             unique_dirs.insert(path_str);
-        } else if entry.file_type().is_file() && is_image_file(path) {
+        } else if entry.file_type().is_file() && is_asset_file(path) {
             let parent = path
                 .parent()
                 .map(|p| normalize_path(&p.to_string_lossy()))
@@ -74,7 +74,7 @@ pub async fn run_scan(
 
     let total_files = files_to_process.len() + clean_count;
     println!(
-        "DEBUG: Indexer found {} images ({} changed, {} unchanged) and {} folders",
+        "DEBUG: Indexer found {} assets ({} changed, {} unchanged) and {} folders",
         total_files,
         files_to_process.len(),
         clean_count,
@@ -120,16 +120,16 @@ pub async fn run_scan(
 
     if total_files > 0 {
         let chunk_size = (total_files / 100).clamp(1, 200);
-        let (tx, mut rx) = mpsc::channel::<IndexedImage>(100);
+        let (tx, mut rx) = mpsc::channel::<IndexedAsset>(100);
 
-        // 4. Spawn Worker to save images
+        // 4. Spawn Worker to save assets
         let app_worker = app.clone();
         let db_worker = db.clone();
         let folder_map_worker = folder_map.clone();
 
         tokio::spawn(async move {
             let mut processed: usize = clean_count;
-            let mut batch: Vec<(i64, ImageMetadata)> = Vec::new();
+            let mut batch: Vec<(i64, AssetMetadata)> = Vec::new();
 
             // Initial progress for clean files
             if clean_count > 0 {
@@ -161,18 +161,18 @@ pub async fn run_scan(
                     );
 
                     if let Err(e) = db_worker
-                        .save_images_batch(std::mem::take(&mut batch))
+                        .save_assets_batch(std::mem::take(&mut batch))
                         .await
                     {
-                        eprintln!("Failed to save images batch: {}", e);
+                        eprintln!("Failed to save assets batch: {}", e);
                     }
                 }
             }
 
             // Final save for remaining items in batch if the loop finished but batch isn't empty
             if !batch.is_empty() {
-                if let Err(e) = db_worker.save_images_batch(batch).await {
-                    eprintln!("Failed to save final images batch: {}", e);
+                if let Err(e) = db_worker.save_assets_batch(batch).await {
+                    eprintln!("Failed to save final assets batch: {}", e);
                 }
             }
 
@@ -183,9 +183,9 @@ pub async fn run_scan(
         for (path, parent_dir) in files_to_process {
             let tx_clone = tx.clone();
             tokio::spawn(async move {
-                if let Some(meta) = get_image_metadata(&path) {
+                if let Some(meta) = get_asset_metadata(&path) {
                     let _ = tx_clone
-                        .send(IndexedImage {
+                        .send(IndexedAsset {
                             metadata: meta,
                             parent_dir,
                         })
@@ -253,6 +253,6 @@ fn normalize_path(path: &str) -> String {
     p.to_string()
 }
 
-fn is_image_file(path: &std::path::Path) -> bool {
+fn is_asset_file(path: &std::path::Path) -> bool {
     crate::formats::FileFormat::is_supported_extension(path)
 }

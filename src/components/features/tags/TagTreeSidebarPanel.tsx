@@ -269,7 +269,7 @@ export const TagTreeSidebarPanel: Component = () => {
                 onToggle={tree.toggle}
                 draggable={true}
                 dragType="TAG"
-                acceptedDragTypes={['TAG', 'IMAGE']}
+                acceptedDragTypes={['TAG', 'ASSET']}
                 isValidDrop={isValidTagDrop}
                 onDrop={(item, targetId, position) => handleDrop(item, targetId, 'TAG', position)}
             />

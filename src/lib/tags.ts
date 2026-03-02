@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { type ImageItem } from '../types';
+import { type AssetItem } from '../types';
 
 export interface Tag {
     id: number;
@@ -10,8 +10,8 @@ export interface Tag {
 }
 
 export interface LibraryStats {
-    total_images: number;
-    untagged_images: number;
+    total_assets: number;
+    untagged_assets: number;
     tag_counts: { tag_id: number; count: number }[];
     folder_counts: { folder_id: number; count: number }[];
     folder_counts_recursive: { folder_id: number; count: number }[];
@@ -54,19 +54,19 @@ export const tagService = {
         return await invoke('get_library_stats');
     },
 
-    addTagsToImagesBatch: async (imageIds: number[], tagIds: number[]): Promise<void> => {
-        return await invoke('add_tags_to_images_batch', { imageIds, tagIds });
+    addTagsToAssetsBatch: async (assetIds: number[], tagIds: number[]): Promise<void> => {
+        return await invoke('add_tags_to_assets_batch', { assetIds: assetIds, tagIds });
     },
 
-    getTagsForImage: async (imageId: number): Promise<Tag[]> => {
-        return await invoke('get_tags_for_image', { imageId });
+    getTagsForAsset: async (assetId: number): Promise<Tag[]> => {
+        return await invoke('get_tags_for_asset', { assetId: assetId });
     },
 
-    removeTagFromImage: async (imageId: number, tagId: number): Promise<void> => {
-        return await invoke('remove_tag_from_image', { imageId, tagId });
+    removeTagFromAsset: async (assetId: number, tagId: number): Promise<void> => {
+        return await invoke('remove_tag_from_asset', { assetId: assetId, tagId });
     },
 
-    getImagesFiltered: async (
+    getAssetsFiltered: async (
         limit: number,
         offset: number,
         tagIds: number[],
@@ -78,8 +78,8 @@ export const tagService = {
         sort_order?: string,
         advanced_query?: string,
         search_query?: string
-    ): Promise<ImageItem[]> => {
-        return await invoke('get_images_filtered', {
+    ): Promise<AssetItem[]> => {
+        return await invoke('get_assets_filtered', {
             limit,
             offset,
             tagIds,
@@ -94,7 +94,7 @@ export const tagService = {
         });
     },
 
-    getImagesFilteredCount: async (
+    getAssetsFilteredCount: async (
         tagIds: number[],
         matchAll: boolean = true,
         untagged?: boolean,
@@ -103,7 +103,7 @@ export const tagService = {
         advanced_query?: string,
         search_query?: string
     ): Promise<number> => {
-        return await invoke('get_image_count_filtered', {
+        return await invoke('get_asset_count_filtered', {
             tagIds,
             matchAll,
             untagged,
@@ -114,23 +114,23 @@ export const tagService = {
         });
     },
 
-    updateImageRating: async (id: number, rating: number): Promise<void> => {
-        return await invoke('update_image_rating', { id, rating });
+    updateAssetRating: async (id: number, rating: number): Promise<void> => {
+        return await invoke('update_asset_rating', { id, rating });
     },
 
-    updateImageNotes: async (id: number, notes: string): Promise<void> => {
-        return await invoke('update_image_notes', { id, notes });
+    updateAssetNotes: async (id: number, notes: string): Promise<void> => {
+        return await invoke('update_asset_notes', { id, notes });
     },
 
-    removeTagsFromImagesBatch: async (imageIds: number[], tagIds: number[]): Promise<void> => {
-        return await invoke('remove_tags_from_images_batch', { imageIds, tagIds });
+    removeTagsFromAssetsBatch: async (assetIds: number[], tagIds: number[]): Promise<void> => {
+        return await invoke('remove_tags_from_assets_batch', { assetIds: assetIds, tagIds });
     },
 
-    replaceTagsForImagesBatch: async (imageIds: number[], tagIds: number[]): Promise<void> => {
-        return await invoke('replace_tags_for_images_batch', { imageIds, tagIds });
+    replaceTagsForAssetsBatch: async (assetIds: number[], tagIds: number[]): Promise<void> => {
+        return await invoke('replace_tags_for_assets_batch', { assetIds: assetIds, tagIds });
     },
 
-    getImageExif: async (path: string): Promise<Record<string, string>> => {
-        return await invoke('get_image_exif', { path });
+    getAssetExif: async (path: string): Promise<Record<string, string>> => {
+        return await invoke('get_asset_exif', { path });
     }
 };

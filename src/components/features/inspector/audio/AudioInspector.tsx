@@ -1,5 +1,5 @@
 import { Component } from 'solid-js';
-import { type ImageItem } from '../../../../types';
+import { type AssetItem } from '../../../../types';
 import { Accordion, AudioPlayer } from '../../../ui';
 import { InspectorTags } from '../base/InspectorTags';
 import { CommonMetadata } from '../base/CommonMetadata';
@@ -7,7 +7,7 @@ import { useAudioSource } from '../../../../core/hooks/useAudioSource';
 import './AudioInspector.css';
 
 interface AudioInspectorProps {
-    item: ImageItem;
+    item: AssetItem;
 }
 
 export const AudioInspector: Component<AudioInspectorProps> = props => {

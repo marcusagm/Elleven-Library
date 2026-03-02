@@ -9,7 +9,7 @@
 import { useSelection } from './useSelection';
 import { useViewport } from './useViewport';
 import { libraryState } from '../store/library';
-import { type ImageItem } from '../../types';
+import { type AssetItem } from '../../types';
 
 export interface AssetCardActions {
     /** Toggle selection for an item, optionally with multi-select or range-select */
@@ -29,7 +29,7 @@ export function useAssetCardActions(): AssetCardActions {
     return {
         handleSelect: (itemId: number, modifiers: { multi: boolean; shift: boolean }) => {
             if (modifiers.shift) {
-                const allIdentifiers = libraryState.items.map((item: ImageItem) => item.id);
+                const allIdentifiers = libraryState.items.map((item: AssetItem) => item.id);
                 selection.selectRange(itemId, allIdentifiers);
             } else {
                 selection.toggle(itemId, modifiers.multi);

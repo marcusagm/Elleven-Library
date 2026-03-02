@@ -1,17 +1,17 @@
-/* Ensure reference images fill their containers */
-.reference-image-container {
+/* Ensure the thumbnails fill their containers */
+.thumbnail-container {
   width: 100%;
   height: 100%;
   position: relative;
   overflow: hidden;
 }
 
-.reference-image-container img {
+.thumbnail-container img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
-  opacity: 0; 
+  opacity: 0;
   /* Opacity transition for fade-in handled here */
   transition:
     opacity 0.5s cubic-bezier(0.165, 0.84, 0.44, 1),
@@ -20,11 +20,11 @@
 }
 
 /* Loaded state */
-.reference-image-container img.loaded {
+.thumbnail-container img.loaded {
   opacity: 1;
 }
 
-.image-placeholder {
+.asset-placeholder {
   position: absolute;
   inset: 0;
   display: flex;

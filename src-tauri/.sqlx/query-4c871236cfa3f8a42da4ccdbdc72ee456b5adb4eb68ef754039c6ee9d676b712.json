@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, path FROM images WHERE thumbnail_path IS NULL AND thumbnail_attempts < 3 LIMIT ?",
+  "query": "SELECT id, path FROM assets WHERE thumbnail_path IS NULL AND thumbnail_attempts < 3 LIMIT ?",
   "describe": {
     "columns": [
       {
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "ab46309dc1a44cb55a91359a28bfd3ff291f1522966bd075ef8ac51e7f5b4a5a"
+  "hash": "4c871236cfa3f8a42da4ccdbdc72ee456b5adb4eb68ef754039c6ee9d676b712"
 }

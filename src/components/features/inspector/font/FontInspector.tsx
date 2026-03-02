@@ -1,5 +1,5 @@
 import { Component, Show } from 'solid-js';
-import { type ImageItem } from '../../../../types';
+import { type AssetItem } from '../../../../types';
 import { Accordion, AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { InspectorTags } from '../base/InspectorTags';
 import { CommonMetadata } from '../base/CommonMetadata';
@@ -7,7 +7,7 @@ import { Type } from 'lucide-solid';
 import './FontInspector.css';
 
 interface FontInspectorProps {
-    item: ImageItem;
+    item: AssetItem;
 }
 
 export const FontInspector: Component<FontInspectorProps> = props => {

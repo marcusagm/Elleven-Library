@@ -1,7 +1,7 @@
 /**
  * Represents an image item entity with metadata.
  */
-export interface ImageItem {
+export interface AssetItem {
     /** Unique database ID */
     id: number;
     /** Absolute filesystem path */
@@ -22,6 +22,8 @@ export interface ImageItem {
     size: number;
     /** Extracted format name */
     format: string;
+    /** Categorized media type like Image, Video, etc */
+    media_type: string;
     /** Creation timestamp */
     created_at: string;
     /** Last File modification timestamp */

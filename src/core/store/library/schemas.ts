@@ -1,6 +1,6 @@
-import { type ImageItem } from '../../../types';
+import { type AssetItem } from '../../../types';
 
-export interface BatchChangeAddedItem extends ImageItem {
+export interface BatchChangeAddedItem extends AssetItem {
     folder_id: number;
     old_folder_id?: number;
 }

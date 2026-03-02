@@ -4,11 +4,11 @@ import { AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { Input } from '../../../ui/Input';
 import { StarRating } from './StarRating.tsx';
 import { useLibrary } from '../../../../core/hooks';
-import { type ImageItem } from '../../../../types';
+import { type AssetItem } from '../../../../types';
 import './CommonMetadata.css';
 
 interface CommonMetadataProps {
-    item: ImageItem | null;
+    item: AssetItem | null;
 }
 
 const formatBytes = (bytes: number) => {

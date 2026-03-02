@@ -1,10 +1,10 @@
-//! Dynamic search query builder for the image library.
+//! Dynamic search query builder for the asset library.
 //!
 //! This module converts complex, nested search criteria from the frontend
 //! into optimized SQLite queries using `sqlx::QueryBuilder`.
 
 use super::Db;
-use crate::db::models::ImageMetadata;
+use crate::db::models::AssetMetadata;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -39,9 +39,9 @@ pub struct SearchGroup {
 }
 
 impl Db {
-    /// Retrieves a paginated and filtered list of images based on various criteria.
+    /// Retrieves a paginated and filtered list of assets based on various criteria.
     #[allow(clippy::too_many_arguments)] // Deep filtering naturally requires many parameters
-    pub async fn get_images_filtered(
+    pub async fn get_assets_filtered(
         &self,
         limit: i32,
         offset: i32,
@@ -54,7 +54,7 @@ impl Db {
         sort_order: Option<String>,
         advanced_query: Option<String>,
         search_query: Option<String>,
-    ) -> Result<Vec<ImageMetadata>, sqlx::Error> {
+    ) -> Result<Vec<AssetMetadata>, sqlx::Error> {
         let mut query_builder: sqlx::QueryBuilder<sqlx::Sqlite> = sqlx::QueryBuilder::new(
             "WITH RECURSIVE target_folders AS (
                SELECT id FROM folders WHERE id = ",
@@ -69,10 +69,10 @@ impl Db {
             query_builder.push(" -1 ");
         }
 
-        query_builder.push(") SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.rating, i.notes, i.created_at, i.modified_at, i.added_at FROM images i ");
+        query_builder.push(") SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.media_type, i.rating, i.notes, i.created_at, i.modified_at, i.added_at FROM assets i ");
 
         if !tag_ids.is_empty() {
-            query_builder.push(" JOIN image_tags it ON i.id = it.image_id ");
+            query_builder.push(" JOIN asset_tags it ON i.id = it.asset_id ");
         }
 
         query_builder.push(" WHERE 1=1 ");
@@ -105,7 +105,7 @@ impl Db {
         }
 
         if untagged == Some(true) {
-            query_builder.push(" AND i.id NOT IN (SELECT DISTINCT image_id FROM image_tags) ");
+            query_builder.push(" AND i.id NOT IN (SELECT DISTINCT asset_id FROM asset_tags) ");
         }
 
         if !tag_ids.is_empty() {
@@ -161,16 +161,16 @@ impl Db {
         query_builder.push(" OFFSET ");
         query_builder.push_bind(offset);
 
-        let images = query_builder
-            .build_query_as::<ImageMetadata>()
+        let assets = query_builder
+            .build_query_as::<AssetMetadata>()
             .fetch_all(&self.pool)
             .await?;
-        Ok(images)
+        Ok(assets)
     }
 
-    /// Gets the total count of images matching the search criteria.
+    /// Gets the total count of assets matching the search criteria.
     #[allow(clippy::too_many_arguments)]
-    pub async fn get_image_count_filtered(
+    pub async fn get_asset_count_filtered(
         &self,
         tag_ids: Vec<i64>,
         match_all: bool,
@@ -194,10 +194,10 @@ impl Db {
             query_builder.push(" -1 ");
         }
 
-        query_builder.push(") SELECT DISTINCT i.id FROM images i ");
+        query_builder.push(") SELECT DISTINCT i.id FROM assets i ");
 
         if !tag_ids.is_empty() {
-            query_builder.push(" JOIN image_tags it ON i.id = it.image_id ");
+            query_builder.push(" JOIN asset_tags it ON i.id = it.asset_id ");
         }
 
         query_builder.push(" WHERE 1=1 ");
@@ -230,7 +230,7 @@ impl Db {
         }
 
         if untagged == Some(true) {
-            query_builder.push(" AND i.id NOT IN (SELECT DISTINCT image_id FROM image_tags) ");
+            query_builder.push(" AND i.id NOT IN (SELECT DISTINCT asset_id FROM asset_tags) ");
         }
 
         if !tag_ids.is_empty() {
@@ -300,7 +300,7 @@ fn build_criterion_clause<'a>(
             match c.operator.as_str() {
                 "contains" => {
                     if is_fts_target {
-                        query_builder.push(" i.id IN (SELECT rowid FROM images_fts WHERE ");
+                        query_builder.push(" i.id IN (SELECT rowid FROM assets_fts WHERE ");
                         query_builder.push(&c.key);
                         query_builder.push(" MATCH ");
                         query_builder.push_bind(format!("\"{}\"", c.value.as_str().unwrap_or("")));
@@ -314,7 +314,7 @@ fn build_criterion_clause<'a>(
                 }
                 "not_contains" => {
                     if is_fts_target {
-                        query_builder.push(" i.id NOT IN (SELECT rowid FROM images_fts WHERE ");
+                        query_builder.push(" i.id NOT IN (SELECT rowid FROM assets_fts WHERE ");
                         query_builder.push(&c.key);
                         query_builder.push(" MATCH ");
                         query_builder.push_bind(format!("\"{}\"", c.value.as_str().unwrap_or("")));
@@ -470,7 +470,7 @@ fn build_criterion_clause<'a>(
                 "contains" | "contains_any" => {
                     if let Some(id) = tag_id {
                         query_builder
-                            .push(" i.id IN (SELECT image_id FROM image_tags WHERE tag_id = ");
+                            .push(" i.id IN (SELECT asset_id FROM asset_tags WHERE tag_id = ");
                         query_builder.push_bind(id);
                         query_builder.push(") ");
                     } else {
@@ -480,7 +480,7 @@ fn build_criterion_clause<'a>(
                 "not_contains" => {
                     if let Some(id) = tag_id {
                         query_builder
-                            .push(" i.id NOT IN (SELECT image_id FROM image_tags WHERE tag_id = ");
+                            .push(" i.id NOT IN (SELECT asset_id FROM asset_tags WHERE tag_id = ");
                         query_builder.push_bind(id);
                         query_builder.push(") ");
                     } else {

@@ -3,8 +3,8 @@
 //! This module handles the connection pool, schema initialization, and
 //! provides a central entry point for all database operations.
 
+pub mod assets;
 pub mod folders;
-pub mod images;
 pub mod models;
 pub mod search;
 pub mod settings;

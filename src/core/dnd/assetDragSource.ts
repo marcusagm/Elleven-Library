@@ -11,7 +11,7 @@
 import { onCleanup } from 'solid-js';
 import { setDragItem, DragItem } from './dnd-core';
 import { createDragGhost } from './ghost';
-import { ImageItem } from '../../types';
+import { AssetItem } from '../../types';
 
 export interface AssetDragSourceParams {
     /** Unique ID of this item */
@@ -51,7 +51,7 @@ export function assetDragSource(el: HTMLElement, accessor: () => AssetDragSource
 
         // Set drag data
         const data: DragItem = {
-            type: 'IMAGE',
+            type: 'ASSET',
             payload: {
                 id,
                 ids,
@@ -92,7 +92,7 @@ export function assetDragSource(el: HTMLElement, accessor: () => AssetDragSource
             };
         });
 
-        const ghost = createDragGhost(ghostItems as unknown as ImageItem[]);
+        const ghost = createDragGhost(ghostItems as unknown as AssetItem[]);
         e.dataTransfer.setDragImage(ghost, 0, 0);
 
         // Cleanup ghost after render

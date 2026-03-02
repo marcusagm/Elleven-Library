@@ -62,7 +62,7 @@ export const SmartFolderDeleteModal: Component<
                     <strong>"{componentProperties.folder?.name}"</strong>?
                 </p>
                 <p class="delete-warning">
-                    This will only remove the saved search. Your images and actual folders will not
+                    This will only remove the saved search. Your assets and actual folders will not
                     be affected.
                 </p>
             </div>

@@ -17,7 +17,7 @@ export const useDndHandlers = () => {
         if (data && typeof data === 'object' && 'tagName' in data) {
             notification.success(
                 'Tag Applied',
-                `Added "${data.tagName}" to ${data.count} image(s)`
+                `Added "${data.tagName}" to ${data.count} asset(s)`
             );
             return;
         }
@@ -39,7 +39,7 @@ export const useDndHandlers = () => {
     const handleDrop = async (
         item: DragItem,
         targetId: number | string,
-        targetType: 'IMAGE' | 'TAG',
+        targetType: 'ASSET' | 'TAG',
         position: 'before' | 'inside' | 'after' = 'inside'
     ): Promise<DndActionResult> => {
         try {

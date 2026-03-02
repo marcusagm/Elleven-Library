@@ -27,7 +27,7 @@ pub enum AppError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
-    /// Error related to image processing or transcoding.
+    /// Error related to asset processing or transcoding.
     #[error("Transcoding error: {0}")]
     Transcoding(String),
 

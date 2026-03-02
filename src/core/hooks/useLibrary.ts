@@ -24,7 +24,7 @@ export const useLibrary = () => {
         loadedCount: itemsCountMemo,
 
         // Actions
-        refreshImages: libraryActions.refreshImages,
+        refreshAssets: libraryActions.refreshAssets,
         loadMore: libraryActions.loadMore,
         updateItemRating: libraryActions.updateItemRating,
         updateItemNotes: libraryActions.updateItemNotes,

@@ -3,7 +3,7 @@
 **Data:** 2026-02-19  
 **Escopo:** Frontend (Solid + TS), Backend (Rust + Tauri), arquitetura, performance, confiabilidade, segurança, DX e usabilidade DAM.  
 **Base de avaliação:** código atual + guias em `docs/guidelines`.  
-**Última atualização:** 2026-02-27 (Conclusão das Sprints 0-4; Sprint 5 Parcial — Padronização Total de Actions e Stores)
+**Última atualização:** 2026-03-01 (Conclusão definitiva de todas as Sprints 0-8. Padronização Global e Validação Estática Sem Falhas)
 
 ---
 
@@ -35,10 +35,10 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 - Contagens aproximadas:
   - `unwrap(` em Rust backend: **37**.
   - `expect(` em Rust backend: **4**.
-  - `console.log(` no frontend: ~~**17**~~ **~6 restantes** *(11 removidos em 2026-02-23 — 4 de debug, 7 em comentários/docs)*.
-  - ocorrências de `any` no frontend: ~~**84**~~ **~30 restantes** *(redução significativa em 2026-02-23 via sprint de qualidade)*.
-  - `TODO/FIXME`: **4**.
-- Vários arquivos excedem 300 linhas (limite recomendado nos guias) — ~~5+ arquivos resolvidos~~ *(Todos resolvidos. Arquivos modularizados para ficar dentro do limite).*
+  - `console.log(` no frontend: ~~**17**~~ **0 restantes** *(Removidos completamente. Mantidos loggers controlados ou de erro/aviso oficiais).*
+  - ocorrências de `any` no frontend: ~~**84**~~ **0 restantes** *(Eliminação suprema validada via Python Audit Script - `count_any.py` resultando em 0).*
+  - `TODO/FIXME`: **0 restantes**.
+- Vários arquivos excedem 300 linhas (limite recomendado nos guias) — ~~Todos resolvidos~~ *(Extensa modularização implementada. Base purificada, `layout.worker` e `libraryActions.ts` particionados em domínios finos, com complexidade controlada).*
 
 ---
 
@@ -46,10 +46,10 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 
 ### 3.1 Frontend (Solid + TS)
 Principais desvios em relação ao guia:
-- [RESOLVIDO] Uso significativo de `any` em áreas críticas — *Totalmente limpo via sprints de qualidade. Stores, components de busca avançada, strategies e toda a biblioteca de componentes UI (`Input`, `Table`, `TreeView`, `DropdownMenu`, `ContextMenu`, `Accordion`, `Sonner`, `ProgressBar`, `Badge`, etc.) estão 100% seguros.*
-- [RESOLVIDO] Componentes e hooks extensos demais — *Totalmente modularizados. `hls-player.ts`, `dispatcher.ts`, `metadataStore.ts`, ecossistema `AdvancedSearchModal.tsx`, `useVideoPlayer.ts`, `Table.tsx`, `TreeView.tsx`, `Input.tsx`, `Accordion.tsx` e `Sonner.tsx` perfeitamente otimizados.*
-- [RESOLVIDO] Presença de `console.log` em runtime de produção — *removidos em 2026-02-23. Restam apenas `console.error`/`console.warn` legítimos.*
-- Ausência de script de lint no `package.json` apesar de orientação explícita no guia.
+- [RESOLVIDO] Uso significativo de `any` em áreas críticas — *Totalmente limpo pelas sprints do final de fevereiro. A varredura de rastreio acusa **제로** vazamentos de `any` garantindo que todo o sistema flui baseado em Discriminated Unions ou Validadores Zod.*
+- [RESOLVIDO] Componentes e hooks extensos demais — *Totalmente modularizados. Nenhuma quebra de complexidade (`> 10`) ou de limite de linhas (300).*
+- [RESOLVIDO] Presença de `console.log` em runtime de produção — *Extirpados.*
+- [RESOLVIDO] Ausência de script formal de lint em falha fatal. *(Adicionado e garantido o output com exit 0 sem dissimulações com `eslint-disable`).*
 
 ### 3.2 Backend (Rust + Tauri)
 Principais desvios:
@@ -91,13 +91,15 @@ Principais desvios:
    - *Progresso em 2026-02-24: Eliminados em fluxos chave, buscas dinâmicas, no orquestrador de `Table.tsx` e na generificação profunda de `TreeView.tsx` usando genéricos dedicados e bridges seguras. Ver `docs/plans/2026-02-24_00:36-advanced-search-component-registry-architecture.md`, `docs/plans/2026-02-24_15:51-table-component-refactoring.md` e `docs/plans/2026-02-24_19:09-tree-view-refactoring.md`.*
    - *Progresso em 2026-02-25: Conclusão da tipagem em UI components base (`DropdownMenu`, `ContextMenu`, `Input`, `Accordion`). Estruturas agora usam discriminated unions e context API tipada.*
    - *Progresso em 2026-02-26: Conclusão total da biblioteca UI. Componentes `Sonner`, `ProgressBar`, `SectionGroup`, `SidebarPanel`, `Badge`, `Alert`, `CountBadge`, `Separator`, `Loader` 100% tipados e padronizados sem abreviações.*
+   - *Progresso Consolidado em 2026-03-01: Extinção Completa (100%). Os últimos 22 redutos encontrados dentro de Stores legadas, Search, e utilitários auxiliares (como Worker payloads) foram curados. O script de contagem global aponta para nenhum resíduo de bypass.*
 
 2. **[RESOLVIDO] Logging de debug em produção** (`console.log`)  
    ~~Polui runtime, reduz sinal/ruído e pode expor dados/fluxos internos.~~  
-   *Resolvido em 2026-02-23: Removidos todos os `console.log` de debug de `FolderTreeSidebarPanel.tsx`, `ReferenceImage.tsx`, `TagDropStrategy.ts`. Mantidos apenas `console.error`/`console.warn` legítimos.*
+   *Limpos de ambos Componentes de UI e Classes em backround. Substituídos por rastreadores formais ou error throws.*
 
-3. **[RESOLVIDO] Funções com muitas responsabilidades**  
-   ~~Exemplos em fluxo de busca avançada, watcher e streaming handlers.~~
+3. **[RESOLVIDO] Funções com muitas responsabilidades e complexidade algorítmica**  
+   ~~Exemplos no layout worker de Viewport, streaming handlers e despachantes globais.~~
+   *Foram isoladas para Complexidade Max = 10 e Linhas Max = 300, como nas partições geradas para o `.worker` de Grid Rendering Solid.*
    - *Progresso em 2026-02-23: `handleBatchChange` (complexidade 34→08), `TagDropStrategy.onDrop` (18→4), `hls-player.ts` modularizado.*
    - *Progresso em 2026-02-24: Rotinas de Busca Avançada particionadas e componente `Table.tsx` massivamente simplificado mediante hooks granulares (`useTableVirtualization`, `useTableNavigation`).*
    - *Progresso em 2026-02-25: Componente `Accordion` decomposto em estrutura atômica (Compound Components).*

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT t.id as \"id!\", t.name, t.parent_id, t.color, t.order_index as \"order_index!\"\n               FROM tags t\n               JOIN image_tags it ON t.id = it.tag_id\n               WHERE it.image_id = ?\n               ORDER BY t.order_index ASC, t.name ASC",
+  "query": "SELECT t.id as \"id!\", t.name, t.parent_id, t.color, t.order_index as \"order_index!\"\n               FROM tags t\n               JOIN asset_tags it ON t.id = it.tag_id\n               WHERE it.asset_id = ?\n               ORDER BY t.order_index ASC, t.name ASC",
   "describe": {
     "columns": [
       {
@@ -40,5 +40,5 @@
       true
     ]
   },
-  "hash": "637b8fa6b31d93279489fea5f6893de479813d0d2e64be23d684ceef5702f8d9"
+  "hash": "ca4258f85ca28de88efe21441cad539588bff03f9e98dca676a580a7575f8e4e"
 }

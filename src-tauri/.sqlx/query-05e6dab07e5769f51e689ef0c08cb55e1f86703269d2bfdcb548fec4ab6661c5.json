@@ -1,20 +1,20 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT COUNT(*) FROM images",
+  "query": "SELECT tag_id as \"tag_id!\" FROM asset_tags WHERE asset_id = ?",
   "describe": {
     "columns": [
       {
-        "name": "COUNT(*)",
+        "name": "tag_id!",
         "ordinal": 0,
         "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false
     ]
   },
-  "hash": "1b62a544039dcc9c97eec0ccee3b3a02584fed507ef240934083916efac8f9b1"
+  "hash": "05e6dab07e5769f51e689ef0c08cb55e1f86703269d2bfdcb548fec4ab6661c5"
 }

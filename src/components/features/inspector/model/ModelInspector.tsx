@@ -1,5 +1,5 @@
 import { Show, Component } from 'solid-js';
-import { type ImageItem } from '../../../../types';
+import { type AssetItem } from '../../../../types';
 import { Accordion, AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { InspectorTags } from '../base/InspectorTags';
 import { CommonMetadata } from '../base/CommonMetadata';
@@ -7,7 +7,7 @@ import { Box, Layers } from 'lucide-solid';
 import './ModelInspector.css';
 
 interface ModelInspectorProps {
-    item: ImageItem;
+    item: AssetItem;
 }
 
 export const ModelInspector: Component<ModelInspectorProps> = props => {

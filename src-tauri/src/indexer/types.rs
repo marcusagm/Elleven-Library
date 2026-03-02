@@ -1,4 +1,4 @@
-use crate::db::models::ImageMetadata;
+use crate::db::models::AssetMetadata;
 use serde::Serialize;
 use std::collections::HashMap;
 use tokio_util::sync::CancellationToken;
@@ -21,7 +21,7 @@ pub struct BatchChangePayload {
 #[derive(Clone, Serialize, Debug)]
 pub struct AddedItemContext {
     #[serde(flatten)]
-    pub metadata: ImageMetadata,
+    pub metadata: AssetMetadata,
     pub folder_id: i64,
     pub old_folder_id: Option<i64>,
 }
@@ -33,9 +33,9 @@ pub struct RemovedItemContext {
     pub tag_ids: Vec<i64>,
 }
 
-/// Struct to hold image path with its parent directory path
-pub struct IndexedImage {
-    pub metadata: ImageMetadata,
+/// Struct to hold asset path with its parent directory path
+pub struct IndexedAsset {
+    pub metadata: AssetMetadata,
     pub parent_dir: String,
 }
 

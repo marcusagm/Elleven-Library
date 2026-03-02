@@ -1,14 +1,14 @@
 import { Component } from 'solid-js';
 import { Maximize2, Hash } from 'lucide-solid';
 import { AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
-import { type ImageItem } from '../../../../types';
-import './ImageMetadata.css';
+import { type AssetItem } from '../../../../types';
+import './AssetMetadata.css';
 
-interface ImageMetadataProps {
-    item: ImageItem | null;
+interface AssetMetadataProps {
+    item: AssetItem | null;
 }
 
-export const ImageMetadata: Component<ImageMetadataProps> = props => {
+export const AssetMetadata: Component<AssetMetadataProps> = props => {
     return (
         <AccordionItem value="image-details">
             <AccordionHeader title="Image Details" icon={<Maximize2 size={14} />} />

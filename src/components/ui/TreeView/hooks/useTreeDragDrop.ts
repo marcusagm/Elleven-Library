@@ -135,7 +135,7 @@ export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
                           }
                       }
                     : {
-                          type: 'IMAGE',
+                          type: 'ASSET',
                           // This case is rare for tree, but we follow the union
                           payload: {
                               id: Number(node.id),

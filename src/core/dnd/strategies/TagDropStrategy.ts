@@ -6,7 +6,7 @@ import { ErrorCode } from '../../types/actions';
  */
 export const TagDropStrategy: DropStrategy = {
     accepts: (item: DragItem) => {
-        return item.type === 'IMAGE' || item.type === 'TAG';
+        return item.type === 'ASSET' || item.type === 'TAG';
     },
 
     onDrop: async (
@@ -19,17 +19,17 @@ export const TagDropStrategy: DropStrategy = {
             targetTagId = null;
         }
 
-        if (item.type === 'IMAGE') {
+        if (item.type === 'ASSET') {
             const { libraryActions } = await import('../../store/library');
             const { selectionState } = await import('../../store/selectionStore');
 
-            let imageIds = [item.payload.id];
+            let assetIds = [item.payload.id];
             if (selectionState.selectedIds.includes(item.payload.id)) {
-                imageIds = [...selectionState.selectedIds];
+                assetIds = [...selectionState.selectedIds];
             }
 
             if (targetTagId !== null) {
-                return await libraryActions.applyTagToImages(imageIds, targetTagId);
+                return await libraryActions.applyTagToAssets(assetIds, targetTagId);
             }
         }
 

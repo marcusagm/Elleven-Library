@@ -1,14 +1,14 @@
 import { Component } from 'solid-js';
-import { type ImageItem } from '../../../../types';
+import { type AssetItem } from '../../../../types';
 import { CommonMetadata } from '../base/CommonMetadata';
-import { ImageMetadata } from './ImageMetadata.tsx';
+import { AssetMetadata } from './AssetMetadata.tsx';
 import { InspectorTags } from '../base/InspectorTags';
 import { AdvancedMetadata } from './AdvancedMetadata.tsx';
 import { Accordion } from '../../../ui';
 import './ImageInspector.css';
 
 interface ImageInspectorProps {
-    item: ImageItem;
+    item: AssetItem;
 }
 
 export const ImageInspector: Component<ImageInspectorProps> = props => {
@@ -28,7 +28,7 @@ export const ImageInspector: Component<ImageInspectorProps> = props => {
 
             <Accordion>
                 <CommonMetadata item={props.item} />
-                <ImageMetadata item={props.item} />
+                <AssetMetadata item={props.item} />
                 <InspectorTags itemId={props.item.id} />
                 <AdvancedMetadata item={props.item} />
             </Accordion>

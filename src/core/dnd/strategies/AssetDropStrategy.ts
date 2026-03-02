@@ -2,22 +2,22 @@ import { DropStrategy, DragItem, DndActionResult } from '../dnd-core';
 import { ErrorCode } from '../../types/actions';
 
 /**
- * Strategy: Dropping items onto an Image target.
+ * Strategy: Dropping items onto an Asset target.
  */
-export const ImageDropStrategy: DropStrategy = {
+export const AssetDropStrategy: DropStrategy = {
     accepts: (item: DragItem) => {
-        // Only accept TAGS being dropped on images
+        // Only accept TAGS being dropped on assets
         return item.type === 'TAG';
     },
 
     onDrop: async (item: DragItem, targetId: number | string): Promise<DndActionResult> => {
         if (item.type === 'TAG') {
             const { libraryActions } = await import('../../store/library');
-            const targetImageId = Number(targetId);
+            const targetAssetId = Number(targetId);
             const tagId = Number(item.payload.id);
 
             // Emit intention to library store
-            return await libraryActions.applyTagToTarget(tagId, targetImageId);
+            return await libraryActions.applyTagToTarget(tagId, targetAssetId);
         }
         return {
             success: false,

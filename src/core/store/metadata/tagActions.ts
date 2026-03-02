@@ -15,8 +15,8 @@ export const tagActions = {
      * Notifies the system of a tag update.
      * @param options - Configuration for what needs refreshing.
      */
-    notifyTagUpdate: (options: { stats?: boolean; images?: boolean } = {}) => {
-        const { stats = true, images = true } = options;
+    notifyTagUpdate: (options: { stats?: boolean; assets?: boolean } = {}) => {
+        const { stats = true, assets = true } = options;
 
         setMetadataState('tagUpdateVersion', version => version + 1);
 
@@ -25,13 +25,13 @@ export const tagActions = {
         }
 
         // Check if we need to refresh the library
-        if (images) {
+        if (assets) {
             import('../filter').then(({ filterState }) => {
                 const isFilteringByTags =
                     filterState.filterUntagged || filterState.selectedTags.length > 0;
                 if (isFilteringByTags) {
                     import('../library').then(({ libraryActions }) => {
-                        libraryActions.refreshImages(false);
+                        libraryActions.refreshAssets(false);
                     });
                 }
             });
@@ -149,7 +149,7 @@ export const tagActions = {
         } else {
             tagActions.notifyTagUpdate({
                 stats: false,
-                images: name !== null && name !== undefined
+                assets: name !== null && name !== undefined
             });
         }
     },
@@ -295,14 +295,14 @@ export const tagActions = {
     ): Promise<ActionResult> => {
         try {
             if (mode === 'merge') {
-                await tagService.addTagsToImagesBatch(assetIds, tagIds);
+                await tagService.addTagsToAssetsBatch(assetIds, tagIds);
             } else if (mode === 'remove') {
-                await tagService.removeTagsFromImagesBatch(assetIds, tagIds);
+                await tagService.removeTagsFromAssetsBatch(assetIds, tagIds);
             } else {
-                await tagService.replaceTagsForImagesBatch(assetIds, tagIds);
+                await tagService.replaceTagsForAssetsBatch(assetIds, tagIds);
             }
 
-            tagActions.notifyTagUpdate({ stats: true, images: true });
+            tagActions.notifyTagUpdate({ stats: true, assets: true });
             eventBus.emit('metadata:changed', { type: 'tag', ids: tagIds });
 
             return { success: true, data: undefined };
@@ -326,17 +326,17 @@ export const tagActions = {
             const updates = assetIds.flatMap(id => {
                 const results = [];
                 if (metadata.rating !== undefined) {
-                    results.push(tagService.updateImageRating(id, metadata.rating));
+                    results.push(tagService.updateAssetRating(id, metadata.rating));
                 }
                 if (metadata.notes !== undefined) {
-                    results.push(tagService.updateImageNotes(id, metadata.notes));
+                    results.push(tagService.updateAssetNotes(id, metadata.notes));
                 }
                 return results;
             });
 
             await Promise.all(updates);
 
-            tagActions.notifyTagUpdate({ stats: false, images: true });
+            tagActions.notifyTagUpdate({ stats: false, assets: true });
             eventBus.emit('assets:metadata-updated', {
                 assetIds: assetIds.map(String),
                 fields: Object.keys(metadata)
@@ -360,7 +360,7 @@ export const tagActions = {
         if (cached) return cached;
 
         try {
-            const exif = await tagService.getImageExif(path);
+            const exif = await tagService.getAssetExif(path);
             metadataCache.set(String(assetId), exif);
             return exif;
         } catch (error) {
@@ -374,7 +374,7 @@ export const tagActions = {
      */
     getAssetTags: async (assetId: number): Promise<Tag[]> => {
         try {
-            return await tagService.getTagsForImage(assetId);
+            return await tagService.getTagsForAsset(assetId);
         } catch (error) {
             console.error(`Failed to load tags for asset ${assetId}:`, error);
             return [];

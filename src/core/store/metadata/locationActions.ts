@@ -48,8 +48,8 @@ export const locationActions = {
             }
 
             setMetadataState('libraryStats', {
-                total_images: stats.total_images,
-                untagged_images: stats.untagged_images,
+                total_assets: stats.total_assets,
+                untagged_assets: stats.untagged_assets,
                 tag_counts: tagMap,
                 folder_counts: folderMap,
                 folder_counts_recursive: folderRecursiveMap

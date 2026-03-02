@@ -8,7 +8,7 @@ import {
     clearCompleted,
     subscribeThumbnailReady
 } from '../../../core/store/thumbnailStore';
-import './reference-image.css';
+import './thumbnail.css';
 
 // ============================================================================
 // Global Image Cache
@@ -31,7 +31,7 @@ function isThumbnailLoaded(url: string | undefined): boolean {
 // Component
 // ============================================================================
 
-interface ReferenceImageProps {
+interface ThumbnailProps {
     id: number;
     src: string;
     thumbnail: string | null;
@@ -40,7 +40,7 @@ interface ReferenceImageProps {
     height?: number | null;
 }
 
-export function ReferenceImage(props: ReferenceImageProps) {
+export function Thumbnail(props: ThumbnailProps) {
     const [localError, setLocalError] = createSignal(false);
     const [localThumbnail, setLocalThumbnail] = createSignal<string | null>(null);
 
@@ -146,7 +146,7 @@ export function ReferenceImage(props: ReferenceImageProps) {
         // Mark as pending in centralized store (persists across unmount)
         markPendingRegeneration(props.id);
 
-        invoke('request_thumbnail_regenerate', { imageId: props.id }).catch(error =>
+        invoke('request_thumbnail_regenerate', { assetId: props.id }).catch(error =>
             console.error('Failed to request regeneration:', error)
         );
     };
@@ -167,12 +167,12 @@ export function ReferenceImage(props: ReferenceImageProps) {
 
     return (
         <div
-            class="reference-image-container"
+            class="thumbnail-container"
             style={{ 'aspect-ratio': aspectRatio() }}
             data-id={props.id}
         >
             <Show when={showPlaceholder()}>
-                <div class="image-placeholder">
+                <div class="asset-placeholder">
                     <Loader size="sm" />
                 </div>
             </Show>

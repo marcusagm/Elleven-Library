@@ -134,9 +134,9 @@ A ordem atual começa por Viewport/Seleção e deixa DnD no fim. Em termos de de
 
 > Justificativa: ambos dependem de metadados estáveis e contratos já maturados.
 
-#### Sprint 5 — ItemView + Viewport engine (Parcial ⏳)
+#### Sprint 5 — ItemView + Viewport engine (Concluído ✅)
 - [x] Interação 5 (ItemView).
-- [/] Interação 9 (Viewport/Workers). (Em andamento)
+- [x] Interação 9 (Viewport/Workers).
 
 > Justificativa: mudanças com maior risco de performance e UX devem ocorrer após estabilização dos contratos e observabilidade.
 
@@ -145,13 +145,13 @@ A ordem atual começa por Viewport/Seleção e deixa DnD no fim. Em termos de de
 - [x] Eliminar 13 `any` remanescentes no core.
 - [x] Resolver complexidade em `dispatcher.ts`, `normalizer.ts` e `shortcutStore.ts`.
 
-#### Sprint 7 — Modularidade & God-File Splitting (Pendente 🚀)
-- [ ] Dividir `libraryStore.ts`, `metadataStore.ts` e `filter/index.ts` em arquivos <300 linhas.
-- [ ] Resolver todos os `eslint-disable` e bugs de reatividade na UI.
+#### Sprint 7 — Modularidade & God-File Splitting (Concluída ✅)
+- [x] Dividir `libraryStore.ts`, `metadataStore.ts` e `filter/index.ts` em arquivos <300 linhas.
+- [x] Resolver todos os `eslint-disable` e bugs de reatividade na UI.
 
-#### Sprint 8 — Excelência Absoluta & DoD (Pendente 🚀)
-- [ ] Zerar contagem de `any` e `lint warnings`.
-- [ ] Auditoria final de arquitetura e fechamento de documentação.
+#### Sprint 8 — Excelência Absoluta & DoD (Concluída ✅)
+- [x] Zerar contagem de `any` e `lint warnings`.
+- [x] Auditoria final de arquitetura e fechamento de documentação.
 
 ---
 

@@ -47,54 +47,54 @@ async function initGlobalListener() {
 // Initialize listener immediately
 initGlobalListener();
 
-export function subscribeThumbnailReady(imageId: number, callback: ThumbnailCallback): () => void {
-    if (!subscribers.has(imageId)) {
-        subscribers.set(imageId, new Set());
+export function subscribeThumbnailReady(assetId: number, callback: ThumbnailCallback): () => void {
+    if (!subscribers.has(assetId)) {
+        subscribers.set(assetId, new Set());
     }
-    subscribers.get(imageId)!.add(callback);
+    subscribers.get(assetId)!.add(callback);
 
     // Return unsubscribe function
     return () => {
-        const callbacks = subscribers.get(imageId);
+        const callbacks = subscribers.get(assetId);
         if (callbacks) {
             callbacks.delete(callback);
             if (callbacks.size === 0) {
-                subscribers.delete(imageId);
+                subscribers.delete(assetId);
             }
         }
     };
 }
 
-export function markPendingRegeneration(imageId: number) {
+export function markPendingRegeneration(assetId: number) {
     setState(s => {
         const newPending = new Set(s.pending);
-        newPending.add(imageId);
+        newPending.add(assetId);
         return { ...s, pending: newPending };
     });
 }
 
-export function markRegenerationComplete(imageId: number, thumbnailPath: string) {
+export function markRegenerationComplete(assetId: number, thumbnailPath: string) {
     setState(s => {
         const newPending = new Set(s.pending);
-        newPending.delete(imageId);
+        newPending.delete(assetId);
         const newCompleted = new Map(s.completed);
-        newCompleted.set(imageId, thumbnailPath);
+        newCompleted.set(assetId, thumbnailPath);
         return { pending: newPending, completed: newCompleted };
     });
 }
 
-export function isPendingRegeneration(imageId: number): boolean {
-    return state().pending.has(imageId);
+export function isPendingRegeneration(assetId: number): boolean {
+    return state().pending.has(assetId);
 }
 
-export function getCompletedThumbnail(imageId: number): string | undefined {
-    return state().completed.get(imageId);
+export function getCompletedThumbnail(assetId: number): string | undefined {
+    return state().completed.get(assetId);
 }
 
-export function clearCompleted(imageId: number) {
+export function clearCompleted(assetId: number) {
     setState(s => {
         const newCompleted = new Map(s.completed);
-        newCompleted.delete(imageId);
+        newCompleted.delete(assetId);
         return { ...s, completed: newCompleted };
     });
 }

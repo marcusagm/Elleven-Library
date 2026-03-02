@@ -8,7 +8,7 @@ import {
     useAssetCardActions
 } from '../../../core/hooks';
 import { type SortField } from '../../../core/store/filter';
-import { ImageItem } from '../../../types';
+import { AssetItem } from '../../../types';
 import { formatFileSize, formatDate } from '../../../utils/format';
 import { assetDnD } from '../../../core/dnd';
 import { EmptyState } from './EmptyState';
@@ -80,7 +80,7 @@ export const VirtualListView: Component = () => {
     const listThumbHeight = createMemo(() => Math.floor(listThumbWidth() * 0.75));
     const rowHeight = createMemo(() => Math.max(32, listThumbHeight() + 8));
 
-    const columns = createMemo<Column<ImageItem>[]>(() => [
+    const columns = createMemo<Column<AssetItem>[]>(() => [
         {
             header: '',
             accessorKey: 'thumbnail_path',
@@ -212,7 +212,7 @@ export const VirtualListView: Component = () => {
     // Navigation logic for Table is currently internal or via Table props.
     // Table component needs to expose a way to be driven by external shortcuts OR use shortcuts internally.
     // Assuming Table handles its own focus/navigation, we just need to ensure it respects scopes?
-    // If Table uses native onKeyDown, it won't respect our 'image-viewer' scope which blocks.
+    // If Table uses native onKeyDown, it won't respect our 'asset-viewer' scope which blocks.
     // So Table MUST be refactored to use useShortcuts "viewport" scope.
 
     return (

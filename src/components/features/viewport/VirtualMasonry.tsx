@@ -1,7 +1,7 @@
 import { createSignal, onMount, onCleanup, For, createMemo, Show } from 'solid-js';
 import { AssetCard } from './AssetCard';
 import { EmptyState } from './EmptyState';
-import { type ImageItem } from '../../../types';
+import { type AssetItem } from '../../../types';
 import {
     useLibrary,
     useAssetCardActions,
@@ -14,7 +14,7 @@ import { scheduler } from '../../../core/utils/scheduler';
 import './viewport.css';
 
 interface VirtualMasonryProps {
-    items: ImageItem[];
+    items: AssetItem[];
     mode?: 'masonry-v' | 'masonry-h';
     gap?: number;
     buffer?: number;
@@ -48,7 +48,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
     });
 
     const itemsById = createMemo(() => {
-        const map = new Map<number, ImageItem>();
+        const map = new Map<number, AssetItem>();
         props.items.forEach(item => map.set(item.id, item));
         return map;
     });
@@ -147,15 +147,15 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
             ref={setScrollContainer}
             class="virtual-scroll-container"
             role="grid"
-            aria-label="Image gallery - masonry layout"
+            aria-label="Asset gallery - masonry layout"
             tabIndex={0}
         >
             <Show
                 when={props.items.length > 0}
                 fallback={
                     <EmptyState
-                        title="No images found"
-                        description="Try adjusting your filters or add images to your library."
+                        title="No assets found"
+                        description="Try adjusting your filters or add assets to your library."
                     />
                 }
             >

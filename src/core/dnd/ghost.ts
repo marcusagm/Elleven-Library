@@ -1,10 +1,10 @@
-import { ImageItem } from '../../types';
+import { AssetItem } from '../../types';
 
 /**
  * Creates a "ghost" element for drag-and-drop feedback.
  * Renders a stack of up to 3 thumbnails with a count badge.
  */
-export const createDragGhost = (items: ImageItem[]) => {
+export const createDragGhost = (items: AssetItem[]) => {
     const container = document.createElement('div');
     const count = items.length;
 

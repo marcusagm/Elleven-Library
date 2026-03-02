@@ -1,5 +1,5 @@
 import { Component, JSX, createEffect } from 'solid-js';
-import { ReferenceImage } from './ReferenceImage';
+import { Thumbnail } from './Thumbnail';
 import { assetDragSource } from '../../../core/dnd';
 import { useAssetDropZone } from '../../../core/hooks/useAssetDropZone';
 
@@ -45,8 +45,8 @@ void assetDragSource;
  * Displays a single asset card with thumbnail. This component has NO internal
  * hooks - all state and actions come from props.
  *
- * DnD: Uses assetDragSource for dragging images.
- * Also accepts drops from tags (Tag-to-Image drop).
+ * DnD: Uses assetDragSource for dragging assets.
+ * Also accepts drops from tags (Tag-to-Asset drop).
  */
 export const AssetCard: Component<AssetCardProps> = props => {
     let ref: HTMLDivElement | undefined;
@@ -75,7 +75,7 @@ export const AssetCard: Component<AssetCardProps> = props => {
             // Accessibility
             role="gridcell"
             aria-selected={props.isSelected}
-            aria-label={`Image: ${props.filename}`}
+            aria-label={`Asset: ${props.filename}`}
             tabIndex={props.isFocused ? 0 : -1}
             // Events
             onClick={e => {
@@ -87,11 +87,11 @@ export const AssetCard: Component<AssetCardProps> = props => {
             }}
             onDblClick={() => props.onOpen(props.id)}
             onContextMenu={e => props.onContextMenu?.(e, props.id)}
-            // Drop handlers for Tag-to-Image
+            // Drop handlers for Tag-to-Asset
             {...dragHandlers}
         >
             <div style={{ width: '100%', height: '100%', 'pointer-events': 'none' }}>
-                <ReferenceImage
+                <Thumbnail
                     id={props.id}
                     src={props.path}
                     thumbnail={props.thumbnailPath}

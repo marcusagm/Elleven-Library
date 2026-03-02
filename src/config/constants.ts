@@ -5,7 +5,7 @@
 
 export const APP_CONFIG = {
     /**
-     * Number of images to load per batch in the library view (infinite scroll).
+     * Number of assets to load per batch in the library view (infinite scroll).
      */
     BATCH_SIZE: 100,
 

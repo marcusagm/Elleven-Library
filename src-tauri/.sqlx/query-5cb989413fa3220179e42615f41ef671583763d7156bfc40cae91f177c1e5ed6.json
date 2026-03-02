@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO assets (folder_id, path, filename, width, height, size, format, media_type, created_at, modified_at)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n             ON CONFLICT(path) DO UPDATE SET\n                folder_id = excluded.folder_id,\n                filename = excluded.filename,\n                width = excluded.width,\n                height = excluded.height,\n                size = excluded.size,\n                format = excluded.format,\n                media_type = excluded.media_type,\n                modified_at = excluded.modified_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "5cb989413fa3220179e42615f41ef671583763d7156bfc40cae91f177c1e5ed6"
+}

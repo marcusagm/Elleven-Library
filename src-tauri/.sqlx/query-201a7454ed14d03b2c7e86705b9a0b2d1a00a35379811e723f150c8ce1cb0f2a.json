@@ -1,15 +1,15 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT tag_id, COUNT(*) as count FROM image_tags GROUP BY tag_id",
+  "query": "SELECT folder_id as \"folder_id!\", COUNT(*) as \"count!\" FROM assets GROUP BY folder_id",
   "describe": {
     "columns": [
       {
-        "name": "tag_id",
+        "name": "folder_id!",
         "ordinal": 0,
         "type_info": "Integer"
       },
       {
-        "name": "count",
+        "name": "count!",
         "ordinal": 1,
         "type_info": "Integer"
       }
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "a08709c090d5b63faf8c1e9bdf179e7e647d6bbc6683858e713cec6c4476ca2f"
+  "hash": "201a7454ed14d03b2c7e86705b9a0b2d1a00a35379811e723f150c8ce1cb0f2a"
 }
