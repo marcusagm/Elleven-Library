@@ -144,6 +144,11 @@ description = "Enables set_setting"
 commands.allow = ["set_setting"]
 
 [[permission]]
+identifier = "allow-send-telemetry-log"
+description = "Enables send_telemetry_log"
+commands.allow = ["send_telemetry_log"]
+
+[[permission]]
 identifier = "allow-get-library-supported-formats"
 description = "Enables get_library_supported_formats"
 commands.allow = ["get_library_supported_formats"]

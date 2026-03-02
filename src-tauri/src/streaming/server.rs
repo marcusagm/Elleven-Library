@@ -34,9 +34,14 @@ use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tower_http::cors::CorsLayer;
 
-use super::{linear::LinearManager, playlist, probe, process_manager::ProcessManager, segment};
+use super::{
+    helpers::StreamError, linear::LinearManager, playlist, probe, process_manager::ProcessManager,
+    segment,
+};
 use crate::db::Db;
+use crate::error::AppError;
 use crate::transcoding::cache::TranscodeCache;
+use tracing::{error, info, instrument};
 
 /// Default port for the HLS streaming server
 pub const DEFAULT_PORT: u16 = 9876;
@@ -125,7 +130,7 @@ impl StreamingServer {
             loop {
                 tokio::select! {
                     _ = process_cleanup_token.cancelled() => {
-                        println!("LIFECYCLE: Process cleanup task shutting down");
+                        info!("Process cleanup task shutting down");
                         break;
                     }
                     _ = interval.tick() => {
@@ -144,7 +149,7 @@ impl StreamingServer {
             loop {
                 tokio::select! {
                     _ = linear_cleanup_token.cancelled() => {
-                        println!("LIFECYCLE: Linear session cleanup task shutting down");
+                        info!("Linear session cleanup task shutting down");
                         break;
                     }
                     _ = interval.tick() => {
@@ -174,18 +179,18 @@ impl StreamingServer {
         let addr = format!("127.0.0.1:{}", self.port);
         let listener = tokio::net::TcpListener::bind(&addr).await?;
 
-        println!("INFO: HLS streaming server started on http://{}", addr);
+        info!("HLS streaming server started on http://{}", addr);
 
         // Graceful shutdown: axum stops accepting new connections when the token is cancelled,
         // but finishes processing in-flight requests before returning.
         axum::serve(listener, app)
             .with_graceful_shutdown(async move {
                 token.cancelled().await;
-                println!("LIFECYCLE: Streaming server received shutdown signal");
+                info!("Streaming server received shutdown signal");
             })
             .await?;
 
-        println!("LIFECYCLE: Streaming server stopped");
+        info!("Streaming server stopped");
         Ok(())
     }
 }
@@ -298,11 +303,8 @@ async fn validate_path_scope(database: &Db, file_path: &std::path::Path) -> Resu
 }
 
 /// Helper that builds a 403 Forbidden response for path scope violations.
-fn forbidden_response(message: String) -> Response {
-    Response::builder()
-        .status(StatusCode::FORBIDDEN)
-        .body(Body::from(message))
-        .unwrap_or_default()
+fn forbidden_response(message: String) -> StreamError {
+    StreamError(AppError::Generic(message))
 }
 
 // ---------------------------------------------------------------------------
@@ -315,45 +317,50 @@ async fn health_handler() -> impl IntoResponse {
 }
 
 /// Probe endpoint - returns video metadata
-async fn probe_handler(State(state): State<AppState>, Path(path): Path<String>) -> Response {
+#[instrument(skip(state))]
+async fn probe_handler(
+    State(state): State<AppState>,
+    Path(path): Path<String>,
+) -> Result<Response, StreamError> {
     let file_path = decode_path(&path);
 
     // Validate path is within authorized library folders
-    if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
-        return forbidden_response(scope_error);
-    }
+    validate_path_scope(&state.database, &file_path)
+        .await
+        .map_err(|e| forbidden_response(e))?;
 
     match probe::get_video_info(&state.app_handle, &file_path).await {
         Ok(info) => {
             let json = serde_json::to_string(&info).unwrap_or_default();
-            Response::builder()
+            Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, "application/json")
                 .body(Body::from(json))
-                .unwrap()
+                .unwrap_or_default())
         }
         Err(probe_error) => {
-            eprintln!("PROBE_ERROR for {:?}: {}", file_path, probe_error);
-            Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!("Probe failed: {}", probe_error)))
-                .unwrap()
+            error!(path = ?file_path, "Probe failed: {}", probe_error);
+            Err(StreamError(AppError::Generic(format!(
+                "Probe failed: {}",
+                probe_error
+            ))))
         }
     }
 }
 
 /// Playlist endpoint - generates M3U8 dynamically
+#[instrument(skip(state))]
 async fn playlist_handler(
     State(state): State<AppState>,
     Path(path): Path<String>,
     Query(params): Query<HashMap<String, String>>,
-) -> Response {
+) -> Result<Response, StreamError> {
     let file_path = decode_path(&path);
 
     // Validate path is within authorized library folders
-    if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
-        return forbidden_response(scope_error);
-    }
+    validate_path_scope(&state.database, &file_path)
+        .await
+        .map_err(|e| forbidden_response(e))?;
 
     let quality = params
         .get("quality")
@@ -370,13 +377,10 @@ async fn playlist_handler(
     let info = match probe::get_video_info(&state.app_handle, &file_path).await {
         Ok(video_info) => video_info,
         Err(probe_error) => {
-            return Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!(
-                    "Failed to probe video: {}",
-                    probe_error
-                )))
-                .unwrap();
+            return Err(StreamError(AppError::Generic(format!(
+                "Failed to probe video: {}",
+                probe_error
+            ))));
         }
     };
 
@@ -388,20 +392,21 @@ async fn playlist_handler(
         &token_param,
     );
 
-    Response::builder()
+    Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
         .header(header::CACHE_CONTROL, "no-cache")
         .body(Body::from(m3u8))
-        .unwrap()
+        .unwrap_or_default())
 }
 
 /// Segment endpoint - transcodes and serves a video segment
+#[instrument(skip(state))]
 async fn segment_handler(
     State(state): State<AppState>,
     Path(path): Path<String>,
     Query(params): Query<HashMap<String, String>>,
-) -> Response {
+) -> Result<Response, StreamError> {
     let quality = params
         .get("quality")
         .map(|s| s.as_str())
@@ -411,17 +416,16 @@ async fn segment_handler(
     let (file_path, index) = match parse_segment_path(&path) {
         Some((parsed_path, parsed_index)) => (parsed_path, parsed_index),
         None => {
-            return Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(Body::from("Invalid segment path format"))
-                .unwrap();
+            return Err(StreamError(AppError::Generic(
+                "Invalid segment path format".to_string(),
+            )));
         }
     };
 
     // Validate path is within authorized library folders
-    if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
-        return forbidden_response(scope_error);
-    }
+    validate_path_scope(&state.database, &file_path)
+        .await
+        .map_err(|e| forbidden_response(e))?;
 
     match segment::get_segment(
         &state.app_handle,
@@ -434,18 +438,18 @@ async fn segment_handler(
     )
     .await
     {
-        Ok(data) => Response::builder()
+        Ok(data) => Ok(Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "video/MP2T")
             .header(header::CACHE_CONTROL, "max-age=3600")
             .body(Body::from(data))
-            .unwrap(),
+            .unwrap_or_default()),
         Err(segment_error) => {
-            eprintln!("SEGMENT_ERROR: {}", segment_error);
-            Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!("Segment failed: {}", segment_error)))
-                .unwrap()
+            error!("SEGMENT_ERROR: {}", segment_error);
+            Err(StreamError(AppError::Generic(format!(
+                "Segment failed: {}",
+                segment_error
+            ))))
         }
     }
 }
@@ -454,11 +458,12 @@ async fn segment_handler(
 /// Request can be:
 /// 1. .../video.swf/index.m3u8 -> Starts transcode, returns playlist
 /// 2. .../video.swf/segment_00001.ts -> Returns segment
+#[instrument(skip(state))]
 async fn linear_hls_handler(
     State(state): State<AppState>,
     Path(path): Path<String>,
     Query(params): Query<HashMap<String, String>>,
-) -> Response {
+) -> Result<Response, StreamError> {
     // 1. Handle Playlist Request
     if path.ends_with("/index.m3u8") {
         // Strip the suffix
@@ -471,15 +476,15 @@ async fn linear_hls_handler(
         let file_path = PathBuf::from(decoded_path);
 
         // Validate path is within authorized library folders
-        if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
-            return forbidden_response(scope_error);
-        }
+        validate_path_scope(&state.database, &file_path)
+            .await
+            .map_err(|e| forbidden_response(e))?;
 
         if !file_path.exists() {
-            return Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::from(format!("File not found: {:?}", file_path)))
-                .unwrap();
+            return Err(StreamError(AppError::NotFound(format!(
+                "File not found: {:?}",
+                file_path
+            ))));
         }
 
         let quality = params
@@ -514,35 +519,28 @@ async fn linear_hls_handler(
                                 })
                                 .collect::<String>();
 
-                            Response::builder()
+                            Ok(Response::builder()
                                 .status(StatusCode::OK)
                                 .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
                                 .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                                 .body(Body::from(tokenized_content))
-                                .unwrap()
+                                .unwrap_or_default())
                         }
-                        Err(read_error) => Response::builder()
-                            .status(StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(Body::from(format!(
-                                "Failed to read playlist: {}",
-                                read_error
-                            )))
-                            .unwrap(),
+                        Err(read_error) => Err(StreamError(AppError::Generic(format!(
+                            "Failed to read playlist: {}",
+                            read_error
+                        )))),
                     }
                 } else {
-                    Response::builder()
-                        .status(StatusCode::REQUEST_TIMEOUT)
-                        .body(Body::from("Playlist generation timed out"))
-                        .unwrap()
+                    Err(StreamError(AppError::Generic(
+                        "Playlist generation timed out".into(),
+                    )))
                 }
             }
-            Err(start_error) => Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!(
-                    "Failed to start streaming: {}",
-                    start_error
-                )))
-                .unwrap(),
+            Err(start_error) => Err(StreamError(AppError::Generic(format!(
+                "Failed to start streaming: {}",
+                start_error
+            )))),
         }
     }
     // 2. Handle Segment Request
@@ -560,52 +558,47 @@ async fn linear_hls_handler(
             let file_path = PathBuf::from(decoded_file_path);
 
             // Validate path is within authorized library folders
-            if let Err(scope_error) = validate_path_scope(&state.database, &file_path).await {
-                return forbidden_response(scope_error);
-            }
+            validate_path_scope(&state.database, &file_path)
+                .await
+                .map_err(|e| forbidden_response(e))?;
 
             if let Some(temp_dir) = state.linear_manager.get_temp_dir(&file_path).await {
                 let segment_path = temp_dir.join(segment_name);
                 if segment_path.exists() {
                     match tokio::fs::read(&segment_path).await {
-                        Ok(data) => Response::builder()
+                        Ok(data) => Ok(Response::builder()
                             .status(StatusCode::OK)
                             .header(header::CONTENT_TYPE, "video/MP2T")
                             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                             .header(header::CACHE_CONTROL, "no-cache")
                             .body(Body::from(data))
-                            .unwrap(),
+                            .unwrap_or_default()),
                         Err(read_error) => {
-                            eprintln!("Error reading segment {:?}: {}", segment_path, read_error);
-                            Response::builder()
-                                .status(StatusCode::NOT_FOUND)
-                                .body(Body::empty())
-                                .unwrap()
+                            error!("Error reading segment {:?}: {}", segment_path, read_error);
+                            Err(StreamError(AppError::NotFound(
+                                "Segment read failed".into(),
+                            )))
                         }
                     }
                 } else {
-                    Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .body(Body::from("Segment file not found"))
-                        .unwrap()
+                    Err(StreamError(AppError::NotFound(
+                        "Segment file not found".into(),
+                    )))
                 }
             } else {
-                Response::builder()
-                    .status(StatusCode::NOT_FOUND)
-                    .body(Body::from("Session not active for this file"))
-                    .unwrap()
+                Err(StreamError(AppError::NotFound(
+                    "Session not active for this file".into(),
+                )))
             }
         } else {
-            Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(Body::from("Invalid segment path"))
-                .unwrap()
+            Err(StreamError(AppError::Generic(
+                "Invalid segment path".into(),
+            )))
         }
     } else {
-        Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(Body::from("Invalid HLS Live request path"))
-            .unwrap()
+        Err(StreamError(AppError::Generic(
+            "Invalid HLS Live request path".into(),
+        )))
     }
 }
 
