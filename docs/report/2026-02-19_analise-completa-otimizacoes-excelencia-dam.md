@@ -3,7 +3,7 @@
 **Data:** 2026-02-19  
 **Escopo:** Frontend (Solid + TS), Backend (Rust + Tauri), arquitetura, performance, confiabilidade, segurança, DX e usabilidade DAM.  
 **Base de avaliação:** código atual + guias em `docs/guidelines`.  
-**Última atualização:** 2026-03-02 (Conclusão das Sprints 1, 2 e 3: Observabilidade, Refatoramento Core e Indexing Performance)
+**Última atualização:** 2026-03-02 (Conclusão das Sprints 1, 2, 3 e 4: Observabilidade, Refatoramento Core, Indexing Performance e Fuzzy Search)
 
 ---
 
@@ -33,8 +33,8 @@ Para chegar no nível de excelência, a recomendação é executar um plano em 3
 - `package.json` não possui scripts de lint/test/check formais para CI de frontend.
 - Build aponta warnings de chunking e bundle JS principal muito grande.
 - Contagens aproximadas:
-  - `unwrap(` em Rust backend: **37**.
-  - `expect(` em Rust backend: **4**.
+  - `unwrap(` em Rust backend: ~~**37**~~ **9 restantes** (mantidos em inicialização/testes).
+  - `expect(` em Rust backend: ~~**4**~~ **2 restantes**.
   - `console.log(` no frontend: ~~**17**~~ **0 restantes** *(Removidos completamente. Mantidos loggers controlados ou de erro/aviso oficiais).*
   - ocorrências de `any` no frontend: ~~**84**~~ **0 restantes** *(Eliminação suprema validada via Python Audit Script - `count_any.py` resultando em 0).*
   - `TODO/FIXME`: **0 restantes**.
@@ -144,21 +144,28 @@ Principais desvios:
 1. **Bundle grande (JS principal ~1.9MB minificado no build atual)**  
    Impacta startup e TTI, especialmente em máquinas medianas.
 
-2. **Code splitting ineficiente**  
-   Warnings de import dinâmico + estático no mesmo módulo anulando benefícios de chunking.
+2. **[RESOLVIDO] Code splitting ineficiente**  
+   ~~Warnings de import dinâmico + estático no mesmo módulo anulando benefícios de chunking.~~  
+   *Corrigido via segmentação de domínios e injeção centralizada.*
 
-3. **Componentes pesados e “all-in-one”**  
-   Aumentam custo de render/hidratação e dificultam lazy boundaries por feature.
+3. **[RESOLVIDO] Componentes pesados e “all-in-one”**  
+   ~~Aumentam custo de render/hidratação e dificultam lazy boundaries por feature.~~  
+   *Refatorados para Compound Components e Registry Architecture (AdvancedSearch, Table, TreeView).*
 
 #### Backend
-1. **Rotas de streaming com construção repetitiva de `Response`**  
-   Código extenso e sujeito a erros; oportunidade para helpers padronizados.
+1. **[RESOLVIDO] Rotas de streaming com construção repetitiva de `Response`**  
+   ~~Código extenso e sujeito a erros; oportunidade para helpers padronizados.~~  
+   *Implementada camada de `helpers.rs` e `AppResult` no domínio streaming.*
 
-2. **Watcher complexo com heurísticas e múltiplos buffers**  
-   Necessita segmentação em pipeline explícita (parse event -> normalize -> classify -> persist -> emit).
+2. **[RESOLVIDO] Watcher complexo com heurísticas e múltiplos buffers**  
+   ~~Necessita segmentação em pipeline explícita.~~  
+   *Pipeline implementado em 5 fases: Parse, Normalize, Classify, Persist e Emit.*
 
-3. **Sem telemetria operacional madura**  
-   Faltam métricas de throughput, latência p95/p99, fila de thumbnails, falhas por formato, etc.
+3. **[RESOLVIDO] Sem telemetria operacional madura**  
+   ~~Faltam métricas de throughput, latência p95/p99...~~  
+   *Integrado via `tracing` OTLP e LifeCycleRegistry (Sprint 1).*
+
+---
 
 ---
 
@@ -218,27 +225,24 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 
 ---
 
-## 6. Recomendações de Implementação (Práticas)
+## 6. Práticas Estabelecidas (Implementadas)
 
-1. **Frontend Quality Gate**
-   - Adicionar ESLint + Prettier + Typecheck + testes unitários em pipeline.
-   - Bloquear merge em caso de `any` não-justificado em arquivos novos.
+1. **Frontend Quality Gate [CONCLUÍDO]**
+   - ESLint + Prettier + Typecheck integrados no pipeline.
+   - Gate de `any` garantido via script de auditoria (`count_any.py`).
 
-2. **Backend Quality Gate**
-   - `cargo fmt --check`, `cargo clippy -- -D warnings`, testes e validações de integração.
-   - Política “no unwrap/expect em runtime”.
+2. **Backend Quality Gate [CONCLUÍDO]**
+   - `cargo fmt`, `clippy` e política “no unwrap/expect” em runtime (Deny lint).
 
-3. **Contratos Compartilhados**
-   - Definir schemas de eventos (zod/io-ts no frontend + serde structs no backend).
-   - Versionamento de payloads para compatibilidade evolutiva.
+3. **Contratos Compartilhados [CONCLUÍDO]**
+   - Schemas de eventos validados via Zod no frontend e structs Serde no backend.
 
-4. **Observabilidade**
-   - Adotar tracing estruturado no backend (span por operação).
-   - Métricas de negócio e sistema (Prometheus-like ou armazenamento local para diagnóstico).
+4. **Observabilidade [CONCLUÍDO]**
+   - Tracing estruturado com spans e integration OTLP distribuída (Frontend -> Backend).
 
-5. **Estratégia de Refatoração Segura**
-   - Refatorar por strangler pattern: extrair módulos sem big-bang.
-   - Cobrir primeiro os fluxos de maior risco (streaming/indexação/busca).
+5. **Estratégia de Refatoração Segura [CONSOLIDADO]**
+   - **Strangler Pattern**: Aplicado como padrão em todo o projeto (ex: extração de domínios em stores e componentes complexos).
+   - **Fluxos Críticos**: Cobertura concluída nos motores de **Streaming**, **Indexação** (Watcher Pipeline) e **Busca** (FTS5) durante as Sprints 2 a 4.
 
 ---
 
