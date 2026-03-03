@@ -7,9 +7,10 @@ export const SIZE_UNITS = [
 
 export const SEARCH_FIELDS = [
     { value: 'tags', label: 'Tags', type: 'tags' },
+    { value: 'color', label: 'Color', type: 'color' },
     { value: 'filename', label: 'Filename', type: 'text' },
     { value: 'format', label: 'Format', type: 'select' },
-    { value: 'size', label: 'File size', type: 'number' },
+    { value: 'size', label: 'File size', type: 'size' },
     { value: 'width', label: 'Width', type: 'number' },
     { value: 'height', label: 'Height', type: 'number' },
     { value: 'added_at', label: 'Date added', type: 'date' },
@@ -17,8 +18,7 @@ export const SEARCH_FIELDS = [
     { value: 'modified_at', label: 'Date modified', type: 'date' },
     { value: 'rating', label: 'Rating', type: 'rating' },
     { value: 'notes', label: 'Notes', type: 'text' },
-    { value: 'folder', label: 'Folder', type: 'folder' },
-    { value: 'color', label: 'Color', type: 'color' }
+    { value: 'folder', label: 'Folder', type: 'folder' }
 ];
 
 export const OPERATORS_FOR_TYPE: Record<string, { value: string; label: string }[]> = {
@@ -30,6 +30,12 @@ export const OPERATORS_FOR_TYPE: Record<string, { value: string; label: string }
         { value: 'ends_with', label: 'Ends With' }
     ],
     number: [
+        { value: 'gt', label: 'Greater than' },
+        { value: 'lt', label: 'Less than' },
+        { value: 'eq', label: 'Equals' },
+        { value: 'between', label: 'Between' }
+    ],
+    size: [
         { value: 'gt', label: 'Greater than' },
         { value: 'lt', label: 'Less than' },
         { value: 'eq', label: 'Equals' },

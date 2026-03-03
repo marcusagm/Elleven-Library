@@ -164,8 +164,15 @@ export const sizeLogic: SearchFieldLogic = {
         return { finalValue: Math.round(Number(value) * mult), unitMultiplier };
     },
     formatDisplay: (v1, v2, op, unitMultiplier) => {
+        const mult = Number(unitMultiplier || '1048576');
         const label = SIZE_UNITS.find(o => o.value === unitMultiplier)?.label || 'bytes';
-        return op === 'between' ? `${v1} ${label} to ${v2} ${label}` : `${v1} ${label}`;
+
+        const displayV1 = Number(v1) / mult;
+        const displayV2 = v2 ? Number(v2) / mult : undefined;
+
+        return op === 'between'
+            ? `${displayV1} ${label} to ${displayV2} ${label}`
+            : `${displayV1} ${label}`;
     }
 };
 

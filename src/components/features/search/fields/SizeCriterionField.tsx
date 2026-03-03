@@ -135,13 +135,18 @@ export const sizeHandler: import('./types').SearchFieldHandler = {
      * @returns A friendly string (e.g., "500 MB to 1 GB").
      */
     formatDisplay: (value1, value2, operator, unitMultiplier) => {
+        const mult = Number(unitMultiplier || '1048576');
         const unitLabel =
             SIZE_UNITS.find(
                 (option: { value: string; label: string }) => option.value === unitMultiplier
             )?.label || 'bytes';
+
+        const displayV1 = Number(value1) / mult;
+        const displayV2 = value2 ? Number(value2) / mult : undefined;
+
         if (operator === 'between') {
-            return `${value1} ${unitLabel} to ${value2} ${unitLabel}`;
+            return `${displayV1} ${unitLabel} to ${displayV2} ${unitLabel}`;
         }
-        return `${value1} ${unitLabel}`;
+        return `${displayV1} ${unitLabel}`;
     }
 };

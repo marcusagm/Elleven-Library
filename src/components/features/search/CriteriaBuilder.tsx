@@ -14,11 +14,8 @@ export interface CriteriaBuilderProps {
 
 export const CriteriaBuilder: Component<CriteriaBuilderProps> = props => {
     const DynamicFieldComponent = createMemo(() => {
-        const key = props.search.currentKey();
         const type = props.search.selectedField()?.type;
-        const resolvedType = key === 'size' ? 'size' : type;
-        const handler =
-            criterionHandlerRegistry[resolvedType || 'text'] || criterionHandlerRegistry.text;
+        const handler = criterionHandlerRegistry[type || 'text'] || criterionHandlerRegistry.text;
         return handler.component;
     });
 

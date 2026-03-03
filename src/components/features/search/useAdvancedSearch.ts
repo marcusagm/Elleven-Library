@@ -139,7 +139,7 @@ export const useAdvancedSearch = (
             } else if (field.type === 'folder') {
                 const firstLocationId = metadata.locations[0]?.id;
                 setCurrentValue(firstLocationId ? Number(firstLocationId) : null);
-            } else if (field.type === 'number' || field.value === 'size') {
+            } else if (field.type === 'number' || field.type === 'size') {
                 setCurrentValue(1);
             } else {
                 setCurrentValue(null);

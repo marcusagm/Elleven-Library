@@ -24,11 +24,8 @@ const CriterionItem: Component<{
     const isEditing = () => props.search.editingId() === props.item.id;
 
     const DynamicFieldComponent = createMemo(() => {
-        const key = props.item.key;
         const type = field()?.type;
-        const resolvedType = key === 'size' ? 'size' : type;
-        const handler =
-            criterionHandlerRegistry[resolvedType || 'text'] || criterionHandlerRegistry.text;
+        const handler = criterionHandlerRegistry[type || 'text'] || criterionHandlerRegistry.text;
         return handler.component;
     });
 

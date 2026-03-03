@@ -98,7 +98,7 @@
 .number-input-group,
 .color-input-group {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--p-space-s);
     width: 100%;
 }
@@ -138,6 +138,9 @@
 }
 
 .range-separator {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
     font-size: var(--p-font-size-xs);
     color: var(--text-tertiary);
     font-weight: 500;
