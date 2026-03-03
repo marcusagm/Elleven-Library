@@ -34,6 +34,7 @@ export const filterActions = {
             folderRecursiveView: filterState.folderRecursiveView,
             filterUntagged: filterState.filterUntagged,
             searchQuery: filterState.searchQuery,
+            searchFuzzy: filterState.searchFuzzy,
             advancedSearch: filterState.advancedSearch,
             sortBy: filterState.sortBy,
             sortOrder: filterState.sortOrder
@@ -136,6 +137,11 @@ export const filterActions = {
         searchDebounceTimer = setTimeout(() => {
             filterActions.pushHistory();
         }, APP_CONFIG.SEARCH_DEBOUNCE_MS);
+    },
+
+    setSearchFuzzy: (isFuzzy: boolean) => {
+        setFilterState('searchFuzzy', isFuzzy);
+        filterActions.pushHistory();
     },
 
     validateCriterion: (
@@ -333,6 +339,7 @@ export const filterActions = {
             selectedFolderId: null,
             filterUntagged: false,
             searchQuery: '',
+            searchFuzzy: false,
             advancedSearch: null
         });
         filterActions.pushHistory();

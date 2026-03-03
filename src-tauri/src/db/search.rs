@@ -54,6 +54,7 @@ impl Db {
         sort_order: Option<String>,
         advanced_query: Option<String>,
         search_query: Option<String>,
+        search_fuzzy: Option<bool>,
     ) -> Result<Vec<AssetMetadata>, sqlx::Error> {
         let mut query_builder: sqlx::QueryBuilder<sqlx::Sqlite> = sqlx::QueryBuilder::new(
             "WITH RECURSIVE target_folders AS (
@@ -87,11 +88,26 @@ impl Db {
 
         if let Some(search) = search_query {
             if !search.is_empty() {
-                query_builder.push(" AND (i.filename LIKE ");
-                query_builder.push_bind(format!("%{}%", search));
-                query_builder.push(" OR i.notes LIKE ");
-                query_builder.push_bind(format!("%{}%", search));
-                query_builder.push(") ");
+                let lower = search.to_lowercase();
+                let chars: Vec<char> = lower.chars().collect();
+                if search_fuzzy.unwrap_or(false) && chars.len() >= 3 {
+                    let mut trigrams = Vec::new();
+                    for i in 0..=chars.len() - 3 {
+                        let tri: String = chars[i..i + 3].iter().collect();
+                        trigrams.push(format!("\"{}\"", tri));
+                    }
+                    let match_expr = trigrams.join(" OR ");
+                    query_builder
+                        .push(" AND i.id IN (SELECT rowid FROM assets_fts WHERE assets_fts MATCH ");
+                    query_builder.push_bind(match_expr);
+                    query_builder.push(" ORDER BY bm25(assets_fts) LIMIT 500) ");
+                } else {
+                    query_builder.push(" AND (i.filename LIKE ");
+                    query_builder.push_bind(format!("%{}%", search));
+                    query_builder.push(" OR i.notes LIKE ");
+                    query_builder.push_bind(format!("%{}%", search));
+                    query_builder.push(") ");
+                }
             }
         }
 
@@ -179,6 +195,7 @@ impl Db {
         recursive: bool,
         advanced_query: Option<String>,
         search_query: Option<String>,
+        search_fuzzy: Option<bool>,
     ) -> Result<i64, sqlx::Error> {
         let mut query_builder: sqlx::QueryBuilder<sqlx::Sqlite> = sqlx::QueryBuilder::new(
             "WITH RECURSIVE target_folders AS (
@@ -212,11 +229,26 @@ impl Db {
 
         if let Some(search) = search_query {
             if !search.is_empty() {
-                query_builder.push(" AND (i.filename LIKE ");
-                query_builder.push_bind(format!("%{}%", search));
-                query_builder.push(" OR i.notes LIKE ");
-                query_builder.push_bind(format!("%{}%", search));
-                query_builder.push(") ");
+                let lower = search.to_lowercase();
+                let chars: Vec<char> = lower.chars().collect();
+                if search_fuzzy.unwrap_or(false) && chars.len() >= 3 {
+                    let mut trigrams = Vec::new();
+                    for i in 0..=chars.len() - 3 {
+                        let tri: String = chars[i..i + 3].iter().collect();
+                        trigrams.push(format!("\"{}\"", tri));
+                    }
+                    let match_expr = trigrams.join(" OR ");
+                    query_builder
+                        .push(" AND i.id IN (SELECT rowid FROM assets_fts WHERE assets_fts MATCH ");
+                    query_builder.push_bind(match_expr);
+                    query_builder.push(" ORDER BY bm25(assets_fts) LIMIT 500) ");
+                } else {
+                    query_builder.push(" AND (i.filename LIKE ");
+                    query_builder.push_bind(format!("%{}%", search));
+                    query_builder.push(" OR i.notes LIKE ");
+                    query_builder.push_bind(format!("%{}%", search));
+                    query_builder.push(") ");
+                }
             }
         }
 

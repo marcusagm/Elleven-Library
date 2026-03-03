@@ -43,7 +43,8 @@ export const libraryActions = {
                 sortBy,
                 sortOrder,
                 advancedQuery,
-                filterState.searchQuery
+                filterState.searchQuery,
+                filterState.searchFuzzy
             );
         }
         return await getAssets(BATCH_SIZE, offset, sortBy, sortOrder);
@@ -68,14 +69,24 @@ export const libraryActions = {
                     folderId || undefined,
                     recursive,
                     advancedQuery,
-                    filterState.searchQuery
+                    filterState.searchQuery,
+                    filterState.searchFuzzy
                 )
                 .then(count => {
                     setLibraryState('totalItems', count);
                 });
         } else {
             tagService
-                .getAssetsFilteredCount([], true, false, undefined, false, undefined, undefined)
+                .getAssetsFilteredCount(
+                    [],
+                    true,
+                    false,
+                    undefined,
+                    false,
+                    undefined,
+                    undefined,
+                    false
+                )
                 .then(count => {
                     setLibraryState('totalItems', count);
                 });

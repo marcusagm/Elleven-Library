@@ -19,6 +19,7 @@ export interface FilterSnapshot {
     folderRecursiveView: boolean;
     filterUntagged: boolean;
     searchQuery: string;
+    searchFuzzy: boolean;
     advancedSearch: SearchGroup | null;
     sortBy: SortField;
     sortOrder: SortOrder;
@@ -42,6 +43,7 @@ export const defaultSnapshot: FilterSnapshot = {
     folderRecursiveView: false,
     filterUntagged: false,
     searchQuery: '',
+    searchFuzzy: false,
     advancedSearch: null,
     sortBy: 'modified_at',
     sortOrder: 'desc'
@@ -75,6 +77,7 @@ export const [filterState, setFilterState] = createStore<FilterState>({
     selectedFolderId: null,
     filterUntagged: false,
     searchQuery: '',
+    searchFuzzy: false,
     advancedSearch: null,
     history: [{ ...defaultSnapshot }],
     historyIndex: 0

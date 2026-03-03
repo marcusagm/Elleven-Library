@@ -31,6 +31,9 @@ export const useFilters = () => {
         get searchQuery() {
             return filterState.searchQuery;
         },
+        get searchFuzzy() {
+            return filterState.searchFuzzy;
+        },
         get sortBy() {
             return filterState.sortBy;
         },
@@ -60,6 +63,7 @@ export const useFilters = () => {
         setFolder: withRefresh(filterActions.setFolder),
         setFolderRecursiveView: withRefresh(filterActions.setFolderRecursiveView),
         setSearch: withRefresh(filterActions.setSearch),
+        setSearchFuzzy: withRefresh(filterActions.setSearchFuzzy),
         setSortBy: withRefresh(filterActions.setSortBy),
         setSortOrder: withRefresh(filterActions.setSortOrder),
         setLayout: filterActions.setLayout,

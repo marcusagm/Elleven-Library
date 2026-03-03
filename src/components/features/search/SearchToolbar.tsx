@@ -190,6 +190,24 @@ export const SearchToolbar: Component = () => {
                     <Button
                         variant="ghost"
                         size="icon-xs"
+                        class={cn('search-action-btn', !!filters.searchFuzzy && 'active')}
+                        title={filters.searchFuzzy ? 'Fuzzy Match: ON' : 'Fuzzy Match: OFF'}
+                        onClick={() => filters.setSearchFuzzy(!filters.searchFuzzy)}
+                    >
+                        <span
+                            style={{
+                                'font-size': '10px',
+                                'font-weight': 'bold',
+                                'letter-spacing': '1px'
+                            }}
+                        >
+                            FZ
+                        </span>
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="icon-xs"
                         class={cn('search-action-btn', !!filters.advancedSearch && 'active')}
                         title="Advanced Search"
                         onClick={() => setIsModalOpen(true)}

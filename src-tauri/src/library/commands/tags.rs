@@ -86,6 +86,7 @@ pub async fn get_assets_filtered(
     sort_order: Option<String>,
     advanced_query: Option<String>,
     search_query: Option<String>,
+    search_fuzzy: Option<bool>,
 ) -> AppResult<Vec<AssetMetadata>> {
     Ok(db
         .get_assets_filtered(
@@ -100,6 +101,7 @@ pub async fn get_assets_filtered(
             sort_order,
             advanced_query,
             search_query,
+            search_fuzzy,
         )
         .await?)
 }
@@ -115,6 +117,7 @@ pub async fn get_asset_count_filtered(
     recursive: bool,
     advanced_query: Option<String>,
     search_query: Option<String>,
+    search_fuzzy: Option<bool>,
 ) -> AppResult<i64> {
     Ok(db
         .get_asset_count_filtered(
@@ -125,6 +128,7 @@ pub async fn get_asset_count_filtered(
             recursive,
             advanced_query,
             search_query,
+            search_fuzzy,
         )
         .await?)
 }

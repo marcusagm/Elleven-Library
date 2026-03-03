@@ -77,7 +77,8 @@ export const tagService = {
         sort_by?: string,
         sort_order?: string,
         advanced_query?: string,
-        search_query?: string
+        search_query?: string,
+        search_fuzzy?: boolean
     ): Promise<AssetItem[]> => {
         return await invoke('get_assets_filtered', {
             limit,
@@ -90,7 +91,8 @@ export const tagService = {
             sortBy: sort_by,
             sortOrder: sort_order,
             advancedQuery: advanced_query,
-            searchQuery: search_query
+            searchQuery: search_query,
+            searchFuzzy: search_fuzzy
         });
     },
 
@@ -101,7 +103,8 @@ export const tagService = {
         folderId?: number,
         recursive: boolean = false,
         advanced_query?: string,
-        search_query?: string
+        search_query?: string,
+        search_fuzzy?: boolean
     ): Promise<number> => {
         return await invoke('get_asset_count_filtered', {
             tagIds,
@@ -110,7 +113,8 @@ export const tagService = {
             folderId,
             recursive,
             advancedQuery: advanced_query,
-            searchQuery: search_query
+            searchQuery: search_query,
+            searchFuzzy: search_fuzzy
         });
     },
 
