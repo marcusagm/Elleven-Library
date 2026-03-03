@@ -183,6 +183,76 @@ export const tagsLogic: SearchFieldLogic = {
     }
 };
 
+/** Color Logic */
+const DELTA_E_EXACT = 2.3;
+const DELTA_E_BROAD = 50;
+
+function sliderPercentageToDeltaE(percentage: number): number {
+    return DELTA_E_EXACT + (percentage / 100) * (DELTA_E_BROAD - DELTA_E_EXACT);
+}
+
+export const colorLogic: SearchFieldLogic = {
+    validate: value => {
+        const errors: Record<string, string> = {};
+        if (checkIsEmpty(value)) {
+            errors.value = 'Color is required';
+            return errors;
+        }
+        let parsed: { hex?: string };
+        try {
+            parsed = typeof value === 'string' ? JSON.parse(value) : {};
+        } catch {
+            errors.value = 'Invalid color value';
+            return errors;
+        }
+        if (!parsed.hex || !/^#[0-9A-Fa-f]{6}$/.test(parsed.hex)) {
+            errors.value = 'Invalid hex color';
+        }
+        return errors;
+    },
+    process: value => {
+        if (typeof value !== 'string') {
+            return { finalValue: { hex: '#000000', threshold: 25 } };
+        }
+        let parsed: { hex: string; proximity: number };
+        try {
+            parsed = JSON.parse(value);
+        } catch {
+            return { finalValue: { hex: '#000000', threshold: 25 } };
+        }
+        const threshold = sliderPercentageToDeltaE(parsed.proximity ?? 50);
+        return {
+            finalValue: {
+                hex: parsed.hex,
+                threshold: Math.round(threshold * 10) / 10
+            }
+        };
+    },
+    formatDisplay: value => {
+        try {
+            const parsed =
+                typeof value === 'string'
+                    ? JSON.parse(value as string)
+                    : (value as Record<string, unknown>);
+            const hex = (parsed.hex as string) ?? '#000000';
+            const threshold = (parsed.threshold as number) ?? 25;
+            const proximity = Math.max(
+                0,
+                Math.min(
+                    100,
+                    Math.round(
+                        ((threshold - DELTA_E_EXACT) / (DELTA_E_BROAD - DELTA_E_EXACT)) * 100
+                    )
+                )
+            );
+            const label = proximity <= 15 ? 'Exact' : proximity <= 50 ? 'Similar' : 'Broad';
+            return `${hex} (${label})`;
+        } catch {
+            return String(value);
+        }
+    }
+};
+
 /** Text Logic */
 export const textLogic: SearchFieldLogic = {
     validate: value => {
@@ -197,6 +267,7 @@ export const textLogic: SearchFieldLogic = {
  * Registry mapping field identifiers to their business logic.
  */
 export const criterionLogicRegistry: Record<string, SearchFieldLogic> = {
+    color: colorLogic,
     date: dateLogic,
     folder: folderLogic,
     number: numberLogic,

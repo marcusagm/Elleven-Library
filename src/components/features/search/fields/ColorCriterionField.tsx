@@ -1,4 +1,4 @@
-import { Component, createSignal, createMemo } from 'solid-js';
+import { Component, createSignal, createMemo, untrack } from 'solid-js';
 import { ColorInput, Slider } from '../../../ui';
 import { CriterionFieldRendererProperties, SearchFieldHandler } from './types';
 
@@ -17,6 +17,15 @@ function sliderPercentageToDeltaE(percentage: number): number {
 }
 
 /**
+ * Reverses a ΔE threshold back to a slider percentage.
+ * Used when restoring a saved criterion for editing.
+ */
+function deltaEToSliderPercentage(deltaE: number): number {
+    const percentage = ((deltaE - DELTA_E_EXACT) / (DELTA_E_BROAD - DELTA_E_EXACT)) * 100;
+    return Math.max(0, Math.min(100, Math.round(percentage)));
+}
+
+/**
  * Returns a human-readable label for the current slider position.
  */
 function getAccuracyLabel(percentage: number): string {
@@ -26,39 +35,57 @@ function getAccuracyLabel(percentage: number): string {
 }
 
 /**
+ * Extracts hex and proximity from a parsed object.
+ * Handles both internal format (with `proximity`) and processed format (with `threshold`).
+ */
+function extractFromObject(
+    objectValue: Record<string, unknown>
+): { hex: string; proximity: number } | null {
+    if (typeof objectValue.hex !== 'string') return null;
+
+    const proximity =
+        typeof objectValue.proximity === 'number'
+            ? objectValue.proximity
+            : typeof objectValue.threshold === 'number'
+              ? deltaEToSliderPercentage(objectValue.threshold)
+              : 50;
+
+    return { hex: objectValue.hex, proximity };
+}
+
+/**
+ * Extracts hex and proximity from a value that can be either:
+ * - JSON string: '{"hex":"#FF0000","proximity":50}' (from internal state)
+ * - Processed object: { hex: "#FF0000", threshold: 25 } (from saved criterion)
+ */
+function parseColorValue(raw: unknown): { hex: string; proximity: number } {
+    const fallback = { hex: '#000000', proximity: 50 };
+
+    if (typeof raw === 'string') {
+        try {
+            const parsed = JSON.parse(raw);
+            return extractFromObject(parsed) ?? fallback;
+        } catch {
+            return raw.startsWith('#') ? { hex: raw, proximity: 50 } : fallback;
+        }
+    }
+
+    if (raw && typeof raw === 'object') {
+        return extractFromObject(raw as Record<string, unknown>) ?? fallback;
+    }
+
+    return fallback;
+}
+
+/**
  * Search criterion field for color-based asset search.
  * Combines a color picker with a proximity slider controlling the ΔE tolerance.
  */
 export const ColorCriterionField: Component<CriterionFieldRendererProperties> = properties => {
-    const currentValue = createMemo(() => {
-        const raw = properties.value;
-        if (typeof raw === 'string') {
-            try {
-                return JSON.parse(raw) as { hex: string; proximity: number };
-            } catch {
-                return { hex: raw || '#000000', proximity: 50 };
-            }
-        }
-        return { hex: '#000000', proximity: 50 };
-    });
+    const currentValue = createMemo(() => parseColorValue(properties.value));
 
-    const extractInitialProximity = (): number => {
-        const raw = properties.value;
-        if (typeof raw === 'string') {
-            try {
-                const parsed = JSON.parse(raw);
-                return parsed.proximity ?? 50;
-            } catch {
-                return 50;
-            }
-        }
-        if (raw && typeof raw === 'object' && 'proximity' in raw) {
-            return (raw as { proximity: number }).proximity;
-        }
-        return 50;
-    };
-
-    const [localProximity, setLocalProximity] = createSignal(extractInitialProximity());
+    const initialProximity = untrack(() => parseColorValue(properties.value).proximity);
+    const [localProximity, setLocalProximity] = createSignal(initialProximity);
 
     const updateValue = (hex: string, proximity: number) => {
         properties.setValue(JSON.stringify({ hex, proximity }));
@@ -116,18 +143,7 @@ function validateColorCriterion(value: unknown): Record<string, string> {
         return validationErrors;
     }
 
-    let parsed: { hex?: string; proximity?: number };
-    if (typeof value === 'string') {
-        try {
-            parsed = JSON.parse(value);
-        } catch {
-            validationErrors.value = 'Invalid color value';
-            return validationErrors;
-        }
-    } else {
-        parsed = value as { hex?: string; proximity?: number };
-    }
-
+    const parsed = parseColorValue(value);
     if (!parsed.hex || !/^#[0-9A-Fa-f]{6}$/.test(parsed.hex)) {
         validationErrors.value = 'Invalid hex color';
     }
@@ -144,34 +160,20 @@ export const colorHandler: SearchFieldHandler = {
     validate: value => validateColorCriterion(value),
 
     process: value => {
-        if (typeof value !== 'string') {
-            return { finalValue: JSON.stringify({ hex: '#000000', threshold: 25 }) };
-        }
-
-        let parsed: { hex: string; proximity: number };
-        try {
-            parsed = JSON.parse(value);
-        } catch {
-            return { finalValue: JSON.stringify({ hex: '#000000', threshold: 25 }) };
-        }
-
-        const threshold = sliderPercentageToDeltaE(parsed.proximity ?? 50);
+        const parsed = parseColorValue(value);
+        const threshold = sliderPercentageToDeltaE(parsed.proximity);
 
         return {
-            finalValue: JSON.stringify({
+            finalValue: {
                 hex: parsed.hex,
                 threshold: Math.round(threshold * 10) / 10
-            })
+            }
         };
     },
 
     formatDisplay: (value: unknown) => {
-        try {
-            const parsed = typeof value === 'string' ? JSON.parse(value) : value;
-            const label = getAccuracyLabel(parsed.proximity ?? 50);
-            return `${parsed.hex} (${label})`;
-        } catch {
-            return String(value);
-        }
+        const parsed = parseColorValue(value);
+        const label = getAccuracyLabel(parsed.proximity);
+        return `${parsed.hex} (${label})`;
     }
 };

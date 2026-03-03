@@ -22,7 +22,8 @@ Sistema completo de extração de paleta de cores de imagens, persistência no b
 | Schema DB | Tabela `asset_colors` + coluna `dominant_color` em `assets` | Híbrido: read rápido + busca precisa |
 | Timing | Pipeline de thumbnailing existente | Apenas `MediaType::Image` |
 | Busca | Distância Euclidiana CIE-76 via SQL | Slider accuracy → threshold ΔE |
-| Harmonia | Análise HSL no frontend | "Not identified" se nenhuma se encaixa |
+| Harmonia | Classificação por hue dos clusters agglomerativos 3D | 13 tipos: mono, comp, analog, triad, split, tetrad, square, dyad, accented, achro, neutral, poly, n/a |
+| Distribuição | Agglomerative Clustering em espaço cilíndrico HSL 3D | 3-5 grupos finais, regra 60-30-10 |
 | Re-processamento | Sim, toda biblioteca ou asset individual | Comando dedicado |
 
 ---
@@ -244,15 +245,46 @@ Rodar `cargo sqlx prepare` dentro de `src-tauri/` para atualizar o cache `.sqlx/
 - `src/components/features/inspector/image/ColorDistribution.tsx` *(novo)*
 - `src/components/features/inspector/image/ColorSwatchGrid.tsx` *(novo)*
 - `src/components/features/inspector/image/color-palette.css` *(novo)*
-- `src/components/features/inspector/image/colorHarmonyUtils.ts` *(novo)*
+- `src/components/features/inspector/image/colorHarmonyUtils.ts` *(novo — harmony types, display map, classificação)*
+- `src/components/features/inspector/image/colorClusteringUtils.ts` *(novo — tipos, HSL, 3D, agglomerative clustering)*
 
 #### Step 5.1: Utilitário de Harmonia
-- [x] **Status:** ✅ Concluído
+- [x] **Status:** ✅ Concluído (refinado 3x — última: algoritmo compartilhado + 5 novos tipos)
 
-Criar `colorHarmonyUtils.ts`:
-- Função `detectColorHarmony(colors: ExtractedColor[]): HarmonyType`
-- Converte hex→HSL e analisa intervalos de hue entre cores dominantes
-- Retorna tipo: `monochromatic`, `complementary`, `analogous`, `triadic`, `split-complementary`, `tetradic`, `neutral`, `not_identified`
+Arquivos (split por `max-lines: 300`):
+- `colorClusteringUtils.ts` *(novo)* — tipos, HSL, 3D mapping, agglomerative clustering
+- `colorHarmonyUtils.ts` *(refatorado)* — tipos de harmonia, display map, classificação, re-exports
+
+Função `detectColorHarmony(clusters: ColorCluster[]): HarmonyType`:
+- Recebe clusters pré-computados do agglomerative grouping (mesmos da distribuição)
+- Extrai hue de cada centroide via `atan2(y, x)` e saturação via `sqrt(x² + y²)`
+- Separa clusters em: achromatic (S < 0.03), neutral (S < 0.08), chromatic (S ≥ 0.08)
+- Classifica relações angulares entre hues cromáticos
+
+**13 Tipos de Harmonia Suportados:**
+
+| Tipo | Clusters | Critério Angular |
+|------|----------|-------------------|
+| `monochromatic` | 1 cromático | Hue único |
+| `complementary` | 2 | ΔH 150°–210° |
+| `dyadic` | 2 | ΔH 45°–80° |
+| `analogous` | 2–3 | ΔH ≤ 45° (2) ou todos ≤ 60° (3) |
+| `triadic` | 3 | Todos ΔH 90°–150° |
+| `split_complementary` | 3 | Menor ≤ 60°, maior ≥ 140° |
+| `accented_analogous` | 3 | Par ≤ 45° + acento ~180° do midpoint |
+| `square` | 4 | 4 deltas ~90° + 2 deltas ~180° |
+| `tetradic` | 4+ | ≥60% deltas ~90° ou ~180° |
+| `polychromatic` | 4+ | Fallback: muitos hues distintos |
+| `achromatic` | qualquer | TODOS clusters S < 0.03 |
+| `neutral` | qualquer | Nenhum cluster S ≥ 0.08 |
+| `not_identified` | 2–3 | Não encaixa em padrão |
+
+**Refinamentos aplicados (cronológico):**
+1. Versão inicial analisava apenas top 5 cores → classificação incorreta. Corrigido para todas com percentage ≥ 1%.
+2. Lógica unificada com distribuição: ambos usam `agglomerativeGrouping()`. Harmony recebe clusters pré-computados.
+3. Arquivo `colorHarmonyUtils.ts` dividido em 2 para compliance com `max-lines: 300`.
+4. 5 novos tipos adicionados: `square`, `dyadic`, `accented_analogous`, `achromatic`, `polychromatic`.
+5. Separadores visuais (`// ===`) removidos conforme guidelines de documentação.
 
 #### Step 5.2: Componente `ColorHarmonyBadge`
 - [x] **Status:** ✅ Concluído
@@ -262,30 +294,56 @@ Badge/chip visual mostrando o tipo de harmonia detectada.
 - Tooltip com breve explicação (ex: "Colors are opposite on the color wheel")
 
 #### Step 5.3: Componente `ColorDistribution`
-- [x] **Status:** ✅ Concluído
+- [x] **Status:** ✅ Concluído (refatorado 2x após testes manuais)
 
-Barras horizontais proporcionais:
-- Renderiza top 3 ou 5 cores com largura proporcional ao `percentage`
-- Exibe % ao lado de cada barra
-- Visualização similar à regra 60-30-10 (sem forçar — mostra dados reais)
+Barra horizontal stacked mostrando distribuição proporcional de famílias de cor.
+
+**Evolução da implementação:**
+
+1. **v1 — Top N direto:** Mostrava as top 5 cores brutas do k-means. Problema: as % não somavam 100%, deixando gap preto na barra; cores similares apareciam separadas.
+
+2. **v2 — Agrupamento por Hue (greedy):** Agrupava todas as 16 cores por proximidade de matiz (1D) com busca gulosa. Problema: considerava apenas hue, fundindo cores visualmente distintas (ex: vermelho escuro + vermelho claro); busca gulosa impedia agrupamento globalmente ótimo.
+
+3. **v3 — Agglomerative Clustering 3D (implementação final):** Refatoração estrutural com 3 etapas:
+
+   **Etapa 1 — Mapeamento 3D (Cylindrical HSL → Cartesian):**
+   ```
+   x = S · cos(H_rad)
+   y = S · sin(H_rad)
+   z = L
+   ```
+   Distância entre cores = distância euclidiana 3D, refletindo diferença visual real.
+
+   **Etapa 2 — Agglomerative Hierarchical Clustering:**
+   - Cada cor inicia como seu próprio cluster
+   - A cada iteração, encontra o par de clusters **globalmente** mais próximo (O(n²))
+   - Mescla com centroide ponderado por percentagem
+   - Não é greedy: analisa todas as distâncias antes de decidir
+
+   **Etapa 3 — Condição de Parada (3-5 grupos):**
+   - Continua mesclando até ter 3–5 clusters
+   - Se a distância do par mais próximo > `MERGE_DISTANCE_THRESHOLD` (0.35), para mesmo com >5 clusters
+   - Cor representativa = maior percentagem individual dentro do cluster
+
+   **Resultado:** Barra preenche 100%, segue padrão 60-30-10, separa corretamente cores como vermelho escuro vs. vermelho claro.
 
 #### Step 5.4: Componente `ColorSwatchGrid`
 - [x] **Status:** ✅ Concluído
 
-Grid de retângulos coloridos (10-20 swatches):
-- Cada swatch exibe a cor com borda sutil
+Grid de retângulos coloridos (até 16 swatches):
+- Cada swatch exibe a cor com borda sutil (mínimo 32px)
 - Ao clicar: `navigator.clipboard.writeText(hexColor)`
-- Feedback via `Tooltip` (componente existente) mostrando "Copied!" por ~1.5s
-- Acessibilidade: `aria-label` com hex para cada swatch
+- Feedback visual com ícone ✓ (checkmark) por ~1.5s — substituiu texto "Copied!" que era cortado em swatches pequenos
+- Acessibilidade: `aria-label` com hex para cada swatch, suporte a teclado (Enter/Space)
 
 #### Step 5.5: Container `ColorPaletteSection`
 - [x] **Status:** ✅ Concluído
 
 Componente wrapper que:
-1. Chama `tauriService` via action para buscar `get_asset_colors(assetId)`
+1. Usa `createResource` com `invoke('get_asset_colors', { assetId })` direto (sem passar por tauriService)
 2. Passa as cores para os 3 sub-componentes
 3. Calcula harmonia no frontend via `detectColorHarmony()`
-4. Encapsulado em `<Accordion.Item>`
+4. Encapsulado em `<AccordionItem>`
 
 #### Step 5.6: Integrar no `ImageInspector`
 - [x] **Status:** ✅ Concluído
@@ -302,6 +360,9 @@ Adicionar `<ColorPaletteSection item={props.item} />` como novo `Accordion.Item`
 - `src/components/features/search/fields/ColorCriterionField.tsx` *(novo)*
 - `src/components/features/search/fields/index.ts` *(edição)*
 - `src/core/store/filter/constants.ts` *(edição)*
+- `src/core/store/filter/schemas.ts` *(edição — ampliação do tipo `value`)*
+- `src/core/store/filter/logic/handlers.ts` *(edição — novo `colorLogic`)*
+- `src/components/features/search/useAdvancedSearch.ts` *(edição — `handleStartEdit` para color)*
 - `src-tauri/src/db/search.rs` *(edição — Fase 4 já cobre)*
 
 #### Step 6.1: Criar `ColorCriterionField.tsx`
@@ -319,6 +380,17 @@ Exportar `colorHandler: SearchFieldHandler` com:
 - `validate`: verificar que hex é válido
 - `process`: enviar `{ hex, threshold: mappedDeltaE }` como value
 - `formatDisplay`: mostrar swatch de cor + nível de accuracy
+
+**Formato de dados interno vs. processado:**
+- **State interno:** JSON string `'{"hex":"#FF0000","proximity":50}'` — proximity é slider % (0-100)
+- **Valor processado:** Objeto `{ hex: "#FF0000", threshold: 25.6 }` — threshold é ΔE real
+- Conversão: `threshold = 2.3 + (proximity / 100) × (50 − 2.3)`
+- Reverso (edit mode): `proximity = ((threshold − 2.3) / (50 − 2.3)) × 100`
+
+**Funções utilitárias no componente:**
+- `parseColorValue(raw)` — parser unificado que aceita tanto JSON string quanto objeto processado
+- `extractFromObject(obj)` — helper para extrair hex/proximity de um objeto (com ou sem threshold)
+- `sliderPercentageToDeltaE(%)` / `deltaEToSliderPercentage(ΔE)` — conversão bidirecional
 
 #### Step 6.2: Registrar no Handler Registry
 - [x] **Status:** ✅ Concluído
@@ -346,6 +418,35 @@ color: [
 ],
 ```
 
+#### Step 6.4: Adicionar `colorLogic` ao Store Registry
+- [x] **Status:** ✅ Concluído (necessário para a pipeline funcionar)
+
+O `criterionLogicRegistry` em `src/core/store/filter/logic/handlers.ts` é a camada do store que processa os valores dos critérios. Sem um entry `color`, o store usava `textLogic` como fallback, que passava o valor como string inalterada.
+
+Adicionado `colorLogic: SearchFieldLogic` com:
+- `validate`: verifica hex válido via regex
+- `process`: converte JSON string `{hex, proximity}` → objeto `{hex, threshold}` (ΔE calculado)
+- `formatDisplay`: exibe `#hex (Exact|Similar|Broad)` a partir do threshold armazenado
+
+#### Step 6.5: Ampliar `SearchCriterionSchema` para aceitar objetos
+- [x] **Status:** ✅ Concluído
+
+O Zod schema e a interface `SearchCriterion` só aceitavam `string | number | boolean | null | array`. O valor processado do color é um objeto `{ hex, threshold }`, que era rejeitado pela validação.
+
+Alterações em `src/core/store/filter/schemas.ts`:
+- Schema: adicionado `z.record(z.string(), z.unknown())` ao union de `value`
+- Interface: adicionado `Record<string, unknown>` ao tipo `value`
+
+#### Step 6.6: Corrigir Edit Mode para Color
+- [x] **Status:** ✅ Concluído
+
+Em `useAdvancedSearch.ts`, `handleStartEdit` não sabia converter o valor processado `{hex, threshold}` de volta para o formato interno `{hex, proximity}` que o `ColorCriterionField` espera.
+
+Adicionado tratamento específico para `criterionItem.key === 'color'`:
+- Extrai threshold do objeto armazenado
+- Calcula proximity via `((threshold - 2.3) / (50 - 2.3)) × 100`
+- Serializa como JSON string para o componente
+
 ---
 
 ### Fase 7: Testes, Compilação e Validação
@@ -358,7 +459,7 @@ cd src-tauri && cargo check && cargo clippy -- -D warnings
 ```
 
 #### Step 7.2: Verificar Frontend
-- [ ] **Status:** ⏳ Pendente
+- [x] **Status:** ✅ Concluído (`npx tsc --noEmit` e `npx eslint` passaram sem erros)
 
 ```bash
 npm run lint && npx tsc --noEmit
@@ -409,6 +510,19 @@ npm run lint && npx tsc --noEmit
 2. **sqlx compile-time macros:** `sqlx::query!` e `sqlx::query_as!` validam contra o DB em tempo de compilação. Como a migration ainda não foi aplicada, `db/colors.rs` usa runtime `sqlx::query` (sem macro) para evitar falhas. Após a migration ser aplicada, pode-se converter para macros se desejado.
 3. **Send + Sync:** O error type `Box<dyn Error>` precisa ser `Box<dyn Error + Send + Sync>` para satisfazer o bound `Send` dos comandos Tauri async.
 4. **thumb_dir_clone moved:** O `spawn_blocking` move o clone, necessitando um segundo clone (`thumb_dir_for_colors`) para o bloco de extração de cores.
+5. **Harmonia monochromatic falsa:** Top 5 cores do k-means podem ser variações do mesmo matiz dominante quando k=16. Resolvido analisando todas as cores com percentage >= 1%.
+6. **Distribuição com gap preto:** Percentagens das top N cores não somavam 100%. Resolvido com normalização (v2) e depois com agglomerative clustering (v3) que garante cobertura completa.
+7. **Swatch "Copied!" cortado:** Texto "Copied!" com 9px não cabia em swatches de 28px com `overflow: hidden`. Resolvido substituindo por checkmark ✓ (14px) e aumentando swatch mínimo para 32px.
+8. **TypeScript type mismatch em ColorCriterionField:** `SearchValue = string | number | Date | null` não pode ser castado diretamente para `{ hex, proximity }`. Resolvido tratando apenas `typeof === 'string'` via `JSON.parse` com fallbacks seguros.
+9. **max-lines excedido:** Após adição de 5 novos tipos de harmonia, `colorHarmonyUtils.ts` excedeu 300 linhas. Resolvido dividindo em `colorClusteringUtils.ts` (tipos + HSL + clustering) e `colorHarmonyUtils.ts` (harmonia + re-exports).
+10. **Separadores visuais proibidos:** Comentários `// ===` violavam guideline de documentação. Removidos após revisão.
+11. **Busca por cor retornava todos os assets (3 bugs encadeados):**
+    - **Bug A — `criterionLogicRegistry` sem `color`:** O store caía no fallback `textLogic.process()`, que retornava o valor como string inalterada. Backend recebia `c.value` como string JSON, não objeto, fazendo `c.value.get("hex")` retornar `None` → fallback `#000000` → match em tudo.
+    - **Bug B — `SearchCriterionSchema` rejeitava objetos:** O Zod schema só aceitava `string | number | boolean | null | array`. Objeto `{hex, threshold}` era silenciosamente rejeitado por `setAdvancedSearch()`.
+    - **Bug C — `colorHandler.process()` fazia `JSON.stringify()`:** Mesmo se o store usasse o handler correto, o `finalValue` seria uma string dupla-serializada.
+    - **Resolução:** Adicionado `colorLogic` ao registry + ampliado schema + removido stringify.
+12. **Edit mode não restaurava valores do color:** `handleStartEdit` recebe o valor processado `{hex, threshold}` mas o componente espera `{hex, proximity}` como JSON string. Sem conversão reversa, o campo abria com `#000000` e proximity default. Resolvido com `deltaEToSliderPercentage()` e serialização explícita em `handleStartEdit`.
+13. **`formatDisplay` acessava campo inexistente:** Após processamento, o valor armazenado tem `threshold`, não `proximity`. `formatDisplay` tentava ler `parsed.proximity` → `undefined` → label sempre "Broad". Resolvido calculando proximity reverso a partir de threshold.
 
 ---
 

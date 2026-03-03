@@ -2,7 +2,7 @@
 
 **Data:** 20 de Fevereiro de 2026
 **Status:** Concluído (Foco de Interface/Ações)
-**Última atualização:** 2026-03-02 — Conclusão de todas as Sprints de 1 a 8 do ciclo inicial de excelência, e Sprints 1 a 4 do ciclo de performance e busca avançada.
+**Última atualização:** 2026-03-03 — Conclusão de todas as Sprints de 1 a 8 do ciclo inicial de excelência, Sprints 1 a 4 do ciclo de performance e busca avançada, e Análise Cromática Nativa (Fase 3.1).
 **Baseado em:** `pendencias_consolidadas.md`
 
 Este documento elabora um plano detalhado de implementação para todas as pendências ativas mapeadas nos relatórios recentes do projeto **Mundam**. Para manter a manutenibilidade, o plano foi segmentado em partes menores, de modo que cada tópico representa uma evolução lógica, focada em recursos específicos, melhorias de arquitetura e otimizações de performance.
@@ -30,10 +30,11 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 
 **Motivação:** Bibliotecas grandes precisam de ferramentas de manipulação de metadados em lote e motores de busca avançados orientados tanto a contexto quanto a propriedades estéticas.
 
-### [ ] 3.1 Implementação de Análise Cromática e Busca por Cor
-*   **Ação DB:** Expandir o Schema do SQLite (requer SQLx migrations caso ainda não configurado para essa entidade) para englobar uma tabela/módulo `image_colors` e uma coluna para `dominant_color`.
-*   **Ação Backend:** Atrelar à pipeline de thumbnailing as métricas extraídas usando FFmpeg/ImageMagick para definir a paleta dominante ou k-means cluster do arquivo.
-*   **Ação Frontend:** Criar um componente isolado `ColorPicker` agregado no `FilterStore` da Sidebar para submissões de cor hex/código no motor de busca interno.
+### [✓] 3.1 Implementação de Análise Cromática e Busca por Cor
+*   **Ação DB (Concluída):** Expandir o Schema do SQLite (requer SQLx migrations caso ainda não configurado para essa entidade) para englobar uma tabela/módulo `image_colors` e uma coluna para `dominant_color`.
+*   **Ação Backend (Concluída):** Atrelar à pipeline de thumbnailing as métricas extraídas usando FFmpeg/ImageMagick para definir a paleta dominante ou k-means cluster do arquivo.
+*   **Ação Frontend (Concluída):** Criar um componente isolado `ColorPicker` agregado no `FilterStore` da Sidebar para submissões de cor hex/código no motor de busca interno.
+*   *Nota (2026-03-03): Implementação completa em 7 fases. DB: migration SQLx criando tabela `asset_colors` (hex, LAB L/a/b, percentage, rank) + coluna `dominant_color` em `assets`. Backend: extração via k-means (k=16) no espaço CIE-LAB usando crates `kmeans-colors`/`palette`, integrada na pipeline de thumbnails (apenas `MediaType::Image`). Busca por cor via distância euclidiana CIE-76 no SQL Query Builder com threshold ΔE configurável (2.3–50). Frontend Inspector: paleta com swatches (clipboard copy), barra de distribuição via agglomerative clustering 3D (HSL cilíndrico → cartesiano), e badge de harmonia com 13 tipos classificados. Advanced Search: `ColorCriterionField` com `ColorInput` + `Slider` de proximidade, suportado por `colorLogic` no store registry e schema `SearchCriterion` ampliado para aceitar objetos. Detalhes: `docs/plans/2026-03-03_01:49-chromatic-analysis.md`*
 
 ### [✓] 3.2 Melhorias do Core do Motor de Busca
 *   **Ação (Concluída):** Instaurar a lógica robusta de **Fuzzy Search** na tipagem textual permitindo que o SQLite (ou lógicas do Rust em memória usando distâncias de edição, ex. Levenshtein) tolere erros de digitação (typos) na pesquisa.

@@ -7,17 +7,18 @@ import { z } from 'zod';
 export const SearchCriterionSchema = z.object({
     /** Unique identifier for the criterion instance */
     id: z.string().min(1),
-    /** The metadata field key (e.g., 'tags', 'rating', 'size') */
+    /** The metadata field key (e.g., 'tags', 'rating', 'size', 'color') */
     key: z.string().min(1),
-    /** The comparison operator (e.g., 'contains', 'greaterThan') */
+    /** The comparison operator (e.g., 'contains', 'greaterThan', 'similar') */
     operator: z.string().min(1),
-    /** The search value, which can be a primitive or an array (for ranges) */
+    /** The search value: primitive, array (ranges), or object (color criteria) */
     value: z.union([
         z.string(),
         z.number(),
         z.boolean(),
         z.null(),
-        z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))
+        z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])),
+        z.record(z.string(), z.unknown())
     ]),
     /** Optional scale factor for numeric fields (e.g., byte multipliers) */
     unitMultiplier: z.string().optional(),
@@ -30,7 +31,13 @@ export interface SearchCriterion {
     id: string;
     key: string;
     operator: string;
-    value: string | number | boolean | null | (string | number | boolean | null)[];
+    value:
+        | string
+        | number
+        | boolean
+        | null
+        | (string | number | boolean | null)[]
+        | Record<string, unknown>;
     unitMultiplier?: string;
     displayValue?: string;
 }

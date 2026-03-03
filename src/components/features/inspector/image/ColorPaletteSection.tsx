@@ -1,9 +1,13 @@
-import { Component, createResource, Show } from 'solid-js';
+import { Component, createResource, createMemo, Show } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { type AssetItem } from '../../../../types';
 import { AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { Palette, Loader2 } from 'lucide-solid';
-import { type ExtractedColorData, detectColorHarmony } from './colorHarmonyUtils';
+import {
+    type ExtractedColorData,
+    agglomerativeGrouping,
+    detectColorHarmony
+} from './colorHarmonyUtils';
 import { ColorHarmonyBadge } from './ColorHarmonyBadge';
 import { ColorDistribution } from './ColorDistribution';
 import { ColorSwatchGrid } from './ColorSwatchGrid';
@@ -17,7 +21,8 @@ interface ColorPaletteSectionProperties {
  * Inspector accordion section that displays the full color palette analysis.
  * Contains three subsections: harmony classification, distribution bars, and swatch grid.
  *
- * Only renders for image assets that have had color extraction performed.
+ * Computes agglomerative clustering once and shares the result between
+ * the distribution bar and harmony badge for consistent analysis.
  */
 export const ColorPaletteSection: Component<ColorPaletteSectionProperties> = properties => {
     const [colors] = createResource(
@@ -33,11 +38,18 @@ export const ColorPaletteSection: Component<ColorPaletteSectionProperties> = pro
         }
     );
 
-    const harmonyType = () => {
+    /** Shared agglomerative clusters — computed once, used by both distribution and harmony. */
+    const colorClusters = createMemo(() => {
         const colorData = colors();
-        if (!colorData || colorData.length === 0) return 'not_identified' as const;
-        return detectColorHarmony(colorData);
-    };
+        if (!colorData || colorData.length === 0) return [];
+        return agglomerativeGrouping(colorData);
+    });
+
+    const harmonyType = createMemo(() => {
+        const clusters = colorClusters();
+        if (clusters.length === 0) return 'not_identified' as const;
+        return detectColorHarmony(clusters);
+    });
 
     return (
         <AccordionItem value="color-palette">
@@ -62,13 +74,13 @@ export const ColorPaletteSection: Component<ColorPaletteSectionProperties> = pro
                                 <ColorHarmonyBadge harmonyType={harmonyType()} />
                             </div>
 
-                            {/* Distribution Bars */}
+                            {/* Distribution Bars (receives shared clusters) */}
                             <div class="color-palette-section-row">
                                 <span class="color-palette-section-row-label">Distribution</span>
-                                <ColorDistribution colors={colors()!} />
+                                <ColorDistribution colors={colors()!} clusters={colorClusters()} />
                             </div>
 
-                            {/* Swatch Grid */}
+                            {/* Swatch Grid (raw colors, no clustering) */}
                             <div class="color-palette-section-row">
                                 <span class="color-palette-section-row-label">Palette</span>
                                 <ColorSwatchGrid colors={colors()!} />

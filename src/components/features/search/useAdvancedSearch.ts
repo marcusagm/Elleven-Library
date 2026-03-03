@@ -152,6 +152,20 @@ export const useAdvancedSearch = (
                 setEditingValue(Number(criterionItem.value) / multiplier);
             } else if (['added_at', 'created_at', 'modified_at'].includes(criterionItem.key)) {
                 setEditingValue(fromISO(String(criterionItem.value)) as unknown as SearchValue);
+            } else if (criterionItem.key === 'color') {
+                if (typeof criterionItem.value === 'object' && criterionItem.value !== null) {
+                    const colorObject = criterionItem.value as Record<string, unknown>;
+                    const threshold = (colorObject.threshold as number) ?? 25;
+                    const proximity = Math.max(
+                        0,
+                        Math.min(100, Math.round(((threshold - 2.3) / (50 - 2.3)) * 100))
+                    );
+                    setEditingValue(
+                        JSON.stringify({ hex: colorObject.hex, proximity }) as SearchValue
+                    );
+                } else {
+                    setEditingValue(criterionItem.value as SearchValue);
+                }
             } else {
                 setEditingValue(criterionItem.value as SearchValue);
             }
