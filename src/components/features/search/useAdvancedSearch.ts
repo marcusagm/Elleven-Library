@@ -11,6 +11,45 @@ import { supportedFormats } from '../../../core/store/systemStore';
 
 export type SearchValue = string | number | null | Date;
 
+const extractArrayValue = (
+    key: string,
+    value: unknown[],
+    unitMultiplier: string
+): [SearchValue, SearchValue] => {
+    if (key === 'size') {
+        const multiplier = Number(unitMultiplier);
+        return [Number(value[0]) / multiplier, Number(value[1]) / multiplier];
+    }
+    if (['added_at', 'created_at', 'modified_at'].includes(key)) {
+        return [
+            fromISO(String(value[0])) as unknown as SearchValue,
+            fromISO(String(value[1])) as unknown as SearchValue
+        ];
+    }
+    return [value[0] as SearchValue, value[1] as SearchValue];
+};
+
+const extractSingleValue = (key: string, value: unknown, unitMultiplier: string): SearchValue => {
+    if (key === 'size') {
+        return Number(value) / Number(unitMultiplier);
+    }
+    if (['added_at', 'created_at', 'modified_at'].includes(key)) {
+        return fromISO(String(value)) as unknown as SearchValue;
+    }
+    if (key === 'color') {
+        if (typeof value === 'object' && value !== null) {
+            const colorObject = value as Record<string, unknown>;
+            const threshold = (colorObject.threshold as number) ?? 25;
+            const proximity = Math.max(
+                0,
+                Math.min(100, Math.round(((threshold - 2.3) / (50 - 2.3)) * 100))
+            );
+            return JSON.stringify({ hex: colorObject.hex, proximity });
+        }
+    }
+    return value as SearchValue;
+};
+
 /**
  * Custom hook that manages the complex state and logic for the Advanced Search system.
  * Handles the construction, validation, and editing of multiple search criteria,
@@ -132,43 +171,19 @@ export const useAdvancedSearch = (
     const handleStartEdit = (criterionItem: SearchCriterion) => {
         setEditingId(criterionItem.id);
         setEditingValidationErrors({});
-        setEditingUnitMultiplier(criterionItem.unitMultiplier || '1048576');
+        const multiplier = criterionItem.unitMultiplier || '1048576';
+        setEditingUnitMultiplier(multiplier);
 
         if (Array.isArray(criterionItem.value)) {
-            if (criterionItem.key === 'size') {
-                const multiplier = Number(criterionItem.unitMultiplier || '1048576');
-                setEditingValue(Number(criterionItem.value[0]) / multiplier);
-                setEditingValue2(Number(criterionItem.value[1]) / multiplier);
-            } else if (['added_at', 'created_at', 'modified_at'].includes(criterionItem.key)) {
-                setEditingValue(fromISO(String(criterionItem.value[0])) as unknown as SearchValue);
-                setEditingValue2(fromISO(String(criterionItem.value[1])) as unknown as SearchValue);
-            } else {
-                setEditingValue(criterionItem.value[0] as SearchValue);
-                setEditingValue2(criterionItem.value[1] as SearchValue);
-            }
+            const [val1, val2] = extractArrayValue(
+                criterionItem.key,
+                criterionItem.value,
+                multiplier
+            );
+            setEditingValue(val1);
+            setEditingValue2(val2);
         } else {
-            if (criterionItem.key === 'size') {
-                const multiplier = Number(criterionItem.unitMultiplier || '1048576');
-                setEditingValue(Number(criterionItem.value) / multiplier);
-            } else if (['added_at', 'created_at', 'modified_at'].includes(criterionItem.key)) {
-                setEditingValue(fromISO(String(criterionItem.value)) as unknown as SearchValue);
-            } else if (criterionItem.key === 'color') {
-                if (typeof criterionItem.value === 'object' && criterionItem.value !== null) {
-                    const colorObject = criterionItem.value as Record<string, unknown>;
-                    const threshold = (colorObject.threshold as number) ?? 25;
-                    const proximity = Math.max(
-                        0,
-                        Math.min(100, Math.round(((threshold - 2.3) / (50 - 2.3)) * 100))
-                    );
-                    setEditingValue(
-                        JSON.stringify({ hex: colorObject.hex, proximity }) as SearchValue
-                    );
-                } else {
-                    setEditingValue(criterionItem.value as SearchValue);
-                }
-            } else {
-                setEditingValue(criterionItem.value as SearchValue);
-            }
+            setEditingValue(extractSingleValue(criterionItem.key, criterionItem.value, multiplier));
             setEditingValue2(null);
         }
     };

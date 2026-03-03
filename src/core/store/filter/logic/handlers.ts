@@ -191,6 +191,14 @@ function sliderPercentageToDeltaE(percentage: number): number {
     return DELTA_E_EXACT + (percentage / 100) * (DELTA_E_BROAD - DELTA_E_EXACT);
 }
 
+function getMatchLabel(percentage: number): string {
+    if (percentage === 0) return 'Exact';
+    if (percentage <= 25) return 'Very Similar';
+    if (percentage <= 50) return 'Similar';
+    if (percentage <= 75) return 'Related';
+    return 'Broad';
+}
+
 export const colorLogic: SearchFieldLogic = {
     validate: value => {
         const errors: Record<string, string> = {};
@@ -210,7 +218,7 @@ export const colorLogic: SearchFieldLogic = {
         }
         return errors;
     },
-    process: value => {
+    process: (value, _value2, operator) => {
         if (typeof value !== 'string') {
             return { finalValue: { hex: '#000000', threshold: 25 } };
         }
@@ -220,7 +228,8 @@ export const colorLogic: SearchFieldLogic = {
         } catch {
             return { finalValue: { hex: '#000000', threshold: 25 } };
         }
-        const threshold = sliderPercentageToDeltaE(parsed.proximity ?? 50);
+        const threshold =
+            operator === 'exact' ? DELTA_E_EXACT : sliderPercentageToDeltaE(parsed.proximity ?? 50);
         return {
             finalValue: {
                 hex: parsed.hex,
@@ -228,13 +237,18 @@ export const colorLogic: SearchFieldLogic = {
             }
         };
     },
-    formatDisplay: value => {
+    formatDisplay: (value, _value2, operator) => {
         try {
             const parsed =
                 typeof value === 'string'
                     ? JSON.parse(value as string)
                     : (value as Record<string, unknown>);
             const hex = (parsed.hex as string) ?? '#000000';
+
+            if (operator === 'exact') {
+                return `${hex} (Exact)`;
+            }
+
             const threshold = (parsed.threshold as number) ?? 25;
             const proximity = Math.max(
                 0,
@@ -245,8 +259,8 @@ export const colorLogic: SearchFieldLogic = {
                     )
                 )
             );
-            const label = proximity <= 15 ? 'Exact' : proximity <= 50 ? 'Similar' : 'Broad';
-            return `${hex} (${label})`;
+            const label = getMatchLabel(proximity);
+            return `${hex} (Tolerance: ${proximity}% - ${label})`;
         } catch {
             return String(value);
         }

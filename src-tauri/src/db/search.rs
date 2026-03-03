@@ -558,7 +558,7 @@ fn build_criterion_clause<'a>(
         "color" => {
             // Color proximity search using CIE-76 Euclidean distance in LAB space.
             // Value is expected as JSON object: { "hex": "#FF5733", "threshold": 25.0 }
-            tracing::info!("Color criterion raw value: {:?}", c.value);
+            tracing::debug!("Color criterion raw value: {:?}", c.value);
 
             let hex_color = c
                 .value
@@ -571,7 +571,7 @@ fn build_criterion_clause<'a>(
                 .and_then(|v| v.as_f64())
                 .unwrap_or(25.0);
 
-            tracing::info!(
+            tracing::debug!(
                 "Color search: hex={}, threshold={}, value_type={}",
                 hex_color,
                 threshold,
@@ -587,7 +587,7 @@ fn build_criterion_clause<'a>(
             match crate::thumbnails::color_analysis::hex_to_lab(hex_color) {
                 Ok((target_lightness, target_green_red, target_blue_yellow)) => {
                     let threshold_squared = threshold * threshold;
-                    tracing::info!(
+                    tracing::debug!(
                         "Color LAB target: L={:.2}, a={:.2}, b={:.2}, threshold²={:.2}",
                         target_lightness,
                         target_green_red,
