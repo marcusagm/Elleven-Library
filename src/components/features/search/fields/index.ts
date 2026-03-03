@@ -1,4 +1,5 @@
 import { SearchFieldHandler } from './types';
+import { colorHandler } from './ColorCriterionField';
 import { dateHandler } from './DateCriterionField';
 import { folderHandler } from './FolderCriterionField';
 import { numberHandler } from './NumberCriterionField';
@@ -14,6 +15,7 @@ import { textHandler } from './TextCriterionField';
  * processing, and UI rendering based on the type of search criterion selected.
  */
 export const criterionHandlerRegistry: Record<string, SearchFieldHandler> = {
+    color: colorHandler,
     date: dateHandler,
     folder: folderHandler,
     number: numberHandler,

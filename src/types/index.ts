@@ -32,6 +32,8 @@ export interface AssetItem {
     added_at: string;
     /** Associated folder primary key */
     folder_id: number;
+    /** Most prominent extracted color hex value (e.g., "#FF5733") */
+    dominant_color: string | null;
 }
 
 /**

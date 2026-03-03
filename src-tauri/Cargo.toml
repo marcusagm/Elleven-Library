@@ -39,6 +39,10 @@ infer = "0.15"       # Magic bytes detection
 strum = { version = "0.26", features = ["derive"] } # Enum iteration
 strum_macros = "0.26"
 
+# Color Analysis - K-Means clustering in LAB space
+kmeans_colors = "0.6"
+palette = "0.7"
+
 # Thumbnail optimization - Fast path
 zune-jpeg = "0.4"
 webp = "0.3"

@@ -1,3 +1,4 @@
+pub mod colors;
 pub mod folders;
 pub mod formats;
 pub mod indexing;

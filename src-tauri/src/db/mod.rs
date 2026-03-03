@@ -4,6 +4,7 @@
 //! provides a central entry point for all database operations.
 
 pub mod assets;
+pub mod colors;
 pub mod folders;
 pub mod models;
 pub mod search;

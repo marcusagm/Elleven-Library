@@ -75,7 +75,7 @@ impl Db {
             query_builder.push(" -1 ");
         }
 
-        query_builder.push(") SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.media_type, i.rating, i.notes, i.created_at, i.modified_at, i.added_at FROM assets i ");
+        query_builder.push(") SELECT DISTINCT i.id, i.path, i.filename, i.width, i.height, i.size, i.thumbnail_path, i.format, i.media_type, i.rating, i.notes, i.created_at, i.modified_at, i.added_at, i.dominant_color FROM assets i ");
 
         if !tag_ids.is_empty() {
             query_builder.push(" JOIN asset_tags it ON i.id = it.asset_id ");
@@ -552,6 +552,49 @@ fn build_criterion_clause<'a>(
                 }
                 _ => {
                     query_builder.push(" 1=1 ");
+                }
+            }
+        }
+        "color" => {
+            // Color proximity search using CIE-76 Euclidean distance in LAB space.
+            // Value is expected as JSON object: { "hex": "#FF5733", "threshold": 25.0 }
+            let hex_color = c
+                .value
+                .get("hex")
+                .and_then(|v| v.as_str())
+                .unwrap_or("#000000");
+            let threshold = c
+                .value
+                .get("threshold")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(25.0);
+
+            match crate::thumbnails::color_analysis::hex_to_lab(hex_color) {
+                Ok((target_lightness, target_green_red, target_blue_yellow)) => {
+                    let threshold_squared = threshold * threshold;
+
+                    query_builder.push(
+                        " i.id IN (SELECT DISTINCT asset_id FROM asset_colors WHERE \
+                         ((lab_lightness - ",
+                    );
+                    query_builder.push_bind(target_lightness);
+                    query_builder.push(") * (lab_lightness - ");
+                    query_builder.push_bind(target_lightness);
+                    query_builder.push(") + (lab_green_red - ");
+                    query_builder.push_bind(target_green_red);
+                    query_builder.push(") * (lab_green_red - ");
+                    query_builder.push_bind(target_green_red);
+                    query_builder.push(") + (lab_blue_yellow - ");
+                    query_builder.push_bind(target_blue_yellow);
+                    query_builder.push(") * (lab_blue_yellow - ");
+                    query_builder.push_bind(target_blue_yellow);
+                    query_builder.push(")) < ");
+                    query_builder.push_bind(threshold_squared);
+                    query_builder.push(") ");
+                }
+                Err(_) => {
+                    // Invalid hex color — match nothing
+                    query_builder.push(" 1=0 ");
                 }
             }
         }

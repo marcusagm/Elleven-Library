@@ -204,7 +204,11 @@ pub fn run() {
             transcoding::commands::clear_cache,
             transcoding::commands::ffmpeg_available,
             // Streaming security
-            get_streaming_token
+            get_streaming_token,
+            // Color Analysis
+            library::commands::colors::get_asset_colors,
+            library::commands::colors::reextract_asset_colors,
+            library::commands::colors::reextract_all_colors
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

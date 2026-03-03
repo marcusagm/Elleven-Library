@@ -17,7 +17,8 @@ export const SEARCH_FIELDS = [
     { value: 'modified_at', label: 'Date modified', type: 'date' },
     { value: 'rating', label: 'Rating', type: 'rating' },
     { value: 'notes', label: 'Notes', type: 'text' },
-    { value: 'folder', label: 'Folder', type: 'folder' }
+    { value: 'folder', label: 'Folder', type: 'folder' },
+    { value: 'color', label: 'Color', type: 'color' }
 ];
 
 export const OPERATORS_FOR_TYPE: Record<string, { value: string; label: string }[]> = {
@@ -56,5 +57,9 @@ export const OPERATORS_FOR_TYPE: Record<string, { value: string; label: string }
         { value: 'eq', label: 'Equals' },
         { value: 'gte', label: 'Greater than or equal' },
         { value: 'lte', label: 'Less than or equal' }
+    ],
+    color: [
+        { value: 'similar', label: 'Similar to' },
+        { value: 'exact', label: 'Exact match' }
     ]
 };

@@ -228,3 +228,19 @@ commands.allow = ["set_thumbnail_priority"]
 identifier = "allow-get-streaming-token"
 description = "Enables get_streaming_token for streaming server authentication"
 commands.allow = ["get_streaming_token"]
+
+# Color Analysis
+[[permission]]
+identifier = "allow-get-asset-colors"
+description = "Enables get_asset_colors for retrieving extracted color palette"
+commands.allow = ["get_asset_colors"]
+
+[[permission]]
+identifier = "allow-reextract-asset-colors"
+description = "Enables reextract_asset_colors for re-analyzing a single asset"
+commands.allow = ["reextract_asset_colors"]
+
+[[permission]]
+identifier = "allow-reextract-all-colors"
+description = "Enables reextract_all_colors for full library color re-analysis"
+commands.allow = ["reextract_all_colors"]

@@ -40,6 +40,9 @@ pub struct AssetMetadata {
     /// Time when the asset was first indexed by Mundam.
     #[sqlx(default)]
     pub added_at: Option<DateTime<Utc>>,
+    /// Hex color of the most dominant color in the image palette.
+    #[sqlx(default)]
+    pub dominant_color: Option<String>,
 }
 
 /// A categorization tag that can be applied to assets.
@@ -98,4 +101,28 @@ pub struct SmartFolder {
     pub query_json: String,
     /// ISO-8601 creation timestamp.
     pub created_at: DateTime<Utc>,
+}
+
+/// A single extracted color from an asset's palette.
+///
+/// Stores both the display hex value and the CIE-LAB components
+/// used for perceptual color proximity search.
+#[derive(Debug, Serialize, Deserialize, Clone, sqlx::FromRow)]
+pub struct AssetColor {
+    /// Unique row identifier.
+    pub id: i64,
+    /// The asset this color belongs to.
+    pub asset_id: i64,
+    /// Hexadecimal representation (e.g., "#FF5733").
+    pub hex_color: String,
+    /// CIE-LAB L* component (lightness, 0–100).
+    pub lab_lightness: f64,
+    /// CIE-LAB a* component (green-red axis).
+    pub lab_green_red: f64,
+    /// CIE-LAB b* component (blue-yellow axis).
+    pub lab_blue_yellow: f64,
+    /// Proportion of the image this color represents (0.0–1.0).
+    pub percentage: f64,
+    /// Rank by dominance (1 = most dominant).
+    pub rank: i32,
 }

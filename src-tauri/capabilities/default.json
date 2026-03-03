@@ -55,6 +55,9 @@
     "allow-clear-cache",
     "allow-set-thumbnail-priority",
     "allow-get-streaming-token",
+    "allow-get-asset-colors",
+    "allow-reextract-asset-colors",
+    "allow-reextract-all-colors",
     {
       "identifier": "http:default",
       "allow": [

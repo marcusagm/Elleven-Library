@@ -40,5 +40,6 @@ pub fn get_asset_metadata(path: &Path) -> Option<AssetMetadata> {
         modified_at,
         created_at,
         added_at: None,
+        dominant_color: None,
     })
 }

@@ -4,6 +4,7 @@ use tauri::AppHandle;
 
 pub mod affinity;
 pub mod archive;
+pub mod color_analysis;
 pub mod extractors;
 pub mod native;
 

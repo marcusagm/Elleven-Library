@@ -1,3 +1,4 @@
+use crate::db::models::AssetColor;
 use crate::db::Db;
 use crate::thumbnails::priority::ThumbnailPriorityState;
 use std::path::{Path, PathBuf};
@@ -6,7 +7,7 @@ use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter};
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 /// Background worker that continuously generates thumbnails for indexed assets.
 ///
@@ -260,6 +261,7 @@ impl ThumbnailWorker {
             let pool_clone = pool.clone();
             let app_for_blocking = app.clone();
             let thumb_dir_clone = thumb_dir.clone();
+            let thumb_dir_for_colors = thumb_dir.clone();
 
             let db_updates = tauri::async_runtime::spawn_blocking(move || {
                 use rayon::prelude::*;
@@ -290,6 +292,45 @@ impl ThumbnailWorker {
             .await
             .unwrap_or_default();
 
+            // --- 🎨 COLOR EXTRACTION (post-thumbnail, non-blocking) ---
+            let color_results: Vec<(i64, Option<Vec<AssetColor>>)> = db_updates
+                .iter()
+                .filter_map(|(id, result)| {
+                    let Ok(filename) = result else { return None };
+
+                    // Determine if this is an image asset by checking the original path
+                    // We need a heuristic here since we only have the thumbnail filename
+                    let thumbnail_full_path = thumb_dir_for_colors.join(filename);
+                    if !thumbnail_full_path.exists() {
+                        return None;
+                    }
+
+                    match crate::thumbnails::color_analysis::extract_color_palette(
+                        &thumbnail_full_path,
+                        None,
+                    ) {
+                        Ok(extracted_colors) => {
+                            let asset_colors: Vec<AssetColor> = extracted_colors
+                                .iter()
+                                .enumerate()
+                                .map(|(index, color)| AssetColor {
+                                    id: 0,
+                                    asset_id: *id,
+                                    hex_color: color.hex_value.clone(),
+                                    lab_lightness: color.lab_lightness,
+                                    lab_green_red: color.lab_green_red,
+                                    lab_blue_yellow: color.lab_blue_yellow,
+                                    percentage: color.percentage,
+                                    rank: (index + 1) as i32,
+                                })
+                                .collect();
+                            Some((*id, Some(asset_colors)))
+                        }
+                        Err(_) => None, // Silently skip non-image or failed extractions
+                    }
+                })
+                .collect();
+
             #[derive(serde::Serialize, Clone)]
             struct ThumbnailPayload {
                 id: i64,
@@ -299,11 +340,27 @@ impl ThumbnailWorker {
             for (id, result) in db_updates {
                 match result {
                     Ok(filename) => {
-                        if let Err(e) = db.update_thumbnail_path(id, &filename).await {
-                            tracing::error!("Error updating DB for thumbnail: {}", e);
+                        if let Err(database_error) = db.update_thumbnail_path(id, &filename).await {
+                            tracing::error!("Error updating DB for thumbnail: {}", database_error);
                         } else {
                             let _ = app
                                 .emit("thumbnail:ready", ThumbnailPayload { id, path: filename });
+
+                            // Persist extracted colors for this asset (if available)
+                            if let Some((_, Some(ref asset_colors))) =
+                                color_results.iter().find(|(color_id, _)| *color_id == id)
+                            {
+                                if let Err(color_db_error) =
+                                    db.insert_asset_colors(id, asset_colors).await
+                                {
+                                    warn!(
+                                        "COLOR: Failed to save colors for asset {}: {}",
+                                        id, color_db_error
+                                    );
+                                } else if let Some(dominant) = asset_colors.first() {
+                                    let _ = db.update_dominant_color(id, &dominant.hex_color).await;
+                                }
+                            }
                         }
                     }
                     Err(err_msg) => {

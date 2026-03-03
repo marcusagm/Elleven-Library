@@ -375,6 +375,7 @@ impl Db {
                     format: f,
                     media_type: mt,
                     added_at: None,
+                    dominant_color: None,
                 },
                 old_folder_id,
             )))
