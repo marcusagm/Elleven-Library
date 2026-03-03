@@ -38,8 +38,9 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 ### [ ] 3.2 Melhorias do Core do Motor de Busca
 *   **Ação:** Instaurar a lógica robusta de **Fuzzy Search** na tipagem textual permitindo que o SQLite (ou lógicas do Rust em memória usando distâncias de edição, ex. Levenshtein) tolere erros de digitação (typos) na pesquisa.
 
-### [ ] 3.3 Batch Tagging (*Operações em Massa*)
-*   **Ação:** Melhorar o `MultiInspector.tsx` e integrar suporte à interface (UI) e ao SQLite para renomear, excluir, mover agrupamentos e aplicar ou revogar **Tags de milhares de instâncias simultaneamente**.
+### [✓] 3.3 Batch Tagging (*Operações em Massa*)
+*   **Ação (Concluída):** Melhorar o `MultiInspector.tsx` e integrar suporte à interface (UI) e ao SQLite para renomear, excluir, mover agrupamentos e aplicar ou revogar **Tags de milhares de instâncias simultaneamente**.
+*   *Nota (2026-03-02): O sistema agora utiliza ativamente a variável reativa global `tagUpdateVersion` em conjunto ao `EventBus` para refletir alterações massivas efetuadas via Drag and Drop instantaneamente no Inspector UI.*
 
 ---
 

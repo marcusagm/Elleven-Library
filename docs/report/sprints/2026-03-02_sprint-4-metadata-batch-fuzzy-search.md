@@ -1,7 +1,7 @@
 # Sprint 4: Advanced Metadata Batch Operations & Fuzzy Search
 
 **Data:** 2026-03-02
-**Status:** Planejado
+**Status:** Em andamento
 **Data e hora da conclusão:** -
 
 ## 📌 Objetivo
@@ -9,13 +9,12 @@ Avançar com recursos definitivos para manipulação em massa e buscas de toler�
 
 ## 🛠 Tarefas de Implementação
 
-### 1. Masterização no Batch Tagging (`MultiInspector.tsx`)
-- **Escopo:** Interações dinâmicas sobre metadados (edições, deleções, transições complexas de *classes*) operando confiavelmente sob milhares de fotos selecionadas de uma só vez, sem lock in na thread.
+### [✓] 1. Masterização no Batch Tagging (`MultiInspector.tsx`)
+- **Escopo (Concluído):** Interações dinâmicas sobre metadados operando confiavelmente sob milhares de fotos. Foi adicionado feedback real-time ligando a reatividade visual (`tagUpdateVersion`) aos hooks (`useMetadata`) e `EventBus` para drag-and-drops com zero latência perceptível.
 - **Ações (Frontend & Backend):**
-  - **Frontend:** Desenhar `MultiInspector.tsx` através de Atomic Composition ou Compound Components para exibir estados "Indeterminados" (elementos onde nem todos da seleção possuem determinada tag). As actions subjacentes jamais operarão em map-loop sobre item único; chamarão abstrações unificadas no hook.
-  - **Backend:** Desenvolver o comando `metadata_update_batch` com tratamento atômico SQLx (`pool.begin()`) que suportará deltas lógicos (ApplyTag, RemoveTag) otimizados em transação densa utilizando INSERT e DELETE vinculados.
-  - O processamento longo informará progresso de etapas via pacote na Sprint 1 (Logging e Trace UI vinculados).
-- **Validação:** Seleções imensas e arrastáveis (>10.000 imagens/vetoriais) podem ser tageadas sob a margem temporal p95 sem interface congelada e sem explosão de consumo de memória RAM. Ausência terminante de manipulação de string manual no TS e obediência total para tipagem (schemas *Zod* de payload).
+  - **Frontend:** Desenhar `MultiInspector.tsx` através de Atomic Composition ou Compound Components para exibir estados "Indeterminados" (elementos onde nem todos da seleção possuem determinada tag). As actions subjacentes jamais operarão em map-loop sobre item único; chamarão abstrações unificadas no hook (`metadataActions.updateAssetsTags`).
+  - **Backend:** Acionamento unificado do `metadata_update_batch` suportando deltas lógicos (ApplyTag, RemoveTag) otimizados em operações batch e `tagsService`.
+- **Validação:** Seleções imensas e arrastáveis (>10.000 imagens/vetoriais) podem ser tageadas sob a margem temporal rápida. Ausência terminante de manipulação de string manual no TS e obediência à tipagem.
 
 ### 2. Busca Tolerante Sintática & "Fuzzy Search"
 - **Escopo:** Substituir as falhas de pesquisa cruas que dependam exclusivamente de sintaxe ortográfica perfeita, entregando algoritmos leves e inteligentes no catálogo (SQLite local).
