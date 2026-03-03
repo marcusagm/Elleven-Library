@@ -26,7 +26,7 @@ pub fn extract_eps_ps_preview(
 
     // Priority 2: ASCII XMP Metadata Thumbnail (Fast but low-res JPEG, usually 256px)
     if let Ok(data) = ai::extract_xmp_thumbnail_safe(path) {
-        return Ok((data, "image/jpeg".to_string()));
+        return Ok((data, "image/png".to_string()));
     }
 
     // Priority 3: Fast Binary Scanner

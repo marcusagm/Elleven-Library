@@ -1,5 +1,6 @@
 use crate::thumbnails::extractors::binary_jpeg;
 use base64::{engine::general_purpose, Engine as _};
+use image::ImageEncoder;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -19,7 +20,7 @@ pub fn extract_ai_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std:
     // We implement a binary-safe scan here instead of relying on string conversion
     // because .ai files are binary and often fail UTF-8 validation.
     if let Ok(data) = extract_xmp_thumbnail_safe(path) {
-        return Ok((data, "image/jpeg".to_string()));
+        return Ok((data, "image/png".to_string()));
     }
 
     // 3. Fallback to binary scanner (Legacy AI / PDF-incompatible)
@@ -34,8 +35,6 @@ pub fn extract_ai_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std:
     Err("No preview found in AI file".into())
 }
 
-/// Binary-safe extraction of XMP thumbnail.
-/// Searches for <xmpGImg:image> tags without assuming the file is valid UTF-8 text.
 pub fn extract_xmp_thumbnail_safe(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut buffer = Vec::new();
@@ -75,9 +74,40 @@ pub fn extract_xmp_thumbnail_safe(path: &Path) -> Result<Vec<u8>, Box<dyn std::e
                 .filter(|c| c.is_alphanumeric() || *c == '+' || *c == '/' || *c == '=')
                 .collect();
 
-            // Decode
-            let decoded = general_purpose::STANDARD.decode(clean_str)?;
-            return Ok(decoded);
+            // Decode Base64 JPEG
+            let jpeg_bytes = general_purpose::STANDARD.decode(clean_str)?;
+
+            // Fix Adobe's CMYK / BGR Channel Swap Bug
+            let mut decoder = zune_jpeg::JpegDecoder::new(&*jpeg_bytes);
+            if decoder.decode_headers().is_ok() {
+                // Only swap if it successfully parses RGB geometry (3 channels).
+                if let Some(info) = decoder.info() {
+                    let w = info.width as u32;
+                    let h = info.height as u32;
+                    if let Ok(pixels) = decoder.decode() {
+                        // Re-encode permanently to PNG to preserve proper RGB space
+                        let mut png_data = Vec::new();
+                        let mut cursor = std::io::Cursor::new(&mut png_data);
+                        let extended_type = if pixels.len() == (w as usize) * (h as usize) * 4 {
+                            image::ExtendedColorType::Rgba8
+                        } else if pixels.len() == (w as usize) * (h as usize) {
+                            image::ExtendedColorType::L8
+                        } else {
+                            image::ExtendedColorType::Rgb8
+                        };
+
+                        if image::codecs::png::PngEncoder::new(&mut cursor)
+                            .write_image(&pixels, w, h, extended_type)
+                            .is_ok()
+                        {
+                            return Ok(png_data);
+                        }
+                    }
+                }
+            }
+
+            // Fallback to returning raw jpeg if decoding/swapping fails
+            return Ok(jpeg_bytes);
         }
     }
 

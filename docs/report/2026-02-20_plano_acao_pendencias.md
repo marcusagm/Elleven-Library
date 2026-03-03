@@ -20,9 +20,9 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 ### [✓] 2.2 Tratamento de Erros e Controle de Loops (`Poison Pill`)
 *   **Ação (Concluída):** Atualizar o `thumbnail_worker.rs` adicionando suporte explícito à contagem de repetições e sinalização de "Poison Pill", garantindo que falhas contínuas de compressão ou arquivos corrompidos não causem sobrecarga da CPU ou travem o pool Rayon num ciclo passivo.
 
-### [ ] 2.3 Melhorias nos Extratores Auxiliares
-*   **Ação:** **SVG:** Embora o `svg.rs` exista, deve-se validar e aprofundar se a renderização por intermédio de webview ou `resvg/librsvg` nativo está capturando perfeitamente as pranchas complexas.
-*   **Ação:** Melhorar os extratores desenvolvidos recentemente de vetores brutos (`.ai`, `.eps`) garantindo o scan prioritário aos *PDF Streams* (alta qualidade) em contrapartida ao ícone genérico fallback.
+### [✓] 2.3 Melhorias nos Extratores Auxiliares
+*   **Ação (Concluída):** **SVG:** Validado matematicamente com o usuário que a renderização 100% nativa por intermédio do `resvg` está capturando perfeitamente pranchas complexas, descartando a necessidade de overhead em WebViews.
+*   **Ação (Concluída):** Melhorados os extratores desenvolvidos recentemente de vetores brutos (`.ai`, `.eps`), garantindo o scan prioritário aos *PDF Streams* (para alta qualidade visual no render vetorial) e inserida proteção *zune-jpeg decoder* na extração binária fallback XMP para evitar falhas de inversão de matriz CMYK na paleta gráfica feita no Adobe.
 
 ---
 

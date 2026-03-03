@@ -302,9 +302,49 @@ fn process_extracted_image(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use fast_image_resize as fr;
 
-    let img = image::load_from_memory(data)?;
-    let width = img.width();
-    let height = img.height();
+    // Use zune-jpeg to bypass 'image' crate CMYK inversion bugs for Adobe XMP JPEGs.
+    let (width, height, rgba_bytes) = if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        let mut decoder = zune_jpeg::JpegDecoder::new(data);
+        if let Ok(pixels) = decoder.decode() {
+            if let Some(info) = decoder.info() {
+                let w = info.width as u32;
+                let h = info.height as u32;
+                let mut rgba = Vec::with_capacity((w as usize) * (h as usize) * 4);
+
+                // zune-jpeg outputs RGB by default
+                if pixels.len() == (w as usize) * (h as usize) * 3 {
+                    for chunk in pixels.chunks_exact(3) {
+                        rgba.extend_from_slice(&[chunk[0], chunk[1], chunk[2], 255]);
+                    }
+                    (w, h, rgba)
+                // Grayscale
+                } else if pixels.len() == (w as usize) * (h as usize) {
+                    for &gray in pixels.iter() {
+                        rgba.extend_from_slice(&[gray, gray, gray, 255]);
+                    }
+                    (w, h, rgba)
+                // Fallback (e.g. CMYK output explicitly configured, though defaults to RGB)
+                } else if pixels.len() == (w as usize) * (h as usize) * 4 {
+                    for chunk in pixels.chunks_exact(4) {
+                        rgba.extend_from_slice(&[chunk[0], chunk[1], chunk[2], 255]);
+                    }
+                    (w, h, rgba)
+                } else {
+                    let img = image::load_from_memory(data)?;
+                    (img.width(), img.height(), img.to_rgba8().into_raw())
+                }
+            } else {
+                let img = image::load_from_memory(data)?;
+                (img.width(), img.height(), img.to_rgba8().into_raw())
+            }
+        } else {
+            let img = image::load_from_memory(data)?;
+            (img.width(), img.height(), img.to_rgba8().into_raw())
+        }
+    } else {
+        let img = image::load_from_memory(data)?;
+        (img.width(), img.height(), img.to_rgba8().into_raw())
+    };
 
     let aspect = width as f32 / height as f32;
     let (new_w, new_h) = if aspect > 1.0 {
@@ -313,13 +353,8 @@ fn process_extracted_image(
         (((size_px as f32 * aspect).max(1.0)) as u32, size_px)
     };
 
-    let src_image = fr::images::Image::from_vec_u8(
-        width,
-        height,
-        img.to_rgba8().into_raw(),
-        fr::PixelType::U8x4,
-    )
-    .map_err(|e| e.to_string())?;
+    let src_image = fr::images::Image::from_vec_u8(width, height, rgba_bytes, fr::PixelType::U8x4)
+        .map_err(|e| e.to_string())?;
 
     let mut dst_image = fr::images::Image::new(new_w, new_h, fr::PixelType::U8x4);
     let mut resizer = fr::Resizer::new();
@@ -439,9 +474,14 @@ mod tests {
                                     mime
                                 );
                                 match image::load_from_memory(&data) {
-                                    Ok(_) => tracing::debug!("    -> image::load_from_memory SUCCESS"),
+                                    Ok(_) => {
+                                        tracing::debug!("    -> image::load_from_memory SUCCESS")
+                                    }
                                     Err(e) => {
-                                        tracing::debug!("    -> image::load_from_memory FAIL: {}", e)
+                                        tracing::debug!(
+                                            "    -> image::load_from_memory FAIL: {}",
+                                            e
+                                        )
                                     }
                                 }
                             }
