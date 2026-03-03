@@ -211,7 +211,7 @@ Para chegar ao nível “state of the art”, além de engenharia interna, falta
 4. [x] Banco: revisar índices para consultas de filtro/ordenação mais frequentes (p95/p99). *(Concluído na Sprint 3 via novas otimizações no SQLite)*
 
 ### Fase 3 — Diferenciação “state of the art” (8+ semanas)
-1. [ ] Busca semântica (embeddings) híbrida com filtros estruturados.
+1. [x] Busca semântica (embeddings) híbrida com filtros estruturados. *(A etapa de tolerância "Fuzzy Search" e busca estruturada foi concluída em 2026-03-02 via FTS5 Trigrams)*
 2. [ ] Recomendação inteligente de tags/metadados.
 3. [ ] Workflows colaborativos e trilha de auditoria de mudanças.
 4. [ ] Governança de qualidade de acervo (score de completude e consistência).

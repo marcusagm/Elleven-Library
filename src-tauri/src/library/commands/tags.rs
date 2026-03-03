@@ -71,6 +71,13 @@ pub async fn add_tags_to_assets_batch(
     Ok(db.add_tags_to_assets_batch(asset_ids, tag_ids).await?)
 }
 
+/// Retrieves a filtered and paginated list of assets.
+///
+/// This acts as a wrapper for the `Db::get_assets_filtered` method, enabling frontend filtering,
+/// including tag matching, folder recursion, advanced queries, and fuzzy text search.
+///
+/// # Errors
+/// Returns `AppResult::Err` if the database query fails or the connection is lost.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn get_assets_filtered(
@@ -106,6 +113,12 @@ pub async fn get_assets_filtered(
         .await?)
 }
 
+/// Gets the total count of assets matching the criteria.
+///
+/// Acts as a wrapper for `Db::get_asset_count_filtered`. Useful for frontend pagination lengths.
+///
+/// # Errors
+/// Returns `AppResult::Err` if the database query fails.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn get_asset_count_filtered(

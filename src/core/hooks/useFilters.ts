@@ -28,9 +28,11 @@ export const useFilters = () => {
         get filterUntagged() {
             return filterState.filterUntagged;
         },
+        /** Current text search query */
         get searchQuery() {
             return filterState.searchQuery;
         },
+        /** Whether the text search uses fuzzy matching */
         get searchFuzzy() {
             return filterState.searchFuzzy;
         },
@@ -62,7 +64,9 @@ export const useFilters = () => {
         toggleUntagged: withRefresh(filterActions.toggleUntagged),
         setFolder: withRefresh(filterActions.setFolder),
         setFolderRecursiveView: withRefresh(filterActions.setFolderRecursiveView),
+        /** Updates the text search query */
         setSearch: withRefresh(filterActions.setSearch),
+        /** Toggles fuzzy matching for the text search */
         setSearchFuzzy: withRefresh(filterActions.setSearchFuzzy),
         setSortBy: withRefresh(filterActions.setSortBy),
         setSortOrder: withRefresh(filterActions.setSortOrder),

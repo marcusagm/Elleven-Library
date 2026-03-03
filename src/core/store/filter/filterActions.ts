@@ -139,6 +139,7 @@ export const filterActions = {
         }, APP_CONFIG.SEARCH_DEBOUNCE_MS);
     },
 
+    /** Enables or disables fuzzy matching for the search query and saves to history */
     setSearchFuzzy: (isFuzzy: boolean) => {
         setFilterState('searchFuzzy', isFuzzy);
         filterActions.pushHistory();

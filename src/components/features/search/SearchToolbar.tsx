@@ -1,6 +1,6 @@
 import { Button } from '../../ui';
 import { Component, createSignal, Show, For, createMemo } from 'solid-js';
-import { Search, SlidersHorizontal, Funnel, X } from 'lucide-solid';
+import { Search, SlidersHorizontal, Funnel, X, Sparkles } from 'lucide-solid';
 import { useFilters, useMetadata, useNotification } from '../../../core/hooks';
 import { SearchGroup } from '../../../core/store/filter';
 import { Input } from '../../ui/Input';
@@ -194,15 +194,7 @@ export const SearchToolbar: Component = () => {
                         title={filters.searchFuzzy ? 'Fuzzy Match: ON' : 'Fuzzy Match: OFF'}
                         onClick={() => filters.setSearchFuzzy(!filters.searchFuzzy)}
                     >
-                        <span
-                            style={{
-                                'font-size': '10px',
-                                'font-weight': 'bold',
-                                'letter-spacing': '1px'
-                            }}
-                        >
-                            FZ
-                        </span>
+                        <Sparkles />
                     </Button>
 
                     <Button

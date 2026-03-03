@@ -19,6 +19,7 @@ export interface FilterSnapshot {
     folderRecursiveView: boolean;
     filterUntagged: boolean;
     searchQuery: string;
+    /** Whether to use fuzzy matching for the search query */
     searchFuzzy: boolean;
     advancedSearch: SearchGroup | null;
     sortBy: SortField;

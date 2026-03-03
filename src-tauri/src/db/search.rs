@@ -40,6 +40,11 @@ pub struct SearchGroup {
 
 impl Db {
     /// Retrieves a paginated and filtered list of assets based on various criteria.
+    ///
+    /// Extends dynamic queries allowing recursive folder filters and fuzzy search (trigrams) or standard LIKE.
+    ///
+    /// # Errors
+    /// Returns `sqlx::Error` if query building fails or the database execution fails.
     #[allow(clippy::too_many_arguments)] // Deep filtering naturally requires many parameters
     pub async fn get_assets_filtered(
         &self,
@@ -185,6 +190,9 @@ impl Db {
     }
 
     /// Gets the total count of assets matching the search criteria.
+    ///
+    /// # Errors
+    /// Returns `sqlx::Error` if the count query execution fails.
     #[allow(clippy::too_many_arguments)]
     pub async fn get_asset_count_filtered(
         &self,

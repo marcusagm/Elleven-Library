@@ -1,8 +1,8 @@
 # Sprint 4: Advanced Metadata Batch Operations & Fuzzy Search
 
 **Data:** 2026-03-02
-**Status:** Em andamento
-**Data e hora da conclusão:** -
+**Status:** Concluído
+**Data e hora da conclusão:** 2026-03-02 22:07
 
 ## 📌 Objetivo
 Avançar com recursos definitivos para manipulação em massa e buscas de tolerância alta ("Search & Tagging") preenchendo os gaps de Usabilidade Profissional da Fase 2. Isso assegura que governar o acervo com comandos complexos para múltiplos objetos ou descrições imprecisas seja fluido para o *Power-User*.
@@ -16,8 +16,8 @@ Avançar com recursos definitivos para manipulação em massa e buscas de toler�
   - **Backend:** Acionamento unificado do `metadata_update_batch` suportando deltas lógicos (ApplyTag, RemoveTag) otimizados em operações batch e `tagsService`.
 - **Validação:** Seleções imensas e arrastáveis (>10.000 imagens/vetoriais) podem ser tageadas sob a margem temporal rápida. Ausência terminante de manipulação de string manual no TS e obediência à tipagem.
 
-### 2. Busca Tolerante Sintática & "Fuzzy Search"
-- **Escopo:** Substituir as falhas de pesquisa cruas que dependam exclusivamente de sintaxe ortográfica perfeita, entregando algoritmos leves e inteligentes no catálogo (SQLite local).
+### [✓] 2. Busca Tolerante Sintática & "Fuzzy Search"
+- **Escopo (Concluído):** Substituir as falhas de pesquisa cruas que dependam exclusivamente de sintaxe ortográfica perfeita, entregando algoritmos leves e inteligentes no catálogo (SQLite local).
 - **Ações:**
   - Instanciar a extensão dedicada de distanciamento no SQLite (como `spellfix1`, `FTS5`, algorítmos atados de `Levenshtein` ou `Trigram` nativos). Manter implantação leve minimizando complexidade adicional pesada no OS host.
   - A lógica unifica-se à base de `QueryBuilder` existente (`src/db/search.rs`), em que na ativação nativa do frontend o usuário passa as diretrizes como "Buscar similaridades" com matching de precisão ou erro adaptativo.

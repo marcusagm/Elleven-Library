@@ -35,8 +35,9 @@ Este documento elabora um plano detalhado de implementação para todas as pend�
 *   **Ação Backend:** Atrelar à pipeline de thumbnailing as métricas extraídas usando FFmpeg/ImageMagick para definir a paleta dominante ou k-means cluster do arquivo.
 *   **Ação Frontend:** Criar um componente isolado `ColorPicker` agregado no `FilterStore` da Sidebar para submissões de cor hex/código no motor de busca interno.
 
-### [ ] 3.2 Melhorias do Core do Motor de Busca
-*   **Ação:** Instaurar a lógica robusta de **Fuzzy Search** na tipagem textual permitindo que o SQLite (ou lógicas do Rust em memória usando distâncias de edição, ex. Levenshtein) tolere erros de digitação (typos) na pesquisa.
+### [✓] 3.2 Melhorias do Core do Motor de Busca
+*   **Ação (Concluída):** Instaurar a lógica robusta de **Fuzzy Search** na tipagem textual permitindo que o SQLite (ou lógicas do Rust em memória usando distâncias de edição, ex. Levenshtein) tolere erros de digitação (typos) na pesquisa.
+*   *Nota (2026-03-02): O sistema utiliza o módulo FTS5 com trigramas do SQLite junto a um fallback para busca comum, oferecendo fuzzy match de alto desempenho com integração ativável no botão da interface visual Frontend.*
 
 ### [✓] 3.3 Batch Tagging (*Operações em Massa*)
 *   **Ação (Concluída):** Melhorar o `MultiInspector.tsx` e integrar suporte à interface (UI) e ao SQLite para renomear, excluir, mover agrupamentos e aplicar ou revogar **Tags de milhares de instâncias simultaneamente**.
