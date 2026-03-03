@@ -1,6 +1,4 @@
-import { batch } from 'solid-js';
 import { APP_CONFIG } from '../../../config/constants';
-import { SEARCH_FIELDS } from './constants';
 import {
     SearchGroupSchema,
     type SearchCriterion,
@@ -8,91 +6,25 @@ import {
     type LogicalOperator
 } from './schemas';
 import { ActionResult, ErrorCode } from '../../types/actions';
-import { criterionLogicRegistry, textLogic, SearchValue } from './logic/handlers';
-import { metadataState } from '../metadata';
-import { supportedFormats } from '../systemStore';
 import { createId } from '../../../lib/primitives/createId';
 import {
     filterState,
     filterStateInternal,
     persist,
-    type FilterSnapshot,
     type SortField,
     type SortOrder,
     type ViewLayout
 } from './filterState';
+import { historyActions } from './historyActions';
+import { criterionHelpers } from './criterionHelpers';
 
 const { setFilterState } = filterStateInternal;
 
 let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const filterActions = {
-    pushHistory: () => {
-        const snapshot: FilterSnapshot = {
-            selectedTags: filterState.selectedTags,
-            selectedFolderId: filterState.selectedFolderId,
-            folderRecursiveView: filterState.folderRecursiveView,
-            filterUntagged: filterState.filterUntagged,
-            searchQuery: filterState.searchQuery,
-            searchFuzzy: filterState.searchFuzzy,
-            advancedSearch: filterState.advancedSearch,
-            sortBy: filterState.sortBy,
-            sortOrder: filterState.sortOrder
-        };
-
-        // Check if the current state is different from the last history item
-        const current = filterState.history[filterState.historyIndex];
-        const isSame = JSON.stringify(snapshot) === JSON.stringify(current);
-
-        if (isSame) return;
-
-        const newHistory = filterState.history.slice(0, filterState.historyIndex + 1);
-        newHistory.push(snapshot);
-
-        // Limit history
-        const limit = filterState.historyLimit || 50;
-        const finalHistory =
-            newHistory.length > limit ? newHistory.slice(newHistory.length - limit) : newHistory;
-
-        setFilterState({
-            history: finalHistory,
-            historyIndex: finalHistory.length - 1
-        });
-    },
-
-    setHistoryLimit: (limit: number) => {
-        setFilterState('historyLimit', limit);
-        persist({ historyLimit: limit });
-    },
-
-    goBack: () => {
-        if (filterState.historyIndex > 0) {
-            const prevIndex = filterState.historyIndex - 1;
-            const snapshot = filterState.history[prevIndex];
-            batch(() => {
-                setFilterState({
-                    ...snapshot,
-                    historyIndex: prevIndex
-                });
-            });
-        }
-    },
-
-    goForward: () => {
-        if (filterState.historyIndex < filterState.history.length - 1) {
-            const nextIndex = filterState.historyIndex + 1;
-            const snapshot = filterState.history[nextIndex];
-            batch(() => {
-                setFilterState({
-                    ...snapshot,
-                    historyIndex: nextIndex
-                });
-            });
-        }
-    },
-
-    canGoBack: () => filterState.historyIndex > 0,
-    canGoForward: () => filterState.historyIndex < filterState.history.length - 1,
+    ...historyActions,
+    ...criterionHelpers,
 
     toggleTag: (tagId: number) => {
         const current = filterState.selectedTags;
@@ -104,7 +36,7 @@ export const filterActions = {
                 filterUntagged: false
             });
         }
-        filterActions.pushHistory();
+        historyActions.pushHistory();
     },
 
     setUntagged: (isActive: boolean) => {
@@ -112,7 +44,7 @@ export const filterActions = {
         if (isActive) {
             setFilterState('selectedTags', []);
         }
-        filterActions.pushHistory();
+        historyActions.pushHistory();
     },
 
     toggleUntagged: () => {
@@ -121,12 +53,12 @@ export const filterActions = {
 
     setFolder: (folderId: number | null) => {
         setFilterState('selectedFolderId', folderId);
-        filterActions.pushHistory();
+        historyActions.pushHistory();
     },
 
     setFolderRecursiveView: (isRecursive: boolean) => {
         setFilterState('folderRecursiveView', isRecursive);
-        filterActions.pushHistory();
+        historyActions.pushHistory();
     },
 
     setSearch: (query: string) => {
@@ -135,73 +67,14 @@ export const filterActions = {
         // Debounce history push for search
         if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
         searchDebounceTimer = setTimeout(() => {
-            filterActions.pushHistory();
+            historyActions.pushHistory();
         }, APP_CONFIG.SEARCH_DEBOUNCE_MS);
     },
 
     /** Enables or disables fuzzy matching for the search query and saves to history */
     setSearchFuzzy: (isFuzzy: boolean) => {
         setFilterState('searchFuzzy', isFuzzy);
-        filterActions.pushHistory();
-    },
-
-    validateCriterion: (
-        key: string,
-        operator: string,
-        value: unknown,
-        value2?: unknown,
-        unitMultiplier?: string
-    ): Record<string, string> => {
-        const field = SEARCH_FIELDS.find(f => f.value === key);
-        if (!field) return { value: 'Invalid field' };
-
-        const logic = criterionLogicRegistry[field.type] || textLogic;
-        return logic.validate(
-            value as SearchValue,
-            value2 as SearchValue,
-            operator,
-            unitMultiplier
-        );
-    },
-
-    formatCriterionDisplay: (criterion: Omit<SearchCriterion, 'id'>): string => {
-        const field = SEARCH_FIELDS.find(f => f.value === criterion.key);
-        if (!field) return String(criterion.value);
-
-        const logic = criterionLogicRegistry[field.type] || textLogic;
-        if (logic.formatDisplay) {
-            const rawValue = criterion.value;
-            const value1 = Array.isArray(rawValue) ? rawValue[0] : rawValue;
-            const value2 = Array.isArray(rawValue) ? rawValue[1] : undefined;
-
-            return logic.formatDisplay(
-                value1,
-                value2,
-                criterion.operator,
-                criterion.unitMultiplier,
-                {
-                    locations: metadataState.locations,
-                    tags: metadataState.tags,
-                    supportedFormats: supportedFormats()
-                }
-            );
-        }
-
-        return String(criterion.value);
-    },
-
-    processCriterion: (
-        key: string,
-        operator: string,
-        value: unknown,
-        value2?: unknown,
-        unitMultiplier?: string
-    ) => {
-        const field = SEARCH_FIELDS.find(f => f.value === key);
-        if (!field) return { finalValue: value, unitMultiplier };
-
-        const logic = criterionLogicRegistry[field.type] || textLogic;
-        return logic.process(value as SearchValue, value2 as SearchValue, operator, unitMultiplier);
+        historyActions.pushHistory();
     },
 
     setAdvancedSearch: (search: SearchGroup | null): ActionResult => {
@@ -220,14 +93,14 @@ export const filterActions = {
         }
 
         setFilterState('advancedSearch', search);
-        filterActions.pushHistory();
+        historyActions.pushHistory();
         return { success: true, data: undefined };
     },
 
     addCriterion: (
         criterion: Omit<SearchCriterion, 'id' | 'displayValue'>
     ): ActionResult<string> => {
-        const errors = filterActions.validateCriterion(
+        const errors = criterionHelpers.validateCriterion(
             criterion.key,
             criterion.operator,
             criterion.value,
@@ -247,7 +120,7 @@ export const filterActions = {
         }
 
         const id = createId('criterion');
-        const displayValue = filterActions.formatCriterionDisplay(criterion);
+        const displayValue = criterionHelpers.formatCriterionDisplay(criterion);
         const newCriterion: SearchCriterion = { ...criterion, id, displayValue };
 
         let currentGroup = filterState.advancedSearch;
@@ -289,7 +162,7 @@ export const filterActions = {
         const newItems = currentGroup.items.map((item: SearchCriterion | SearchGroup) => {
             if ('key' in item && item.id === id) {
                 const merged = { ...item, ...updates } as SearchCriterion;
-                const displayValue = filterActions.formatCriterionDisplay(merged);
+                const displayValue = criterionHelpers.formatCriterionDisplay(merged);
                 return { ...merged, displayValue };
             }
             return item;
@@ -314,13 +187,13 @@ export const filterActions = {
     setSortBy: (field: SortField) => {
         setFilterState('sortBy', field);
         persist({ sortBy: field });
-        filterActions.pushHistory();
+        historyActions.pushHistory();
     },
 
     setSortOrder: (order: SortOrder) => {
         setFilterState('sortOrder', order);
         persist({ sortOrder: order });
-        filterActions.pushHistory();
+        historyActions.pushHistory();
     },
 
     setLayout: (layout: ViewLayout) => {
@@ -343,7 +216,7 @@ export const filterActions = {
             searchFuzzy: false,
             advancedSearch: null
         });
-        filterActions.pushHistory();
+        historyActions.pushHistory();
     },
 
     hasActiveFilters: () => {
