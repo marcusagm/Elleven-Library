@@ -1,7 +1,7 @@
 import { Component, Show } from 'solid-js';
 import { Slider } from '../Slider';
 import { useVideoContext } from './VideoPlayerContext';
-import { formatTime } from './utils';
+import { formatTime } from '../../../utils/format';
 
 /**
  * Displays the video seekbar UI including the buffered progress and preview tooltip.
@@ -10,14 +10,60 @@ import { formatTime } from './utils';
  * @returns Video seekbar component
  */
 export const VideoSeekbar: Component = () => {
+    /**
+     * Gets the video context.
+     * @returns The video context.
+     */
     const {
+        /**
+         * The duration of the video.
+         * @returns The duration of the video.
+         */
         duration,
+
+        /**
+         * The current time of the video.
+         * @returns The current time of the video.
+         */
         currentTime,
+
+        /**
+         * The buffered time of the video.
+         * @returns The buffered time of the video.
+         */
         buffered,
+
+        /**
+         * Handles the seek event.
+         * @param value - The value to seek to.
+         * @returns void
+         */
         handleSeek,
+
+        /**
+         * Sets the preview time.
+         * @param value - The value to set the preview time to.
+         * @returns void
+         */
         setPreviewTime,
+
+        /**
+         * Sets the preview position.
+         * @param value - The value to set the preview position to.
+         * @returns void
+         */
         setPreviewPos,
+
+        /**
+         * The preview time.
+         * @returns The preview time.
+         */
         previewTime,
+
+        /**
+         * The preview position.
+         * @returns The preview position.
+         */
         previewPos
     } = useVideoContext();
 
@@ -25,6 +71,7 @@ export const VideoSeekbar: Component = () => {
      * Calculates the preview time based on mouse position over the seekbar.
      *
      * @param mouseEvent - The native MouseEvent.
+     * @returns void
      */
     const handleSeekMouseMove = (mouseEvent: MouseEvent) => {
         const trackElement = mouseEvent.currentTarget as HTMLElement;

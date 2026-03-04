@@ -10,9 +10,26 @@
 import { type ColorCluster, type CartesianColorPoint } from './colorClusteringUtils';
 
 export type { ExtractedColorData, CartesianColorPoint, ColorCluster } from './colorClusteringUtils';
-export { hexToHsl, agglomerativeGrouping } from './colorClusteringUtils';
+export { agglomerativeGrouping } from './colorClusteringUtils';
 
-/** Supported color harmony classifications. */
+/**
+ * Supported color harmony classifications.
+ *
+ * @enum {string}
+ * @property {string} monochromatic - Variations of a single hue with different lightness and saturation
+ * @property {string} complementary - Colors opposite on the color wheel (~180° apart)
+ * @property {string} analogous - Colors adjacent on the color wheel (within ~30° of each other)
+ * @property {string} triadic - Three colors evenly spaced (~120° apart) on the color wheel
+ * @property {string} split_complementary - A base color plus two colors adjacent to its complement
+ * @property {string} tetradic - Four colors forming two complementary pairs (rectangular spacing)
+ * @property {string} square - Four colors evenly spaced at 90° intervals on the color wheel
+ * @property {string} dyadic - Two colors separated by ~60°, creating subtle contrast
+ * @property {string} accented_analogous - An analogous group with one complementary accent color for contrast
+ * @property {string} achromatic - Strictly grayscale — only black, white, and pure grays
+ * @property {string} neutral - Colors with very low saturation (beiges, off-whites, muted tones)
+ * @property {string} polychromatic - Many distinct colors spread across the color wheel
+ * @property {string} not_identified - The color palette does not match a standard harmony pattern
+ */
 export type HarmonyType =
     | 'monochromatic'
     | 'complementary'
@@ -28,13 +45,23 @@ export type HarmonyType =
     | 'polychromatic'
     | 'not_identified';
 
-/** Display metadata for each harmony type. */
+/**
+ * Display metadata for each harmony type.
+ *
+ * @interface HarmonyDisplayInfo
+ * @property {string} label - The human-readable label for the harmony type
+ * @property {string} description - The description of the harmony type
+ */
 interface HarmonyDisplayInfo {
     label: string;
     description: string;
 }
 
-/** Map of harmony types to their human-readable labels and descriptions. */
+/**
+ * Map of harmony types to their human-readable labels and descriptions.
+ *
+ * @type {Record<HarmonyType, HarmonyDisplayInfo>}
+ */
 export const HARMONY_DISPLAY_MAP: Record<HarmonyType, HarmonyDisplayInfo> = {
     monochromatic: {
         label: 'Monochromatic',
@@ -90,14 +117,26 @@ export const HARMONY_DISPLAY_MAP: Record<HarmonyType, HarmonyDisplayInfo> = {
     }
 };
 
-/** Minimum saturation to consider a cluster chromatic (not neutral). */
+/**
+ * Minimum saturation to consider a cluster chromatic (not neutral).
+ *
+ * @type {number}
+ */
 const MINIMUM_CHROMATIC_SATURATION = 0.08;
 
-/** Saturation threshold below which a cluster is strictly achromatic (pure gray). */
+/**
+ * Saturation threshold below which a cluster is strictly achromatic (pure gray).
+ *
+ * @type {number}
+ */
 const ACHROMATIC_SATURATION_THRESHOLD = 0.03;
 
 /**
  * Calculates the angular difference between two hue values on the color wheel.
+ *
+ * @param {number} hueA - The first hue value (0-360).
+ * @param {number} hueB - The second hue value (0-360).
+ * @returns {number} The angular difference between the two hue values.
  */
 function angularHueDifference(hueA: number, hueB: number): number {
     const rawDifference = Math.abs(hueA - hueB);
@@ -107,6 +146,9 @@ function angularHueDifference(hueA: number, hueB: number): number {
 /**
  * Extracts the representative hue from a cluster's centroid in 3D space.
  * Reconstructs the hue angle from the cartesian x,y coordinates via atan2.
+ *
+ * @param {CartesianColorPoint} centroid - The centroid of the color cluster.
+ * @returns {number} The hue angle in degrees (0-360).
  */
 function centroidToHue(centroid: CartesianColorPoint): number {
     const hueRadians = Math.atan2(centroid.coordinateY, centroid.coordinateX);
@@ -117,6 +159,9 @@ function centroidToHue(centroid: CartesianColorPoint): number {
 /**
  * Calculates the saturation magnitude from a cluster's centroid.
  * Distance from the z-axis in cylindrical coordinates.
+ *
+ * @param {CartesianColorPoint} centroid - The centroid of the color cluster.
+ * @returns {number} The saturation value (0-1).
  */
 function centroidToSaturation(centroid: CartesianColorPoint): number {
     const xSquared = centroid.coordinateX * centroid.coordinateX;
@@ -124,7 +169,12 @@ function centroidToSaturation(centroid: CartesianColorPoint): number {
     return Math.sqrt(xSquared + ySquared);
 }
 
-/** Classifies 2 hue clusters into a harmony type. */
+/**
+ * Classifies 2 hue clusters into a harmony type.
+ *
+ * @param {number[]} hueValues - The hue values of the two clusters.
+ * @returns {HarmonyType | null} The harmony type.
+ */
 function classifyTwoClusters(hueValues: number[]): HarmonyType | null {
     const hueDelta = angularHueDifference(hueValues[0], hueValues[1]);
     if (hueDelta >= 150 && hueDelta <= 210) return 'complementary';
@@ -137,6 +187,9 @@ function classifyTwoClusters(hueValues: number[]): HarmonyType | null {
  * Checks if 3 colors form an accented analogous harmony.
  * Two colors must be analogous (≤45°) and the third roughly complementary
  * (~180°) to the analogous pair's midpoint.
+ *
+ * @param {number[]} hueValues - The hue values of the three clusters.
+ * @returns {boolean} True if the colors form an accented analogous harmony.
  */
 function isAccentedAnalogous(hueValues: number[]): boolean {
     for (let baseIndex = 0; baseIndex < 3; baseIndex++) {
@@ -156,7 +209,12 @@ function isAccentedAnalogous(hueValues: number[]): boolean {
     return false;
 }
 
-/** Classifies 3 hue clusters into a harmony type. */
+/**
+ * Classifies 3 hue clusters into a harmony type.
+ *
+ * @param {number[]} hueValues - The hue values of the three clusters.
+ * @returns {HarmonyType | null} The harmony type.
+ */
 function classifyThreeClusters(hueValues: number[]): HarmonyType | null {
     const sortedDeltas = [
         angularHueDifference(hueValues[0], hueValues[1]),
@@ -174,6 +232,9 @@ function classifyThreeClusters(hueValues: number[]): HarmonyType | null {
 /**
  * Checks if 4 colors form a square harmony.
  * In a perfect square: 4 pairwise deltas ~90° and 2 deltas ~180°.
+ *
+ * @param {number[]} hueValues - The hue values of the four clusters.
+ * @returns {boolean} True if the colors form a square harmony.
  */
 function isSquareHarmony(hueValues: number[]): boolean {
     if (hueValues.length !== 4) return false;
@@ -191,7 +252,12 @@ function isSquareHarmony(hueValues: number[]): boolean {
     return nearNinetyCount >= 4 && nearOneEightyCount >= 2;
 }
 
-/** Classifies 4+ hue clusters. Falls back to polychromatic. */
+/**
+ * Classifies 4+ hue clusters. Falls back to polychromatic.
+ *
+ * @param {number[]} hueValues - The hue values of the clusters.
+ * @returns {HarmonyType} The harmony type.
+ */
 function classifyFourPlusClusters(hueValues: number[]): HarmonyType {
     if (isSquareHarmony(hueValues)) return 'square';
 
@@ -211,7 +277,12 @@ function classifyFourPlusClusters(hueValues: number[]): HarmonyType {
     return 'polychromatic';
 }
 
-/** Classifies hue clusters into a harmony type based on count. */
+/**
+ * Classifies hue clusters into a harmony type based on count.
+ *
+ * @param {number[]} hueValues - The hue values of the clusters.
+ * @returns {HarmonyType} The harmony type.
+ */
 function classifyHueClusters(hueValues: number[]): HarmonyType {
     if (hueValues.length === 1) return 'monochromatic';
     if (hueValues.length === 2) return classifyTwoClusters(hueValues) ?? 'not_identified';

@@ -1,5 +1,5 @@
 import { Accessor, JSX } from 'solid-js';
-import { HueSaturationBrightness } from './utils';
+import { HueSaturationBrightness } from '../../../utils/color';
 
 /**
  * Properties for the ColorPicker component.

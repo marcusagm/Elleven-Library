@@ -4,7 +4,7 @@ import {
     convertHexadecimalToHueSaturationBrightness,
     convertHueSaturationBrightnessToHexadecimal,
     validateHexadecimalColor
-} from './utils';
+} from '../../../utils/color';
 import { ColorPickerProps } from './types';
 import { createControllableSignal } from '../../../lib/primitives';
 
@@ -16,14 +16,22 @@ import { createControllableSignal } from '../../../lib/primitives';
  * @returns {Object} Accessors and methods for managing the color picker state.
  */
 export const useColorPicker = (properties: ColorPickerProps) => {
-    // Core state: hexadecimal string (or "transparent")
+    /**
+     * Core state: hexadecimal string (or "transparent")
+     *
+     * @returns {Object} Accessors and methods for managing the color picker state.
+     */
     const { value: activeColor, setValue: setActiveColor } = createControllableSignal({
         value: () => properties.color,
         onChange: (newColor: string) => properties.onChange?.(newColor),
         defaultValue: '#000000'
     });
 
-    // Reactive state for the HSB values used by visual controls
+    /**
+     * Reactive state for the HSB values used by visual controls
+     *
+     * @returns {Object} Accessors and methods for managing the color picker state.
+     */
     const [hueSaturationBrightness, setHueSaturationBrightness] =
         createSignal<HueSaturationBrightness>({
             hue: 0,
@@ -31,10 +39,18 @@ export const useColorPicker = (properties: ColorPickerProps) => {
             brightness: 100
         });
 
-    // Track if unknown part of the picker is being dragged
+    /**
+     * Track if unknown part of the picker is being dragged
+     *
+     * @returns {Object} Accessors and methods for managing the color picker state.
+     */
     const [isDragging, setIsDragging] = createSignal(false);
 
-    // Internal state for the hexadecimal input field text to allow partial typing
+    /**
+     * Internal state for the hexadecimal input field text to allow partial typing
+     *
+     * @returns {Object} Accessors and methods for managing the color picker state.
+     */
     const [hexadecimalInput, setHexadecimalInput] = createSignal('');
 
     /**
@@ -54,7 +70,11 @@ export const useColorPicker = (properties: ColorPickerProps) => {
         }
     };
 
-    // Initial sync
+    /**
+     * Initializes the HSB state based on the current active color.
+     *
+     * @param {string} hexadecimalColorCode - The hexadecimal color code to sync from.
+     */
     createEffect(() => {
         initializeStateFromColor(activeColor());
     });
@@ -104,21 +124,60 @@ export const useColorPicker = (properties: ColorPickerProps) => {
     };
 
     return {
-        /** Accessor for the active hexadecimal color string */
+        /**
+         * Accessor for the active hexadecimal color string
+         *
+         * @returns {string} The active hexadecimal color string.
+         */
         activeColor,
-        /** Accessor for the active text input value */
+
+        /**
+         * Accessor for the active text input value
+         *
+         * @returns {string} The active text input value.
+         */
         activeHexadecimalInput: hexadecimalInput,
-        /** Method to set the raw text input value */
+
+        /**
+         * Method to set the raw text input value
+         *
+         * @param {string} hexadecimalOrTransparent - The color code or "transparent".
+         */
         setHexadecimalInput,
-        /** Accessor for the derived HSB state */
+
+        /**
+         * Accessor for the derived HSB state
+         *
+         * @returns {Object} Accessors and methods for managing the color picker state.
+         */
         hueSaturationBrightness,
-        /** Method to update the color from HSB adjustments */
+
+        /**
+         * Method to update the color from HSB adjustments
+         *
+         * @param {Partial<HueSaturationBrightness>} newValues - The partial HSB values to update.
+         */
         updateColorFromHueSaturationBrightness,
-        /** Method to set a predefined color value */
+
+        /**
+         * Method to set a predefined color value
+         *
+         * @param {string} hexadecimalOrTransparent - The color code or "transparent".
+         */
         setColor,
-        /** Accessor for the drag interaction status */
+
+        /**
+         * Accessor for the drag interaction status
+         *
+         * @returns {boolean} The drag interaction status.
+         */
         isDragging,
-        /** Method to update the drag status */
+
+        /**
+         * Method to update the drag status
+         *
+         * @param {boolean} dragging - The drag interaction status.
+         */
         setIsDragging
     };
 };

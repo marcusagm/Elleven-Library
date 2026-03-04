@@ -1,4 +1,4 @@
-import { Component, Show, For } from 'solid-js';
+import { Component, Show, For, JSX } from 'solid-js';
 import { cn } from '../../../lib/utils';
 import { Button } from '../Button';
 import { Slider } from '../Slider';
@@ -18,7 +18,7 @@ import {
 } from 'lucide-solid';
 import { videoState } from '../../../core/store/videoStore';
 import { useVideoContext } from './VideoPlayerContext';
-import { formatTime } from './utils';
+import { formatTime } from '../../../utils/format';
 import { QUALITY_OPTIONS } from './types';
 import { VideoSeekbar } from './VideoSeekbar';
 
@@ -26,21 +26,97 @@ import { VideoSeekbar } from './VideoSeekbar';
  * Displays the video UI controls including playback, volume, and fullscreen interactions.
  * Connects directly to `useVideoContext` internally.
  *
- * @returns Video player controls component
+ * @returns {JSX.Element} Video player controls component
  */
-export const VideoControls: Component = () => {
+export const VideoControls: Component = (): JSX.Element => {
+    /**
+     * Accessor for the video player properties
+     *
+     * @returns {Object} The video player properties.
+     */
     const {
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         props,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         isPlaying,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         togglePlay,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         skip,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         toggleMute,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         handleVolumeChange,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         currentTime,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         duration,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         cyclePlaybackRate,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         isFullscreen,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         toggleFullscreen,
+
+        /**
+         * The video player properties
+         *
+         * @returns {Object} The video player properties.
+         */
         needsTranscode
     } = useVideoContext();
 

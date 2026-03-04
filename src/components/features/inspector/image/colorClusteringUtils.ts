@@ -8,6 +8,7 @@
  *
  * Shared by `ColorDistribution` (bar) and `detectColorHarmony` (badge).
  */
+import { convertHexadecimalToHueSaturationLightness } from '../../../../utils/color';
 
 /** Individual extracted color as returned by the backend. */
 export interface ExtractedColorData {
@@ -19,13 +20,6 @@ export interface ExtractedColorData {
     lab_blue_yellow: number;
     percentage: number;
     rank: number;
-}
-
-/** HSL representation of a color (hue in degrees, saturation and lightness as 0-1). */
-interface HslColor {
-    hue: number;
-    saturation: number;
-    lightness: number;
 }
 
 /** A 3D point in the cylindrical HSL Cartesian space. */
@@ -56,45 +50,6 @@ const MAXIMUM_GROUP_COUNT = 5;
  * Empirically tuned: ~0.35 in the normalized cylindrical HSL space.
  */
 const MERGE_DISTANCE_THRESHOLD = 0.35;
-
-/**
- * Converts a hex color string to HSL values.
- *
- * @param hexColor - Hex string like "#FF5733" or "FF5733".
- * @returns An HSL object with hue (0-360), saturation (0-1), lightness (0-1).
- */
-export function hexToHsl(hexColor: string): HslColor {
-    const hexTrimmed = hexColor.replace('#', '');
-    const red = parseInt(hexTrimmed.substring(0, 2), 16) / 255;
-    const green = parseInt(hexTrimmed.substring(2, 4), 16) / 255;
-    const blue = parseInt(hexTrimmed.substring(4, 6), 16) / 255;
-
-    const maxChannel = Math.max(red, green, blue);
-    const minChannel = Math.min(red, green, blue);
-    const channelDelta = maxChannel - minChannel;
-
-    const lightness = (maxChannel + minChannel) / 2;
-
-    if (channelDelta === 0) {
-        return { hue: 0, saturation: 0, lightness };
-    }
-
-    const saturation =
-        lightness > 0.5
-            ? channelDelta / (2 - maxChannel - minChannel)
-            : channelDelta / (maxChannel + minChannel);
-
-    let hue = 0;
-    if (maxChannel === red) {
-        hue = ((green - blue) / channelDelta + (green < blue ? 6 : 0)) * 60;
-    } else if (maxChannel === green) {
-        hue = ((blue - red) / channelDelta + 2) * 60;
-    } else {
-        hue = ((red - green) / channelDelta + 4) * 60;
-    }
-
-    return { hue, saturation, lightness };
-}
 
 /**
  * Converts HSL color to 3D Cartesian coordinates in cylindrical space.
@@ -187,7 +142,7 @@ export function agglomerativeGrouping(colors: ExtractedColorData[]): ColorCluste
     if (colors.length === 0) return [];
 
     const clusters: ColorCluster[] = colors.map(color => {
-        const hsl = hexToHsl(color.hex_color);
+        const hsl = convertHexadecimalToHueSaturationLightness(color.hex_color);
         return {
             centroid: hslToCartesian(hsl.hue, hsl.saturation, hsl.lightness),
             totalPercentage: color.percentage,

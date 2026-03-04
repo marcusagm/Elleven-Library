@@ -5,37 +5,65 @@ import { Input } from '../../../ui/Input';
 import { StarRating } from './StarRating.tsx';
 import { useLibrary } from '../../../../core/hooks';
 import { type AssetItem } from '../../../../types';
+import { formatFileSize, formatToDisplay } from '../../../../utils/format';
 import './CommonMetadata.css';
 
+/**
+ * Interface for CommonMetadata component properties.
+ */
 interface CommonMetadataProps {
+    /**
+     * The item to display metadata for.
+     */
     item: AssetItem | null;
 }
 
-const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-';
-    try {
-        return new Date(dateStr).toLocaleDateString();
-    } catch {
-        return '-';
-    }
-};
-
+/**
+ * CommonMetadata component
+ *
+ * @module CommonMetadata
+ * @description
+ * The CommonMetadata component is a modular color selection system using the Compound Component pattern.
+ * It provides a graphical picker for color selection with support for various color formats.
+ *
+ * @example
+ * ```tsx
+ * import { ColorPicker } from '@/components/ui';
+ *
+ * <ColorPicker
+ *   class="custom-class"
+ *   allowNoColor={false}
+ *   showInput={true}
+ *   color="#ff0000"
+ *   onChange={(value) => console.log(value)}
+ *   presets={["#ff0000", "#00ff00", "#0000ff"]}
+ * />
+ * ```
+ */
 export const CommonMetadata: Component<CommonMetadataProps> = props => {
+    /**
+     * Creates a signal for the notes.
+     * @returns The notes signal.
+     */
     const [notes, setNotes] = createSignal(untrack(() => props.item?.notes || ''));
+
+    /**
+     * Gets the library instance.
+     * @returns The library instance.
+     */
     const lib = useLibrary();
 
+    /**
+     * Creates an effect to update the notes when the item changes.
+     */
     createEffect(() => {
         setNotes(props.item?.notes || '');
     });
 
+    /**
+     * Handles the notes change event.
+     * @param val - The new notes value.
+     */
     const handleNotesChange = (val: string) => {
         setNotes(val);
         if (props.item) {
@@ -43,12 +71,20 @@ export const CommonMetadata: Component<CommonMetadataProps> = props => {
         }
     };
 
+    /**
+     * Handles the rating change event.
+     * @param rating - The new rating value.
+     */
     const handleRatingChange = (rating: number) => {
         if (props.item) {
             lib.updateItemRating(props.item.id, rating);
         }
     };
 
+    /**
+     * Renders the CommonMetadata component.
+     * @returns The rendered CommonMetadata component.
+     */
     return (
         <AccordionItem value="common">
             <AccordionHeader title="General Info" icon={<Info size={14} />} />
@@ -80,21 +116,21 @@ export const CommonMetadata: Component<CommonMetadataProps> = props => {
                         <span class="inspector-meta-label">Size</span>
                         <span class="inspector-meta-value">
                             <HardDrive size={10} />
-                            {props.item ? formatBytes(props.item.size) : '-'}
+                            {props.item ? formatFileSize(props.item.size) : '-'}
                         </span>
                     </div>
                     <div class="inspector-meta-item">
                         <span class="inspector-meta-label">Created</span>
                         <span class="inspector-meta-value">
                             <Calendar size={10} />
-                            {props.item ? formatDate(props.item.created_at) : '-'}
+                            {props.item ? formatToDisplay(props.item.created_at) : '-'}
                         </span>
                     </div>
                     <div class="inspector-meta-item">
                         <span class="inspector-meta-label">Modified</span>
                         <span class="inspector-meta-value">
                             <Calendar size={10} />
-                            {props.item ? formatDate(props.item.modified_at) : '-'}
+                            {props.item ? formatToDisplay(props.item.modified_at) : '-'}
                         </span>
                     </div>
                 </div>

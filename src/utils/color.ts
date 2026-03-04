@@ -1,18 +1,58 @@
 /**
  * Utility functions for color conversion and validation.
- * Supports Hexadecimal and Hue-Saturation-Brightness (HSB/HSV) formats.
+ * Supports Hexadecimal, Hue-Saturation-Brightness (HSB/HSV), and Hue-Saturation-Lightness (HSL) formats.
  */
 
 /**
  * Interface representing a color in Hue, Saturation, and Brightness format.
  */
 export interface HueSaturationBrightness {
-    /** Hue value from 0 to 360 */
+    /**
+     * Hue value from 0 to 360
+     *
+     * @returns {number} The hue value.
+     */
     hue: number;
-    /** Saturation value from 0 to 100 */
+
+    /**
+     * Saturation value from 0 to 100
+     *
+     * @returns {number} The saturation value.
+     */
     saturation: number;
-    /** Brightness value from 0 to 100 */
+
+    /**
+     * Brightness value from 0 to 100
+     *
+     * @returns {number} The brightness value.
+     */
     brightness: number;
+}
+
+/**
+ * Interface representing a color in Hue, Saturation, and Lightness format.
+ */
+export interface HueSaturationLightness {
+    /**
+     * Hue value from 0 to 360
+     *
+     * @returns {number} The hue value.
+     */
+    hue: number;
+
+    /**
+     * Saturation value from 0 to 1
+     *
+     * @returns {number} The saturation value.
+     */
+    saturation: number;
+
+    /**
+     * Lightness value from 0 to 1
+     *
+     * @returns {number} The lightness value.
+     */
+    lightness: number;
 }
 
 /**
@@ -39,9 +79,29 @@ export function convertHueSaturationBrightnessToHexadecimal(
     saturation: number,
     brightness: number
 ): string {
+    /**
+     * Normalizes the saturation and brightness values to a range of 0 to 1.
+     *
+     * @param {number} saturation - The saturation value to normalize.
+     * @param {number} brightness - The brightness value to normalize.
+     * @returns {{normalizedSaturation: number, normalizedBrightness: number}} The normalized saturation and brightness values.
+     */
     const normalizedSaturation = saturation / 100;
+
+    /**
+     * Normalizes the brightness value to a range of 0 to 1.
+     *
+     * @param {number} brightness - The brightness value to normalize.
+     * @returns {number} The normalized brightness value.
+     */
     const normalizedBrightness = brightness / 100;
 
+    /**
+     * Calculates the RGB components of the color.
+     *
+     * @param {number} index - The index of the RGB component to calculate.
+     * @returns {number} The calculated RGB component value.
+     */
     const calculateComponent = (index: number) => {
         const factor = (index + hue / 60) % 6;
         return (
@@ -50,6 +110,12 @@ export function convertHueSaturationBrightnessToHexadecimal(
         );
     };
 
+    /**
+     * Converts a value to its hexadecimal representation.
+     *
+     * @param {number} value - The value to convert.
+     * @returns {string} The hexadecimal representation of the value.
+     */
     const toHexadecimal = (value: number) =>
         Math.round(255 * value)
             .toString(16)
@@ -81,7 +147,6 @@ export function convertHexadecimalToHueSaturationBrightness(
     const red = parseInt(processedHexadecimal.slice(0, 2), 16) / 255;
     const green = parseInt(processedHexadecimal.slice(2, 4), 16) / 255;
     const blue = parseInt(processedHexadecimal.slice(4, 6), 16) / 255;
-
     const max = Math.max(red, green, blue);
     const min = Math.min(red, green, blue);
     const delta = max - min;
@@ -136,4 +201,45 @@ export function normalizeHexadecimalValue(inputValue: string): string | null {
     }
 
     return null;
+}
+
+/**
+ * Converts a hex color string to HSL values.
+ *
+ * @param {string} hexColor - Hex string like "#FF5733" or "FF5733".
+ * @returns {HueSaturationLightness} An HSL object with hue (0-360), saturation (0-1), lightness (0-1).
+ */
+export function convertHexadecimalToHueSaturationLightness(
+    hexColor: string
+): HueSaturationLightness {
+    const hexTrimmed = hexColor.replace('#', '');
+    const red = parseInt(hexTrimmed.substring(0, 2), 16) / 255;
+    const green = parseInt(hexTrimmed.substring(2, 4), 16) / 255;
+    const blue = parseInt(hexTrimmed.substring(4, 6), 16) / 255;
+
+    const maxChannel = Math.max(red, green, blue);
+    const minChannel = Math.min(red, green, blue);
+    const channelDelta = maxChannel - minChannel;
+
+    const lightness = (maxChannel + minChannel) / 2;
+
+    if (channelDelta === 0) {
+        return { hue: 0, saturation: 0, lightness };
+    }
+
+    const saturation =
+        lightness > 0.5
+            ? channelDelta / (2 - maxChannel - minChannel)
+            : channelDelta / (maxChannel + minChannel);
+
+    let hue = 0;
+    if (maxChannel === red) {
+        hue = ((green - blue) / channelDelta + (green < blue ? 6 : 0)) * 60;
+    } else if (maxChannel === green) {
+        hue = ((blue - red) / channelDelta + 2) * 60;
+    } else {
+        hue = ((red - green) / channelDelta + 4) * 60;
+    }
+
+    return { hue, saturation, lightness };
 }

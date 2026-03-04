@@ -1,6 +1,7 @@
 import { Component, For, Show } from 'solid-js';
 import { MetadataField } from '../../../../core/store/viewportPreferencesStore';
 import { AssetItem } from '../../../../types';
+import { formatFileSize, formatToDisplay } from '../../../../utils/format';
 
 /**
  * Properties for rendering asset metadata.
@@ -20,39 +21,6 @@ export interface AssetMetadataViewProperties {
 }
 
 /**
- * Format bytes to readable size
- *
- * @param {number} bytes - Size in bytes
- * @returns {string} Readable size
- */
-const formatSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-
-    const kb = bytes / 1024;
-    if (kb < 1024) return `${kb.toFixed(1)} KB`;
-
-    const mb = kb / 1024;
-    if (mb < 1024) return `${mb.toFixed(1)} MB`;
-
-    return `${(mb / 1024).toFixed(1)} GB`;
-};
-
-/**
- * Formats a given date string to a locale-friendly format.
- *
- * @param {string} dateString - ISO date string
- * @returns {string} Formatted date
- */
-const formatDate = (dateString: string): string => {
-    if (!dateString) return '---';
-    try {
-        return new Date(dateString).toLocaleDateString();
-    } catch {
-        return dateString;
-    }
-};
-
-/**
  * Generic mapper to render each field
  *
  * @param {MetadataField} field - The string identifier of the field
@@ -63,11 +31,11 @@ const fieldFormatters: Record<MetadataField, (item: AssetItem) => string> = {
     filename: item => item.filename || '---',
     extension: item => (item.format ? `.${item.format.toLowerCase()}` : '---'),
     dimensions: item => (item.width && item.height ? `${item.width} x ${item.height}` : '---'),
-    size: item => formatSize(item.size),
+    size: item => formatFileSize(item.size),
     rating: item => (item.rating > 0 ? `★ ${item.rating}` : 'Unrated'),
-    modified_at: item => formatDate(item.modified_at),
-    created_at: item => formatDate(item.created_at),
-    added_at: item => formatDate(item.added_at),
+    modified_at: item => formatToDisplay(item.modified_at),
+    created_at: item => formatToDisplay(item.created_at),
+    added_at: item => formatToDisplay(item.added_at),
     tags: () => 'Tags: ...' // Deferred loading
 };
 

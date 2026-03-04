@@ -2,6 +2,7 @@ import { Component, Show, splitProps } from 'solid-js';
 import { cn as concatenateClasses } from '../../../lib/utils';
 import { Tooltip } from '../Tooltip';
 import { CountBadgeProperties } from './types';
+import { formatCompactNumber } from '../../../utils/format';
 import './count-badge.css';
 
 /**
@@ -19,6 +20,11 @@ import './count-badge.css';
  * <CountBadge count={5} variant="primary" />
  */
 export const CountBadge: Component<CountBadgeProperties> = properties => {
+    /**
+     * Splits the properties into local properties and remaining properties.
+     * @param properties - The properties to split.
+     * @returns The split properties.
+     */
     const [localProperties, remainingProperties] = splitProps(properties, [
         'count',
         'variant',
@@ -27,28 +33,34 @@ export const CountBadge: Component<CountBadgeProperties> = properties => {
         'class'
     ]);
 
+    /**
+     * Gets the active variant of the count badge.
+     * @returns The active variant of the count badge.
+     */
     const activeVariant = () => localProperties.variant || 'secondary';
+
+    /**
+     * Gets the maximum value of the count badge.
+     * @returns The maximum value of the count badge.
+     */
     const maximumValue = () => localProperties.max ?? 9999;
+
+    /**
+     * Checks if the count badge should show zero.
+     * @returns True if the count badge should show zero, false otherwise.
+     */
     const shouldShowZero = () => localProperties.showZero ?? false;
 
+    /**
+     * Checks if the count badge should be shown.
+     * @returns True if the count badge should be shown, false otherwise.
+     */
     const shouldShowBadge = () => localProperties.count > 0 || shouldShowZero();
 
     /**
-     * Formats the numeric count into a shorter string representation.
+     * Renders the count badge.
+     * @returns The rendered count badge.
      */
-    const formatCountValue = (numericCount: number): string => {
-        if (numericCount > maximumValue()) {
-            return `${formatCountValue(maximumValue())}+`;
-        }
-        if (numericCount >= 1000000) {
-            return (numericCount / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-        }
-        if (numericCount >= 1000) {
-            return (numericCount / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-        }
-        return numericCount.toString();
-    };
-
     const RenderedBadge: Component = () => (
         <span
             class={concatenateClasses(
@@ -59,7 +71,7 @@ export const CountBadge: Component<CountBadgeProperties> = properties => {
             aria-label={`Count: ${localProperties.count.toLocaleString()}`}
             {...remainingProperties}
         >
-            {formatCountValue(localProperties.count)}
+            {formatCompactNumber(localProperties.count, maximumValue())}
         </span>
     );
 

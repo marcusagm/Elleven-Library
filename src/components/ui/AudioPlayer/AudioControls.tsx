@@ -1,13 +1,24 @@
-import { Component, Show } from 'solid-js';
+import { Component, JSX, Show } from 'solid-js';
 import { cn } from '../../../lib/utils';
 import { Button } from '../Button';
 import { Slider } from '../Slider';
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Repeat } from 'lucide-solid';
 import { audioState, audioActions } from '../../../core/store/audioStore';
 import { useAudioContext } from './AudioPlayerContext';
-import { formatTime } from './utils';
+import { formatTime } from '../../../utils/format';
 
-export const AudioControls: Component = () => {
+/**
+ * Audio controls component for the audio player.
+ *
+ * @param {AudioPlayerProps} props - The properties for the audio player.
+ * @returns {JSX.Element} The audio controls component.
+ */
+export const AudioControls: Component = (): JSX.Element => {
+    /**
+     * Audio player context.
+     *
+     * @returns {AudioPlayerContextType} The audio player context.
+     */
     const {
         props,
         audioRef,

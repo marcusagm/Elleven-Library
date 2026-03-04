@@ -142,3 +142,44 @@ export const formatToDisplay = (dateSource: string | Date): string => {
     const dateObject = fromISO(dateSource);
     return dateObject ? formatDateToDisplay(dateObject) : dateSource;
 };
+
+/**
+ * Formats a given time in seconds into a traditional HH:MM:SS or MM:SS format.
+ *
+ * @param {number} seconds - The time duration in seconds.
+ * @returns {string} The formatted time string.
+ *
+ * @example
+ * const formatted = formatTime(125); // "02:05"
+ */
+export const formatTime = (seconds: number): string => {
+    if (!Number.isFinite(seconds) || Number.isNaN(seconds)) return '--:--';
+    const totalHours = Math.floor(seconds / 3600);
+    const totalMinutes = Math.floor((seconds % 3600) / 60);
+    const totalSeconds = Math.floor(seconds % 60);
+    const formattedParts = [totalMinutes, totalSeconds].map(value =>
+        value.toString().padStart(2, '0')
+    );
+    if (totalHours > 0) formattedParts.unshift(totalHours.toString());
+    return formattedParts.join(':');
+};
+
+/**
+ * Formats a numeric count into a shorter string representation (e.g., 1.2k, 1M).
+ *
+ * @param {number} numericCount - The count to abbreviate.
+ * @param {number} maximumValue - Optional. The maximum value to show before appending a '+' sign.
+ * @returns {string} The formatted abbreviated count string.
+ */
+export const formatCompactNumber = (numericCount: number, maximumValue: number = 9999): string => {
+    if (numericCount > maximumValue) {
+        return `${formatCompactNumber(maximumValue, maximumValue)}+`;
+    }
+    if (numericCount >= 1000000) {
+        return (numericCount / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    if (numericCount >= 1000) {
+        return (numericCount / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return numericCount.toString();
+};
