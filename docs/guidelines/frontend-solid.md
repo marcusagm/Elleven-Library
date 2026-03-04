@@ -18,8 +18,16 @@ src/
         VideoPlayer.tsx      # Main component
         VideoControls.tsx    # Sub-component
         videoPlayer.css      # Component-specific styles
-        utils.ts             # Private utilities
+        utils.ts             # Strictly private utilities
 ```
+
+### 🛠️ Utility Functions (Utils)
+
+To prevent code duplication and architectural ambiguity, utility functions must be strictly categorized:
+
+- **Global Utilities (`src/utils/`)**: General-purpose helpers focused on UI presentation, such as text formatting, date parsing, and color conversions (e.g., `formatFileSize`, `formatTime`).
+- **Core Orchestrators (`src/core/utils/`)**: System-level architectural utilities (e.g., `eventBus`, `LifecycleManager`). Do not mix simple visual formatters with core orchestration logic.
+- **Component-Specific Utilities (`src/components/.../utils.ts`)**: Only use local utility files for logic heavily tied to a single component's internal operation. If a helper function (like formatting a number) is duplicated across two or more components, it **must** be extracted immediately to the global `src/utils/` domain.
 
 ---
 
@@ -38,7 +46,7 @@ Each UI component must have its own directory with the following convention:
 - `[component-name].css`: Scoped styles using design tokens.
 - `components/` or root files: Internal parts (e.g., `SliderTrack.tsx`, `SliderThumb.tsx`).
 - `hooks/` or root files: Internal hooks (e.g., `useSlider.ts`).
-- `utils/` or root files: Internal utilities (e.g., `formatDate.ts`).
+- `utils/` or root files: Internal utilities strictly specific to the component. General formatting belongs in `src/utils/`.
 
 ### 🏗️ Architecture
 
