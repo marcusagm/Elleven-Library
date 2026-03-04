@@ -26,10 +26,10 @@
 
 .virtual-masonry-item {
   background-color: var(--bg-surface-1);
-  border: 3px solid var(--border-default);
+  border: 2px solid var(--border-default);
   position: absolute;
   overflow: hidden;
-  border-radius: 15px;
+  border-radius: var(--radius-l);
   /* Transition handled in inline style for transform/width, but we keep border/shadow here */
   transition:
     border-color 0.3s ease,
@@ -43,9 +43,10 @@
 }
 
 .virtual-masonry-item:hover {
+  border: 2px solid var(--border-default);
   border-color: var(--action-primary-bg);
-  /* Transform handled by JS layout OR simple Z-index boost. 
-     We CANNOT transform Y here because it conflicts with JS positioning. 
+  /* Transform handled by JS layout OR simple Z-index boost.
+     We CANNOT transform Y here because it conflicts with JS positioning.
      Instead, usage inner element or box-shadow popup. */
   box-shadow: 0 15px  2.5rem rgba(0, 0, 0, 0.6);
   z-index: 10;
@@ -68,10 +69,10 @@
   box-shadow: var(--shadow-focus);
   z-index: 6;
 }
-.virtual-masonry-item.focused.selected {
+/* .virtual-masonry-item.focused.selected {
   box-shadow: var(--shadow-focus-selected);
   z-index: 6;
-}
+} */
 
 .virtual-masonry-item.focused.selected {
   outline-color: var(--border-active);
@@ -117,7 +118,7 @@
 
 .virtual-masonry-item.drop-target-active {
   border-color: var(--action-primary-bg) !important;
-  box-shadow: 
+  box-shadow:
     0 0 0  0.625rem rgba(var(--accent-color-rgb), 0.2),
     0 var(--p-space-s) 30px rgba(0, 0, 0, 0.5);
   background-color: var(--bg-surface-active);
@@ -129,7 +130,7 @@
   position: absolute;
   inset: 0;
   /* border:  0.375rem solid var(--action-primary-bg); */
-  -webkit-box-shadow: inset 0px 0px  1.25rem  0.375rem var(--action-primary-bg); 
+  -webkit-box-shadow: inset 0px 0px  1.25rem  0.375rem var(--action-primary-bg);
   box-shadow: inset 0px 0px  1.25rem  0.375rem var(--action-primary-bg);
   /* border-radius: inherit; */
   pointer-events: none;
@@ -137,23 +138,23 @@
 }
 
 @keyframes pulse-border {
-  0% { 
-    opacity: 1; 
+  0% {
+    opacity: 1;
     /* border-width:  0.375rem;  */
-    box-shadow: inset 0px 0px  0.625rem 0px var(--action-primary-bg); 
-    -webkit-box-shadow: inset 0px 0px  0.625rem 0px var(--action-primary-bg); 
+    box-shadow: inset 0px 0px  0.625rem 0px var(--action-primary-bg);
+    -webkit-box-shadow: inset 0px 0px  0.625rem 0px var(--action-primary-bg);
   }
-  50% { 
-    opacity: 0.5; 
+  50% {
+    opacity: 0.5;
     /* border-width:  0.625rem;  */
-    box-shadow: inset 0px 0px  0.625rem  0.375rem var(--action-primary-bg); 
-    -webkit-box-shadow: inset 0px 0px  0.625rem  0.375rem var(--action-primary-bg); 
+    box-shadow: inset 0px 0px  0.625rem  0.375rem var(--action-primary-bg);
+    -webkit-box-shadow: inset 0px 0px  0.625rem  0.375rem var(--action-primary-bg);
   }
-  100% { 
-    opacity: 1; 
+  100% {
+    opacity: 1;
     /* border-width:  0.375rem;  */
-    box-shadow: inset 0px 0px  0.625rem 0px var(--action-primary-bg); 
-    -webkit-box-shadow: inset 0px 0px  0.625rem 0px var(--action-primary-bg); 
+    box-shadow: inset 0px 0px  0.625rem 0px var(--action-primary-bg);
+    -webkit-box-shadow: inset 0px 0px  0.625rem 0px var(--action-primary-bg);
   }
 }
 

@@ -7,7 +7,7 @@
 
 .inspector-preview {
     margin: var(--p-space-m);
-    aspect-ratio: 16/9;
+    /* aspect-ratio: 16/9; */
     background: var(--bg-page);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-s);
