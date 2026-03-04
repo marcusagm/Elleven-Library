@@ -237,7 +237,7 @@ export function Table<T>(props: TableProps<T>) {
                                     checked
                                 );
                             }}
-                            size="sm"
+                            size="md"
                         />
                     </div>
                 )

@@ -108,8 +108,8 @@
 .ui-context-menu-custom {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: var(--p-space-xs);
+  /* align-items: center; */
+  /* padding: var(--p-space-xs); */
   min-width: 0; /* Avoid expansion */
 }
 
