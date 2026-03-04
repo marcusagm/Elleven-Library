@@ -1,4 +1,4 @@
-import { Component, Show } from 'solid-js';
+import { Component, JSX, Show } from 'solid-js';
 import { NumberInput } from '../../../ui/NumberInput';
 import { Select } from '../../../ui/Select';
 import { CriterionFieldRendererProperties } from './types';
@@ -11,9 +11,15 @@ import { SIZE_UNITS } from '../../../../core/store/filter/constants';
  * @param {CriterionFieldRendererProperties} properties - The configuration and state for the size field renderer.
  * @returns {JSX.Element} The rendered size input group.
  */
-export const SizeCriterionField: Component<CriterionFieldRendererProperties> = properties => {
-    /** Checks if the current comparison logic expects a range of two sizes. */
-    const isRangeMode = () => properties.comparisonOperator === 'between';
+export const SizeCriterionField: Component<CriterionFieldRendererProperties> = (
+    properties: CriterionFieldRendererProperties
+): JSX.Element => {
+    /**
+     * Checks if the current comparison logic expects a range of two sizes.
+     *
+     * @returns {boolean} True if the comparison operator is 'between', false otherwise.
+     */
+    const isRangeMode = (): boolean => properties.comparisonOperator === 'between';
 
     return (
         <div class="number-input-group">
@@ -49,104 +55,4 @@ export const SizeCriterionField: Component<CriterionFieldRendererProperties> = p
             </Show>
         </div>
     );
-};
-
-/**
- * Checks if a given input value is considered empty (null, undefined, or empty string).
- * @param value - The value to check.
- */
-const checkIsEmpty = (value: unknown) => value === null || value === undefined || value === '';
-
-/**
- * Handler implementation for file size-based search criteria.
- * Handles validation of numeric inputs, conversion between display units and bytes,
- * and formatting for human-readable output.
- */
-export const sizeHandler: import('./types').SearchFieldHandler = {
-    /** The visual component representing the size inputs and unit selector. */
-    component: SizeCriterionField,
-
-    /**
-     * Validates that size values are provided and range consistency is maintained.
-     *
-     * @param value - Primary size value selection.
-     * @param value2 - Secondary size value selection.
-     * @param operator - The comparison logic being used.
-     * @param unitMultiplier - The selected unit multiplier string.
-     * @returns A record of validation error messages.
-     */
-    validate: (value, value2, operator, unitMultiplier) => {
-        const validationErrors: Record<string, string> = {};
-
-        if (checkIsEmpty(value)) {
-            validationErrors.value = 'Value is required';
-        }
-
-        if (operator === 'between') {
-            if (checkIsEmpty(value2)) {
-                validationErrors.value2 = 'End value is required';
-            } else if (!checkIsEmpty(value) && Number(value) > Number(value2)) {
-                validationErrors.value2 = 'End value must be greater than start';
-            }
-        }
-
-        if (
-            !SIZE_UNITS.find(
-                (option: { value: string; label: string }) => option.value === unitMultiplier
-            )
-        ) {
-            validationErrors.unit = 'Unit is required';
-        }
-
-        return validationErrors;
-    },
-
-    /**
-     * Converts the UI-level numeric inputs and units into raw byte counts for database queries.
-     *
-     * @param value - Primary raw size input.
-     * @param value2 - Secondary raw size input.
-     * @param operator - Current comparison operator.
-     * @param unitMultiplier - The selected unit multiplier.
-     * @returns The final processed byte value (or range) and the unit used.
-     */
-    process: (value, value2, operator, unitMultiplier) => {
-        const numericMultiplier = Number(unitMultiplier);
-        let finalValue: unknown;
-
-        if (operator === 'between') {
-            const startBytes = Math.round(Number(value) * numericMultiplier);
-            const endBytes = Math.round(Number(value2) * numericMultiplier);
-            finalValue = [startBytes, endBytes];
-        } else {
-            finalValue = Math.round(Number(value) * numericMultiplier);
-        }
-
-        return { finalValue, unitMultiplier };
-    },
-
-    /**
-     * Formats the byte values back into display-friendly strings based on the selected unit.
-     *
-     * @param value1 - Primary byte count (or UI display value before multiplier).
-     * @param value2 - Secondary byte count (or UI display value before multiplier).
-     * @param operator - Comparison logic used.
-     * @param unitMultiplier - The unit multiplier for resolving the correct label.
-     * @returns A friendly string (e.g., "500 MB to 1 GB").
-     */
-    formatDisplay: (value1, value2, operator, unitMultiplier) => {
-        const mult = Number(unitMultiplier || '1048576');
-        const unitLabel =
-            SIZE_UNITS.find(
-                (option: { value: string; label: string }) => option.value === unitMultiplier
-            )?.label || 'bytes';
-
-        const displayV1 = Number(value1) / mult;
-        const displayV2 = value2 ? Number(value2) / mult : undefined;
-
-        if (operator === 'between') {
-            return `${displayV1} ${unitLabel} to ${displayV2} ${unitLabel}`;
-        }
-        return `${displayV1} ${unitLabel}`;
-    }
 };

@@ -115,6 +115,7 @@
     align-items: center;
     gap: var(--p-space-s);
     min-width: 300px;
+    align-self: center;
 }
 
 .tolerance-slider-label {

@@ -21,15 +21,16 @@
   align-items: center;
   width: 100%;
   /* Height is set by size variant, default fallback */
-  background-color: var(--bg-input, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--border-subtle);
+
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-s);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: all var(--transition-fast);
 }
 
 .ui-color-input-container:focus-within {
   border-color: var(--action-primary-bg);
-  box-shadow: 0 0 0 var(--p-space-xxs) rgba(14, 165, 233, 0.15);
+  box-shadow: 0 0 0 1px var(--action-primary-bg);
 }
 
 .ui-color-input-container.ui-color-input-error {
@@ -97,7 +98,7 @@
      Default right padding is 0.75rem.
      If right icon exists, right padding becomes 0 via modifier class.
   */
-  padding: 0 0.75rem 0 0; 
+  padding: 0 0.75rem 0 0;
   background: transparent;
   border: none;
   outline: none;

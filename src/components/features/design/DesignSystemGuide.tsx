@@ -1543,6 +1543,7 @@ export const DesignSystemGuide: Component = () => {
                                     { label: 'Item 2', value: '2' },
                                     { label: 'Item 3', value: '3' }
                                 ]}
+                                searchable
                                 placeholder="Select an item (lg)"
                                 value={undefined}
                                 onValueChange={() => {}}

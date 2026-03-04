@@ -1,7 +1,6 @@
-import { Component, Show } from 'solid-js';
+import { Component, JSX, Show } from 'solid-js';
 import { DateInput } from '../../../ui/DateInput';
 import { CriterionFieldRendererProperties } from './types';
-import { formatToISO, formatToDisplay } from '../../../../utils/format';
 
 /**
  * Renders a specialized input field for date criteria in the advanced search.
@@ -10,8 +9,14 @@ import { formatToISO, formatToDisplay } from '../../../../utils/format';
  * @param {CriterionFieldRendererProperties} properties - The configuration and state for the date field renderer.
  * @returns {JSX.Element} The rendered date input group.
  */
-export const DateCriterionField: Component<CriterionFieldRendererProperties> = properties => {
-    /** Checks if the current comparison logic expects a range of two dates. */
+export const DateCriterionField: Component<CriterionFieldRendererProperties> = (
+    properties: CriterionFieldRendererProperties
+): JSX.Element => {
+    /**
+     * Checks if the current comparison logic expects a range of two dates.
+     *
+     * @returns {boolean} True if the comparison operator is 'between', false otherwise.
+     */
     const isRangeMode = () => properties.comparisonOperator === 'between';
 
     return (
@@ -37,73 +42,4 @@ export const DateCriterionField: Component<CriterionFieldRendererProperties> = p
             </Show>
         </div>
     );
-};
-
-/**
- * Handler implementation for date-based search criteria.
- * Manages validation, processing for storage, and human-readable display formatting.
- */
-export const dateHandler: import('./types').SearchFieldHandler = {
-    /** The visual component representing the date inputs. */
-    component: DateCriterionField,
-
-    /**
-     * Validates that date inputs are provided and that range logic (if active) is consistent.
-     *
-     * @param value - The primary date value.
-     * @param value2 - The secondary end date value for ranges.
-     * @param operator - The comparison logic being used.
-     * @returns A record of validation error messages.
-     */
-    validate: (value, value2, operator) => {
-        const validationErrors: Record<string, string> = {};
-        if (value === null || value === '') {
-            validationErrors.value = 'Date is required';
-        }
-
-        if (operator === 'between') {
-            if (value2 === null || value2 === '') {
-                validationErrors.value2 = 'End date is required';
-            } else if (value !== null && value !== '') {
-                const startDateObject = new Date(value as string | Date);
-                const endDateObject = new Date(value2 as string | Date);
-                if (startDateObject > endDateObject) {
-                    validationErrors.value2 = 'End date must be after start date';
-                }
-            }
-        }
-        return validationErrors;
-    },
-
-    /**
-     * Converts the reactive Date objects into ISO standard strings for data persistence.
-     *
-     * @param value - Primary date selection.
-     * @param value2 - Secondary date selection (optional).
-     * @param operator - Current comparison operator.
-     * @returns The final processed value representation.
-     */
-    process: (value, value2, operator) => {
-        if (operator === 'between') {
-            const isoStringStart = formatToISO(value as Date | string);
-            const isoStringEnd = formatToISO(value2 as Date | string);
-            return { finalValue: [isoStringStart, isoStringEnd] };
-        }
-        return { finalValue: formatToISO(value as Date | string) };
-    },
-
-    /**
-     * Creates a human-friendly display string for the date criterion.
-     *
-     * @param value1 - Formatted primary date string.
-     * @param value2 - Formatted secondary date string (if unknown).
-     * @param operator - Comparison operator for context.
-     * @returns The localized display string.
-     */
-    formatDisplay: (value1, value2, operator) => {
-        if (operator === 'between') {
-            return `${formatToDisplay(value1 as string | Date)} to ${formatToDisplay(value2 as string | Date)}`;
-        }
-        return formatToDisplay(value1 as string | Date);
-    }
 };

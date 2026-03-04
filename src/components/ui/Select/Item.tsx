@@ -15,16 +15,25 @@ export const Item: Component<SelectItemProperties> = properties => {
 
     /**
      * Reactively checks if this item is currently selected.
+     *
+     * @returns {boolean} True if the item is selected, false otherwise.
      */
     const isSelectedResult = createMemo(() => context.value() === properties.option.value);
 
     /**
      * Determines the index of this item in the options list for highlighting.
+     *
+     * @returns {number} The index of the item in the options list, or -1 if not found.
+     * Uses `findIndex` by value instead of object reference to avoid bugs with inline-created arrays.
      */
-    const itemIndex = createMemo(() => context.options().indexOf(properties.option));
+    const itemIndex = createMemo(() =>
+        context.options().findIndex(opt => opt.value === properties.option.value)
+    );
 
     /**
      * Updates the global selection within the group.
+     *
+     * @returns {void}
      */
     const handleSelectionTrigger = () => {
         if (properties.option.disabled) {
@@ -36,6 +45,8 @@ export const Item: Component<SelectItemProperties> = properties => {
 
     /**
      * Updates the highlight status on hover for keyboard navigation.
+     *
+     * @returns {void}
      */
     const handleNavigationHint = () => {
         if (properties.option.disabled) {
@@ -50,7 +61,9 @@ export const Item: Component<SelectItemProperties> = properties => {
                 'ui-select-option',
                 isSelectedResult() && 'ui-select-option-selected',
                 properties.option.disabled && 'ui-select-option-disabled',
-                context.highlightedIndex() === itemIndex() && 'ui-select-option-highlighted',
+                context.highlightedIndex() === itemIndex() &&
+                    itemIndex() !== -1 &&
+                    'ui-select-option-highlighted',
                 properties.class
             )}
             role="option"

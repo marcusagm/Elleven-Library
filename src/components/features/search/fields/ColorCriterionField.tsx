@@ -1,22 +1,12 @@
-import { Component, createMemo, Show } from 'solid-js';
+import { Component, createMemo, JSX, Show } from 'solid-js';
 import { ColorInput, Slider } from '../../../ui';
-import { CriterionFieldRendererProperties, SearchFieldHandler } from './types';
+import { CriterionFieldRendererProperties } from './types';
 
 /** Minimum ΔE for exact match (just-noticeable difference threshold). */
 const DELTA_E_EXACT = 2.3;
 
 /** Maximum ΔE for broad color family matching. */
 const DELTA_E_BROAD = 50;
-
-/**
- * Maps a tolerance percentage to a ΔE threshold value.
- *
- * @param {number} percentage - The percentage from 0 to 100.
- * @returns {number} The corresponding ΔE value.
- */
-function sliderPercentageToDeltaE(percentage: number): number {
-    return DELTA_E_EXACT + (percentage / 100) * (DELTA_E_BROAD - DELTA_E_EXACT);
-}
 
 /**
  * Reverses a ΔE threshold back to a slider percentage.
@@ -95,21 +85,48 @@ function parseColorValue(rawValue: unknown): { hex: string; proximity: number } 
  * @param {CriterionFieldRendererProperties} componentProperties - Component properties containing state and callback handlers.
  * @returns {JSX.Element} The rendered component.
  */
-export const ColorCriterionField: Component<
-    CriterionFieldRendererProperties
-> = componentProperties => {
-    // Defines current value as derived state completely controlled by the parent component.
+export const ColorCriterionField: Component<CriterionFieldRendererProperties> = (
+    componentProperties: CriterionFieldRendererProperties
+): JSX.Element => {
+    /**
+     * Creates a memoized color value from the component's value property.
+     * The memoization ensures that the color value is only re-parsed when the value changes.
+     *
+     * @returns {Memo<{ hex: string; proximity: number }>} The memoized color value.
+     */
     const currentValue = createMemo(() => parseColorValue(componentProperties.value));
+
+    /**
+     * Checks if the current comparison logic expects an exact match.
+     *
+     * @returns {boolean} True if the comparison operator is 'exact', false otherwise.
+     */
     const isExactMode = () => componentProperties.comparisonOperator === 'exact';
 
+    /**
+     * Updates the component's value with a new color and proximity.
+     *
+     * @param {string} hex - The new color value in hexadecimal format.
+     * @param {number} proximity - The new proximity value.
+     */
     const updateValue = (hex: string, proximity: number) => {
         componentProperties.setValue(JSON.stringify({ hex, proximity }));
     };
 
+    /**
+     * Handles color changes by updating the component's value with the new color and current proximity.
+     *
+     * @param {string} newHex - The new color value in hexadecimal format.
+     */
     const handleColorChange = (newHex: string) => {
         updateValue(newHex, currentValue().proximity);
     };
 
+    /**
+     * Handles proximity changes by updating the component's value with the current color and new proximity.
+     *
+     * @param {number} newProximity - The new proximity value.
+     */
     const handleProximityChange = (newProximity: number) => {
         updateValue(currentValue().hex, newProximity);
     };
@@ -144,56 +161,4 @@ export const ColorCriterionField: Component<
             </Show>
         </div>
     );
-};
-
-/**
- * Validates the color criterion values.
- *
- * @param {unknown} fieldValue - The field's raw JSON value.
- * @returns {Record<string, string>} A dictionary of potential errors.
- */
-function validateColorCriterion(fieldValue: unknown): Record<string, string> {
-    const validationErrors: Record<string, string> = {};
-    if (!fieldValue) {
-        validationErrors.value = 'Color is required';
-        return validationErrors;
-    }
-
-    const parsed = parseColorValue(fieldValue);
-    if (!parsed.hex || !/^#[0-9A-Fa-f]{6}$/.test(parsed.hex)) {
-        validationErrors.value = 'Invalid hex color';
-    }
-
-    return validationErrors;
-}
-
-/**
- * Handler implementation for color-type search criteria.
- */
-export const colorHandler: SearchFieldHandler = {
-    component: ColorCriterionField,
-
-    validate: value => validateColorCriterion(value),
-
-    process: (value, _value2, operator) => {
-        const parsed = parseColorValue(value);
-        const threshold =
-            operator === 'exact' ? DELTA_E_EXACT : sliderPercentageToDeltaE(parsed.proximity);
-
-        return {
-            finalValue: {
-                hex: parsed.hex,
-                threshold: Math.round(threshold * 10) / 10
-            }
-        };
-    },
-
-    formatDisplay: (value, _value2, operator) => {
-        const parsed = parseColorValue(value);
-        if (operator === 'exact') {
-            return `${parsed.hex} (Exact)`;
-        }
-        const label = getMatchLabel(parsed.proximity);
-        return `${parsed.hex} (Tolerance: ${parsed.proximity}% - ${label})`;
-    }
 };
