@@ -5,22 +5,43 @@ import { useSelect } from './context';
 import { SelectContentProperties } from './types';
 
 /**
- * Select.Content is a portal component that renders the dropdown dropdown menu.
+ * Renders the dropdown menu in a portal for the Select component.
  * Automatically positions itself relative to the Select.Trigger component.
  *
- * @param {SelectContentProperties} properties - Properties for the portal content.
+ * @param {SelectContentProperties} contentProperties - Properties for the portal content.
  * @returns {JSX.Element} A dropdown list rendered in a portal.
+ *
+ * @example
+ * ```tsx
+ * import { Select } from '@/components/ui';
+ * <Select.Content class="custom-dropdown">
+ *   {children}
+ * </Select.Content>
+ * ```
  */
-export const Content: Component<SelectContentProperties> = properties => {
-    const [localProperties, remainingProperties] = splitProps(properties, ['class', 'children']);
+export const Content: Component<SelectContentProperties> = contentProperties => {
+    /**
+     * Split the properties into local properties and remaining properties.
+     */
+    const [localProperties, remainingProperties] = splitProps(contentProperties, [
+        'class',
+        'children'
+    ]);
 
+    /**
+     * Access the shared Select context.
+     */
     const context = useSelect();
 
     return (
         <Show when={context.isOpen()}>
             <Portal>
                 <div
-                    ref={element => context.setContentElement(element)}
+                    ref={element => {
+                        context.setContentElement(element);
+                        element.addEventListener('mousedown', e => e.stopPropagation());
+                        element.addEventListener('touchstart', e => e.stopPropagation());
+                    }}
                     class={concatenateClasses('ui-select-content', localProperties.class)}
                     style={{
                         position: 'fixed',

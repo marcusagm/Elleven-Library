@@ -6,6 +6,11 @@ import { VirtualGridView } from './VirtualGridView';
 import { VirtualListView } from './VirtualListView';
 import './list-view.css';
 
+/**
+ * Renders the main viewport layout, managing the active list view mode (Grid, List, or Masonry).
+ *
+ * @returns {JSX.Element} The active list view container.
+ */
 export const ListView: Component = () => {
     const lib = useLibrary();
     const filters = useFilters();

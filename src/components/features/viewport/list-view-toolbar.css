@@ -75,3 +75,27 @@
 .mr-2 {
     margin-right: var(--p-space-s);
 }
+
+.toolbar-popover-sort-configuration {
+    width: 270px;
+    padding: var(--p-space-s);
+}
+
+.toolbar-popover-view-configuration {
+    min-width: auto;
+    padding: var(--p-space-s);
+}
+
+.popover-config-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--p-space-xs);
+}
+
+.popover-config-label {
+    font-size: var(--p-font-size-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+}

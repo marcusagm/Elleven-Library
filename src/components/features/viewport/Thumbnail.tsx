@@ -10,116 +10,179 @@ import {
 } from '../../../core/store/thumbnailStore';
 import './thumbnail.css';
 
-// ============================================================================
-// Global Image Cache
-// ============================================================================
-// Tracks which thumbnail URLs have been successfully loaded.
-// This persists across component recycling during virtualization.
+/**
+ * Tracks which thumbnail URLs have been successfully loaded.
+ * This persists across component recycling during virtualization.
+ */
 const loadedThumbnails = new Set<string>();
 
-// Add a loaded thumbnail to cache
+/**
+ * Adds a loaded thumbnail to cache.
+ *
+ * @param {string} url - The URL to mark as loaded.
+ */
 function markThumbnailLoaded(url: string) {
     loadedThumbnails.add(url);
 }
 
-// Check if thumbnail was previously loaded
+/**
+ * Checks if a thumbnail was previously loaded.
+ *
+ * @param {string | undefined} url - The URL to check.
+ * @returns {boolean} True if loaded, otherwise false.
+ */
 function isThumbnailLoaded(url: string | undefined): boolean {
     return url ? loadedThumbnails.has(url) : false;
 }
 
-// ============================================================================
-// Component
-// ============================================================================
-
-interface ThumbnailProps {
+/**
+ * Represents the configuration for the Thumbnail component.
+ */
+export interface ThumbnailProperties {
+    /**
+     * The unique identifier of the asset.
+     */
     id: number;
+    /**
+     * The original source file path or URL.
+     */
     src: string;
+    /**
+     * The thumbnail file path or URL.
+     */
     thumbnail: string | null;
+    /**
+     * The alternative text for the image.
+     */
     alt: string;
+    /**
+     * The optional width of the thumbnail.
+     */
     width?: number | null;
+    /**
+     * The optional height of the thumbnail.
+     */
     height?: number | null;
 }
 
-export function Thumbnail(props: ThumbnailProps) {
+/**
+ * Renders an optimized asset thumbnail with loading states, lazy loading cache, and regeneration routines.
+ *
+ * @param {ThumbnailProperties} thumbnailProperties - Properties for the thumbnail display.
+ * @returns {JSX.Element} The rendered image or a loading placeholder.
+ *
+ * @example
+ * ```tsx
+ * import { Thumbnail } from '@/components/features/viewport/Thumbnail';
+ * <Thumbnail id={1} src="/path/to/img.png" thumbnail="/path/to/thumb" alt="My image" width={200} height={200} />
+ * ```
+ */
+export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
+    /**
+     * Local error state for the thumbnail.
+     */
     const [localError, setLocalError] = createSignal(false);
+
+    /**
+     * Local thumbnail state for the thumbnail.
+     */
     const [localThumbnail, setLocalThumbnail] = createSignal<string | null>(null);
 
+    /**
+     * Unsubscribe function for the thumbnail ready event.
+     */
     let unsubscribe: (() => void) | null = null;
 
-    // Subscribe to thumbnail ready events for this specific image
+    /**
+     * Mount lifecycle for the thumbnail component.
+     */
     onMount(() => {
-        unsubscribe = subscribeThumbnailReady(props.id, (_id, path) => {
+        unsubscribe = subscribeThumbnailReady(thumbnailProperties.id, (_id, path) => {
             setLocalThumbnail(path);
             setLocalError(false);
         });
     });
 
+    /**
+     * Cleanup lifecycle for the thumbnail component.
+     */
     onCleanup(() => {
         if (unsubscribe) unsubscribe();
     });
 
-    // Check if this image has a completed regeneration from store
+    /**
+     * Effective thumbnail for the thumbnail component.
+     */
     const effectiveThumbnail = createMemo(() => {
-        // First check if we have a locally updated thumbnail from event
         const local = localThumbnail();
         if (local) return local;
 
-        // Check if regeneration completed while unmounted
-        const completed = getCompletedThumbnail(props.id);
+        const completed = getCompletedThumbnail(thumbnailProperties.id);
         if (completed) {
-            // Clear it from store since we're using it now
-            clearCompleted(props.id);
+            clearCompleted(thumbnailProperties.id);
             return completed;
         }
 
-        // Use props thumbnail
-        return props.thumbnail;
+        return thumbnailProperties.thumbnail;
     });
 
-    // Should we show the image? Not if pending regeneration with no completed thumbnail
+    /**
+     * Should show image for the thumbnail component.
+     */
     const shouldShowImage = createMemo(() => {
         if (
-            isPendingRegeneration(props.id) &&
+            isPendingRegeneration(thumbnailProperties.id) &&
             !localThumbnail() &&
-            !getCompletedThumbnail(props.id)
+            !getCompletedThumbnail(thumbnailProperties.id)
         ) {
             return false;
         }
         return true;
     });
 
-    // URL da thumbnail usando o protocolo customizado
+    /**
+     * Thumbnail URL for the thumbnail component.
+     */
     const thumbUrl = createMemo(() => {
         const path = effectiveThumbnail();
         if (!path || path === '') return undefined;
 
-        // Validate path is not absolute (sanity check)
-        // Normalize backslashes to forward slashes for URL
         const normalizedPath = path.replace(/\\/g, '/');
         return `thumb://localhost/${normalizedPath}`;
     });
 
-    // Se não houver thumbnail, ou erro, ou pendente, não mostramos a imagem
+    /**
+     * Display source for the thumbnail component.
+     */
     const displaySrc = createMemo((): string | undefined => {
         if (localError()) return undefined;
         if (!shouldShowImage()) return undefined;
         return thumbUrl();
     });
 
-    // Check if this thumbnail was already loaded (from cache)
+    /**
+     * Is already loaded for the thumbnail component.
+     */
     const isAlreadyLoaded = createMemo(() => isThumbnailLoaded(thumbUrl()));
 
-    // Track loaded state - initialize from cache
+    /**
+     * Loaded state for the thumbnail component.
+     */
     const [loaded, setLoaded] = createSignal(false);
 
-    // Calculate aspect ratio for stability
+    /**
+     * Aspect ratio for the thumbnail component.
+     */
     const aspectRatio = createMemo(() => {
-        if (props.width && props.height) {
-            return `${props.width} / ${props.height}`;
+        if (thumbnailProperties.width && thumbnailProperties.height) {
+            return `${thumbnailProperties.width} / ${thumbnailProperties.height}`;
         }
         return undefined;
     });
 
+    /**
+     * Handle load for the thumbnail component.
+     */
     const handleLoad = () => {
         const url = thumbUrl();
         if (url) {
@@ -128,39 +191,36 @@ export function Thumbnail(props: ThumbnailProps) {
         setLoaded(true);
     };
 
+    /**
+     * Handle error for the thumbnail component.
+     */
     const handleError = () => {
         const thumb = thumbUrl();
         if (!thumb) return;
 
-        // Already handling this error
         if (localError()) return;
 
-        // Already pending regeneration (from store)
-        if (isPendingRegeneration(props.id)) {
+        if (isPendingRegeneration(thumbnailProperties.id)) {
             setLocalError(true);
             return;
         }
 
         setLocalError(true);
 
-        // Mark as pending in centralized store (persists across unmount)
-        markPendingRegeneration(props.id);
+        markPendingRegeneration(thumbnailProperties.id);
 
-        invoke('request_thumbnail_regenerate', { assetId: props.id }).catch(error =>
+        invoke('request_thumbnail_regenerate', { assetId: thumbnailProperties.id }).catch(error =>
             console.error('Failed to request regeneration:', error)
         );
     };
 
-    // Determine if we should show placeholder
-    // Don't show if image was already loaded from cache
+    /**
+     * Show placeholder for the thumbnail component.
+     */
     const showPlaceholder = createMemo(() => {
-        // No source to display
         if (!displaySrc()) return true;
-        // Has error
         if (localError()) return true;
-        // Already loaded from cache - don't show placeholder
         if (isAlreadyLoaded()) return false;
-        // Not yet loaded
         if (!loaded()) return true;
         return false;
     });
@@ -169,7 +229,7 @@ export function Thumbnail(props: ThumbnailProps) {
         <div
             class="thumbnail-container"
             style={{ 'aspect-ratio': aspectRatio() }}
-            data-id={props.id}
+            data-id={thumbnailProperties.id}
         >
             <Show when={showPlaceholder()}>
                 <div class="asset-placeholder">
@@ -180,7 +240,7 @@ export function Thumbnail(props: ThumbnailProps) {
             <Show when={displaySrc() && !localError()}>
                 <img
                     src={displaySrc()}
-                    alt={props.alt}
+                    alt={thumbnailProperties.alt}
                     draggable={false}
                     onLoad={handleLoad}
                     onError={handleError}

@@ -1,4 +1,15 @@
-import { Button, ButtonGroup, DropdownMenu, Slider, ToggleGroup, ToggleGroupItem } from '../../ui';
+import {
+    Button,
+    ButtonGroup,
+    PopoverRoot,
+    PopoverTrigger,
+    PopoverContent,
+    Select,
+    Slider,
+    ToggleGroup,
+    ToggleGroupItem,
+    Tooltip
+} from '../../ui';
 import { SearchToolbar } from '../search/SearchToolbar';
 import { Component } from 'solid-js';
 import {
@@ -15,7 +26,21 @@ import {
 import { useFilters } from '../../../core/hooks';
 import './list-view-toolbar.css';
 
+/**
+ * Renders the toolbar for the main list view, containing history navigation, search, sorting, and view options.
+ *
+ * @returns {JSX.Element} The list view toolbar container.
+ *
+ * @example
+ * ```tsx
+ * import { ListViewToolbar } from '@/components/features/viewport/ListViewToolbar';
+ * <ListViewToolbar />
+ * ```
+ */
 export const ListViewToolbar: Component = () => {
+    /**
+     * Filters for the list view toolbar.
+     */
     const filters = useFilters();
 
     return (
@@ -23,24 +48,26 @@ export const ListViewToolbar: Component = () => {
             {/* History Navigation */}
             <div class="toolbar-group">
                 <ButtonGroup attached>
-                    <Button
-                        variant="secondary"
-                        size="icon"
-                        onClick={() => filters.goBack()}
-                        disabled={!filters.canGoBack}
-                        title="Back"
-                    >
-                        <ArrowLeft size={18} />
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        size="icon"
-                        onClick={() => filters.goForward()}
-                        disabled={!filters.canGoForward}
-                        title="Forward"
-                    >
-                        <ArrowRight size={18} />
-                    </Button>
+                    <Tooltip content="Back" placement="bottom">
+                        <Button
+                            variant="secondary"
+                            size="icon"
+                            onClick={() => filters.goBack()}
+                            disabled={!filters.canGoBack}
+                        >
+                            <ArrowLeft size={18} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Forward" placement="bottom">
+                        <Button
+                            variant="secondary"
+                            size="icon"
+                            onClick={() => filters.goForward()}
+                            disabled={!filters.canGoForward}
+                        >
+                            <ArrowRight size={18} />
+                        </Button>
+                    </Tooltip>
                 </ButtonGroup>
             </div>
 
@@ -51,9 +78,9 @@ export const ListViewToolbar: Component = () => {
 
             {/* Sort & View Controls */}
             <div class="toolbar-group">
-                {/* Sort Dropdown */}
-                <DropdownMenu
-                    trigger={
+                {/* Sort Popover */}
+                <PopoverRoot placement="bottom-end">
+                    <PopoverTrigger>
                         <Button variant="ghost" class="sort-dropdown-trigger">
                             <span>
                                 Sort:{' '}
@@ -69,117 +96,143 @@ export const ListViewToolbar: Component = () => {
                             </span>
                             <ChevronDown size={14} />
                         </Button>
-                    }
-                    items={[
-                        {
-                            type: 'item',
-                            label: 'Modification Date',
-                            action: () => filters.setSortBy('modified_at')
-                        },
-                        {
-                            type: 'item',
-                            label: 'Addition Date',
-                            action: () => filters.setSortBy('added_at')
-                        },
-                        {
-                            type: 'item',
-                            label: 'Creation Date',
-                            action: () => filters.setSortBy('created_at')
-                        },
-                        {
-                            type: 'item',
-                            label: 'Title',
-                            action: () => filters.setSortBy('filename')
-                        },
-                        {
-                            type: 'item',
-                            label: 'File Type',
-                            action: () => filters.setSortBy('format')
-                        },
-                        {
-                            type: 'item',
-                            label: 'File Size',
-                            action: () => filters.setSortBy('size')
-                        },
-                        { type: 'item', label: 'Rating', action: () => filters.setSortBy('rating') }
-                    ]}
-                />
+                    </PopoverTrigger>
+                    <PopoverContent class="toolbar-popover-sort-configuration">
+                        <div class="popover-config-group">
+                            <span class="popover-config-label">Property</span>
+                            <Select
+                                options={[
+                                    { value: 'modified_at', label: 'Modification Date' },
+                                    { value: 'added_at', label: 'Addition Date' },
+                                    { value: 'created_at', label: 'Creation Date' },
+                                    { value: 'filename', label: 'Title' },
+                                    { value: 'format', label: 'File Type' },
+                                    { value: 'size', label: 'File Size' },
+                                    { value: 'rating', label: 'Rating' }
+                                ]}
+                                value={filters.sortBy}
+                                onValueChange={(val: string) =>
+                                    val &&
+                                    filters.setSortBy(
+                                        val as
+                                            | 'modified_at'
+                                            | 'added_at'
+                                            | 'created_at'
+                                            | 'filename'
+                                            | 'format'
+                                            | 'size'
+                                            | 'rating'
+                                    )
+                                }
+                            />
+                        </div>
 
-                {/* Sort Order Toggle */}
-                <ToggleGroup
-                    type="single"
-                    value={filters.sortOrder}
-                    onValueChange={(val: string) => filters.setSortOrder(val as 'asc' | 'desc')}
-                >
-                    <ToggleGroupItem value="asc" title="Ascending">
-                        <SortAsc size={14} />
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="desc" title="Descending">
-                        <SortDesc size={14} />
-                    </ToggleGroupItem>
-                </ToggleGroup>
+                        <div class="popover-config-group" style={{ 'margin-top': '16px' }}>
+                            <span class="popover-config-label">Direction</span>
+                            <ToggleGroup
+                                type="single"
+                                value={filters.sortOrder}
+                                onValueChange={(val: string) =>
+                                    val && filters.setSortOrder(val as 'asc' | 'desc')
+                                }
+                            >
+                                <ToggleGroupItem value="asc" title="Ascending" style={{ flex: 1 }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            'align-items': 'center',
+                                            gap: '8px'
+                                        }}
+                                    >
+                                        <SortAsc size={14} />
+                                        <span>Ascending</span>
+                                    </div>
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                    value="desc"
+                                    title="Descending"
+                                    style={{ flex: 1 }}
+                                >
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            'align-items': 'center',
+                                            gap: '8px'
+                                        }}
+                                    >
+                                        <SortDesc size={14} />
+                                        <span>Descending</span>
+                                    </div>
+                                </ToggleGroupItem>
+                            </ToggleGroup>
+                        </div>
+                    </PopoverContent>
+                </PopoverRoot>
 
                 <div class="toolbar-separator" />
 
-                {/* Layout Dropdown */}
-                <DropdownMenu
-                    trigger={
-                        <Button variant="ghost" size="icon" title="View Layout">
-                            <LayoutGrid size={18} />
-                        </Button>
-                    }
-                    items={[
-                        {
-                            type: 'item',
-                            label: 'Masonry Vertical',
-                            icon: AlignCenterVertical,
-                            action: () => filters.setLayout('masonry-v')
-                        },
-                        {
-                            type: 'item',
-                            label: 'Masonry Horizontal',
-                            icon: AlignCenterHorizontal,
-                            action: () => filters.setLayout('masonry-h')
-                        },
-                        {
-                            type: 'item',
-                            label: 'Grid',
-                            icon: LayoutGrid,
-                            action: () => filters.setLayout('grid')
-                        },
-                        {
-                            type: 'item',
-                            label: 'List',
-                            icon: List,
-                            action: () => filters.setLayout('list')
-                        }
-                    ]}
-                />
+                {/* View Layout Popover */}
+                <PopoverRoot placement="bottom-end">
+                    <PopoverTrigger>
+                        <Tooltip content="View Options" placement="bottom">
+                            <Button variant="ghost" size="icon">
+                                <LayoutGrid size={18} />
+                            </Button>
+                        </Tooltip>
+                    </PopoverTrigger>
+                    <PopoverContent class="toolbar-popover-view-configuration">
+                        <div class="popover-config-group">
+                            <span class="popover-config-label">Layout Mode</span>
+                            <ToggleGroup
+                                type="single"
+                                value={filters.layout}
+                                onValueChange={(val: string) =>
+                                    val &&
+                                    filters.setLayout(
+                                        val as 'grid' | 'list' | 'masonry-v' | 'masonry-h'
+                                    )
+                                }
+                            >
+                                <Tooltip content="Masonry Vertical" placement="top">
+                                    <ToggleGroupItem value="masonry-v">
+                                        <AlignCenterVertical size={16} />
+                                    </ToggleGroupItem>
+                                </Tooltip>
+                                <Tooltip content="Masonry Horizontal" placement="top">
+                                    <ToggleGroupItem value="masonry-h">
+                                        <AlignCenterHorizontal size={16} />
+                                    </ToggleGroupItem>
+                                </Tooltip>
+                                <Tooltip content="Grid" placement="top">
+                                    <ToggleGroupItem value="grid">
+                                        <LayoutGrid size={16} />
+                                    </ToggleGroupItem>
+                                </Tooltip>
+                                <Tooltip content="List" placement="top">
+                                    <ToggleGroupItem value="list">
+                                        <List size={16} />
+                                    </ToggleGroupItem>
+                                </Tooltip>
+                            </ToggleGroup>
+                        </div>
 
-                {/* O Slider de tamanho de thumbnail precisa de um lugar melhor se o DropdownMenu for simplificado assim,
-                    ou podemos adicionar um item customizado se o Dropdown suportar. Por enquanto, vamos deixar o Slider fora se necessário ou ajustar o Dropdown.
-                    Dado que o DropdownMenu atual não suporta itens customizados facilmente via props.items,
-                    vamos manter o Slider como um elemento separado por enquanto para não quebrar a UI.
-                */}
-                <div
-                    class="toolbar-group"
-                    style={{
-                        width: '120px',
-                        'margin-left': '8px',
-                        display: 'flex',
-                        'align-items': 'center',
-                        gap: '8px'
-                    }}
-                >
-                    <Slider
-                        value={filters.thumbSize || 200}
-                        minimumValue={100}
-                        maximumValue={500}
-                        showTicks={false}
-                        onValueChange={newThumbnailSize => filters.setThumbSize(newThumbnailSize)}
-                        title="Thumbnail Size"
-                    />
-                </div>
+                        <div class="popover-config-group" style={{ 'margin-top': '16px' }}>
+                            <span class="popover-config-label">Thumbnail Size</span>
+                            <div style={{ 'padding-top': '8px' }}>
+                                <Slider
+                                    value={filters.thumbSize || 200}
+                                    minimumValue={100}
+                                    maximumValue={500}
+                                    showTicks={false}
+                                    onValueChange={newThumbnailSize =>
+                                        filters.setThumbSize(newThumbnailSize)
+                                    }
+                                    title="Thumbnail Size"
+                                />
+                            </div>
+                        </div>
+                    </PopoverContent>
+                </PopoverRoot>
             </div>
         </div>
     );

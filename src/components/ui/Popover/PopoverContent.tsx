@@ -14,22 +14,38 @@ import { PopoverContentProperties } from './types';
 import './popover.css';
 
 /**
- * Floating content area for the Popover compound component.
+ * Renders the floating content area for the Popover compound component.
  *
  * @param {PopoverContentProperties} contentProperties - Popover properties and children.
  * @returns {JSX.Element} The rendered portal content.
+ *
+ * @example
+ * ```tsx
+ * import { PopoverContent } from '@/components/ui';
+ * <PopoverContent class="custom-popover">
+ *   <p>Here is some popover content</p>
+ * </PopoverContent>
+ * ```
  */
 export const PopoverContent: Component<PopoverContentProperties> = contentProperties => {
-    /** Access the shared Popover context. */
+    /**
+     * Access the shared Popover context.
+     */
     const context = usePopoverContext();
 
-    /** Track open state for focus trap and positioning. */
+    /**
+     * Track open state for focus trap and positioning.
+     */
     const isOpen = () => context.isOpen();
 
-    /** Local element references. */
+    /**
+     * Local element references.
+     */
     let containerReference: HTMLDivElement | undefined;
 
-    /** Handle click outside to close the popover. */
+    /**
+     * Handle click outside to close the popover.
+     */
     createClickOutside(
         () => {
             const elements: HTMLElement[] = [];
@@ -49,7 +65,9 @@ export const PopoverContent: Component<PopoverContentProperties> = contentProper
         }
     );
 
-    /** Trap focus inside the popover when open. */
+    /**
+     * Trap focus inside the popover when open.
+     */
     createFocusTrap(() => containerReference, isOpen);
 
     return (
@@ -65,7 +83,7 @@ export const PopoverContent: Component<PopoverContentProperties> = contentProper
                     class={cn('ui-popover-content', contentProperties.class)}
                     style={{
                         position: 'fixed',
-                        'z-index': 10000,
+                        'z-index': 9998,
                         top: `${context.coordinates().x === 0 && context.coordinates().y === 0 ? -9999 : context.coordinates().y}px`,
                         left: `${context.coordinates().x === 0 && context.coordinates().y === 0 ? -9999 : context.coordinates().x}px`
                     }}
