@@ -158,19 +158,3 @@
   }
 }
 
-.item-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 0.75rem var(--p-space-s);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.95), transparent);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.masonry-item:hover .item-overlay {
-  opacity: 1;
-}

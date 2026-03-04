@@ -1,28 +1,53 @@
-import { Component, createMemo, Show, createSignal, createEffect } from 'solid-js';
-import { Table, Column } from '../../ui/Table';
+import { Component, createMemo, Show, createSignal, createEffect, JSX } from 'solid-js';
+import { Table, Column } from '../../../ui/Table';
 import {
     useLibrary,
     useSelection,
     useViewport,
     useFilters,
     useAssetCardActions
-} from '../../../core/hooks';
-import { type SortField } from '../../../core/store/filter';
-import { AssetItem } from '../../../types';
-import { formatFileSize, formatDate } from '../../../utils/format';
-import { assetDnD } from '../../../core/dnd';
-import { EmptyState } from './EmptyState';
-import { createConditionalScope } from '../../../core/input';
-import { scheduler } from '../../../core/utils/scheduler';
+} from '../../../../core/hooks';
+import { type SortField } from '../../../../core/store/filter';
+import { AssetItem } from '../../../../types';
+import { formatFileSize, formatDate } from '../../../../utils/format';
+import { assetDnD } from '../../../../core/dnd';
+import { EmptyState } from '../components/EmptyState';
+import { createConditionalScope } from '../../../../core/input';
+import { scheduler } from '../../../../core/utils/scheduler';
 
+/**
+ * Storage key for column configurations
+ */
 const COLUMN_STORAGE_KEY = 'mundam-viewport-columns-v1';
 
+/**
+ * Thumbnail scale factor
+ */
 const THUMBNAIL_SCALE_FACTOR = 5;
+
+/**
+ * Thumbnail aspect ratio
+ */
 const THUMBNAIL_ASPECT_RATIO = 0.75;
+
+/**
+ * Minimum row height
+ */
 const LIST_MIN_ROW_HEIGHT = 32;
+
+/**
+ * Row padding
+ */
 const LIST_ROW_PADDING = 8;
+
+/**
+ * Scroll load more threshold
+ */
 const SCROLL_LOAD_MORE_THRESHOLD = 500;
 
+/**
+ * Default column widths
+ */
 const DEFAULT_COLS = {
     thumbnailPadding: 16,
     filename: 300,
@@ -33,21 +58,68 @@ const DEFAULT_COLS = {
     date: 160
 } as const;
 
+/**
+ * Column configuration interface
+ */
 interface ColumnConfig {
     width: number;
     hidden: boolean;
 }
 
-export const VirtualListView: Component = () => {
+/**
+ * Virtual list view component
+ *
+ * @returns {JSX.Element} The virtual list view.
+ */
+export const VirtualListView: Component = (): JSX.Element => {
+    /**
+     * Library store
+     *
+     * @returns {Library} The library store.
+     */
     const lib = useLibrary();
+
+    /**
+     * Selection store
+     *
+     * @returns {Selection} The selection store.
+     */
     const selection = useSelection();
+
+    /**
+     * Viewport store
+     *
+     * @returns {Viewport} The viewport store.
+     */
     const viewport = useViewport();
+
+    /**
+     * Filters store
+     *
+     * @returns {Filters} The filters store.
+     */
     const filters = useFilters();
+
+    /**
+     * Asset card actions store
+     *
+     * @returns {AssetCardActions} The asset card actions store.
+     */
     const actions = useAssetCardActions();
 
-    // Register viewport scope
+    /**
+     * Register viewport scope
+     *
+     * @returns {void}
+     */
     createConditionalScope('viewport', () => lib.items.length > 0);
 
+    /**
+     * Get thumbnail URL
+     *
+     * @param {string | null} path - The path to the thumbnail.
+     * @returns {string | undefined} The thumbnail URL.
+     */
     const getThumbUrl = (path: string | null) => {
         if (!path) return undefined;
         // Don't just take the filename! 'extensions/icon_xxx.webp' needs the full path.
@@ -55,6 +127,11 @@ export const VirtualListView: Component = () => {
         return `thumb://localhost/${normalizedPath}`;
     };
 
+    /**
+     * Column configurations
+     *
+     * @returns {Record<string, ColumnConfig>} The column configurations.
+     */
     const [columnConfigs, setColumnConfigs] = createSignal<Record<string, ColumnConfig>>(
         (() => {
             const saved = localStorage.getItem(COLUMN_STORAGE_KEY);
@@ -66,10 +143,22 @@ export const VirtualListView: Component = () => {
         })()
     );
 
+    /**
+     * Save column configurations to local storage
+     *
+     * @returns {void}
+     */
     createEffect(() => {
         localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(columnConfigs()));
     });
 
+    /**
+     * Update column configuration
+     *
+     * @param {string} key - The column key.
+     * @param {Partial<ColumnConfig>} updates - The column updates.
+     * @returns {void}
+     */
     const updateColumnConfig = (key: string, updates: Partial<ColumnConfig>) => {
         setColumnConfigs(prev => {
             const current =
@@ -87,20 +176,48 @@ export const VirtualListView: Component = () => {
         });
     };
 
+    /**
+     * Get column width
+     *
+     * @param {string} key - The column key.
+     * @param {number} defaultWidth - The default column width.
+     * @returns {number} The column width.
+     */
     const getColumnWidth = (key: string, defaultWidth: number) => {
         return columnConfigs()[key]?.width ?? defaultWidth;
     };
 
+    /**
+     * Check if column is hidden
+     *
+     * @param {string} key - The column key.
+     * @param {boolean} defaultHidden - The default column hidden state.
+     * @returns {boolean} The column hidden state.
+     */
     const isColumnHidden = (key: string, defaultHidden: boolean) => {
         return columnConfigs()[key]?.hidden ?? defaultHidden;
     };
 
+    /**
+     * List thumbnail width
+     */
     const listThumbWidth = createMemo(() => Math.floor(filters.thumbSize / THUMBNAIL_SCALE_FACTOR));
+
+    /**
+     * List thumbnail height
+     */
     const listThumbHeight = createMemo(() => Math.floor(listThumbWidth() * THUMBNAIL_ASPECT_RATIO));
+
+    /**
+     * Row height
+     */
     const rowHeight = createMemo(() =>
         Math.max(LIST_MIN_ROW_HEIGHT, listThumbHeight() + LIST_ROW_PADDING)
     );
 
+    /**
+     * Columns
+     */
     const columns = createMemo<Column<AssetItem>[]>(() => [
         {
             header: '',
@@ -112,7 +229,7 @@ export const VirtualListView: Component = () => {
             align: 'center',
             resizable: true,
             toggleable: false,
-            cell: item => (
+            cell: (item: AssetItem) => (
                 <div
                     class="list-view-thumbnail-container"
                     style={{
@@ -147,7 +264,7 @@ export const VirtualListView: Component = () => {
             width: getColumnWidth('rating', DEFAULT_COLS.rating),
             hidden: isColumnHidden('rating', false),
             align: 'center',
-            cell: item => (
+            cell: (item: AssetItem) => (
                 <span class="list-view-rating-cell">
                     {item.rating ? '★'.repeat(item.rating) : '-'}
                 </span>
@@ -161,7 +278,7 @@ export const VirtualListView: Component = () => {
             width: getColumnWidth('format', DEFAULT_COLS.format),
             hidden: isColumnHidden('format', false),
             align: 'center',
-            cell: item => (
+            cell: (item: AssetItem) => (
                 <span class="list-view-type-cell">{item.format?.toUpperCase() || 'N/A'}</span>
             )
         },
@@ -173,7 +290,7 @@ export const VirtualListView: Component = () => {
             width: getColumnWidth('size', DEFAULT_COLS.size),
             hidden: isColumnHidden('size', false),
             align: 'right',
-            cell: item => <span>{formatFileSize(item.size)}</span>
+            cell: (item: AssetItem) => <span>{formatFileSize(item.size)}</span>
         },
         {
             header: 'Dimensions',
@@ -182,7 +299,7 @@ export const VirtualListView: Component = () => {
             width: getColumnWidth('width', DEFAULT_COLS.width),
             hidden: isColumnHidden('width', false),
             align: 'center',
-            cell: item => (
+            cell: (item: AssetItem) => (
                 <span>{item.width && item.height ? `${item.width} × ${item.height}` : '-'}</span>
             )
         },
@@ -193,7 +310,9 @@ export const VirtualListView: Component = () => {
             resizable: true,
             width: getColumnWidth('created_at', DEFAULT_COLS.date),
             hidden: isColumnHidden('created_at', true),
-            cell: item => <span class="list-view-date-cell">{formatDate(item.created_at)}</span>
+            cell: (item: AssetItem) => (
+                <span class="list-view-date-cell">{formatDate(item.created_at)}</span>
+            )
         },
         {
             header: 'Modified',
@@ -202,7 +321,9 @@ export const VirtualListView: Component = () => {
             resizable: true,
             width: getColumnWidth('modified_at', DEFAULT_COLS.date),
             hidden: isColumnHidden('modified_at', true),
-            cell: item => <span class="list-view-date-cell">{formatDate(item.modified_at)}</span>
+            cell: (item: AssetItem) => (
+                <span class="list-view-date-cell">{formatDate(item.modified_at)}</span>
+            )
         },
         {
             header: 'Added',
@@ -211,10 +332,15 @@ export const VirtualListView: Component = () => {
             resizable: true,
             width: getColumnWidth('added_at', DEFAULT_COLS.date),
             hidden: isColumnHidden('added_at', true),
-            cell: item => <span class="list-view-date-cell">{formatDate(item.added_at)}</span>
+            cell: (item: AssetItem) => (
+                <span class="list-view-date-cell">{formatDate(item.added_at)}</span>
+            )
         }
     ]);
 
+    /**
+     * Handle sort
+     */
     const handleSort = (key: string) => {
         if (filters.sortBy === key) {
             const nextOrder = filters.sortOrder === 'asc' ? 'desc' : 'asc';
@@ -225,8 +351,14 @@ export const VirtualListView: Component = () => {
         }
     };
 
+    /**
+     * Handle scroll
+     */
     let isScrollScheduled = false;
 
+    /**
+     * Handle scroll
+     */
     const handleScroll = (event: Event) => {
         const target = event.currentTarget as HTMLDivElement;
 
@@ -256,18 +388,20 @@ export const VirtualListView: Component = () => {
                     sortOrder={filters.sortOrder}
                     selectedIds={selection.selectedIds}
                     onSort={handleSort}
-                    onColumnResize={(key, width) => updateColumnConfig(key, { width })}
-                    onColumnVisibilityChange={(key, visible) =>
+                    onColumnResize={(key: string, width: number) =>
+                        updateColumnConfig(key, { width })
+                    }
+                    onColumnVisibilityChange={(key: string, visible: boolean) =>
                         updateColumnConfig(key, { hidden: !visible })
                     }
-                    onRowClick={(item, multi, shift) => {
+                    onRowClick={(item: AssetItem, multi: boolean, shift: boolean) => {
                         actions.handleSelect(item.id, { multi, shift });
                     }}
-                    onRowDoubleClick={item => {
+                    onRowDoubleClick={(item: AssetItem) => {
                         viewport.openItem(item.id.toString());
                     }}
                     onScroll={handleScroll}
-                    onRowMount={(element, item) => {
+                    onRowMount={(element: HTMLElement, item: AssetItem) => {
                         assetDnD(element, () => ({
                             item,
                             selected: selection.isSelected(item.id),
@@ -275,8 +409,8 @@ export const VirtualListView: Component = () => {
                             allItems: lib.items
                         }));
                     }}
-                    onVisibleItemsChange={items => {
-                        const ids = items.map(item => item.id);
+                    onVisibleItemsChange={(items: AssetItem[]) => {
+                        const ids = items.map((item: AssetItem) => item.id);
                         lib.setThumbnailPriority(ids);
                     }}
                 />

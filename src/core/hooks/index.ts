@@ -1,3 +1,6 @@
+/**
+ * Re-export all hooks from submodules
+ */
 export * from './useMetadata';
 export * from './useFilters';
 export * from './useLibrary';
@@ -13,3 +16,4 @@ export * from './useVirtualViewport';
 export * from './useGridKeyboardNav';
 export * from './useSystem';
 export * from './useViewport';
+export * from './useViewportPreferences';

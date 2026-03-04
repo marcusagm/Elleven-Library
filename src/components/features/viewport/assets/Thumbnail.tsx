@@ -1,13 +1,13 @@
 import { createSignal, createMemo, Show, onMount, onCleanup } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
-import { Loader } from '../../ui/Loader';
+import { Loader } from '../../../ui/Loader';
 import {
     isPendingRegeneration,
     markPendingRegeneration,
     getCompletedThumbnail,
     clearCompleted,
     subscribeThumbnailReady
-} from '../../../core/store/thumbnailStore';
+} from '../../../../core/store/thumbnailStore';
 import './thumbnail.css';
 
 /**
@@ -80,31 +80,44 @@ export interface ThumbnailProperties {
 export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
     /**
      * Local error state for the thumbnail.
+     *
+     * @returns {boolean} The local error state.
      */
     const [localError, setLocalError] = createSignal(false);
 
     /**
      * Local thumbnail state for the thumbnail.
+     *
+     * @returns {string | null} The local thumbnail state.
      */
     const [localThumbnail, setLocalThumbnail] = createSignal<string | null>(null);
 
     /**
      * Unsubscribe function for the thumbnail ready event.
+     *
+     * @returns {(() => void) | null} The unsubscribe function.
      */
     let unsubscribe: (() => void) | null = null;
 
     /**
      * Mount lifecycle for the thumbnail component.
+     *
+     * @returns {void}
      */
     onMount(() => {
-        unsubscribe = subscribeThumbnailReady(thumbnailProperties.id, (_id, path) => {
-            setLocalThumbnail(path);
-            setLocalError(false);
-        });
+        unsubscribe = subscribeThumbnailReady(
+            thumbnailProperties.id,
+            (_id: number, path: string) => {
+                setLocalThumbnail(path);
+                setLocalError(false);
+            }
+        );
     });
 
     /**
      * Cleanup lifecycle for the thumbnail component.
+     *
+     * @returns {void}
      */
     onCleanup(() => {
         if (unsubscribe) unsubscribe();
@@ -112,6 +125,8 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
 
     /**
      * Effective thumbnail for the thumbnail component.
+     *
+     * @returns {string | null} The effective thumbnail.
      */
     const effectiveThumbnail = createMemo(() => {
         const local = localThumbnail();
@@ -128,6 +143,8 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
 
     /**
      * Should show image for the thumbnail component.
+     *
+     * @returns {boolean} True if the image should be shown, otherwise false.
      */
     const shouldShowImage = createMemo(() => {
         if (
@@ -142,6 +159,8 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
 
     /**
      * Thumbnail URL for the thumbnail component.
+     *
+     * @returns {string | undefined} The thumbnail URL.
      */
     const thumbUrl = createMemo(() => {
         const path = effectiveThumbnail();
@@ -153,6 +172,8 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
 
     /**
      * Display source for the thumbnail component.
+     *
+     * @returns {string | undefined} The display source.
      */
     const displaySrc = createMemo((): string | undefined => {
         if (localError()) return undefined;
@@ -162,16 +183,22 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
 
     /**
      * Is already loaded for the thumbnail component.
+     *
+     * @returns {boolean} True if the thumbnail is already loaded, otherwise false.
      */
     const isAlreadyLoaded = createMemo(() => isThumbnailLoaded(thumbUrl()));
 
     /**
      * Loaded state for the thumbnail component.
+     *
+     * @returns {boolean} True if the thumbnail is loaded, otherwise false.
      */
     const [loaded, setLoaded] = createSignal(false);
 
     /**
      * Aspect ratio for the thumbnail component.
+     *
+     * @returns {string | undefined} The aspect ratio.
      */
     const aspectRatio = createMemo(() => {
         if (thumbnailProperties.width && thumbnailProperties.height) {
@@ -182,6 +209,8 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
 
     /**
      * Handle load for the thumbnail component.
+     *
+     * @returns {void}
      */
     const handleLoad = () => {
         const url = thumbUrl();
@@ -193,6 +222,8 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
 
     /**
      * Handle error for the thumbnail component.
+     *
+     * @returns {void}
      */
     const handleError = () => {
         const thumb = thumbUrl();
@@ -216,6 +247,8 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
 
     /**
      * Show placeholder for the thumbnail component.
+     *
+     * @returns {boolean} True if the placeholder should be shown, otherwise false.
      */
     const showPlaceholder = createMemo(() => {
         if (!displaySrc()) return true;

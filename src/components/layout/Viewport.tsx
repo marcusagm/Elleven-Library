@@ -1,10 +1,13 @@
-import { Component, Show } from 'solid-js';
+import { Component, JSX, Show } from 'solid-js';
 import { useViewport } from '../../core/hooks';
-import { ListView } from '../features/viewport/ListView';
+import { ListView } from '../features/viewport/layouts/ListView';
 import { ItemView } from '../features/itemview/ItemView';
 import './viewport.css';
 
-export const Viewport: Component = () => {
+export const Viewport: Component = (): JSX.Element => {
+    /**
+     * Viewport store
+     */
     const viewport = useViewport();
 
     return (

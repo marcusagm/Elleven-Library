@@ -1,6 +1,6 @@
-import { Component, Switch, Match } from 'solid-js';
-import { useLibrary, useFilters } from '../../../core/hooks';
-import { ListViewToolbar } from './ListViewToolbar';
+import { Component, Switch, Match, JSX } from 'solid-js';
+import { useLibrary, useFilters } from '../../../../core/hooks';
+import { ListViewToolbar } from '../toolbar/ListViewToolbar';
 import { VirtualMasonry } from './VirtualMasonry';
 import { VirtualGridView } from './VirtualGridView';
 import { VirtualListView } from './VirtualListView';
@@ -11,8 +11,19 @@ import './list-view.css';
  *
  * @returns {JSX.Element} The active list view container.
  */
-export const ListView: Component = () => {
+export const ListView: Component = (): JSX.Element => {
+    /**
+     * Library store
+     *
+     * @returns {Library} The library store.
+     */
     const lib = useLibrary();
+
+    /**
+     * Filters store
+     *
+     * @returns {Filters} The filters store.
+     */
     const filters = useFilters();
 
     return (

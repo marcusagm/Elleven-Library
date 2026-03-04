@@ -6,22 +6,35 @@ import {
     For,
     createMemo,
     Show,
-    untrack
+    untrack,
+    JSX
 } from 'solid-js';
-import { AssetCard } from './AssetCard';
-import { EmptyState } from './EmptyState';
+import { AssetCard } from '../assets/AssetCard';
+import { EmptyState } from '../components/EmptyState';
+import { AssetItem } from '../../../../types';
 import {
     useLibrary,
     useAssetCardActions,
     useVirtualViewport,
     useGridKeyboardNav,
     useSelection
-} from '../../../core/hooks';
-import { scheduler } from '../../../core/utils/scheduler';
-import type { LayoutItemInput } from '../../../core/viewport';
+} from '../../../../core/hooks';
+import { scheduler } from '../../../../core/utils/scheduler';
+import type { LayoutItemInput } from '../../../../core/viewport';
 import './grid-view.css';
 
+/**
+ * Load more threshold for scroll events
+ *
+ * @type {number}
+ */
 const SCROLL_LOAD_MORE_THRESHOLD = 500;
+
+/**
+ * Debounce threshold for resize events
+ *
+ * @type {number}
+ */
 const RESIZE_DEBOUNCE_THRESHOLD = 5;
 
 /**
@@ -29,16 +42,50 @@ const RESIZE_DEBOUNCE_THRESHOLD = 5;
  *
  * Uses a Web Worker for layout calculations and Spatial Grid for O(1) visibility queries.
  * Grid layout uses uniform square cells, so aspectRatio is always 1.
+ *
+ * @returns {JSX.Element} The virtual grid view component
  */
-export const VirtualGridView: Component = () => {
+export const VirtualGridView: Component = (): JSX.Element => {
+    /**
+     * Library instance
+     *
+     * @type {Library}
+     */
     const library = useLibrary();
+
+    /**
+     * Asset card actions
+     *
+     * @type {AssetCardActions}
+     */
     const actions = useAssetCardActions();
+
+    /**
+     * Selection instance
+     *
+     * @type {Selection}
+     */
     const selection = useSelection();
 
+    /**
+     * Scroll container ref
+     *
+     * @type {HTMLDivElement}
+     */
     const [scrollContainer, setScrollContainer] = createSignal<HTMLDivElement>();
+
+    /**
+     * Container height
+     *
+     * @type {number}
+     */
     const [containerHeight, setContainerHeight] = createSignal(0);
 
-    // For grid, all items have aspectRatio = 1 (square cells)
+    /**
+     * For grid, all items have aspectRatio = 1 (square cells)
+     *
+     * @type {LayoutItemInput[]}
+     */
     const layoutItems = createMemo((): LayoutItemInput[] =>
         library.items.map(item => ({
             id: item.id,
@@ -46,15 +93,29 @@ export const VirtualGridView: Component = () => {
         }))
     );
 
-    // Connect to the layout Worker in grid mode
+    /**
+     * Connect to the layout Worker in grid mode
+     *
+     * @type {VirtualViewport}
+     */
     const viewport = useVirtualViewport('grid', () => layoutItems());
 
+    /**
+     * Items by ID
+     *
+     * @type {Map<number, AssetItem>}
+     */
     const itemsById = createMemo(() => {
         const map = new Map<number, (typeof library.items)[0]>();
         library.items.forEach(item => map.set(item.id, item));
         return map;
     });
 
+    /**
+     * Keyboard navigation instance
+     *
+     * @type {GridKeyboardNav}
+     */
     const keyboardNav = useGridKeyboardNav({
         visibleItems: viewport.visibleItems,
         allItems: () => library.items,
@@ -68,6 +129,12 @@ export const VirtualGridView: Component = () => {
         getItemRect: itemId => viewport.getItemPosition(itemId)
     });
 
+    /**
+     * Handle select with focus
+     *
+     * @param {number} itemId
+     * @param {{ multi: boolean; shift: boolean }} modifiers
+     */
     const handleSelectWithFocus = (
         itemId: number,
         modifiers: { multi: boolean; shift: boolean }
@@ -76,6 +143,12 @@ export const VirtualGridView: Component = () => {
         actions.handleSelect(itemId, modifiers);
     };
 
+    /**
+     * Get item info
+     *
+     * @param {number} itemId
+     * @returns {AssetItem | undefined}
+     */
     const getItemInfo = (itemId: number) => {
         const item = itemsById().get(itemId);
         if (!item) return undefined;
@@ -85,8 +158,16 @@ export const VirtualGridView: Component = () => {
         };
     };
 
+    /**
+     * Last reported width
+     *
+     * @type {number}
+     */
     let lastReportedWidth = 0;
 
+    /**
+     * On mount
+     */
     onMount(() => {
         const element = scrollContainer();
         if (!element) return;
@@ -177,19 +258,14 @@ export const VirtualGridView: Component = () => {
                 >
                     <For each={viewport.visibleItems()}>
                         {position => {
-                            const item = itemsById().get(position.id);
+                            const item = itemsById().get(position.id) as AssetItem | undefined;
                             if (!item) return null;
 
                             const isFocused = () => keyboardNav.focusedId() === item.id;
 
                             return (
                                 <AssetCard
-                                    id={item.id}
-                                    filename={item.filename}
-                                    path={item.path}
-                                    thumbnailPath={item.thumbnail_path}
-                                    width={item.width}
-                                    height={item.height}
+                                    item={item}
                                     isSelected={selection.isItemSelected(item.id)}
                                     isFocused={isFocused()}
                                     style={{

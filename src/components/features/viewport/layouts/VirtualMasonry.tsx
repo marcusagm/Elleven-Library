@@ -1,7 +1,7 @@
 import { createSignal, onMount, onCleanup, For, createMemo, Show, untrack } from 'solid-js';
-import { AssetCard } from './AssetCard';
-import { EmptyState } from './EmptyState';
-import { type AssetItem } from '../../../types';
+import { AssetCard } from '../assets/AssetCard';
+import { EmptyState } from '../components/EmptyState';
+import { type AssetItem } from '../../../../types';
 import {
     useLibrary,
     useAssetCardActions,
@@ -9,14 +9,36 @@ import {
     toLayoutItems,
     useGridKeyboardNav,
     useSelection
-} from '../../../core/hooks';
-import { scheduler } from '../../../core/utils/scheduler';
-import './viewport.css';
+} from '../../../../core/hooks';
+import { scheduler } from '../../../../core/utils/scheduler';
+import '../viewport.css';
 
+/**
+ * Scroll load more threshold
+ *
+ * @type {number}
+ */
 const SCROLL_LOAD_MORE_THRESHOLD = 500;
+
+/**
+ * Resize debounce threshold
+ *
+ * @type {number}
+ */
 const RESIZE_DEBOUNCE_THRESHOLD = 5;
+
+/**
+ * Fallback sidebar width
+ *
+ * @type {number}
+ */
 const FALLBACK_SIDEBAR_WIDTH = 80;
 
+/**
+ * VirtualMasonryProps - Input data
+ *
+ * @interface VirtualMasonryProps
+ */
 interface VirtualMasonryProps {
     items: AssetItem[];
     mode?: 'masonry-v' | 'masonry-h';
@@ -28,20 +50,65 @@ interface VirtualMasonryProps {
  * VirtualMasonry - Worker-based Virtualized Masonry Layout
  *
  * Uses a Web Worker for layout calculations and Spatial Grid for O(1) visibility queries.
+ *
+ * @param {VirtualMasonryProps} props - Input data
+ * @returns {JSX.Element} Structural component
  */
 export function VirtualMasonry(props: VirtualMasonryProps) {
+    /**
+     * Library hook
+     *
+     * @type {LibraryStore}
+     */
     const library = useLibrary();
+
+    /**
+     * Asset card actions hook
+     *
+     * @type {AssetCardActionsStore}
+     */
     const actions = useAssetCardActions();
+
+    /**
+     * Selection hook
+     *
+     * @type {SelectionStore}
+     */
     const selection = useSelection();
 
+    /**
+     * Scroll container signal
+     *
+     * @type {Signal<HTMLDivElement>}
+     */
     const [scrollContainer, setScrollContainer] = createSignal<HTMLDivElement>();
+
+    /**
+     * Container height signal
+     *
+     * @type {Signal<number>}
+     */
     const [containerHeight, setContainerHeight] = createSignal(0);
 
-    // Convert items to Worker-friendly format (minimal data)
+    /**
+     * Convert items to Worker-friendly format (minimal data)
+     *
+     * @type {Memo<AssetItem[]>}
+     */
     const layoutItems = createMemo(() => toLayoutItems(props.items));
 
-    // Connect to the layout Worker with the specified mode
+    /**
+     * Connect to the layout Worker with the specified mode
+     *
+     * @type {VirtualViewportStore}
+     */
     const layoutMode = () => props.mode || 'masonry-v';
+
+    /**
+     * Virtual viewport hook
+     *
+     * @type {VirtualViewportStore}
+     */
     const viewport = useVirtualViewport(layoutMode, () => layoutItems(), {
         get gap() {
             return props.gap;
@@ -51,12 +118,22 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
         }
     });
 
+    /**
+     * Items by ID memo
+     *
+     * @type {Memo<Map<number, AssetItem>>}
+     */
     const itemsById = createMemo(() => {
         const map = new Map<number, AssetItem>();
         props.items.forEach(item => map.set(item.id, item));
         return map;
     });
 
+    /**
+     * Keyboard navigation hook
+     *
+     * @type {GridKeyboardNavStore}
+     */
     const keyboardNav = useGridKeyboardNav({
         visibleItems: viewport.visibleItems,
         allItems: () => props.items,
@@ -70,6 +147,12 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
         getItemRect: itemId => viewport.getItemPosition(itemId)
     });
 
+    /**
+     * Handle select with focus
+     *
+     * @param {number} itemId - ID of the item to select
+     * @param {{ multi: boolean; shift: boolean }} modifiers - Modifiers for the selection
+     */
     const handleSelectWithFocus = (
         itemId: number,
         modifiers: { multi: boolean; shift: boolean }
@@ -78,6 +161,12 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
         actions.handleSelect(itemId, modifiers);
     };
 
+    /**
+     * Get item info
+     *
+     * @param {number} itemId - ID of the item
+     * @returns {AssetItem | undefined} Item object or undefined
+     */
     const getItemInfo = (itemId: number) => {
         const item = itemsById().get(itemId);
         if (!item) return undefined;
@@ -87,8 +176,16 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
         };
     };
 
+    /**
+     * Last reported width
+     *
+     * @type {number}
+     */
     let lastReportedWidth = 0;
 
+    /**
+     * On mount
+     */
     onMount(() => {
         const element = scrollContainer();
         if (!element) return;
@@ -192,12 +289,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
 
                             return (
                                 <AssetCard
-                                    id={item.id}
-                                    filename={item.filename}
-                                    path={item.path}
-                                    thumbnailPath={item.thumbnail_path}
-                                    width={item.width}
-                                    height={item.height}
+                                    item={item}
                                     isSelected={selection.isItemSelected(item.id)}
                                     isFocused={isFocused()}
                                     style={{

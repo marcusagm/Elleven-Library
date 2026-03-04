@@ -1,0 +1,56 @@
+.asset-card-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+    background-color: var(--bg-surface-1);
+    color: var(--text-primary);
+}
+
+.item-stacked-info {
+    padding: var(--p-space-xs) var(--p-space-s);
+    font-size: var(--font-size-xs);
+    display: flex;
+    flex-direction: column;
+    gap: var(--p-space-xxs);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.item-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--p-space-xs) var(--p-space-s);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: var(--p-space-xxs);
+    color: var(--text-on-accent);
+    font-size: var(--font-size-xs);
+}
+
+.virtual-masonry-item:hover .item-overlay,
+.virtual-item:hover .item-overlay {
+    opacity: 1;
+}
+
+.item-metadata-field {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.field-filename {
+    font-weight: 500;
+}
+
+.item-id-prefix {
+    color: var(--text-tertiary);
+    font-size: 0.9em;
+}
