@@ -34,6 +34,37 @@ function isInputFocused(target?: EventTarget | null): boolean {
     );
 }
 
+function isInteractiveFocused(target?: EventTarget | null): boolean {
+    if (typeof document === 'undefined') return false;
+
+    const active = target instanceof HTMLElement ? target : document.activeElement;
+    if (!active || active === document.body) return false;
+
+    if (!document.contains(active)) return false;
+
+    // HTML semantic interactive elements
+    const INTERACTIVE_ELEMENTS = ['BUTTON', 'A', 'SUMMARY', 'SELECT', 'DETAILS'];
+    if (INTERACTIVE_ELEMENTS.includes(active.tagName)) return true;
+
+    // Elements explicitly acting as interactive via ARIA
+    if (active.hasAttribute('role')) {
+        const role = active.getAttribute('role');
+        const interactiveRoles = [
+            'button',
+            'link',
+            'menuitem',
+            'checkbox',
+            'radio',
+            'tab',
+            'switch',
+            'treeitem'
+        ];
+        if (role && interactiveRoles.includes(role)) return true;
+    }
+
+    return false;
+}
+
 interface MatchResult {
     shortcut: RegisteredShortcut;
     matchType: 'single' | 'sequence' | 'chord';
@@ -251,6 +282,16 @@ export function dispatchToken(token: InputToken, event: Event | null): boolean {
     return false;
 }
 
+function shouldYieldToInteractive(
+    shortcut: RegisteredShortcut,
+    token: InputToken,
+    target?: EventTarget | null
+): boolean {
+    if (shortcut.ignoreInputs === false) return false;
+    if (token.id !== 'Enter' && token.id !== 'Space') return false;
+    return isInteractiveFocused(target);
+}
+
 /**
  * Validates and executes a shortcut match.
  */
@@ -262,8 +303,13 @@ function executeMatchIfValid(
 ): boolean {
     const { shortcut } = match;
 
-    // Check ignoreInputs flag
+    // Check ignoreInputs flag for text inputs
     if (shortcut.ignoreInputs && inputFocused && token.id !== 'Escape') {
+        return false;
+    }
+
+    // Yield to interactive elements for standard interaction keys (Space, Enter)
+    if (shouldYieldToInteractive(shortcut, token, event?.target)) {
         return false;
     }
 

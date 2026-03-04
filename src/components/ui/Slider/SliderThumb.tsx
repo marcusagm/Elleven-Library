@@ -75,7 +75,7 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialInputScopeIdentifier }
+        { scope: initialInputScopeIdentifier, system: true }
     );
 
     // Standard Decrements (ArrowLeft, ArrowDown)
@@ -87,7 +87,7 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialInputScopeIdentifier }
+        { scope: initialInputScopeIdentifier, system: true }
     );
 
     // Large Increments (PageUp)
@@ -99,7 +99,7 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialInputScopeIdentifier }
+        { scope: initialInputScopeIdentifier, system: true }
     );
 
     // Large Decrements (PageDown)
@@ -111,7 +111,7 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialInputScopeIdentifier }
+        { scope: initialInputScopeIdentifier, system: true }
     );
 
     // Jump to Minimum (Home)
@@ -123,7 +123,7 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialInputScopeIdentifier }
+        { scope: initialInputScopeIdentifier, system: true }
     );
 
     // Jump to Maximum (End)
@@ -135,7 +135,7 @@ export const SliderThumb: Component<SliderThumbProperties> = componentProperties
             slider.setValue(newValue);
             slider.commitValue(newValue);
         },
-        { scope: initialInputScopeIdentifier }
+        { scope: initialInputScopeIdentifier, system: true }
     );
 
     /** Updates local focus state to active. */

@@ -88,6 +88,7 @@ export const useMenuNavigation = (items: Accessor<DropdownMenuItem[]>, onClose: 
         keys: 'ArrowDown',
         scope: 'menu',
         priority: 1510,
+        system: true,
         action: () => moveFocus(1),
         preventDefault: true
     });
@@ -96,6 +97,7 @@ export const useMenuNavigation = (items: Accessor<DropdownMenuItem[]>, onClose: 
         keys: 'ArrowUp',
         scope: 'menu',
         priority: 1510,
+        system: true,
         action: () => moveFocus(-1),
         preventDefault: true
     });
@@ -104,6 +106,7 @@ export const useMenuNavigation = (items: Accessor<DropdownMenuItem[]>, onClose: 
         keys: 'Home',
         scope: 'menu',
         priority: 1510,
+        system: true,
         action: () => {
             const firstSelectableIndex = getSelectableIndices()[0];
             if (firstSelectableIndex !== undefined) setFocusedItemIndex(firstSelectableIndex);
@@ -115,6 +118,7 @@ export const useMenuNavigation = (items: Accessor<DropdownMenuItem[]>, onClose: 
         keys: 'End',
         scope: 'menu',
         priority: 1510,
+        system: true,
         action: () => {
             const selectableIndices = getSelectableIndices();
             const lastSelectableIndex = selectableIndices[selectableIndices.length - 1];
@@ -127,6 +131,7 @@ export const useMenuNavigation = (items: Accessor<DropdownMenuItem[]>, onClose: 
         keys: ['Enter', 'Space'],
         scope: 'menu',
         priority: 1510,
+        system: true,
         action: () => triggerFocusedItem(),
         preventDefault: true
     });
@@ -135,6 +140,7 @@ export const useMenuNavigation = (items: Accessor<DropdownMenuItem[]>, onClose: 
         keys: ['Escape', 'Tab'],
         scope: 'menu',
         priority: 1510,
+        system: true,
         action: () => onClose(),
         preventDefault: true
     });

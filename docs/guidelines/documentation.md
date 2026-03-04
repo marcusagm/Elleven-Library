@@ -96,7 +96,12 @@ export function calculateAspectRatio(width: number, height: number): number { ..
  * A complete explanation of the interface or type purpose.
  */
 export interface EntityProps {
-    /** Short description of the property's responsibility */
+    /** 
+     * Short description of the property's responsibility 
+     * 
+     * @type {string}
+     * @default ""
+     */
     propertyName: string;
 }
 ```
@@ -113,18 +118,47 @@ When avoiding visual separators inside hook implementations, properties or actio
  */
 export const useFilters = () => {
     return {
-        /** Currently selected tag names */
+        /** 
+         * Currently selected tag names 
+         * 
+         * @returns {number[]}
+         */
         get selectedTags() {
             return filterState.selectedTags;
         },
-        /** Unique identifiers for configured folders */
+        /** 
+         * Unique identifiers for configured folders 
+         * 
+         * @returns {number | null}
+         */
         get selectedFolderId() {
             return filterState.selectedFolderId;
         },
-        /** Toggle active statuses */
+        /** 
+         * Toggle active statuses 
+         * 
+         * @returns {void}
+         */
         toggleTag: withRefresh(filterActions.toggleTag)
     };
 };
+```
+
+#### Template for Local Methods / Arrow Functions
+
+For internal methods, event handlers, or arrow functions where `@example` and `@throws` might be overkill, ensure at least the `@param` and `@returns` tags are present.
+
+```ts
+/**
+ * Updates the component's value with a new color and proximity.
+ *
+ * @param {string} hex - The new color value in hexadecimal format.
+ * @param {number} proximity - The new proximity value.
+ * @returns {void}
+ */
+const updateValue = (hex: string, proximity: number): void => {
+    ...
+}
 ```
 
 ### Rust (Rustdoc)

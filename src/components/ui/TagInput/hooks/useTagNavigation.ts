@@ -38,6 +38,7 @@ export const useTagNavigation = (options: {
     createShortcut({
         keys: 'ArrowDown',
         scope: options.scopeIdentifier,
+        system: true,
         action: () => {
             const currentSuggestions = options.suggestions();
             if (currentSuggestions.length > 0) {
@@ -52,6 +53,7 @@ export const useTagNavigation = (options: {
     createShortcut({
         keys: 'ArrowUp',
         scope: options.scopeIdentifier,
+        system: true,
         action: () => {
             const currentSuggestions = options.suggestions();
             if (currentSuggestions.length > 0) {
@@ -66,6 +68,7 @@ export const useTagNavigation = (options: {
     createShortcut({
         keys: 'Enter',
         scope: options.scopeIdentifier,
+        system: true,
         action: () => {
             const currentSuggestions = options.suggestions();
             const trimmedInput = options.inputValue().trim();
@@ -99,6 +102,7 @@ export const useTagNavigation = (options: {
     createShortcut({
         keys: 'Escape',
         scope: options.scopeIdentifier,
+        system: true,
         action: () => {
             options.setShowSuggestions(false);
             options.setHighlightedIndex(-1);

@@ -43,6 +43,7 @@ export const ModalContent: Component<ModalContentProperties> = componentProperti
             keys: 'Escape',
             name: 'Close Modal',
             scope: 'modal',
+            system: true,
             enabled: isOpen,
             action: () => {
                 onClose();

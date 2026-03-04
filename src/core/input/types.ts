@@ -148,6 +148,8 @@ export interface ShortcutDefinition {
     category?: string;
     /** Whether this is a default shortcut (not user-customized) */
     isDefault?: boolean;
+    /** Whether this is a system/UI shortcut (hidden from settings panel) */
+    system?: boolean;
 }
 
 export interface RegisteredShortcut extends ShortcutDefinition {
@@ -241,6 +243,7 @@ export interface CreateShortcutOptions {
     ignoreInputs?: boolean;
     enabled?: () => boolean;
     category?: string;
+    system?: boolean;
 }
 
 export interface CreateGestureOptions {
@@ -268,6 +271,7 @@ export interface SerializedShortcut {
     scope: string;
     category?: string;
     isCustom: boolean;
+    system?: boolean;
 }
 
 export interface ShortcutPreferences {

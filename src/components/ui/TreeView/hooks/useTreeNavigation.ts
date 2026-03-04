@@ -46,6 +46,7 @@ export const useTreeNavigation = (options: UseTreeNavigationOptions) => {
     // Keyboard navigation when NOT editing
     createShortcut({
         keys: ['Enter'],
+        system: true,
         action: () => {
             if (!options.isEditing()) {
                 options.onSelect?.();
@@ -56,6 +57,7 @@ export const useTreeNavigation = (options: UseTreeNavigationOptions) => {
 
     createShortcut({
         keys: ['ArrowRight'],
+        system: true,
         action: () => {
             if (options.hasChildren() && !options.isExpanded()) {
                 options.onToggle?.(true);
@@ -67,6 +69,7 @@ export const useTreeNavigation = (options: UseTreeNavigationOptions) => {
 
     createShortcut({
         keys: ['ArrowLeft'],
+        system: true,
         action: () => {
             if (options.hasChildren() && options.isExpanded()) {
                 options.onToggle?.(false);
@@ -79,6 +82,7 @@ export const useTreeNavigation = (options: UseTreeNavigationOptions) => {
     // Edit mode specific shortcuts
     createShortcut({
         keys: ['Escape'],
+        system: true,
         action: () => {
             if (options.isEditing()) {
                 options.onEditCancel?.();

@@ -92,6 +92,7 @@ export function createShortcut(options: CreateShortcutOptions): ShortcutHandle {
             ignoreInputs: options.ignoreInputs ?? true,
             enabledWhen: () => isEnabled() && (options.enabled?.() ?? true),
             category: options.category,
+            system: options.system,
             isDefault: false
         });
     }

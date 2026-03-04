@@ -73,7 +73,8 @@ export const KeyboardShortcutsPanel: Component = () => {
 
     // Group shortcuts by scope
     const groupedShortcuts = createMemo((): ScopeGroup[] => {
-        const shortcuts = shortcutStore.list();
+        // Filter out internal system shortcuts (like UI component navigation)
+        const shortcuts = shortcutStore.list().filter(s => !s.system);
         const groups = groupShortcutsByScope(shortcuts);
         return buildOrderedScopeGroups(groups);
     });
