@@ -20,9 +20,12 @@ mod settings;
 mod streaming;
 mod transcoding;
 
+use crate::core::events::{AppEventBus, DomainEvent};
 use crate::db::Db;
 use crate::indexer::Indexer;
+use crate::infra::events::TokioEventBus;
 use crate::lifecycle::LifecycleRegistry;
+use std::sync::Arc;
 use tauri::Manager;
 
 /// Holds the session token used to authenticate streaming server requests.
@@ -59,6 +62,10 @@ pub fn run() {
             let db_path = app_data.join("mundam.db");
             let thumbnails_dir = app_data.join("thumbnails");
             std::fs::create_dir_all(&thumbnails_dir).ok();
+
+            // Initialize Event Bus (System Nervous System)
+            let event_bus = Arc::new(TokioEventBus::new());
+            app.manage(event_bus.clone() as Arc<dyn AppEventBus>);
 
             // Create the lifecycle registry — central hub for managing all background tasks
             let lifecycle = std::sync::Arc::new(LifecycleRegistry::new());

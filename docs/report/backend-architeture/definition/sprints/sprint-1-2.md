@@ -1,8 +1,8 @@
 # Sprint 1.2: O Motor do EventBus Assíncrono
 
-**Status:** Pendente
-**Data e hora de inicio:** -
-**Data da conclusão:** -
+**Status:** Concluída
+**Data e hora de inicio:** 2026-03-05 16:23
+**Data da conclusão:** 2026-03-05 16:58
 
 **Fase 1:** Fundação & Observabilidade (Core Mínimo)
 **Objetivo:** Introduzir e testar o Canal Desacoplado de Comunicação do sistema (`tokio::sync::broadcast`) que rege a Arquitetura Orientada a Eventos (EDA).
@@ -19,22 +19,22 @@
 ## 📋 Tarefas (Checklist do Agente)
 
 ### 1. Definição do EventBus (Core)
-- [ ] Criar o arquivo de Definição do EventBus em `src-tauri/src/core/events/mod.rs` ou `core/events/bus.rs`.
-- [ ] Construir a trait Padrão: `pub trait EventBus: Send + Sync { fn publish... fn subscribe... }`.
-- [ ] Montar a Enumeração canônica `DomainEvent`, blindada sob `#[derive(Clone, Debug, Serialize)]`, como por exemplo as chaves: `AssetDiscovered`, `ThumbGenerated`, `ScanStarted`.
+- [x] Criar o arquivo de Definição do EventBus em `src-tauri/src/core/events/mod.rs` ou `core/events/bus.rs`.
+- [x] Construir a trait Padrão: `pub trait EventBus: Send + Sync { fn publish... fn subscribe... }`.
+- [x] Montar a Enumeração canônica `DomainEvent`, blindada sob `#[derive(Clone, Debug, Serialize)]`, como por exemplo as chaves: `AssetDiscovered`, `ThumbGenerated`, `ScanStarted`.
 
 ### 2. Implementação do Adaptador (Infra)
-- [ ] Em `src-tauri/src/infra/events/tokio_bus.rs`, instanciar o `tokio::sync::broadcast::channel(2048)`.
-- [ ] Lidar adequadamente com o erro passivo `SendError` e rastrear no log (usando o `tracing::debug!`) caso não haja ouvintes vivos no momento do Publish.
-- [ ] Garantir que múltiplos recebedores (Receiver Clones) ouçam simultaneamente a mesma emissão.
+- [x] Em `src-tauri/src/infra/events/tokio_bus.rs`, instanciar o `tokio::sync::broadcast::channel(2048)`.
+- [x] Lidar adequadamente com o erro passivo `SendError` e rastrear no log (usando o `tracing::debug!`) caso não haja ouvintes vivos no momento do Publish.
+- [x] Garantir que múltiplos recebedores (Receiver Clones) ouçam simultaneamente a mesma emissão.
 
 ### 3. Loop de Escuta Paralelo (Feature)
-- [ ] Em `main.rs` na inicialização do Tauri, instanciar a infra `TokioEventBus`.
-- [ ] Injetá-la no Tauri: `app.manage(Arc::new(bus) as Arc<dyn EventBus>)`.
-- [ ] Fazer um `tokio::spawn(async move { loop { ... } })` bobo de testes para simular um "Worker Fantasma", apenas dando print/tracing que consumiu a mensagem "AssetDiscovered".
+- [x] Em `main.rs` na inicialização do Tauri, instanciar a infra `TokioEventBus`.
+- [x] Injetá-la no Tauri: `app.manage(Arc::new(bus) as Arc<dyn EventBus>)`.
+- [x] Fazer um `tokio::spawn(async move { loop { ... } })` bobo de testes para simular um "Worker Fantasma", apenas dando print/tracing que consumiu a mensagem "AssetDiscovered".
 
 ### 4. Cobertura Sólida
-- [ ] Escrever Teste Unitário (`#[tokio::test]`) garantindo isolamento da infraestrutura: "Se eu publico 10 mil eventos, o Subscriber no fim da pool leu os 10 mil perfeitamente".
+- [x] Escrever Teste Unitário (`#[tokio::test]`) garantindo isolamento da infraestrutura: "Se eu publico 10 mil eventos, o Subscriber no fim da pool leu os 10 mil perfeitamente".
 
 ---
 

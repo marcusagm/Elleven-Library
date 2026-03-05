@@ -3236,6 +3236,7 @@ name = "mundam"
 version = "0.1.0"
 dependencies = [
  "asefile",
+ "async-trait",
  "axum",
  "base64 0.22.1",
  "byteorder",

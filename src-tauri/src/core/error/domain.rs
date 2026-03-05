@@ -49,6 +49,10 @@ pub enum AppError {
     #[error("Validation failed: {0}")]
     ValidationFailed(String),
 
+    /// Error related to the internal Event Bus.
+    #[error("Event Bus error: {0}")]
+    EventBus(String),
+
     /// Generic error with a custom message.
     #[error("Application error: {0}")]
     Generic(String),
