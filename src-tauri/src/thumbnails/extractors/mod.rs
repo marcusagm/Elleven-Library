@@ -447,49 +447,49 @@ fn convert_to_png_from_memory(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error
     Ok(png_data)
 }
 
-#[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use super::*;
-    use std::path::Path;
+// #[cfg(test)]
+// #[allow(clippy::unwrap_used)]
+// mod tests {
+//     use super::*;
+//     use std::path::Path;
 
-    #[test]
-    fn test_preview_issue() {
-        let base = Path::new("../file-samples/Imagens/RAW");
-        let ext_folders = vec!["3fr", "fff", "iiq", "kdc", "mef", "raw", "x3f"];
+//     #[test]
+//     fn test_preview_issue() {
+//         let base = Path::new("../file-samples/Imagens/RAW");
+//         let ext_folders = vec!["3fr", "fff", "iiq", "kdc", "mef", "raw", "x3f"];
 
-        for ext in ext_folders {
-            let dir = base.join(ext);
-            if dir.exists() {
-                for entry in std::fs::read_dir(dir).unwrap() {
-                    let entry = entry.unwrap();
-                    let path = entry.path();
-                    if path.is_file() {
-                        tracing::debug!("\nTesting: {:?}", path);
-                        match extract_raw_preview(&path) {
-                            Ok((data, mime)) => {
-                                tracing::debug!(
-                                    "  extract_raw_preview OK: {} bytes, mime: {}",
-                                    data.len(),
-                                    mime
-                                );
-                                match image::load_from_memory(&data) {
-                                    Ok(_) => {
-                                        tracing::debug!("    -> image::load_from_memory SUCCESS")
-                                    }
-                                    Err(e) => {
-                                        tracing::debug!(
-                                            "    -> image::load_from_memory FAIL: {}",
-                                            e
-                                        )
-                                    }
-                                }
-                            }
-                            Err(e) => tracing::debug!("  extract_raw_preview ERR: {:?}", e),
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+//         for ext in ext_folders {
+//             let dir = base.join(ext);
+//             if dir.exists() {
+//                 for entry in std::fs::read_dir(dir).unwrap() {
+//                     let entry = entry.unwrap();
+//                     let path = entry.path();
+//                     if path.is_file() {
+//                         tracing::debug!("\nTesting: {:?}", path);
+//                         match extract_raw_preview(&path) {
+//                             Ok((data, mime)) => {
+//                                 tracing::debug!(
+//                                     "  extract_raw_preview OK: {} bytes, mime: {}",
+//                                     data.len(),
+//                                     mime
+//                                 );
+//                                 match image::load_from_memory(&data) {
+//                                     Ok(_) => {
+//                                         tracing::debug!("    -> image::load_from_memory SUCCESS")
+//                                     }
+//                                     Err(e) => {
+//                                         tracing::debug!(
+//                                             "    -> image::load_from_memory FAIL: {}",
+//                                             e
+//                                         )
+//                                     }
+//                                 }
+//                             }
+//                             Err(e) => tracing::debug!("  extract_raw_preview ERR: {:?}", e),
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }

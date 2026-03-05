@@ -1,5 +1,5 @@
+use crate::core::error::{AppError, AppResult};
 use crate::db::Db;
-use crate::error::{AppError, AppResult};
 use crate::indexer::Indexer;
 use crate::lifecycle::LifecycleRegistry;
 use serde::Serialize;

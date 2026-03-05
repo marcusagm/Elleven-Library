@@ -3,9 +3,9 @@
 //! Provides endpoints for retrieving extracted colors, re-extracting
 //! colors for individual assets or the entire library.
 
+use crate::core::error::AppResult;
 use crate::db::models::AssetColor;
 use crate::db::Db;
-use crate::error::AppResult;
 use std::sync::Arc;
 use tauri::State;
 use tracing::{error, info, warn};

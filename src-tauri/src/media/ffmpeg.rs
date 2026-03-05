@@ -5,7 +5,7 @@
 //! - Modern: heic, heif, avif, jxl
 //! - Design: psd, psb, ai, eps, svg, tiff
 
-use crate::error::{AppError, AppResult};
+use crate::core::error::{AppError, AppResult};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -162,7 +162,10 @@ pub fn generate_with_ffmpeg(
             if let Err(e3) = run_ffmpeg(None) {
                 tracing::error!(
                     "Thumbnail ffmpeg failed for {}: 1s err: {}, 0s err: {}, no-seek err: {}",
-                    input_str, e1, e2, e3
+                    input_str,
+                    e1,
+                    e2,
+                    e3
                 );
                 return Err(AppError::Transcoding(format!("FFmpeg failed: {}", e3)));
             }

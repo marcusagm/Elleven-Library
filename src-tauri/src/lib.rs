@@ -1,9 +1,12 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 
+pub mod core;
 pub mod db;
-pub mod error;
+pub mod delivery;
+pub mod feature;
 mod indexer;
+pub mod infra;
 // Moved to media: metadata_reader, ffmpeg
 mod protocols;
 // Moved to thumbnails: thumbnail_worker, thumbnail_priority
@@ -41,13 +44,7 @@ fn get_streaming_token(token_state: tauri::State<'_, StreamingSessionToken>) -> 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize structured tracing
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::builder()
-                .with_default_directive(tracing::Level::INFO.into())
-                .from_env_lossy(),
-        )
-        .init();
+    crate::infra::telemetry::init_telemetry();
 
     let builder = tauri::Builder::default();
     crate::protocols::register_all(builder)

@@ -1,5 +1,5 @@
+use crate::core::error::AppResult;
 use crate::db::Db;
-use crate::error::AppResult;
 use serde_json::Value;
 use tauri::State;
 

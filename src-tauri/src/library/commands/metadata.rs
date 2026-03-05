@@ -1,4 +1,4 @@
-use crate::error::{AppError, AppResult};
+use crate::core::error::{AppError, AppResult};
 use crate::media::metadata_reader;
 use std::collections::HashMap;
 use std::path::PathBuf;

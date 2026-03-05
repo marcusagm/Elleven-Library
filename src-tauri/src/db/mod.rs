@@ -12,7 +12,7 @@ pub mod settings;
 pub mod smart_folders;
 pub mod tags;
 
-use crate::error::AppResult;
+use crate::core::error::AppResult;
 use sqlx::sqlite::SqlitePool;
 use std::path::PathBuf;
 

@@ -5,7 +5,7 @@ use super::cache::TranscodeCache;
 use super::detector;
 use super::ffmpeg_pipe::FfmpegTranscoder;
 use super::quality::TranscodeQuality;
-use crate::error::{AppError, AppResult};
+use crate::core::error::{AppError, AppResult};
 
 /// Check if a file needs transcoding for playback
 #[tauri::command]

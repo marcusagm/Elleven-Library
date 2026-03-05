@@ -1,4 +1,4 @@
-use crate::error::AppError;
+use crate::core::error::AppError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -11,7 +11,7 @@ impl IntoResponse for StreamError {
         let (status, error_message) = match &self.0 {
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
             AppError::Io(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-            AppError::Db(e) => (
+            AppError::Database(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("DB Error: {}", e),
             ),
