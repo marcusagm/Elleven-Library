@@ -7,7 +7,7 @@
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
-  z-index: 9998;
+  z-index: 9990;
   animation: ui-modal-overlay-in 0.2s ease;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -37,7 +37,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
   box-shadow: 0 var(--p-space-m) var(--p-space-s) rgba(0, 0, 0, 0.4);
-  z-index: 9999;
+  z-index: 9991;
   outline: none;
   animation: ui-modal-in 0.2s ease;
 }

@@ -4,7 +4,7 @@ import { ColorPicker } from '../ColorPicker';
 import { Popover } from '../Popover';
 import { cn } from '../../../lib/utils';
 import { createControllableSignal } from '../../../lib/primitives';
-import { validateHexadecimalColor, normalizeHexadecimalValue } from '../ColorPicker/utils';
+import { validateHexadecimalColor, normalizeHexadecimalValue } from '../../../utils/color';
 import './color-input.css';
 
 /**
