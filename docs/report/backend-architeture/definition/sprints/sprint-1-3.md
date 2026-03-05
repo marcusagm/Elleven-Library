@@ -1,8 +1,8 @@
 # Sprint 1.3: Data Model Base Base (DB Infra)
 
-**Status:** Pendente
-**Data e hora de inicio:** -
-**Data da conclusão:** -
+**Status:** Concluída
+**Data e hora de inicio:** 2026-03-05 16:30
+**Data da conclusão:** 2026-03-05 19:15
 
 **Fase 1:** Fundação & Observabilidade (Core Mínimo)
 **Objetivo:** Acoplar o ambiente limpo de Banco de Dados (`SQLx SQLite`) no formato CQRS estrito, provisionando os tipos (Structs do DB) e preparando o ecossistema para mutações do Ledger e queries autônomas.
@@ -19,21 +19,21 @@
 ## 📋 Tarefas (Checklist do Agente)
 
 ### 1. Preparação Estrutural DTO e SQLx
-- [ ] Fomentar as Structs puras `db/models.rs` que atuarão entre a `Infra` e o `Core`:
+- [x] Fomentar as Structs puras `db/models.rs` que atuarão entre a `Infra` e o `Core`:
   - `AssetMetadata`
   - `Asset` original
-- [ ] Garantir o `.gitignore` isentando os `*.db` limpos de migração.
-- [ ] Configuração formal do Conector em `src-tauri/src/infra/db/manager.rs` que retorne a Pool do banco, já aplicando o comando pragma `PRAGMA default_cache_size`, `PRAGMA synchronous = NORMAL`, e `PRAGMA journal_mode = WAL`.
+- [x] Garantir o `.gitignore` isentando os `*.db` limpos de migração.
+- [x] Configuração formal do Conector em `src-tauri/src/infra/database/manager.rs` que retorne a Pool do banco, já aplicando o comando pragma `PRAGMA default_cache_size`, `PRAGMA synchronous = NORMAL`, e `PRAGMA journal_mode = WAL`.
 
 ### 2. Contrato de Leitura Básica (Queries)
-- [ ] Criar o `Trait` de leitor rápido `AssetQueryHandler` em `src-tauri/src/core/repository/`.
-- [ ] Instanciar o Adaptador `SqliteAssetQueries` (em `infra/db/queries.rs`) consumindo a Pool injetada, devolvendo um `Vec<Asset>` simples.
-- [ ] Respeitar macro segura: Empregue apenas abstrações seguras de compilação em disco (macros `sqlx::query_as!`). Execute o comando `cargo sqlx prepare` manualmente em background.
+- [x] Criar o `Trait` de leitor rápido `AssetQueryHandler` em `src-tauri/src/core/repository/`.
+- [x] Instanciar o Adaptador `SqliteAssetQueries` (em `infra/database/queries.rs`) consumindo a Pool injetada, devolvendo um `Vec<Asset>` simples.
+- [x] Respeitar macro segura: Empregue apenas abstrações seguras de compilação em disco (macros `sqlx::query_as!`). Execute o comando `cargo sqlx prepare` manualmente em background.
 
 ### 3. Integração (Wiring)
-- [ ] Chamar `manager::init_database()` na carga do main.
-- [ ] Encapsular a Trait nas State Wrappers: `app.manage(Arc::new(sqlite_query_handler) as Arc<dyn AssetQueryHandler>)`.
-- [ ] Elaborar um teste unitário transacional que injete "Logo_Temp.png" e resgate da Base isolada confirmando a estrutura.
+- [x] Chamar `manager::init_database()` na carga do main.
+- [x] Encapsular a Trait nas State Wrappers: `app.manage(Arc::new(sqlite_query_handler) as Arc<dyn AssetQueryHandler>)`.
+- [x] Elaborar um teste unitário transacional que injete "Logo_Temp.png" e resgate da Base isolada confirmando a estrutura.
 
 ---
 

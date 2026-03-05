@@ -20,7 +20,7 @@ mod settings;
 mod streaming;
 mod transcoding;
 
-use crate::core::events::{AppEventBus, DomainEvent};
+use crate::core::events::AppEventBus;
 use crate::db::Db;
 use crate::indexer::Indexer;
 use crate::infra::events::TokioEventBus;
@@ -80,6 +80,23 @@ pub fn run() {
             let lifecycle_for_setup = lifecycle.clone();
             let streaming_session_token = session_token;
             tauri::async_runtime::spawn(async move {
+                // Initialize V2 Database Infrastructure
+                let v2_db_manager =
+                    match crate::infra::database::manager::DbManager::new(&db_path).await {
+                        Ok(manager) => manager,
+                        Err(err) => {
+                            tracing::error!("Failed to initialize V2 database manager: {}", err);
+                            return;
+                        }
+                    };
+                let asset_query_handler =
+                    Arc::new(crate::infra::database::queries::SqliteAssetQueries::new(
+                        v2_db_manager.pool().clone(),
+                    ));
+                handle.manage(
+                    asset_query_handler as Arc<dyn crate::core::repository::AssetQueryHandler>,
+                );
+
                 match Db::new(db_path).await {
                     Ok(db) => {
                         let db_arc = std::sync::Arc::new(db);

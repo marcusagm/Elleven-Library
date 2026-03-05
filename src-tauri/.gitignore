@@ -13,6 +13,7 @@ elleven.db-wal
 
 dev.db-shm
 dev.db-wal
+*.db
 
 # OS
 .DS_Store

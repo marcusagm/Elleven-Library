@@ -28,7 +28,7 @@ notify = "8.0"
 imagesize = "0.13"
 chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1", features = ["full", "time"] }
-sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio", "chrono", "macros"] }
+sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio", "chrono", "macros", "json"] }
 image = { version = "0.25.9", features = ["webp", "hdr", "exr", "dds", "tga", "png", "tiff", "gif"] }
 fast_image_resize = "6.0.0"
 mime_guess = "2.0"
@@ -83,3 +83,6 @@ async-trait = "0.1.89"
 # OPTIMIZATION: Compile heavy dependencies with optimizations even in debug mode
 # [profile.dev.package."*"]
 # opt-level = 3
+
+[dev-dependencies]
+tempfile = "3.10"

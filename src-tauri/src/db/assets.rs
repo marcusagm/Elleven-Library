@@ -5,6 +5,16 @@ use crate::db::models::AssetMetadata;
 
 impl Db {
     /// Updates the star rating for a specific asset.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the asset to update.
+    /// * `rating` - The new rating to set for the asset.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the update was successful.
+    /// * `Err(sqlx::Error)` if the update failed.
     pub async fn update_asset_rating(&self, id: i64, rating: i32) -> Result<(), sqlx::Error> {
         sqlx::query!("UPDATE assets SET rating = ? WHERE id = ?", rating, id)
             .execute(&self.pool)
@@ -13,6 +23,16 @@ impl Db {
     }
 
     /// Updates the user notes for a specific asset.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the asset to update.
+    /// * `notes` - The new notes to set for the asset.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the update was successful.
+    /// * `Err(sqlx::Error)` if the update failed.
     pub async fn update_asset_notes(&self, id: i64, notes: String) -> Result<(), sqlx::Error> {
         sqlx::query!("UPDATE assets SET notes = ? WHERE id = ?", notes, id)
             .execute(&self.pool)
@@ -21,20 +41,38 @@ impl Db {
     }
 
     /// Retrieves assets that do not have a thumbnail generated yet.
+    ///
+    /// # Arguments
+    ///
+    /// * `limit` - The maximum number of assets to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<(i64, String)>)` if the assets were retrieved successfully.
+    /// * `Err(sqlx::Error)` if the assets could not be retrieved.
     pub async fn get_assets_needing_thumbnails(
         &self,
         limit: i32,
     ) -> Result<Vec<(i64, String)>, sqlx::Error> {
         let rows = sqlx::query!(
-            "SELECT id, path FROM assets WHERE thumbnail_path IS NULL AND thumbnail_attempts < 3 LIMIT ?",
+            r#"SELECT id as "id!", path as "path!" FROM assets WHERE thumbnail_path IS NULL AND thumbnail_attempts < 3 LIMIT ?"#,
             limit
         )
         .fetch_all(&self.pool)
         .await?;
-        Ok(rows.into_iter().map(|r| (r.id, r.path)).collect())
+        Ok(rows.into_iter().map(|r| (r.id as i64, r.path)).collect())
     }
 
     /// Retrieves specific assets needing thumbnails by their IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - A slice of asset IDs to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<(i64, String)>)` if the assets were retrieved successfully.
+    /// * `Err(sqlx::Error)` if the assets could not be retrieved.
     pub async fn get_assets_needing_thumbnails_by_ids(
         &self,
         ids: &[i64],
@@ -59,6 +97,15 @@ impl Db {
     }
 
     /// Increments the thumbnail attempts for a batch of assets before processing.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - A slice of asset IDs to increment thumbnail attempts for.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the thumbnail attempts were incremented successfully.
+    /// * `Err(sqlx::Error)` if the thumbnail attempts could not be incremented.
     pub async fn increment_thumbnail_attempts_batch(&self, ids: &[i64]) -> Result<(), sqlx::Error> {
         if ids.is_empty() {
             return Ok(());
@@ -80,7 +127,16 @@ impl Db {
     }
 
     /// Records the last error message for a thumbnail.
-    /// Note: Attempts are pre-incremented in batch to prevent poison pills.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_id` - The ID of the asset to record the error for.
+    /// * `error` - The error message to record.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the error was recorded successfully.
+    /// * `Err(sqlx::Error)` if the error could not be recorded.
     pub async fn record_thumbnail_error(
         &self,
         asset_id: i64,
@@ -97,6 +153,16 @@ impl Db {
     }
 
     /// Updates the path to the generated thumbnail for an asset and resets errors/attempts.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_id` - The ID of the asset to update.
+    /// * `path` - The path to the generated thumbnail.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the thumbnail path was updated successfully.
+    /// * `Err(sqlx::Error)` if the thumbnail path could not be updated.
     pub async fn update_thumbnail_path(
         &self,
         asset_id: i64,
@@ -113,6 +179,15 @@ impl Db {
     }
 
     /// Clears the thumbnail path, effectively flagging it for regeneration, and resets errors/attempts.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_id` - The ID of the asset to clear the thumbnail path for.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the thumbnail path was cleared successfully.
+    /// * `Err(sqlx::Error)` if the thumbnail path could not be cleared.
     pub async fn clear_thumbnail_path(&self, asset_id: i64) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "UPDATE assets SET thumbnail_path = NULL, thumbnail_attempts = 0, thumbnail_last_error = NULL WHERE id = ?",
@@ -125,7 +200,15 @@ impl Db {
 
     /// Saves or updates a single asset record.
     ///
-    /// Returns `(id, old_folder_id_if_moved, was_newly_inserted)`.
+    /// # Arguments
+    ///
+    /// * `folder_id` - The ID of the folder to save the asset in.
+    /// * `img` - The asset metadata to save.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok((i64, Option<i64>, bool))` if the asset was saved successfully.
+    /// * `Err(sqlx::Error)` if the asset could not be saved.
     pub async fn save_asset(
         &self,
         folder_id: i64,
@@ -136,6 +219,15 @@ impl Db {
     }
 
     /// Batch saves multiple asset records within a transaction.
+    ///
+    /// # Arguments
+    ///
+    /// * `items` - A vector of tuples containing the folder ID and asset metadata to save.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the assets were saved successfully.
+    /// * `Err(sqlx::Error)` if the assets could not be saved.
     pub async fn save_assets_batch(
         &self,
         items: Vec<(i64, crate::db::models::AssetMetadata)>,
@@ -158,6 +250,17 @@ impl Db {
     }
 
     /// Internal logic for saving/updating an asset, reusable for transactions.
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - The database connection to use.
+    /// * `folder_id` - The ID of the folder to save the asset in.
+    /// * `img` - The asset metadata to save.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok((i64, Option<i64>, bool))` if the asset was saved successfully.
+    /// * `Err(sqlx::Error)` if the asset could not be saved.
     async fn save_asset_internal(
         &self,
         conn: &mut sqlx::SqliteConnection,
@@ -240,6 +343,15 @@ impl Db {
     }
 
     /// Retrieve context (asset ID, folder ID, tags) for an asset.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path to the asset.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Option<(i64, i64, Vec<i64>)>)` if the asset context was retrieved successfully.
+    /// * `Err(sqlx::Error)` if the asset context could not be retrieved.
     pub async fn get_asset_context(
         &self,
         path: &str,
@@ -267,6 +379,15 @@ impl Db {
     }
 
     /// Get size and creation date for comparison to detect file changes.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path to the asset.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Option<(i64, chrono::DateTime<chrono::Utc>)>)` if the file comparison data was retrieved successfully.
+    /// * `Err(sqlx::Error)` if the file comparison data could not be retrieved.
     pub async fn get_file_comparison_data(
         &self,
         path: &str,
@@ -290,6 +411,15 @@ impl Db {
 
     /// Retrieves comparison data (size, modified_at) for all assets under a root path.
     /// Used for fast initial scanning.
+    ///
+    /// # Arguments
+    ///
+    /// * `root_path` - The root path to retrieve assets from.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(std::collections::HashMap<String, (i64, chrono::DateTime<chrono::Utc>)>)` if the file comparison data was retrieved successfully.
+    /// * `Err(sqlx::Error)` if the file comparison data could not be retrieved.
     #[allow(clippy::type_complexity)]
     pub async fn get_all_files_comparison_data(
         &self,
@@ -314,6 +444,15 @@ impl Db {
     }
 
     /// Deletes an asset record and returns its metadata context.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path to the asset to delete.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Option<(i64, i64, Vec<i64>)>)` if the asset context was retrieved successfully.
+    /// * `Err(sqlx::Error)` if the asset context could not be retrieved.
     pub async fn delete_asset_by_path_returning_context(
         &self,
         path: &str,
@@ -330,6 +469,18 @@ impl Db {
     }
 
     /// Updates asset metadata due to a rename or move operation on the filesystem.
+    ///
+    /// # Arguments
+    ///
+    /// * `old_path` - The old path of the asset.
+    /// * `new_path` - The new path of the asset.
+    /// * `new_filename` - The new filename of the asset.
+    /// * `new_folder_id` - The new folder ID of the asset.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Option<(AssetMetadata, i64)>)` if the asset metadata was updated successfully.
+    /// * `Err(sqlx::Error)` if the asset metadata could not be updated.
     #[allow(clippy::type_complexity)]
     pub async fn rename_asset(
         &self,
