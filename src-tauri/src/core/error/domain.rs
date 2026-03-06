@@ -56,6 +56,10 @@ pub enum AppError {
     /// Generic error with a custom message.
     #[error("Application error: {0}")]
     Generic(String),
+
+    /// Error when a file is identified but no provider can process it further.
+    #[error("File identified but no further processing is available.")]
+    NoResolutionLimit,
 }
 
 /// Unit tests for the AppError enum.
