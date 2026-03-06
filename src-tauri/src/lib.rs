@@ -7,6 +7,7 @@ pub mod delivery;
 pub mod feature;
 mod indexer;
 pub mod infra;
+pub mod processing;
 // Moved to media: metadata_reader, ffmpeg
 mod protocols;
 // Moved to thumbnails: thumbnail_worker, thumbnail_priority

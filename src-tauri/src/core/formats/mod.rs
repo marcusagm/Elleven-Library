@@ -10,16 +10,27 @@ pub mod registry;
 
 pub use registry::FormatRegistry;
 
+use crate::processing::media::affinity_format::AffinityFormatProvider;
+use crate::processing::media::icon_format::IconFormatProvider;
+use crate::processing::media::image_format::ImageFormatProvider;
+use crate::processing::media::pdf_format::PdfFormatProvider;
+use crate::processing::media::svg_format::SvgFormatProvider;
+use std::sync::Arc;
+
 /// Factory function to build the main FormatRegistry.
 ///
 /// This is used during application boot to register all supported format plugins.
 pub fn build_format_registry() -> FormatRegistry {
-    let registry = FormatRegistry::new();
+    let mut registry = FormatRegistry::new();
 
-    // Specific providers will be registered here in future sprints
-    // Example:
-    // registry.register(Arc::new(PhotoshopFormatProvider::new()));
-    // registry.register(Arc::new(FfmpegVideoFormatProvider::new()));
+    // Register primary media providers
+    registry.register(Arc::new(ImageFormatProvider::new()));
+    registry.register(Arc::new(AffinityFormatProvider::new()));
+    registry.register(Arc::new(SvgFormatProvider::new()));
+    registry.register(Arc::new(PdfFormatProvider::new()));
+
+    // Register generic icon fallback
+    registry.register(Arc::new(IconFormatProvider::new()));
 
     registry
 }
