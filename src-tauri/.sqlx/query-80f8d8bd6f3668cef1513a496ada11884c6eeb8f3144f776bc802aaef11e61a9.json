@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE v2_assets SET path = ?, name = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "80f8d8bd6f3668cef1513a496ada11884c6eeb8f3144f776bc802aaef11e61a9"
+}
