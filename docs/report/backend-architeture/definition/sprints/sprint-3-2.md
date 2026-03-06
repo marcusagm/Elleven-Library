@@ -13,6 +13,8 @@
 1. **Providers Isolados Encaixados:** Um `.JPG` escaneado passa pelo roteador `O(1)` e é mapeado para seu novo provedor físico `ImageFormatProvider` com pleno sucesso.
 2. **Metadata Operacional:** O Adaptador processou corretamente dimensões e perfil ICC usando a biblioteca `image` do Rust para entregar o DTO Semântico.
 3. **Thumb Resized in-memory:** Um PNG gordo de 12MB forneceu sua miniatura reduzindo estritamente as resoluções num `Vec<u8>` formatado como WebP limpo para as Traits.
+4. **Extração Binária Affinity:** Arquivos `.afphoto`, `.afdesign` e `.afpub` devem ser processados pelo `AffinityFormatProvider` usando o scanner binário de assinaturas PNG para extrair a preview interna de alta resolução.
+5. **Ícones do Sistema:** Suporte a extração de ícones nativos do SO para formatos sem preview visual direta.
 
 ---
 
@@ -26,9 +28,14 @@
 - [ ] Assine a `ThumbnailCapability`: Mova as estratégias velhas do `native::generate_thumbnail_fast` emulando perfeitamente a passagem no novo contrato abstrato.
 - [ ] Respeite ativamente os `size_hint` mandados como parâmetros via App request, entregando bytes compactos transcodificados para `.webp`.
 
-### 3. Arquitetura de Fiação
+### 3. Provider de Arquivos Affinity (Scanner Binário)
+- [ ] Em `src-tauri/src/processing/media/affinity_format.rs`, migrar a lógica de `affinity.rs`.
+- [ ] Implementar o scanner de `PNG_SIGNATURE` e `PNG_IEND` para extração direta de bytes sem carregar o arquivo inteiro (Seek-based).
+
+### 4. Provider de Ícones e Arquitetura de Fiação
+- [ ] Implementar `IconFormatProvider` migrando a lógica de `icon.rs`.
 - [ ] Abstrair todas as saídas pra `AppResult`. Capturar conversões maliciosas de formato (Magic Byte Incompatível com Extensão) interceptando antes ou durante a rotina do Decoder para atirar Error Code polido pro front.
-- [ ] Adicionar um Modulo Extra apenas para PDFs (`PdfFormatProvider` ou `DocumentProvider` se o preview nativamente exportar páginas vetorizadas do OS).
+- [ ] Adicionar um Modulo Extra apenas para PDFs (`PdfFormatProvider` ou `DocumentProvider`).
 
 ---
 

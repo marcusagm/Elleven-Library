@@ -75,6 +75,11 @@ pub fn run() {
             let session_token = uuid::Uuid::new_v4().to_string();
             app.manage(StreamingSessionToken(session_token.clone()));
 
+            // Initialize Format Registry (O(1) Router)
+            let format_registry =
+                std::sync::Arc::new(crate::core::formats::build_format_registry());
+            app.manage(format_registry.clone());
+
             // Initialize DB and Worker
             let handle = app.handle().clone();
             let lifecycle_for_setup = lifecycle.clone();

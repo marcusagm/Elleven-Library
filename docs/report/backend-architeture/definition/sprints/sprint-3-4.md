@@ -13,14 +13,19 @@
 1. **Resiliência Arquitetural (Isolamento de SDK):** Se a C-FFI ou a Binária acionada num Raw Camera Corrompido (`.CR3` / `DNG`) surtar, a falha retorna empírica um Rust `Err` formatado seguro encapsulada no `AppResult` e aborta só ela mesma. Nada morre por SegFault no banco global.
 2. **ZIP Preview:** Arquivos tipo `Clip Studio (.clip)` ou `CBZ/ZIP` abrem as Header em memória sem extrair pra um folder de TEMP no SSD, retornam o byte-array da miniatura XML e descartam a cópia (Stream Zip puro).
 3. **SVG & Fontes:** Resolução vetorizada atende perfeitamente ao pedido de Size_Hint: Pedir SVG pra escalar em Píxels 2000x2000 gera conversão impecável limpidamente sem artefatos.
+4. **Extração RAW em Camadas:** Sistema tenta LibRaw (Veloz), cai para Brute-Force Scanner (Resiliente) e finaliza no FFmpeg (Garantia) para garantir que nenhum RAW fique sem preview.
 
 ---
 
 ## 📋 Tarefas (Checklist do Agente)
 
-### 1. Provider de Raw Photography
-- [ ] Em `processing/media/raw_camera_format.rs`, migre a chamada a bibliotecas/CLI nativas delegadas exclusivamente para as file-extensions da pesada (`.cr2`, `.nef`, `.arw`).
-- [ ] Lide ativamente no Metadata_Extract pegando ExifData (Modelos, ExposureTimes, F-Stops) formatando de volta num Struct coerente.
+### 1. Provider de Raw Photography (Tiered Strategy)
+- [ ] Em `src-tauri/src/processing/media/raw_format.rs`, migre a lógica de `raw.rs`.
+- [ ] Implementar a estratégia de 3 camadas:
+    1. **LibRaw** (`rsraw`): Extração de previews oficiais.
+    2. **Brute-Force JPEG Scan**: Varredura binária por `FF D8 FF` nos primeiros 8MB (migrar de `raw.rs`).
+    3. **FFmpeg Fallback**: Acionamento do modem de vídeo para RAWS que o Rust não entende.
+- [ ] Implementar `MetadataCapability` capturando ExifData (Modelos, ExposureTimes, F-Stops).
 
 ### 2. Provider de Projetos Arquivados (ZIP/CLIP)
 - [ ] Mapeie *Extensions*: `clip`, `zip`, `cbz`, etc...
