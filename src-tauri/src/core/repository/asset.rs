@@ -78,4 +78,21 @@ pub trait AssetQueryHandler: Send + Sync {
     /// * `Ok(Vec<Tag>)` if the tags were found successfully.
     /// * `Err(AppResult<Tag>)` if the tags could not be found.
     async fn list_tags(&self) -> AppResult<Vec<Tag>>;
+
+    /// Performs an advanced search using complex criteria.
+    ///
+    /// # Arguments
+    ///
+    /// * `criteria` - The advanced search criteria.
+    /// * `page` - The pagination parameters.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<AssetSummaryDto>)` if the assets were found successfully.
+    /// * `Err(AppResult<AssetSummaryDto>)` if the search fails.
+    async fn search_assets(
+        &self,
+        criteria: crate::core::models::SearchCriteria,
+        page: PageParams,
+    ) -> AppResult<Vec<AssetSummaryDto>>;
 }

@@ -71,6 +71,7 @@ A camada que encapsula o banco de dados da aplicação.
   - `folders` e `smart_folders`: Árvore de diretórios e buscas preestabelecidas.
   - `tags` e `colors`: Taxonomia da biblioteca e cache nativo das paletas indexadas.
   - `search`: Motor de filtros flexíveis pelo banco.
+  - `settings`: Configurações do usuário e persistência de dados.
 
 ### `src/indexer` (Scanner & Watcher)
 Responsável por vasculhar os diretórios configurados pelo usuário, adicionar arquivos no DB e mantê-los sincronizados.
@@ -81,14 +82,20 @@ Responsável por vasculhar os diretórios configurados pelo usuário, adicionar 
 
 ### `src/thumbnails` (Worker Assíncrono e Prioridade)
 Gerador de "previews" visuais em background sem atrasar a thread de interface.
-- **Componente Principal (`worker.rs`):** Um Job Queue rodando em de forma assíncrona isolada via Tokio spawn.
-- **Estratégia de Prioridade (`priority.rs`):** Se o usuário navega na galeria (_ListView_), o frontend informa o backend sobre os IDs visíveis ao viewport, mudando-os para "Alta Prioridade".
-- É o responsável por executar recortes `ffmpeg` (vídeos), ou processar as imagens localmente via FFI e guardar fisicamente no cache `/thumbnails/`.
-
+- **Componente Principal (`worker.rs`):** Um Job Queue rodando de forma assíncrona isolada via Tokio spawn.
+- **Estratégia de Prioridade (`priority.rs`):** Se o usuário navega na galeria (_ListView_), o frontend informa o backend sobre os IDs visíveis ao viewport, mudando-os para "Alta Prioridade" na fila de processamento.
+- **Estrutura de Extração (`extractors/`):** 
+  - **Standard Extractors:** Utiliza bibliotecas nativas de imagem (como `image` crate) para redimensionamento eficiente de JPEGs/PNGs e `ffmpeg` para captura de frames em arquivos de vídeo comuns.
+  - **Specialized Extractors:** Motores dedicados para formatos não-convencionais, incluindo renderização de miniaturas para modelos 3D, extração de metadados visuais de arquivos de design (como arquivos de projeto específicos) e geração de representações visuais para documentos PDF ou vetoriais.
+- **Processamento e Cache:** Responsável por executar recortes `ffmpeg` (vídeos) ou processar as imagens localmente via bibliotecas Rust, guardando os arquivos binários no cache local e atualizando o status de disponibilidade no SQLite para que o frontend carregue via protocolo `asset://`.
+- 
 ### `src/streaming` & `src/transcoding`
 Habilita suporte real-time para formatos não suportados nativamente pelo Chromium/WebKit (ex: H.265, ProRes, MKV).
-- **Embedded Server (`server.rs`):** Inicia um mini-servidor `tokio-warp` locahost rodando sob um IP dinâmico dentro do Runtime Tauri. Exige um token gerado via Boot (`StreamingSessionToken`) em toda Query (`?token=x`) para afastar invasores na rede local.
-- **Transcoding (`ffmpeg_pipe.rs` & `quality.rs`):** O backend consome e analisa o Request do browser. Se for transcodificação na mosca, monta uma pipe via OS Subprocess apontando o output progressivo do FFMPEG via `stdout` direito para dentro da resposta HTTP `hyper::Body`.
+- **Embedded Server (`server.rs`):** Inicia um mini-servidor HTTP local (via `warp`) rodando sob um IP dinâmico dentro do Runtime Tauri. Exige um token gerado via Boot (`StreamingSessionToken`) em toda Query (`?token=x`) para garantir que apenas a instância local do frontend acesse os recursos, prevenindo acessos externos na rede local.
+- **Transcoding Engine (`ffmpeg_pipe.rs`):** Orquestra processos `ffmpeg` em tempo real. Se o formato exigir transcodificação "on-the-fly", o backend monta uma pipe de subprocesso que redireciona o `stdout` do FFmpeg diretamente para o stream de resposta HTTP (`hyper::Body`), permitindo reprodução imediata sem necessidade de arquivos temporários.
+- **HLS & Seeking (`hls.rs`):** Provê segmentação dinâmica para suporte a *HTTP Live Streaming*. Isso permite que o player realize buscas (seeking) em arquivos pesados de forma eficiente, gerando manifestos `.m3u8` e fragmentos `.ts` sob demanda.
+- **Quality & Hardware Acceleration (`quality.rs`):** Gerencia perfis de codificação e tenta utilizar aceleração de hardware (como NVENC, VAAPI ou VideoToolbox) para reduzir a carga de CPU durante a transcodificação, ajustando bitrate e resolução conforme a capacidade do sistema.
+- **Media Probing (`probe.rs`):** Utiliza `ffprobe` para analisar o container do arquivo, identificando codecs, múltiplas faixas de áudio, legendas embutidas e metadados de HDR/Color Space antes de iniciar o streaming, permitindo que o frontend ofereça seletores de trilhas.
 
 ### `src/formats` (Identificação de Assets)
 A engine que tenta entender a natureza do arquivo além de sua simples extensão de nome.

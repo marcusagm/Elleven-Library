@@ -174,6 +174,16 @@ impl AssetQueryHandler for SqliteAssetQueries {
         Ok(rows.into_iter().map(AssetSummaryDto::from).collect())
     }
 
+    /// Lists folders in the database.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent_id` - The ID of the parent folder.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Folder>)` if the folders were found successfully.
+    /// * `Err(sqlx::Error)` if the folders could not be found.
     async fn list_folders(
         &self,
         parent_id: Option<String>,
@@ -198,6 +208,16 @@ impl AssetQueryHandler for SqliteAssetQueries {
         Ok(rows.into_iter().map(Folder::from).collect())
     }
 
+    /// Gets a folder by its ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the folder to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Option<Folder>)` if the folder was found successfully.
+    /// * `Err(sqlx::Error)` if the folder could not be found.
     async fn get_folder_by_id(&self, id: &str) -> AppResult<Option<crate::core::models::Folder>> {
         let row = sqlx::query_as!(
             crate::infra::database::models::FolderDb,
@@ -210,6 +230,12 @@ impl AssetQueryHandler for SqliteAssetQueries {
         Ok(row.map(Folder::from))
     }
 
+    /// Lists tags in the database.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Tag>)` if the tags were found successfully.
+    /// * `Err(sqlx::Error)` if the tags could not be found.
     async fn list_tags(&self) -> AppResult<Vec<crate::core::models::Tag>> {
         let rows = sqlx::query_as!(
             crate::infra::database::models::TagDb,
@@ -219,6 +245,53 @@ impl AssetQueryHandler for SqliteAssetQueries {
         .await?;
 
         Ok(rows.into_iter().map(Tag::from).collect())
+    }
+
+    /// Searches for assets based on the provided criteria.
+    ///
+    /// # Arguments
+    ///
+    /// * `criteria` - The search criteria.
+    /// * `page` - The pagination parameters.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<AssetSummaryDto>)` if the assets were found successfully.
+    /// * `Err(sqlx::Error)` if the assets could not be found.
+    async fn search_assets(
+        &self,
+        criteria: crate::core::models::SearchCriteria,
+        page: PageParams,
+    ) -> AppResult<Vec<AssetSummaryDto>> {
+        use crate::infra::database::search_builder::build_search_where_clause;
+
+        let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
+            r#"
+            SELECT DISTINCT
+                a.id, a.name, a.state, a.format_type, a.family, a.created_at, a.folder_id
+            FROM v2_assets a
+            LEFT JOIN v2_asset_metadata_envelope m ON a.id = m.asset_id
+            WHERE 1=1 AND
+            "#,
+        );
+
+        build_search_where_clause(&criteria.root_group, &mut query_builder);
+
+        // Ordering as per project standard
+        query_builder.push(" ORDER BY a.created_at DESC, a.name ASC ");
+
+        // Pagination
+        query_builder.push(" LIMIT ");
+        query_builder.push_bind(page.limit() as i64);
+        query_builder.push(" OFFSET ");
+        query_builder.push_bind(page.offset() as i64);
+
+        let rows = query_builder
+            .build_query_as::<AssetSummaryDb>()
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows.into_iter().map(AssetSummaryDto::from).collect())
     }
 }
 

@@ -81,3 +81,27 @@ pub async fn list_folders(
 pub async fn list_tags(service: State<'_, AssetQueryService>) -> Result<Vec<Tag>, String> {
     service.list_tags().await.map_err(|e| e.to_string())
 }
+
+/// RPC Command to perform an advanced search.
+///
+/// # Arguments
+///
+/// * `service` - The search query handler.
+/// * `criteria` - The advanced search criteria.
+/// * `page` - The pagination parameters.
+///
+/// # Returns
+///
+/// * `Ok(Vec<AssetSummaryDto>)` if the assets were found successfully.
+/// * `Err(String)` if the search fails.
+#[tauri::command]
+pub async fn search_assets(
+    service: State<'_, crate::feature::search::SearchQueryHandler>,
+    criteria: crate::core::models::SearchCriteria,
+    page: PageParams,
+) -> Result<Vec<AssetSummaryDto>, String> {
+    service
+        .search(criteria, page)
+        .await
+        .map_err(|e| e.to_string())
+}

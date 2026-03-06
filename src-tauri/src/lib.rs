@@ -96,9 +96,14 @@ pub fn run() {
                 handle.manage(asset_query_handler.clone()
                     as Arc<dyn crate::core::repository::AssetQueryHandler>);
 
-                let asset_query_service =
-                    crate::feature::assets::queries::AssetQueryService::new(asset_query_handler);
+                let asset_query_service = crate::feature::assets::queries::AssetQueryService::new(
+                    asset_query_handler.clone(),
+                );
                 handle.manage(asset_query_service);
+
+                let search_query_handler =
+                    crate::feature::search::SearchQueryHandler::new(asset_query_handler);
+                handle.manage(search_query_handler);
 
                 // Initialize Asset Ledger (Real SQLx Adapter)
                 let asset_ledger =
@@ -248,6 +253,7 @@ pub fn run() {
             delivery::tauri::asset_queries::get_asset,
             delivery::tauri::asset_queries::list_folders,
             delivery::tauri::asset_queries::list_tags,
+            delivery::tauri::asset_queries::search_assets,
             delivery::tauri::asset_ledger::create_folder,
             delivery::tauri::asset_ledger::set_asset_folder,
             delivery::tauri::asset_ledger::update_asset_tags
