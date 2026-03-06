@@ -31,6 +31,14 @@ pub struct UpdateTagsPayload {
     pub tags_to_remove: Vec<String>,
 }
 
+/// Payload for updating asset core identity (e.g., after a rename).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateAssetPayload {
+    pub asset_id: Option<String>,
+    pub old_path: Option<PathBuf>,
+    pub new_path: PathBuf,
+}
+
 /// Centralized Enum representing all mutation intentions (Commands) for the Asset Ledger.
 ///
 /// Under CQRS, this represents the "Write" intent. The Ledger is responsible for
@@ -39,13 +47,18 @@ pub struct UpdateTagsPayload {
 pub enum LedgerCommand {
     /// Register a new asset in the system.
     CreateAsset(CreateAssetPayload),
+    /// Register multiple assets in a single atomic transaction.
+    BatchCreate(Vec<CreateAssetPayload>),
     /// Atomic update of asset tags.
     UpdateTags(UpdateTagsPayload),
+    /// Update asset metadata (e.g., after a move/rename).
+    UpdateAsset(UpdateAssetPayload),
     /// Mark an asset as stale (needs re-probing).
     MarkAsStale { asset_id: String },
     /// Formally delete an asset from the system.
     DeleteAsset {
-        asset_id: String,
+        asset_id: Option<String>,
+        path: Option<PathBuf>,
         /// If true, also attempts to delete the physical file.
         physical_delete: bool,
     },

@@ -97,6 +97,15 @@ pub fn run() {
                     asset_query_handler as Arc<dyn crate::core::repository::AssetQueryHandler>,
                 );
 
+                // Initialize Asset Ledger (Real SQLx Adapter)
+                let asset_ledger =
+                    Arc::new(crate::infra::database::ledger::SqliteAssetLedger::new(
+                        v2_db_manager.pool().clone(),
+                        event_bus.clone(),
+                    ));
+                handle.manage(asset_ledger.clone()
+                    as Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>);
+
                 match Db::new(db_path).await {
                     Ok(db) => {
                         let db_arc = std::sync::Arc::new(db);
@@ -144,6 +153,7 @@ pub fn run() {
                                     &db_arc,
                                     watcher_registry.clone(),
                                     lifecycle_for_setup.clone(),
+                                    asset_ledger.clone(),
                                 );
                                 let root_path = std::path::PathBuf::from(path);
                                 indexer.start_scan(root_path).await;

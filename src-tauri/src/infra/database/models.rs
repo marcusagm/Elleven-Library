@@ -58,3 +58,39 @@ pub struct AssetOperationLogDb {
     pub error_note: Option<String>,
     pub created_at: DateTime<Utc>,
 }
+
+/// Converts an AssetDb to an Asset.
+///
+/// # Arguments
+///
+/// * `row` - The AssetDb to convert.
+///
+/// # Returns
+///
+/// An Asset.
+impl From<AssetDb> for crate::core::models::Asset {
+    /// Converts an AssetDb to an Asset.
+    ///
+    /// # Arguments
+    ///
+    /// * `row` - The AssetDb to convert.
+    ///
+    /// # Returns
+    ///
+    /// An Asset.
+    fn from(row: AssetDb) -> Self {
+        use crate::core::models::asset::AssetState;
+        use std::str::FromStr;
+        Self {
+            id: row.id,
+            name: row.name,
+            path: std::path::PathBuf::from(row.path),
+            state: AssetState::from_str(&row.state).unwrap_or(AssetState::Unknown),
+            format_type: row.format_type,
+            family: row.family,
+            file_size: row.file_size as u64,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }
+    }
+}

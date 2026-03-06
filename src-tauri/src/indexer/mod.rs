@@ -4,6 +4,7 @@ pub use types::*;
 pub mod scan;
 pub mod watcher;
 
+use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::db::Db;
 use crate::lifecycle::LifecycleRegistry;
 use std::sync::Arc;
@@ -19,16 +20,19 @@ pub struct Indexer {
     registry: Arc<tokio::sync::Mutex<WatcherRegistry>>,
     /// Application lifecycle registry for tracking spawned tasks.
     lifecycle: Arc<LifecycleRegistry>,
+    /// Asset Ledger for transactional writes.
+    ledger: Arc<dyn TransactionalAssetLedger>,
 }
 
 impl Indexer {
     /// Create a new Indexer with the given application handle, database, watcher registry,
-    /// and lifecycle registry.
+    /// lifecycle registry, and asset ledger.
     pub fn new(
         app_handle: AppHandle,
         db: &Db,
         registry: Arc<tokio::sync::Mutex<WatcherRegistry>>,
         lifecycle: Arc<LifecycleRegistry>,
+        ledger: Arc<dyn TransactionalAssetLedger>,
     ) -> Self {
         Self {
             app_handle,
@@ -37,6 +41,7 @@ impl Indexer {
             }),
             registry,
             lifecycle,
+            ledger,
         }
     }
 
@@ -57,6 +62,7 @@ impl Indexer {
             self.db.clone(),
             self.registry.clone(),
             self.lifecycle.clone(),
+            self.ledger.clone(),
             root_path,
         )
         .await;

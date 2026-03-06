@@ -78,11 +78,16 @@ pub async fn add_location(
         .try_state::<Arc<LifecycleRegistry>>()
         .ok_or_else(|| AppError::Internal("Lifecycle not initialized".to_string()))?;
 
+    let ledger = app
+        .try_state::<Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>>()
+        .ok_or_else(|| AppError::Internal("Asset Ledger not initialized".to_string()))?;
+
     let indexer = Indexer::new(
         app.clone(),
         db.inner(),
         registry.inner().clone(),
         lifecycle.inner().clone(),
+        ledger.inner().clone(),
     );
     tokio::spawn(async move {
         indexer.start_scan(root).await;
@@ -141,11 +146,16 @@ pub async fn remove_location(
         .try_state::<Arc<LifecycleRegistry>>()
         .ok_or_else(|| AppError::Internal("Lifecycle not initialized".to_string()))?;
 
+    let ledger = app
+        .try_state::<Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>>()
+        .ok_or_else(|| AppError::Internal("Asset Ledger not initialized".to_string()))?;
+
     let indexer = Indexer::new(
         app.clone(),
         db.inner(),
         registry.inner().clone(),
         lifecycle.inner().clone(),
+        ledger.inner().clone(),
     );
     indexer.stop_watcher(&location_path).await;
 

@@ -1,4 +1,7 @@
 use super::types::{AddedItemContext, BatchChangePayload, RemovedItemContext, WatcherRegistry};
+use crate::core::ledger::command::{CreateAssetPayload, LedgerCommand, UpdateAssetPayload};
+use crate::core::ledger::port::TransactionalAssetLedger;
+use crate::core::models::asset::AssetState;
 use crate::db::models::AssetMetadata;
 use crate::db::Db;
 use crate::indexer::metadata::get_asset_metadata;
@@ -47,6 +50,7 @@ pub fn start_watcher(
     app: AppHandle,
     db: Arc<Db>,
     registry: Arc<tokio::sync::Mutex<WatcherRegistry>>,
+    ledger: Arc<dyn TransactionalAssetLedger>,
     path: PathBuf,
     root_str: String,
 ) -> JoinHandle<()> {
@@ -123,7 +127,7 @@ pub fn start_watcher(
                     }
 
                     // PHASE 4: Persist
-                    let (res_added, res_removed, res_updated, refresh) = phase_persist(&app, &db, &mut buffer, &app_data_dir).await;
+                    let (res_added, res_removed, res_updated, refresh) = phase_persist(&app, &db, &ledger, &mut buffer, &app_data_dir).await;
 
                     // PHASE 5: Emit
                     if !res_added.is_empty() || !res_removed.is_empty() || !res_updated.is_empty() || refresh {
@@ -278,6 +282,7 @@ async fn phase_classify_heuristics(db: &Arc<Db>, buffer: &mut WatcherBuffer) {
 async fn phase_persist(
     app: &AppHandle,
     db: &Arc<Db>,
+    ledger: &Arc<dyn TransactionalAssetLedger>,
     buffer: &mut WatcherBuffer,
     app_data_dir: &Path,
 ) -> (
@@ -329,6 +334,18 @@ async fn phase_persist(
             if folder_id > 0 {
                 match db.rename_asset(&from, &to, &new_name, folder_id).await {
                     Ok(Some((meta, old_fid))) => {
+                        // V2 Ledger: Update
+                        if let Err(e) = ledger
+                            .execute(LedgerCommand::UpdateAsset(UpdateAssetPayload {
+                                asset_id: None,
+                                old_path: Some(PathBuf::from(&from)),
+                                new_path: PathBuf::from(&to),
+                            }))
+                            .await
+                        {
+                            error!("Failed to record asset rename in V2 Ledger: {}", e);
+                        }
+
                         res_updated.push(AddedItemContext {
                             metadata: meta,
                             folder_id,
@@ -365,20 +382,33 @@ async fn phase_persist(
             });
         }
 
+        let ledger_clone = ledger.clone();
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(2)).await;
 
             // Before deleting, check if it's a folder or an asset
             if let Ok(Some((_img_id, _fid, _tags))) = db_clone.get_asset_context(&path_clone).await
             {
-                if let Ok(Some((deleted_id, _, _))) = db_clone
+                // V2 Ledger: Delete
+                if let Err(e) = ledger_clone
+                    .execute(LedgerCommand::DeleteAsset {
+                        asset_id: None,
+                        path: Some(PathBuf::from(&path_clone)),
+                        physical_delete: false,
+                    })
+                    .await
+                {
+                    error!("Failed to record asset deletion in V2 Ledger: {}", e);
+                }
+
+                if let Ok(Some(deleted_id)) = db_clone
                     .delete_asset_by_path_returning_context(&path_clone)
                     .await
                 {
                     trace!("Finalized removal for: {}", path_clone);
                     let thumb = data_dir_clone
                         .join("thumbnails")
-                        .join(format!("{}.webp", deleted_id));
+                        .join(format!("{}.webp", deleted_id.0)); // deleted_id is (id, old_fid, tags)
                     let _ = std::fs::remove_file(thumb);
                 }
             } else if let Ok(Some(fid)) = db_clone.get_folder_by_path(&path_clone).await {
@@ -416,6 +446,7 @@ async fn phase_persist(
                 .unwrap_or_default(),
         );
         if let Ok(fid) = db.ensure_folder_hierarchy(&parent).await {
+            // Dual-write: Old DB
             match db.save_asset(fid, &meta).await {
                 Ok((id, old_fid, is_new)) => {
                     let mut meta_with_id = meta.clone();
@@ -427,9 +458,23 @@ async fn phase_persist(
                         old_folder_id: old_fid,
                     };
 
+                    // V2 Ledger: Add
                     if is_new {
+                        if let Err(e) = ledger
+                            .execute(LedgerCommand::CreateAsset(CreateAssetPayload {
+                                path: PathBuf::from(&meta.path),
+                                file_size: meta.size as u64,
+                                format_type: meta.format.clone(),
+                                family: meta.media_type.clone(),
+                                state_init: AssetState::Indexed,
+                            }))
+                            .await
+                        {
+                            error!("Failed to record asset add in V2 Ledger: {}", e);
+                        }
                         res_added.push(ctx);
                     } else {
+                        // TODO: LedgerCommand::UpdateAsset if needed
                         res_updated.push(ctx);
                     }
                 }

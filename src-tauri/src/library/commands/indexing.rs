@@ -3,6 +3,7 @@ use crate::db::Db;
 use crate::indexer::Indexer;
 use crate::lifecycle::LifecycleRegistry;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::Manager;
 
 /// Start indexing a directory.
@@ -26,11 +27,16 @@ pub async fn start_indexing(path: String, app: tauri::AppHandle) -> AppResult<()
         .try_state::<std::sync::Arc<LifecycleRegistry>>()
         .ok_or_else(|| AppError::Internal("Lifecycle not initialized".to_string()))?;
 
+    let ledger = app
+        .try_state::<Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>>()
+        .ok_or_else(|| AppError::Internal("Asset Ledger not initialized".to_string()))?;
+
     let indexer = Indexer::new(
         app.clone(),
         db.inner(),
         registry.inner().clone(),
         lifecycle.inner().clone(),
+        ledger.inner().clone(),
     );
 
     let root = PathBuf::from(path);

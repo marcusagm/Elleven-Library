@@ -1,5 +1,8 @@
 use super::types::{IndexedAsset, ProgressPayload, WatcherRegistry};
 use super::watcher::start_watcher;
+use crate::core::ledger::command::{CreateAssetPayload, LedgerCommand};
+use crate::core::ledger::port::TransactionalAssetLedger;
+use crate::core::models::asset::AssetState;
 use crate::db::models::AssetMetadata;
 use crate::db::Db;
 use crate::indexer::metadata::get_asset_metadata;
@@ -19,6 +22,7 @@ pub async fn run_scan(
     db: Arc<Db>,
     registry: Arc<tokio::sync::Mutex<WatcherRegistry>>,
     lifecycle: Arc<LifecycleRegistry>,
+    ledger: Arc<dyn TransactionalAssetLedger>,
     root_path: PathBuf,
 ) {
     // Normalize root path (absolute and resolve symlinks)
@@ -125,11 +129,13 @@ pub async fn run_scan(
         // 4. Spawn Worker to save assets
         let app_worker = app.clone();
         let db_worker = db.clone();
+        let ledger_worker = ledger.clone();
         let folder_map_worker = folder_map.clone();
 
         tokio::spawn(async move {
             let mut processed: usize = clean_count;
             let mut batch: Vec<(i64, AssetMetadata)> = Vec::new();
+            let mut ledger_batch: Vec<CreateAssetPayload> = Vec::new();
 
             // Initial progress for clean files
             if clean_count > 0 {
@@ -148,6 +154,15 @@ pub async fn run_scan(
 
                 if let Some(&folder_id) = folder_map_worker.get(&indexed.parent_dir) {
                     batch.push((folder_id, indexed.metadata.clone()));
+
+                    // Prepare V2 Ledger Payload
+                    ledger_batch.push(CreateAssetPayload {
+                        path: PathBuf::from(&indexed.metadata.path),
+                        file_size: indexed.metadata.size as u64,
+                        format_type: indexed.metadata.format.clone(),
+                        family: indexed.metadata.media_type.clone(),
+                        state_init: AssetState::Indexed,
+                    });
                 }
 
                 if processed.is_multiple_of(chunk_size) || processed == total_files {
@@ -160,11 +175,24 @@ pub async fn run_scan(
                         },
                     );
 
+                    // Dual-write: Old DB
                     if let Err(e) = db_worker
                         .save_assets_batch(std::mem::take(&mut batch))
                         .await
                     {
-                        tracing::error!("Failed to save assets batch: {}", e);
+                        tracing::error!("Failed to save assets batch (V1): {}", e);
+                    }
+
+                    // Dual-write: V2 Ledger
+                    if !ledger_batch.is_empty() {
+                        if let Err(e) = ledger_worker
+                            .execute(LedgerCommand::BatchCreate(std::mem::take(
+                                &mut ledger_batch,
+                            )))
+                            .await
+                        {
+                            tracing::error!("Failed to save assets batch (V2 Ledger): {}", e);
+                        }
                     }
                 }
             }
@@ -172,7 +200,15 @@ pub async fn run_scan(
             // Final save for remaining items in batch if the loop finished but batch isn't empty
             if !batch.is_empty() {
                 if let Err(e) = db_worker.save_assets_batch(batch).await {
-                    tracing::error!("Failed to save final assets batch: {}", e);
+                    tracing::error!("Failed to save final assets batch (V1): {}", e);
+                }
+            }
+            if !ledger_batch.is_empty() {
+                if let Err(e) = ledger_worker
+                    .execute(LedgerCommand::BatchCreate(ledger_batch))
+                    .await
+                {
+                    tracing::error!("Failed to save final assets batch (V2 Ledger): {}", e);
                 }
             }
 
@@ -199,7 +235,7 @@ pub async fn run_scan(
 
     // 6. Start File Watcher and register its handle for lifecycle tracking
     let watcher_task_name = format!("watcher:{}", root_str);
-    let watcher_handle = start_watcher(app, db, registry, root_for_watcher, root_str);
+    let watcher_handle = start_watcher(app, db, registry, ledger, root_for_watcher, root_str);
     let watcher_token = lifecycle.child_token();
     lifecycle.register(watcher_task_name, watcher_token, watcher_handle);
 }
