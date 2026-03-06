@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\",\n                format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\",\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\",\n                CAST(NULL AS INTEGER) as \"width: i32\",\n                CAST(NULL AS INTEGER) as \"height: i32\",\n                CAST(NULL AS REAL) as duration_secs,\n                CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\",\n                CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\"\n            FROM v2_assets\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "path!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "state!",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "format_type!",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "family!",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_size!",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "width: i32",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "height: i32",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "duration_secs",
+        "ordinal": 11,
+        "type_info": "Float"
+      },
+      {
+        "name": "technical_payload: serde_json::Value",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "semantic_payload: serde_json::Value",
+        "ordinal": 13,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "232806e57ffdc165f075e896c3b916b4698254bb97ce8e46f45d43f078dcd941"
+}
