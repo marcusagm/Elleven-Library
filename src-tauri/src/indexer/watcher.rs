@@ -467,6 +467,7 @@ async fn phase_persist(
                                 format_type: meta.format.clone(),
                                 family: meta.media_type.clone(),
                                 state_init: AssetState::Indexed,
+                                folder_id: None,
                             }))
                             .await
                         {

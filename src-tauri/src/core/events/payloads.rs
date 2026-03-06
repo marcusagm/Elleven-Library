@@ -26,6 +26,18 @@ pub enum DomainEvent {
         old_state: String,
         new_state: String,
     },
+    /// A new logical folder was created.
+    FolderCreated {
+        folder_id: String,
+        parent_id: Option<String>,
+        name: String,
+        path: String,
+    },
+    /// An asset was moved to a different logical folder.
+    AssetFolderChanged {
+        asset_id: String,
+        folder_id: Option<String>,
+    },
 
     // ├─ OS Watcher Originated
     /// The Watcher detected a new file in the filesystem.

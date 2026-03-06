@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                        DELETE FROM v2_asset_tags\n                        WHERE asset_id = ? AND tag_id IN (SELECT id FROM v2_tags WHERE name = ?)\n                        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "b8427cc64c612501c204da6bd169ad17485b8c33c240d4c87463b8d8b22fbb34"
+}

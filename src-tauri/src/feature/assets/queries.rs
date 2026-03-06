@@ -1,5 +1,5 @@
 use crate::core::error::AppResult;
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, PageParams};
+use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
 use crate::core::repository::AssetQueryHandler;
 use std::sync::Arc;
 
@@ -54,5 +54,29 @@ impl AssetQueryService {
     /// * `Err(AppResult<Asset>)` if the asset could not be found.
     pub async fn get_asset(&self, id: &str) -> AppResult<Option<Asset>> {
         self.repository.get_by_id(id).await
+    }
+
+    /// Lists folders under a parent.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent_id` - The ID of the parent folder.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Folder>)` if the folders were found successfully.
+    /// * `Err(AppResult<Folder>)` if the folders could not be found.
+    pub async fn list_folders(&self, parent_id: Option<String>) -> AppResult<Vec<Folder>> {
+        self.repository.list_folders(parent_id).await
+    }
+
+    /// Lists all tags.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Tag>)` if the tags were found successfully.
+    /// * `Err(AppResult<Tag>)` if the tags could not be found.
+    pub async fn list_tags(&self) -> AppResult<Vec<Tag>> {
+        self.repository.list_tags().await
     }
 }

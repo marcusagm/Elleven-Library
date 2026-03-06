@@ -27,24 +27,40 @@ pub struct AssetDb {
     pub created_at: Option<DateTime<Utc>>,
     /// File modification timestamp
     pub updated_at: Option<DateTime<Utc>>,
+    /// Parent folder ID
+    pub folder_id: Option<String>,
 
-    // Joined metadata (Optional)
+    /// Width of the asset
     pub width: Option<i32>,
+    /// Height of the asset
     pub height: Option<i32>,
+    /// Duration of the asset in seconds
     pub duration_secs: Option<f64>,
+    /// Dominant colors of the asset
+    pub dominant_colors: Option<serde_json::Value>,
+    /// Technical payload of the asset
     pub technical_payload: Option<serde_json::Value>,
+    /// Semantic payload of the asset
     pub semantic_payload: Option<serde_json::Value>,
 }
 
 /// Lightweight database projection for asset listings.
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct AssetSummaryDb {
+    /// Unique identifier (UUID/ULID)
     pub id: String,
+    /// Display name of the asset
     pub name: String,
+    /// Current state in the lifecycle machine
     pub state: String,
+    /// Detected format (e.g. image/png)
     pub format_type: String,
+    /// Media family (e.g. IMAGE, VIDEO)
     pub family: String,
+    /// Timestamp of when the asset was created
     pub created_at: Option<DateTime<Utc>>,
+    /// ID of the parent folder
+    pub folder_id: Option<String>,
 }
 
 /// Dynamic metadata envelope for specific format capabilities.
@@ -54,12 +70,19 @@ pub struct AssetSummaryDb {
 
 /// Struct that represents the metadata of an asset in the database.
 pub struct AssetMetadataEnvelopeDb {
+    /// Unique identifier (UUID/ULID)
     pub asset_id: String,
+    /// Width of the asset
     pub width: Option<i32>,
+    /// Height of the asset
     pub height: Option<i32>,
+    /// Duration of the asset in seconds
     pub duration_secs: Option<f64>,
+    /// Dominant colors of the asset
     pub dominant_colors: Option<serde_json::Value>,
+    /// Technical payload of the asset
     pub technical_payload: Option<serde_json::Value>,
+    /// Semantic payload of the asset
     pub semantic_payload: Option<serde_json::Value>,
 }
 
@@ -116,11 +139,13 @@ impl From<AssetDb> for crate::core::models::Asset {
             file_size: row.file_size as u64,
             created_at: row.created_at,
             updated_at: row.updated_at,
+            folder_id: row.folder_id,
             width: row.width,
             height: row.height,
             duration_secs: row.duration_secs,
             technical_payload: row.technical_payload,
             semantic_payload: row.semantic_payload,
+            dominant_colors: row.dominant_colors,
         }
     }
 }
@@ -154,6 +179,75 @@ impl From<AssetSummaryDb> for crate::core::models::AssetSummaryDto {
             format_type: row.format_type,
             family: row.family,
             created_at: row.created_at,
+            folder_id: row.folder_id,
+        }
+    }
+}
+
+/// Database model for folders.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct FolderDb {
+    /// Unique identifier (UUID/ULID)
+    pub id: String,
+    /// ID of the parent folder
+    pub parent_id: Option<String>,
+    /// Name of the folder
+    pub name: String,
+    /// Path of the folder
+    pub path: String,
+    /// Timestamp of when the folder was created
+    pub created_at: DateTime<Utc>,
+    /// Timestamp of when the folder was last updated
+    pub updated_at: DateTime<Utc>,
+}
+
+impl From<FolderDb> for crate::core::models::asset::Folder {
+    /// Converts a FolderDb to a Folder.
+    ///
+    /// # Arguments
+    ///
+    /// * `row` - The FolderDb to convert.
+    ///
+    /// # Returns
+    ///
+    /// A Folder.
+    fn from(row: FolderDb) -> Self {
+        Self {
+            id: row.id,
+            parent_id: row.parent_id,
+            name: row.name,
+            path: std::path::PathBuf::from(row.path),
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }
+    }
+}
+
+/// Database model for tags.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct TagDb {
+    pub id: String,
+    pub name: String,
+    pub color: Option<String>,
+    pub parent_id: Option<String>,
+}
+
+/// Converts a TagDb to a Tag.
+///
+/// # Arguments
+///
+/// * `row` - The TagDb to convert.
+///
+/// # Returns
+///
+/// A Tag.
+impl From<TagDb> for crate::core::models::asset::Tag {
+    fn from(row: TagDb) -> Self {
+        Self {
+            id: row.id,
+            name: row.name,
+            color: row.color,
+            parent_id: row.parent_id,
         }
     }
 }

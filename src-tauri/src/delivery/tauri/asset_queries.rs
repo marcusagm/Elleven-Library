@@ -1,4 +1,4 @@
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, PageParams};
+use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
 use crate::feature::assets::queries::AssetQueryService;
 use tauri::State;
 
@@ -15,7 +15,7 @@ use tauri::State;
 /// * `Ok(Vec<AssetSummaryDto>)` if the assets were found successfully.
 /// * `Err(String)` if the assets could not be found.
 #[tauri::command]
-pub async fn get_assets_v2(
+pub async fn get_assets(
     service: State<'_, AssetQueryService>,
     filter: AssetFilter,
     page: PageParams,
@@ -38,9 +38,46 @@ pub async fn get_assets_v2(
 /// * `Ok(Option<Asset>)` if the asset was found successfully.
 /// * `Err(String)` if the asset could not be found.
 #[tauri::command]
-pub async fn get_asset_v2(
+pub async fn get_asset(
     service: State<'_, AssetQueryService>,
     id: String,
 ) -> Result<Option<Asset>, String> {
     service.get_asset(&id).await.map_err(|e| e.to_string())
+}
+
+/// RPC Command to list folders under a parent.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+/// * `parent_id` - The ID of the parent folder.
+///
+/// # Returns
+///
+/// * `Ok(Vec<Folder>)` if the folders were found successfully.
+/// * `Err(String)` if the folders could not be found.
+#[tauri::command]
+pub async fn list_folders(
+    service: State<'_, AssetQueryService>,
+    parent_id: Option<String>,
+) -> Result<Vec<Folder>, String> {
+    service
+        .list_folders(parent_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// RPC Command to list all tags.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+///
+/// # Returns
+///
+/// * `Ok(Vec<Tag>)` if the tags were found successfully.
+/// * `Err(String)` if the tags could not be found.
+#[tauri::command]
+pub async fn list_tags(service: State<'_, AssetQueryService>) -> Result<Vec<Tag>, String> {
+    service.list_tags().await.map_err(|e| e.to_string())
 }

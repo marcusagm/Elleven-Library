@@ -76,6 +76,8 @@ impl TransactionalAssetLedger for MockAssetLedger {
                     duration_secs: None,
                     technical_payload: None,
                     semantic_payload: None,
+                    dominant_colors: None,
+                    folder_id: payload.folder_id.clone(),
                 };
 
                 // Store in memory
@@ -172,6 +174,7 @@ mod tests {
             format_type: "image/jpeg".to_string(),
             family: "IMAGE".to_string(),
             state_init: AssetState::Discovered,
+            folder_id: None,
         };
 
         let result = ledger.execute(LedgerCommand::CreateAsset(payload)).await;

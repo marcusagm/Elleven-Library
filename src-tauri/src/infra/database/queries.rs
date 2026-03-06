@@ -1,5 +1,5 @@
 use crate::core::error::AppResult;
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, PageParams};
+use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
 use crate::core::repository::AssetQueryHandler;
 use crate::infra::database::models::{AssetDb, AssetSummaryDb};
 use async_trait::async_trait;
@@ -49,9 +49,11 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 updated_at as "updated_at: DateTime<Utc>",
                 CAST(NULL AS INTEGER) as "width: i32",
                 CAST(NULL AS INTEGER) as "height: i32",
-                CAST(NULL AS REAL) as duration_secs,
+                CAST(NULL AS REAL) as "duration_secs: f64",
                 CAST(NULL AS TEXT) as "technical_payload: serde_json::Value",
-                CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value"
+                CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value",
+                CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value",
+                folder_id as "folder_id?"
             FROM v2_assets
             "#
         )
@@ -80,9 +82,11 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!",
                 a.created_at as "created_at: DateTime<Utc>",
                 a.updated_at as "updated_at: DateTime<Utc>",
-                m.width as "width: i32", m.height as "height: i32", m.duration_secs,
+                m.width as "width: i32", m.height as "height: i32", m.duration_secs as "duration_secs: f64",
                 m.technical_payload as "technical_payload: serde_json::Value",
-                m.semantic_payload as "semantic_payload: serde_json::Value"
+                m.semantic_payload as "semantic_payload: serde_json::Value",
+                m.dominant_colors as "dominant_colors: serde_json::Value",
+                a.folder_id as "folder_id?"
             FROM v2_assets a
             LEFT JOIN v2_asset_metadata_envelope m ON a.id = m.asset_id
             WHERE a.id = ?
@@ -112,7 +116,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
         page: PageParams,
     ) -> AppResult<Vec<AssetSummaryDto>> {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "SELECT id, name, state, format_type, family, created_at FROM v2_assets WHERE 1=1 ",
+            "SELECT id, name, state, format_type, family, created_at, folder_id FROM v2_assets WHERE 1=1 ",
         );
 
         if let Some(family) = filter.family {
@@ -133,6 +137,26 @@ impl AssetQueryHandler for SqliteAssetQueries {
             query_builder.push(")");
         }
 
+        if let Some(folder_id) = filter.folder_id {
+            query_builder.push(" AND folder_id = ");
+            query_builder.push_bind(folder_id);
+        }
+
+        if let Some(tags) = filter.tags {
+            if !tags.is_empty() {
+                query_builder.push(" AND id IN (SELECT asset_id FROM v2_asset_tags WHERE tag_id IN (SELECT id FROM v2_tags WHERE name IN (");
+                let mut first = true;
+                for tag in tags {
+                    if !first {
+                        query_builder.push(", ");
+                    }
+                    query_builder.push_bind(tag);
+                    first = false;
+                }
+                query_builder.push(")))");
+            }
+        }
+
         // Ordering as per Sprint decision: created_at DESC, name ASC
         query_builder.push(" ORDER BY created_at DESC, name ASC ");
 
@@ -148,6 +172,53 @@ impl AssetQueryHandler for SqliteAssetQueries {
             .await?;
 
         Ok(rows.into_iter().map(AssetSummaryDto::from).collect())
+    }
+
+    async fn list_folders(
+        &self,
+        parent_id: Option<String>,
+    ) -> AppResult<Vec<crate::core::models::Folder>> {
+        let rows = if let Some(parent) = parent_id {
+            sqlx::query_as!(
+                crate::infra::database::models::FolderDb,
+                r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM v2_folders WHERE parent_id = ?"#,
+                parent
+            )
+            .fetch_all(&self.pool)
+            .await?
+        } else {
+            sqlx::query_as!(
+                crate::infra::database::models::FolderDb,
+                r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM v2_folders WHERE parent_id IS NULL"#
+            )
+            .fetch_all(&self.pool)
+            .await?
+        };
+
+        Ok(rows.into_iter().map(Folder::from).collect())
+    }
+
+    async fn get_folder_by_id(&self, id: &str) -> AppResult<Option<crate::core::models::Folder>> {
+        let row = sqlx::query_as!(
+            crate::infra::database::models::FolderDb,
+            r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM v2_folders WHERE id = ?"#,
+            id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(Folder::from))
+    }
+
+    async fn list_tags(&self) -> AppResult<Vec<crate::core::models::Tag>> {
+        let rows = sqlx::query_as!(
+            crate::infra::database::models::TagDb,
+            r#"SELECT id as "id!", name as "name!", color, parent_id FROM v2_tags ORDER BY name ASC"#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(Tag::from).collect())
     }
 }
 

@@ -117,29 +117,36 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 let state_str = payload.state_init.to_string();
                 let file_size_i64 = payload.file_size as i64;
 
-                // 1. Insert Asset
+                let path_ref = &path_str;
+                let state_ref = &state_str;
+                let format_type_ref = &payload.format_type;
+                let family_ref = &payload.family;
+                let folder_id_ref = payload.folder_id.as_deref();
+                let asset_id_final_ref = &asset_id;
+
                 let row = sqlx::query!(
                     r#"
-                    INSERT INTO v2_assets (id, name, path, state, format_type, family, file_size, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO v2_assets (id, name, path, state, format_type, family, file_size, created_at, updated_at, folder_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(path) DO UPDATE SET
                         updated_at = excluded.updated_at
                     RETURNING id as "id!"
                     "#,
-                    asset_id,
+                    asset_id_final_ref,
                     name,
-                    path_str,
-                    state_str,
-                    payload.format_type,
-                    payload.family,
+                    path_ref,
+                    state_ref,
+                    format_type_ref,
+                    family_ref,
                     file_size_i64,
                     now,
-                    now
+                    now,
+                    folder_id_ref
                 )
                 .fetch_one(&mut *tx)
                 .await?;
 
-                let asset_id = row.id;
+                let asset_id_final = row.id;
 
                 // 2. Audit Log
                 let op_payload = serde_json::to_value(payload).map_err(|e| {
@@ -149,7 +156,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 Self::log_operation(
                     &mut tx,
                     "CREATE_ASSET",
-                    &asset_id,
+                    &asset_id_final,
                     op_payload,
                     "COMPLETED",
                     None,
@@ -157,7 +164,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 .await?;
 
                 let asset = Asset {
-                    id: asset_id,
+                    id: asset_id_final,
                     name: name.to_string(),
                     path: payload.path.clone(),
                     state: payload.state_init,
@@ -171,6 +178,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     duration_secs: None,
                     technical_payload: None,
                     semantic_payload: None,
+                    dominant_colors: None,
+                    folder_id: payload.folder_id.clone(),
                 };
 
                 Ok(asset)
@@ -192,24 +201,32 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     let path_str = payload.path.to_string_lossy().to_string();
                     let file_size_i64 = payload.file_size as i64;
 
+                    let path_ref = &path_str;
+                    let state_ref = &state_str;
+                    let format_type_ref = &payload.format_type;
+                    let family_ref = &payload.family;
+                    let folder_id_ref = payload.folder_id.as_deref();
+                    let asset_id_ref = &asset_id;
+
                     // 1. Insert Asset (Upsert)
                     let row = sqlx::query!(
                         r#"
-                        INSERT INTO v2_assets (id, name, path, state, format_type, family, file_size, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO v2_assets (id, name, path, state, format_type, family, file_size, created_at, updated_at, folder_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(path) DO UPDATE SET
                             updated_at = excluded.updated_at
                         RETURNING id as "id!"
                         "#,
-                        asset_id,
+                        asset_id_ref,
                         name,
-                        path_str,
-                        state_str,
-                        payload.format_type,
-                        payload.family,
+                        path_ref,
+                        state_ref,
+                        format_type_ref,
+                        family_ref,
                         file_size_i64,
                         now,
-                        now
+                        now,
+                        folder_id_ref
                     )
                     .fetch_one(&mut *tx)
                     .await?;
@@ -232,7 +249,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     .await?;
 
                     created_assets.push(Asset {
-                        id: asset_id,
+                        id: asset_id.clone(),
                         name: name.to_string(),
                         path: payload.path.clone(),
                         state: payload.state_init,
@@ -246,6 +263,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         duration_secs: None,
                         technical_payload: None,
                         semantic_payload: None,
+                        dominant_colors: None,
+                        folder_id: payload.folder_id.clone(),
                     });
                 }
 
@@ -258,11 +277,54 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     .ok_or_else(|| AppError::ValidationFailed("Empty batch".to_string()))
             }
             LedgerCommand::UpdateTags(payload) => {
-                // Sprint 2.2 focused on Asset/Log atomic mutation.
-                // Tag implementation will be fleshed out in future sprints,
-                // but we must audit the request and update updated_at.
-
                 let now = Utc::now();
+
+                // 1. Ensure Tags Exist (Idempotent)
+                for tag_name in payload
+                    .tags_to_add
+                    .iter()
+                    .chain(payload.tags_to_remove.iter())
+                {
+                    let tag_id = Uuid::new_v4().to_string();
+                    sqlx::query!(
+                        "INSERT INTO v2_tags (id, name) VALUES (?, ?) ON CONFLICT(name) DO NOTHING",
+                        tag_id,
+                        tag_name
+                    )
+                    .execute(&mut *tx)
+                    .await?;
+                }
+
+                // 2. Add Tags
+                for tag_name in &payload.tags_to_add {
+                    sqlx::query!(
+                        r#"
+                        INSERT INTO v2_asset_tags (asset_id, tag_id)
+                        SELECT ?, id FROM v2_tags WHERE name = ?
+                        ON CONFLICT DO NOTHING
+                        "#,
+                        payload.asset_id,
+                        tag_name
+                    )
+                    .execute(&mut *tx)
+                    .await?;
+                }
+
+                // 3. Remove Tags
+                for tag_name in &payload.tags_to_remove {
+                    sqlx::query!(
+                        r#"
+                        DELETE FROM v2_asset_tags
+                        WHERE asset_id = ? AND tag_id IN (SELECT id FROM v2_tags WHERE name = ?)
+                        "#,
+                        payload.asset_id,
+                        tag_name
+                    )
+                    .execute(&mut *tx)
+                    .await?;
+                }
+
+                // 4. Update Asset timestamp
                 sqlx::query!(
                     "UPDATE v2_assets SET updated_at = ? WHERE id = ?",
                     now,
@@ -271,6 +333,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 .execute(&mut *tx)
                 .await?;
 
+                // 5. Audit Log
                 let op_payload = serde_json::to_value(payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
@@ -285,15 +348,16 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 )
                 .await?;
 
-                // Fetch asset to return (Simulation for now as tag logic is pending)
+                // 6. Fetch asset to return
+                let asset_id_ref = &payload.asset_id;
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value" FROM v2_assets WHERE id = ?"#,
-                    payload.asset_id
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id as "folder_id?", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value" FROM v2_assets WHERE id = ?"#,
+                    asset_id_ref
                 )
                 .fetch_optional(&mut *tx)
                 .await?
-                .ok_or_else(|| AppError::NotFound(payload.asset_id.clone()))?;
+                .ok_or_else(|| AppError::NotFound(payload.asset_id.to_string()))?;
 
                 Ok(row.into())
             }
@@ -360,12 +424,12 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 // 4. Fetch and return
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value" FROM v2_assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
                 .await?
-                .ok_or_else(|| AppError::NotFound(asset_id))?;
+                .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
 
                 Ok(row.into())
             }
@@ -394,12 +458,12 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value" FROM v2_assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
                 .await?
-                .ok_or_else(|| AppError::NotFound(asset_id.clone()))?;
+                .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
 
                 Ok(row.into())
             }
@@ -462,7 +526,103 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     duration_secs: None,
                     technical_payload: None,
                     semantic_payload: None,
+                    dominant_colors: None,
+                    folder_id: None,
                 })
+            }
+            LedgerCommand::CreateFolder(payload) => {
+                let folder_id = Uuid::new_v4().to_string();
+                let now = Utc::now();
+                let path_str = payload.path.to_string_lossy().to_string();
+
+                sqlx::query!(
+                    r#"
+                    INSERT INTO v2_folders (id, parent_id, name, path, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    "#,
+                    folder_id,
+                    payload.parent_id,
+                    payload.name,
+                    path_str,
+                    now,
+                    now
+                )
+                .execute(&mut *tx)
+                .await?;
+
+                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                    AppError::Internal(format!("Failed to serialize payload: {}", e))
+                })?;
+
+                Self::log_operation(
+                    &mut tx,
+                    "CREATE_FOLDER",
+                    &folder_id,
+                    op_payload,
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                // Return a dummy asset or update trait to handle Folder return
+                // Since TransactionalAssetLedger::execute returns AppResult<Asset>,
+                // we return a "Virtual Asset" representing the folder or just a tombstone.
+                // Re-evaluating: In a proper CQRS, CreateFolder might return a different type,
+                // but let's stick to the trait and return a dummy for now.
+                Ok(Asset {
+                    id: folder_id,
+                    name: payload.name.clone(),
+                    path: payload.path.clone(),
+                    state: AssetState::Idle,
+                    format_type: "folder".to_string(),
+                    family: "FOLDER".to_string(),
+                    file_size: 0,
+                    created_at: Some(now),
+                    updated_at: Some(now),
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_colors: None,
+                    folder_id: payload.parent_id.clone(),
+                })
+            }
+            LedgerCommand::SetAssetFolder {
+                asset_id,
+                folder_id,
+            } => {
+                let now = Utc::now();
+
+                sqlx::query!(
+                    "UPDATE v2_assets SET folder_id = ?, updated_at = ? WHERE id = ?",
+                    folder_id,
+                    now,
+                    asset_id
+                )
+                .execute(&mut *tx)
+                .await?;
+
+                Self::log_operation(
+                    &mut tx,
+                    "SET_ASSET_FOLDER",
+                    &asset_id,
+                    serde_json::json!({ "folder_id": folder_id }),
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                let row = sqlx::query_as!(
+                    crate::infra::database::models::AssetDb,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value" FROM v2_assets WHERE id = ?"#,
+                    asset_id
+                )
+                .fetch_optional(&mut *tx)
+                .await?
+                .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
+
+                Ok(row.into())
             }
         };
 
@@ -493,6 +653,20 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     LedgerCommand::DeleteAsset { .. } => {
                         self.event_bus.publish(DomainEvent::FsPathDeleted {
                             path: asset.id.clone(), // Using asset.id (the resolved ID)
+                        })?;
+                    }
+                    LedgerCommand::CreateFolder(_) => {
+                        self.event_bus.publish(DomainEvent::FolderCreated {
+                            folder_id: asset.id.clone(),
+                            parent_id: asset.folder_id.clone(),
+                            name: asset.name.clone(),
+                            path: asset.path.to_string_lossy().to_string(),
+                        })?;
+                    }
+                    LedgerCommand::SetAssetFolder { .. } => {
+                        self.event_bus.publish(DomainEvent::AssetFolderChanged {
+                            asset_id: asset.id.clone(),
+                            folder_id: asset.folder_id.clone(),
                         })?;
                     }
                     _ => {}

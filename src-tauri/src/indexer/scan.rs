@@ -162,6 +162,7 @@ pub async fn run_scan(
                         format_type: indexed.metadata.format.clone(),
                         family: indexed.metadata.media_type.clone(),
                         state_init: AssetState::Indexed,
+                        folder_id: None, // TODO: Map V1 folder_id to V2 if needed
                     });
                 }
 

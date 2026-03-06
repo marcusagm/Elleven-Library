@@ -60,6 +60,40 @@ pub struct Asset {
     pub technical_payload: Option<serde_json::Value>,
     /// Semantic payload of the asset
     pub semantic_payload: Option<serde_json::Value>,
+    /// Dominant colors of the asset
+    pub dominant_colors: Option<serde_json::Value>,
+    /// Reference to the parent folder in recursive tree
+    pub folder_id: Option<String>,
+}
+
+/// A Domain entity representing a recursive folder.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Folder {
+    /// Unique identifier (UUID/ULID)
+    pub id: String,
+    /// ID of the parent folder
+    pub parent_id: Option<String>,
+    /// Name of the folder
+    pub name: String,
+    /// Path of the folder
+    pub path: PathBuf,
+    /// Timestamp of when the folder was created
+    pub created_at: DateTime<Utc>,
+    /// Timestamp of when the folder was last updated
+    pub updated_at: DateTime<Utc>,
+}
+
+/// A Domain entity representing a taxonomy Tag.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Tag {
+    /// Unique identifier (UUID/ULID)
+    pub id: String,
+    /// Name of the tag
+    pub name: String,
+    /// Color of the tag
+    pub color: Option<String>,
+    /// ID of the parent tag
+    pub parent_id: Option<String>,
 }
 
 /// A lightweight projection of an asset for grid listings and infinite scroll.
@@ -78,6 +112,8 @@ pub struct AssetSummaryDto {
     pub family: String,
     /// Timestamp of when the asset was created
     pub created_at: Option<DateTime<Utc>>,
+    /// Parent folder ID
+    pub folder_id: Option<String>,
 }
 
 /// Parameters for filtering asset listings.
@@ -89,6 +125,10 @@ pub struct AssetFilter {
     pub state: Option<AssetState>,
     /// Search query
     pub search_query: Option<String>,
+    /// Filter by folder
+    pub folder_id: Option<String>,
+    /// Filter by tags (any of)
+    pub tags: Option<Vec<String>>,
 }
 
 /// Pagination parameters for the read model.

@@ -18,6 +18,8 @@ pub struct CreateAssetPayload {
     pub family: String,
     /// Initial state for the lifecycle machine (usually Discovered or Indexed).
     pub state_init: AssetState,
+    /// Optional parent folder ID.
+    pub folder_id: Option<String>,
 }
 
 /// Payload for updating tags associated with an asset.
@@ -37,6 +39,14 @@ pub struct UpdateAssetPayload {
     pub asset_id: Option<String>,
     pub old_path: Option<PathBuf>,
     pub new_path: PathBuf,
+}
+
+/// Payload for creating a new folder.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateFolderPayload {
+    pub parent_id: Option<String>,
+    pub name: String,
+    pub path: PathBuf,
 }
 
 /// Centralized Enum representing all mutation intentions (Commands) for the Asset Ledger.
@@ -61,5 +71,12 @@ pub enum LedgerCommand {
         path: Option<PathBuf>,
         /// If true, also attempts to delete the physical file.
         physical_delete: bool,
+    },
+    /// Create a new logical folder.
+    CreateFolder(CreateFolderPayload),
+    /// Assign an asset to a folder.
+    SetAssetFolder {
+        asset_id: String,
+        folder_id: Option<String>,
     },
 }

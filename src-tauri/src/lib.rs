@@ -244,8 +244,13 @@ pub fn run() {
             library::commands::colors::reextract_asset_colors,
             library::commands::colors::reextract_all_colors,
             // Asset Commands V2
-            delivery::tauri::asset_queries::get_assets_v2,
-            delivery::tauri::asset_queries::get_asset_v2
+            delivery::tauri::asset_queries::get_assets,
+            delivery::tauri::asset_queries::get_asset,
+            delivery::tauri::asset_queries::list_folders,
+            delivery::tauri::asset_queries::list_tags,
+            delivery::tauri::asset_ledger::create_folder,
+            delivery::tauri::asset_ledger::set_asset_folder,
+            delivery::tauri::asset_ledger::update_asset_tags
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

@@ -1,5 +1,5 @@
 use crate::core::error::AppResult;
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, PageParams};
+use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
 use async_trait::async_trait;
 
 /// Port for read-only asset operations.
@@ -46,4 +46,36 @@ pub trait AssetQueryHandler: Send + Sync {
         filter: AssetFilter,
         page: PageParams,
     ) -> AppResult<Vec<AssetSummaryDto>>;
+
+    /// Lists folders under a parent.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent_id` - The ID of the parent folder.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Folder>)` if the folders were found successfully.
+    /// * `Err(AppResult<Folder>)` if the folders could not be found.
+    async fn list_folders(&self, parent_id: Option<String>) -> AppResult<Vec<Folder>>;
+
+    /// Gets a folder by ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the folder to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Option<Folder>)` if the folder was found successfully.
+    /// * `Err(AppResult<Folder>)` if the folder could not be found.
+    async fn get_folder_by_id(&self, id: &str) -> AppResult<Option<Folder>>;
+
+    /// Lists all unique tags.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Tag>)` if the tags were found successfully.
+    /// * `Err(AppResult<Tag>)` if the tags could not be found.
+    async fn list_tags(&self) -> AppResult<Vec<Tag>>;
 }
