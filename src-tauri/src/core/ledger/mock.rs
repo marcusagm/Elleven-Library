@@ -71,6 +71,11 @@ impl TransactionalAssetLedger for MockAssetLedger {
                     file_size: payload.file_size,
                     created_at: Some(now),
                     updated_at: Some(now),
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
                 };
 
                 // Store in memory

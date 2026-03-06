@@ -118,10 +118,13 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 let file_size_i64 = payload.file_size as i64;
 
                 // 1. Insert Asset
-                sqlx::query!(
+                let row = sqlx::query!(
                     r#"
                     INSERT INTO v2_assets (id, name, path, state, format_type, family, file_size, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(path) DO UPDATE SET
+                        updated_at = excluded.updated_at
+                    RETURNING id as "id!"
                     "#,
                     asset_id,
                     name,
@@ -133,8 +136,10 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     now
                 )
-                .execute(&mut *tx)
+                .fetch_one(&mut *tx)
                 .await?;
+
+                let asset_id = row.id;
 
                 // 2. Audit Log
                 let op_payload = serde_json::to_value(payload).map_err(|e| {
@@ -161,6 +166,11 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     file_size: payload.file_size,
                     created_at: Some(now),
                     updated_at: Some(now),
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
                 };
 
                 Ok(asset)
@@ -182,11 +192,14 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     let path_str = payload.path.to_string_lossy().to_string();
                     let file_size_i64 = payload.file_size as i64;
 
-                    // 1. Insert Asset
-                    sqlx::query!(
+                    // 1. Insert Asset (Upsert)
+                    let row = sqlx::query!(
                         r#"
                         INSERT INTO v2_assets (id, name, path, state, format_type, family, file_size, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(path) DO UPDATE SET
+                            updated_at = excluded.updated_at
+                        RETURNING id as "id!"
                         "#,
                         asset_id,
                         name,
@@ -198,8 +211,10 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         now,
                         now
                     )
-                    .execute(&mut *tx)
+                    .fetch_one(&mut *tx)
                     .await?;
+
+                    let asset_id = row.id;
 
                     // 2. Audit Log
                     let op_payload = serde_json::to_value(payload).map_err(|e| {
@@ -226,6 +241,11 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         file_size: payload.file_size,
                         created_at: Some(now),
                         updated_at: Some(now),
+                        width: None,
+                        height: None,
+                        duration_secs: None,
+                        technical_payload: None,
+                        semantic_payload: None,
                     });
                 }
 
@@ -268,7 +288,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 // Fetch asset to return (Simulation for now as tag logic is pending)
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value" FROM v2_assets WHERE id = ?"#,
                     payload.asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -340,7 +360,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 // 4. Fetch and return
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value" FROM v2_assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -374,7 +394,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value" FROM v2_assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -437,6 +457,11 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     file_size: 0,
                     created_at: None,
                     updated_at: None,
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
                 })
             }
         };

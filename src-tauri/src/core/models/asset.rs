@@ -31,13 +31,95 @@ pub enum AssetState {
 /// This is decoupled from the database storage format.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Asset {
+    /// Unique identifier (UUID/ULID)
     pub id: String,
+    /// Name of the asset
     pub name: String,
+    /// Path to the asset
     pub path: PathBuf,
+    /// State of the asset
     pub state: AssetState,
+    /// Format type of the asset
     pub format_type: String,
+    /// Family of the asset
     pub family: String,
+    /// File size of the asset
     pub file_size: u64,
+    /// Timestamp of when the asset was created
     pub created_at: Option<DateTime<Utc>>,
+    /// Timestamp of when the asset was updated
     pub updated_at: Option<DateTime<Utc>>,
+
+    /// Width of the asset
+    pub width: Option<i32>,
+    /// Height of the asset
+    pub height: Option<i32>,
+    /// Duration of the asset in seconds
+    pub duration_secs: Option<f64>,
+    /// Technical payload of the asset
+    pub technical_payload: Option<serde_json::Value>,
+    /// Semantic payload of the asset
+    pub semantic_payload: Option<serde_json::Value>,
+}
+
+/// A lightweight projection of an asset for grid listings and infinite scroll.
+/// Focuses on visual performance and minimal bridge overhead.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssetSummaryDto {
+    /// Unique identifier (UUID/ULID)
+    pub id: String,
+    /// Name of the asset
+    pub name: String,
+    /// State of the asset
+    pub state: AssetState,
+    /// Format type of the asset
+    pub format_type: String,
+    /// Family of the asset
+    pub family: String,
+    /// Timestamp of when the asset was created
+    pub created_at: Option<DateTime<Utc>>,
+}
+
+/// Parameters for filtering asset listings.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AssetFilter {
+    /// Family of the asset
+    pub family: Option<String>,
+    /// State of the asset
+    pub state: Option<AssetState>,
+    /// Search query
+    pub search_query: Option<String>,
+}
+
+/// Pagination parameters for the read model.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct PageParams {
+    /// Page number
+    pub page: u32,
+    /// Page size
+    pub page_size: u32,
+}
+
+/// Default implementation for PageParams.
+impl Default for PageParams {
+    /// Returns the default PageParams.
+    fn default() -> Self {
+        Self {
+            page: 1,
+            page_size: 50,
+        }
+    }
+}
+
+/// Implementation of the PageParams struct.
+impl PageParams {
+    /// Returns the OFFSET for SQL queries.
+    pub fn offset(&self) -> u32 {
+        (self.page.saturating_sub(1)) * self.page_size
+    }
+
+    /// Returns the LIMIT for SQL queries.
+    pub fn limit(&self) -> u32 {
+        self.page_size
+    }
 }

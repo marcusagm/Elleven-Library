@@ -27,6 +27,24 @@ pub struct AssetDb {
     pub created_at: Option<DateTime<Utc>>,
     /// File modification timestamp
     pub updated_at: Option<DateTime<Utc>>,
+
+    // Joined metadata (Optional)
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+    pub duration_secs: Option<f64>,
+    pub technical_payload: Option<serde_json::Value>,
+    pub semantic_payload: Option<serde_json::Value>,
+}
+
+/// Lightweight database projection for asset listings.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct AssetSummaryDb {
+    pub id: String,
+    pub name: String,
+    pub state: String,
+    pub format_type: String,
+    pub family: String,
+    pub created_at: Option<DateTime<Utc>>,
 }
 
 /// Dynamic metadata envelope for specific format capabilities.
@@ -50,12 +68,19 @@ pub struct AssetMetadataEnvelopeDb {
 
 /// Struct that represents a record of an operation performed on an asset in the database.
 pub struct AssetOperationLogDb {
+    /// Unique identifier (UUID/ULID)
     pub id: String,
+    /// Type of operation (e.g. "tag", "move", "delete")
     pub operation_type: String,
+    /// ID of the asset involved
     pub asset_id: String,
+    /// Payload containing operation details
     pub payload: serde_json::Value,
+    /// Status of the operation (e.g. "pending", "completed", "failed")
     pub status: String,
+    /// Error note if the operation failed
     pub error_note: Option<String>,
+    /// Timestamp of when the operation was created
     pub created_at: DateTime<Utc>,
 }
 
@@ -91,6 +116,44 @@ impl From<AssetDb> for crate::core::models::Asset {
             file_size: row.file_size as u64,
             created_at: row.created_at,
             updated_at: row.updated_at,
+            width: row.width,
+            height: row.height,
+            duration_secs: row.duration_secs,
+            technical_payload: row.technical_payload,
+            semantic_payload: row.semantic_payload,
+        }
+    }
+}
+
+/// Converts an AssetSummaryDb to an AssetSummaryDto.
+///
+/// # Arguments
+///
+/// * `row` - The AssetSummaryDb to convert.
+///
+/// # Returns
+///
+/// An AssetSummaryDto.
+impl From<AssetSummaryDb> for crate::core::models::AssetSummaryDto {
+    /// Converts an AssetSummaryDb to an AssetSummaryDto.
+    ///
+    /// # Arguments
+    ///
+    /// * `row` - The AssetSummaryDb to convert.
+    ///
+    /// # Returns
+    ///
+    /// An AssetSummaryDto.
+    fn from(row: AssetSummaryDb) -> Self {
+        use crate::core::models::asset::AssetState;
+        use std::str::FromStr;
+        Self {
+            id: row.id,
+            name: row.name,
+            state: AssetState::from_str(&row.state).unwrap_or(AssetState::Unknown),
+            format_type: row.format_type,
+            family: row.family,
+            created_at: row.created_at,
         }
     }
 }

@@ -93,9 +93,12 @@ pub fn run() {
                     Arc::new(crate::infra::database::queries::SqliteAssetQueries::new(
                         v2_db_manager.pool().clone(),
                     ));
-                handle.manage(
-                    asset_query_handler as Arc<dyn crate::core::repository::AssetQueryHandler>,
-                );
+                handle.manage(asset_query_handler.clone()
+                    as Arc<dyn crate::core::repository::AssetQueryHandler>);
+
+                let asset_query_service =
+                    crate::feature::assets::queries::AssetQueryService::new(asset_query_handler);
+                handle.manage(asset_query_service);
 
                 // Initialize Asset Ledger (Real SQLx Adapter)
                 let asset_ledger =
@@ -239,7 +242,10 @@ pub fn run() {
             // Color Analysis
             library::commands::colors::get_asset_colors,
             library::commands::colors::reextract_asset_colors,
-            library::commands::colors::reextract_all_colors
+            library::commands::colors::reextract_all_colors,
+            // Asset Commands V2
+            delivery::tauri::asset_queries::get_assets_v2,
+            delivery::tauri::asset_queries::get_asset_v2
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

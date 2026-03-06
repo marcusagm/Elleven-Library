@@ -1,1 +1,1 @@
-// Tauri delivery commands will be registered here.
+pub mod asset_queries;
