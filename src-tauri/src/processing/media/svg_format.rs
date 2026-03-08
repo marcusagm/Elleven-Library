@@ -91,34 +91,28 @@ impl ThumbnailCapability for SvgFormatProvider {
                 crate::core::error::AppError::Generic(format!("SVG parse error: {}", e))
             })?;
 
-            let size = tree.size();
-            let width = size.width();
-            let height = size.height();
+            let target_size = tree.size().scale_to(usvg::Size::from_wh(size_hint as f32, size_hint as f32).unwrap());
 
-            if width == 0.0 || height == 0.0 {
-                return Err(crate::core::error::AppError::Generic(
-                    "Invalid SVG dimensions".to_string(),
-                ));
-            }
+            let transform = tiny_skia::Transform::from_scale(
+                target_size.width() / tree.size().width(),
+                target_size.height() / tree.size().height(),
+            );
 
-            let scale = if width > height {
-                size_hint as f32 / width
-            } else {
-                size_hint as f32 / height
-            };
-
-            let transform = tiny_skia::Transform::from_scale(scale, scale);
-            let target_width = (width * scale).ceil() as u32;
-            let target_height = (height * scale).ceil() as u32;
-
-            let mut pixmap = Pixmap::new(target_width, target_height).ok_or_else(|| {
+            let mut pixmap = Pixmap::new(target_size.width() as u32, target_size.height() as u32)
+                .ok_or_else(|| {
                 crate::core::error::AppError::Generic("Failed to create pixmap buffer".to_string())
             })?;
 
             resvg::render(&tree, transform, &mut pixmap.as_mut());
 
-            let encoder = webp::Encoder::from_rgba(pixmap.data(), target_width, target_height);
-            let webp_data = encoder.encode(80.0);
+            // Use the shared helper from raw_format if possible, or encode directly
+            // Since we already have a pixmap, let's just encode it to WebP
+            let encoder = webp::Encoder::from_rgba(
+                pixmap.data(),
+                target_size.width() as u32,
+                target_size.height() as u32,
+            );
+            let webp_data = encoder.encode(85.0); // Slightly higher quality for vectors
 
             Ok(webp_data.to_vec())
         })

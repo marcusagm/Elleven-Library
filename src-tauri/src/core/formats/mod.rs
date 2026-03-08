@@ -11,12 +11,15 @@ pub mod registry;
 pub use registry::FormatRegistry;
 
 use crate::processing::media::affinity_format::AffinityFormatProvider;
+use crate::processing::media::archive_format::ArchiveFormatProvider;
 use crate::processing::media::audio_format::AudioFormatProvider;
 use crate::processing::media::fallback_format::GenericByteFallbackProvider;
+use crate::processing::media::font_format::FontFormatProvider;
 use crate::processing::media::icon_format::IconFormatProvider;
 use crate::processing::media::image_format::ImageFormatProvider;
 use crate::processing::media::modern_image_format::ModernImageFormatProvider;
 use crate::processing::media::pdf_format::PdfFormatProvider;
+use crate::processing::media::raw_format::RawFormatProvider;
 use crate::processing::media::svg_format::SvgFormatProvider;
 use crate::processing::media::video_format::VideoFormatProvider;
 use std::sync::Arc;
@@ -32,9 +35,12 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(VideoFormatProvider::new()));
     registry.register(Arc::new(AudioFormatProvider::new()));
     registry.register(Arc::new(ModernImageFormatProvider::new()));
+    registry.register(Arc::new(RawFormatProvider::new()));
+    registry.register(Arc::new(ArchiveFormatProvider::new()));
     registry.register(Arc::new(AffinityFormatProvider::new()));
     registry.register(Arc::new(SvgFormatProvider::new()));
     registry.register(Arc::new(PdfFormatProvider::new()));
+    registry.register(Arc::new(FontFormatProvider::new()));
 
     // Register generic fallbacks
     registry.register(Arc::new(IconFormatProvider::new()));
