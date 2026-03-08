@@ -55,14 +55,48 @@
 
 ---
 
+## 🚀 Migração para Paridade Total (Extensões Adicionais)
+
+Para atingir 100% de paridade com a arquitetura legada (`definitions.rs`), implementamos uma série de provedores especializados para formatos de nicho e design profissional.
+
+### Detalhes técnicos dos novos provedores:
+1.  **Adobe Photoshop (`PsdFormatProvider`):** Suporte a `.psd` e `.psb` usando a crate `psd`. Extrai nomes de camadas e gera thumbnails via buffer RGBA convertido para WebP.
+2.  **Adobe Illustrator (`AiFormatProvider`):** Identificação via magic-bytes (PDF e PostScript). 
+3.  **Aseprite (`AsepriteFormatProvider`):** Suporte completo a animações `.ase`, extraindo metadados de frames/camadas e gerando thumbnails do primeiro frame.
+4.  **Projetos ZIP (`ProjectZipFormatProvider`):** Handler unificado para Krita (`.kra`), Sketch, MediBang (`.mdp`), Figma e Rebelle. Localiza e extrai previews internos sem descompactar o arquivo no disco.
+5.  **Modelos 3D (`Model3dFormatProvider`):** Suporte a Blender, OBJ, GLTF, FBX, etc. Inclui scanner binário para thumbnails internos de arquivos `.blend`.
+6.  **CAD & USD (`CadFormatProvider`, `UsdFormatProvider`):** Implementação de identificação para STEP, IGES e Universal Scene Description.
+7.  **Mind Maps (`XMindFormatProvider`):** Extrator dedicado para prévias de arquivos XMind.
+8.  **Design Binário (`BinaryDesignFormatProvider`):** Suporte para GIMP (`.xcf`), SAI e Corel Painter.
+
+### Expansão de Extensões nos Provedores Core:
+- **Vídeo:** Adicionado suporte a 25+ extensões (FFmpeg), incluindo HEVC, H.264 raw, MJPEG, DivX, etc.
+- **Áudio:** Mapeamento de 20+ extensões para o player nativo ou HLS (Opus, AC3, DTS, MIDI, etc).
+- **Imagens:** Inclusão de HDR, DDS e formatos Netpbm (ppm, pgm, etc).
+
+---
+
 ## 📂 Arquivos Modificados
-- `src-tauri/Cargo.toml` (Adição de `ttf-parser`, `rsraw`, etc)
+- `src-tauri/Cargo.toml` (Adição de `ttf-parser`, `rsraw`, `psd`, `asefile`, etc)
 - `src-tauri/src/processing/media/mod.rs` (Exportação de novos módulos)
-- `src-tauri/src/core/formats/mod.rs` (Registro dos provedores no FormatRegistry)
-- `src-tauri/src/processing/media/raw_format.rs` (Implementação RAW Tiered) [NEW]
-- `src-tauri/src/processing/media/archive_format.rs` (Provedor ZIP/CLIP) [NEW]
-- `src-tauri/src/processing/media/font_format.rs` (Provedor Fontes) [NEW]
+- `src-tauri/src/core/formats/mod.rs` (Registro de todos os novos provedores no `FormatRegistry`)
+- `src-tauri/src/processing/media/raw_format.rs` [NEW]
+- `src-tauri/src/processing/media/archive_format.rs` [NEW]
+- `src-tauri/src/processing/media/font_format.rs` [NEW]
 - `src-tauri/src/processing/media/svg_format.rs` (Refactor de escalonamento SVG)
+- `src-tauri/src/processing/media/psd_format.rs` [NEW]
+- `src-tauri/src/processing/media/ai_format.rs` [NEW]
+- `src-tauri/src/processing/media/aseprite_format.rs` [NEW]
+- `src-tauri/src/processing/media/exr_format.rs` [NEW]
+- `src-tauri/src/processing/media/project_zip_formats.rs` [NEW]
+- `src-tauri/src/processing/media/binary_design_formats.rs` [NEW]
+- `src-tauri/src/processing/media/model3d_format.rs` [NEW]
+- `src-tauri/src/processing/media/usd_format.rs` [NEW]
+- `src-tauri/src/processing/media/cad_format.rs` [NEW]
+- `src-tauri/src/processing/media/xmind_format.rs` [NEW]
+- `src-tauri/src/processing/media/image_format.rs` (Expansão de extensões)
+- `src-tauri/src/processing/media/audio_format.rs` (Expansão de extensões)
+- `src-tauri/src/processing/media/video_format.rs` (Expansão de extensões)
 
 ---
 

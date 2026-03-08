@@ -22,6 +22,19 @@ use crate::processing::media::pdf_format::PdfFormatProvider;
 use crate::processing::media::raw_format::RawFormatProvider;
 use crate::processing::media::svg_format::SvgFormatProvider;
 use crate::processing::media::video_format::VideoFormatProvider;
+
+// Final Parity Imports
+use crate::processing::media::ai_format::AiFormatProvider;
+use crate::processing::media::aseprite_format::AsepriteFormatProvider;
+use crate::processing::media::binary_design_formats::BinaryDesignFormatProvider;
+use crate::processing::media::cad_format::CadFormatProvider;
+use crate::processing::media::exr_format::ExrFormatProvider;
+use crate::processing::media::model3d_format::Model3dFormatProvider;
+use crate::processing::media::project_zip_formats::ProjectZipFormatProvider;
+use crate::processing::media::psd_format::PsdFormatProvider;
+use crate::processing::media::usd_format::UsdFormatProvider;
+use crate::processing::media::xmind_format::XMindFormatProvider;
+
 use std::sync::Arc;
 
 /// Factory function to build the main FormatRegistry.
@@ -41,6 +54,18 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(SvgFormatProvider::new()));
     registry.register(Arc::new(PdfFormatProvider::new()));
     registry.register(Arc::new(FontFormatProvider::new()));
+
+    // Register Final Parity Providers
+    registry.register(Arc::new(PsdFormatProvider::new()));
+    registry.register(Arc::new(AiFormatProvider::new()));
+    registry.register(Arc::new(AsepriteFormatProvider::new()));
+    registry.register(Arc::new(ExrFormatProvider::new()));
+    registry.register(Arc::new(ProjectZipFormatProvider::new()));
+    registry.register(Arc::new(BinaryDesignFormatProvider::new()));
+    registry.register(Arc::new(Model3dFormatProvider::new()));
+    registry.register(Arc::new(UsdFormatProvider::new()));
+    registry.register(Arc::new(CadFormatProvider::new()));
+    registry.register(Arc::new(XMindFormatProvider::new()));
 
     // Register generic fallbacks
     registry.register(Arc::new(IconFormatProvider::new()));

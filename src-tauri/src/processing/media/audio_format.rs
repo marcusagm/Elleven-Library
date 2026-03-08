@@ -103,7 +103,10 @@ impl AudioFormatProvider {
 }
 
 /// Extensões de arquivos suportadas para áudio.
-pub const AUDIO_EXTENSIONS: &[&str] = &["mp3", "wav", "flac", "ogg", "m4a", "aac", "aiff", "wma"];
+pub const AUDIO_EXTENSIONS: &[&str] = &[
+    "mp3", "wav", "flac", "ogg", "m4a", "aac", "aiff", "wma", "mka", "ra", "mp2", "oga", "opus",
+    "m4r", "spx", "ac3", "dts", "amr", "ape", "wv", "caf", "aax", "mid", "midi", "bwf",
+];
 
 /// Implementação do provedor de formato de áudio.
 #[async_trait]

@@ -38,7 +38,8 @@ impl FormatProvider for ImageFormatProvider {
     /// A `Vec<&'static str>` containing the supported extensions.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec![
-            "jpg", "jpeg", "jpe", "jfif", "png", "webp", "gif", "bmp", "ico", "tiff", "tif",
+            "jpg", "jpeg", "jpe", "jfif", "png", "webp", "gif", "bmp", "ico", "tiff", "tif", "hdr",
+            "dds", "pbm", "pgm", "ppm", "pnm", "pam",
         ]
     }
 
@@ -61,11 +62,19 @@ impl FormatProvider for ImageFormatProvider {
     }
 
     /// Trait for metadata extraction.
+    ///
+    /// # Returns
+    ///
+    /// `Option<&dyn MetadataCapability>` - Provedor de metadados.
     fn metadata(&self) -> Option<&dyn MetadataCapability> {
         Some(self)
     }
 
     /// Trait for thumbnail generation.
+    ///
+    /// # Returns
+    ///
+    /// `Option<&dyn ThumbnailCapability>` - Provedor de thumbnail.
     fn thumbnail(&self) -> Option<&dyn ThumbnailCapability> {
         Some(self)
     }

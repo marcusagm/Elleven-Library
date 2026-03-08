@@ -30,7 +30,8 @@ impl VideoFormatProvider {
 /// Extensões de arquivos suportadas para vídeo.
 pub const VIDEO_EXTENSIONS: &[&str] = &[
     "mp4", "mkv", "mov", "webm", "avi", "wmv", "flv", "m4v", "mxf", "asf", "ts", "mts", "m2ts",
-    "vob", "3gp", "rm", "ogv", "swf", "mpg", "mpeg", "m2v",
+    "vob", "3gp", "rm", "ogv", "swf", "mpg", "mpeg", "m2v", "divx", "h264", "h265", "hevc", "y4m",
+    "mjpeg", "mjpg",
 ];
 
 /// Implementação do provedor de formato de vídeo.

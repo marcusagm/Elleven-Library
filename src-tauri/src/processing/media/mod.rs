@@ -12,3 +12,15 @@ pub mod pdf_format;
 pub mod raw_format;
 pub mod svg_format;
 pub mod video_format;
+
+// Final Parity Migration Modules
+pub mod ai_format;
+pub mod aseprite_format;
+pub mod binary_design_formats;
+pub mod cad_format;
+pub mod exr_format;
+pub mod model3d_format;
+pub mod project_zip_formats;
+pub mod psd_format;
+pub mod usd_format;
+pub mod xmind_format;
