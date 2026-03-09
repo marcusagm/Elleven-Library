@@ -180,6 +180,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     semantic_payload: None,
                     dominant_colors: None,
                     folder_id: payload.folder_id.clone(),
+                    thumbnail_path: None,
                 };
 
                 Ok(asset)
@@ -265,6 +266,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         semantic_payload: None,
                         dominant_colors: None,
                         folder_id: payload.folder_id.clone(),
+                        thumbnail_path: None,
                     });
                 }
 
@@ -352,7 +354,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 let asset_id_ref = &payload.asset_id;
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id as "folder_id?", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id as "folder_id?", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
                     asset_id_ref
                 )
                 .fetch_optional(&mut *tx)
@@ -424,7 +426,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 // 4. Fetch and return
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -458,7 +460,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -528,6 +530,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     semantic_payload: None,
                     dominant_colors: None,
                     folder_id: None,
+                    thumbnail_path: None,
                 })
             }
             LedgerCommand::CreateFolder(payload) => {
@@ -586,6 +589,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     semantic_payload: None,
                     dominant_colors: None,
                     folder_id: payload.parent_id.clone(),
+                    thumbnail_path: None,
                 })
             }
             LedgerCommand::SetAssetFolder {
@@ -615,7 +619,48 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
+                    asset_id
+                )
+                .fetch_optional(&mut *tx)
+                .await?
+                .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
+
+                Ok(row.into())
+            }
+            LedgerCommand::UpdateThumbnail {
+                asset_id,
+                thumbnail_path,
+            } => {
+                let now = Utc::now();
+                let state_thumb = AssetState::Thumbnailed.to_string();
+
+                // 1. Update Asset
+                sqlx::query!(
+                    "UPDATE v2_assets SET thumbnail_path = ?, state = ?, updated_at = ? WHERE id = ?",
+                    thumbnail_path,
+                    state_thumb,
+                    now,
+                    asset_id
+                )
+                .execute(&mut *tx)
+                .await?;
+
+                // 2. Audit Log
+                Self::log_operation(
+                    &mut tx,
+                    "UPDATE_THUMBNAIL",
+                    asset_id,
+                    serde_json::json!({ "path": thumbnail_path }),
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                // 3. Fetch and return
+                let row = sqlx::query_as!(
+                    crate::infra::database::models::AssetDb,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -667,6 +712,12 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         self.event_bus.publish(DomainEvent::AssetFolderChanged {
                             asset_id: asset.id.clone(),
                             folder_id: asset.folder_id.clone(),
+                        })?;
+                    }
+                    LedgerCommand::UpdateThumbnail { thumbnail_path, .. } => {
+                        self.event_bus.publish(DomainEvent::ThumbnailGenerated {
+                            asset_id: asset.id.clone(),
+                            path: thumbnail_path.clone(),
                         })?;
                     }
                     _ => {}

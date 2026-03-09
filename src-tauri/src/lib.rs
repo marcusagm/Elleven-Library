@@ -44,6 +44,7 @@ fn get_streaming_token(token_state: tauri::State<'_, StreamingSessionToken>) -> 
     token_state.0.clone()
 }
 
+/// Runs the application.
 #[allow(clippy::expect_used)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -108,7 +109,7 @@ pub fn run() {
                 handle.manage(asset_query_service);
 
                 let search_query_handler =
-                    crate::feature::search::SearchQueryHandler::new(asset_query_handler);
+                    crate::feature::search::SearchQueryHandler::new(asset_query_handler.clone());
                 handle.manage(search_query_handler);
 
                 // Initialize Asset Ledger (Real SQLx Adapter)
@@ -133,29 +134,50 @@ pub fn run() {
                             std::sync::Mutex::new(app_config.clone()),
                         );
 
-                        let priority_state = std::sync::Arc::new(
+                        let priority_state_v1 = std::sync::Arc::new(
                             crate::thumbnails::priority::ThumbnailPriorityState::default(),
+                        );
+                        let priority_state_v2 = std::sync::Arc::new(
+                            crate::core::workflows::thumbnails::priority::ThumbnailPriorityState::default(),
                         );
 
                         handle.manage(db_arc.clone());
                         handle.manage(watcher_registry.clone());
                         handle.manage(config_state);
-                        handle.manage(priority_state.clone());
+                        handle.manage(priority_state_v1.clone());
+                        handle.manage(priority_state_v2.clone());
 
-                        // Start Thumbnail Worker with lifecycle token
+                        // Start V1 Thumbnail Worker with lifecycle token
                         let thumbnail_token = lifecycle_for_setup.child_token();
                         let worker = crate::thumbnails::worker::ThumbnailWorker::new(
                             db_arc.clone(),
-                            thumbnails_dir,
+                            thumbnails_dir.clone(),
                             handle.clone(),
                             app_config,
-                            priority_state,
+                            priority_state_v1,
                         );
                         let thumbnail_handle = worker.start(thumbnail_token.clone());
                         lifecycle_for_setup.register(
-                            "thumbnail_worker".to_string(),
+                            "thumbnail_worker_v1".to_string(),
                             thumbnail_token,
                             thumbnail_handle,
+                        );
+
+                        // Start V2 Thumbnail Worker (Hybrid Queue)
+                        let thumbnail_token_v2 = lifecycle_for_setup.child_token();
+                        let worker_v2 = crate::processing::workers::thumbnail_worker::ThumbnailWorker::new(
+                            format_registry.clone(),
+                            asset_ledger.clone(),
+                            asset_query_handler.clone(),
+                            priority_state_v2,
+                            thumbnails_dir,
+                            4, // Worker threads
+                        );
+                        let thumbnail_handle_v2 = worker_v2.start(thumbnail_token_v2.clone());
+                        lifecycle_for_setup.register(
+                            "thumbnail_worker_v2".to_string(),
+                            thumbnail_token_v2,
+                            thumbnail_handle_v2,
                         );
 
                         // Start Watchers for Existing Roots
@@ -262,7 +284,8 @@ pub fn run() {
             delivery::tauri::asset_queries::search_assets,
             delivery::tauri::asset_ledger::create_folder,
             delivery::tauri::asset_ledger::set_asset_folder,
-            delivery::tauri::asset_ledger::update_asset_tags
+            delivery::tauri::asset_ledger::update_asset_tags,
+            delivery::tauri::thumbnails::prioritize_thumbnails
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

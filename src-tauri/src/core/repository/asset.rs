@@ -95,4 +95,13 @@ pub trait AssetQueryHandler: Send + Sync {
         criteria: crate::core::models::SearchCriteria,
         page: PageParams,
     ) -> AppResult<Vec<AssetSummaryDto>>;
+
+    /// Retrieves a list of asset IDs that are missing thumbnails.
+    ///
+    /// # Arguments
+    /// * `limit` - Maximum number of IDs to retrieve.
+    async fn get_assets_needing_thumbnails(&self, limit: u32) -> AppResult<Vec<String>>;
+
+    /// Retrieves a single asset by its unique ID.
+    async fn get_asset_by_id(&self, id: &str) -> AppResult<Asset>;
 }

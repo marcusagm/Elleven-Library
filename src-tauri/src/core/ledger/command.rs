@@ -79,4 +79,9 @@ pub enum LedgerCommand {
         asset_id: String,
         folder_id: Option<String>,
     },
+    /// Update an asset's thumbnail path and state.
+    UpdateThumbnail {
+        asset_id: String,
+        thumbnail_path: String,
+    },
 }

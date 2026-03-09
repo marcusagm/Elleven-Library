@@ -29,6 +29,8 @@ pub struct AssetDb {
     pub updated_at: Option<DateTime<Utc>>,
     /// Parent folder ID
     pub folder_id: Option<String>,
+    /// Path to the generated thumbnail file
+    pub thumbnail_path: Option<String>,
 
     /// Width of the asset
     pub width: Option<i32>,
@@ -146,6 +148,7 @@ impl From<AssetDb> for crate::core::models::Asset {
             technical_payload: row.technical_payload,
             semantic_payload: row.semantic_payload,
             dominant_colors: row.dominant_colors,
+            thumbnail_path: row.thumbnail_path,
         }
     }
 }

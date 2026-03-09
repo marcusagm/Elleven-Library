@@ -53,7 +53,8 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 CAST(NULL AS TEXT) as "technical_payload: serde_json::Value",
                 CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value",
                 CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value",
-                folder_id as "folder_id?"
+                folder_id as "folder_id?",
+                thumbnail_path as "thumbnail_path?"
             FROM v2_assets
             "#
         )
@@ -86,7 +87,8 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 m.technical_payload as "technical_payload: serde_json::Value",
                 m.semantic_payload as "semantic_payload: serde_json::Value",
                 m.dominant_colors as "dominant_colors: serde_json::Value",
-                a.folder_id as "folder_id?"
+                a.folder_id as "folder_id?",
+                a.thumbnail_path as "thumbnail_path?"
             FROM v2_assets a
             LEFT JOIN v2_asset_metadata_envelope m ON a.id = m.asset_id
             WHERE a.id = ?
@@ -292,6 +294,66 @@ impl AssetQueryHandler for SqliteAssetQueries {
             .await?;
 
         Ok(rows.into_iter().map(AssetSummaryDto::from).collect())
+    }
+
+    /// Retrieves a list of asset IDs that are missing thumbnails.
+    ///
+    /// # Arguments
+    ///
+    /// * `limit` - The maximum number of asset IDs to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<String>)` if the asset IDs were found successfully.
+    /// * `Err(sqlx::Error)` if the asset IDs could not be found.
+    async fn get_assets_needing_thumbnails(&self, limit: u32) -> AppResult<Vec<String>> {
+        let limit_i64 = limit as i64;
+        let rows = sqlx::query!(
+            r#"SELECT id as "id!" FROM v2_assets WHERE thumbnail_path IS NULL LIMIT ?"#,
+            limit_i64
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| r.id).collect::<Vec<String>>())
+    }
+
+    /// Retrieves a single asset by its unique ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the asset to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Asset)` if the asset was found successfully.
+    /// * `Err(sqlx::Error)` if the asset could not be found.
+    async fn get_asset_by_id(&self, id: &str) -> AppResult<Asset> {
+        let row = sqlx::query_as!(
+            AssetDb,
+            r#"
+            SELECT
+                a.id as "id!", a.name as "name!", a.path as "path!", a.state as "state!",
+                a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!",
+                a.created_at as "created_at: DateTime<Utc>",
+                a.updated_at as "updated_at: DateTime<Utc>",
+                m.width as "width: i32", m.height as "height: i32", m.duration_secs as "duration_secs: f64",
+                m.technical_payload as "technical_payload: serde_json::Value",
+                m.semantic_payload as "semantic_payload: serde_json::Value",
+                m.dominant_colors as "dominant_colors: serde_json::Value",
+                a.folder_id as "folder_id?",
+                a.thumbnail_path as "thumbnail_path?"
+            FROM v2_assets a
+            LEFT JOIN v2_asset_metadata_envelope m ON a.id = m.asset_id
+            WHERE a.id = ?
+            "#,
+            id
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| crate::core::error::AppError::NotFound(id.to_string()))?;
+
+        Ok(row.into())
     }
 }
 

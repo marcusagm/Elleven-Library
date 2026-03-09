@@ -64,6 +64,8 @@ pub struct Asset {
     pub dominant_colors: Option<serde_json::Value>,
     /// Reference to the parent folder in recursive tree
     pub folder_id: Option<String>,
+    /// Path to the generated thumbnail file
+    pub thumbnail_path: Option<String>,
 }
 
 /// A Domain entity representing a recursive folder.
