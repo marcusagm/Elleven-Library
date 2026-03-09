@@ -44,6 +44,8 @@ pub enum DomainEvent {
     FsFileDiscovered { path: String, size_bytes: u64 },
     /// The Watcher detected the removal of a path in the filesystem.
     FsPathDeleted { path: String },
+    /// The Watcher detected a rename/move operation in the filesystem.
+    FsPathRenamed { from: String, to: String },
 
     // ├─ Workers/Jobs Originated (Heavy Extractor Lifecycle)
     /// An extraction (Thumbnail, Metadata, etc.) was completed successfully.

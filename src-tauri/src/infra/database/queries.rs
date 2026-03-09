@@ -355,6 +355,34 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         Ok(row.into())
     }
+
+    /// Retrieves a map of path -> (file_size, updated_at) for all assets under a root path.
+    ///
+    /// # Arguments
+    ///
+    /// * `root_path` - The root path to search for assets.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(HashMap<String, (i64, DateTime<Utc>)>)` if the assets were found successfully.
+    /// * `Err(sqlx::Error)` if the assets could not be found.
+    async fn get_all_files_comparison_data(
+        &self,
+        root_path: &str,
+    ) -> AppResult<std::collections::HashMap<String, (i64, DateTime<Utc>)>> {
+        let pattern = format!("{}%", root_path);
+        let rows = sqlx::query!(
+            r#"SELECT path as "path!", file_size as "file_size!", updated_at as "updated_at!: DateTime<Utc>" FROM v2_assets WHERE path LIKE ?"#,
+            pattern
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| (r.path, (r.file_size, r.updated_at)))
+            .collect())
+    }
 }
 
 /// Tests for the SqliteAssetQueries struct.

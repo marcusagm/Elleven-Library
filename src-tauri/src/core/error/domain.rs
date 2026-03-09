@@ -21,6 +21,10 @@ pub enum AppError {
     #[error("Tauri error: {0}")]
     Tauri(#[from] tauri::Error),
 
+    /// Error related to filesystem watchers.
+    #[error("Watcher error: {0}")]
+    Watcher(#[from] notify::Error),
+
     /// Error related to filesystem operations.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),

@@ -183,7 +183,21 @@ pub fn run() {
                         // Start Watchers for Existing Roots
                         if let Ok(roots) = db_arc.get_all_root_folders().await {
                             tracing::info!("Starting watchers for {} roots", roots.len());
+
+                            // Initialize V2 Indexer
+                            let v2_indexer = Arc::new(crate::feature::library::indexer::LibraryIndexer::new(
+                                asset_query_handler.clone(),
+                                asset_ledger.clone(),
+                            ));
+                            v2_indexer.clone().start_event_listener(event_bus.clone()).await;
+
+                            // Initialize V2 Watcher Service
+                            let v2_watcher = Arc::new(crate::processing::watcher::WatcherService::new(
+                                event_bus.clone(),
+                            ));
+
                             for (_id, path) in roots {
+                                // V1 Indexer/Watcher
                                 let indexer = Indexer::new(
                                     handle.clone(),
                                     &db_arc,
@@ -191,8 +205,13 @@ pub fn run() {
                                     lifecycle_for_setup.clone(),
                                     asset_ledger.clone(),
                                 );
-                                let root_path = std::path::PathBuf::from(path);
-                                indexer.start_scan(root_path).await;
+                                let root_path = std::path::PathBuf::from(&path);
+                                indexer.start_scan(root_path.clone()).await;
+
+                                // V2 Watcher (Parallel to V1 during transition)
+                                if let Err(e) = v2_watcher.watch(root_path).await {
+                                    tracing::error!("Failed to start V2 watcher for {}: {}", path, e);
+                                }
                             }
                         }
 

@@ -1,6 +1,8 @@
 use crate::core::error::AppResult;
 use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 
 /// Port for read-only asset operations.
 #[async_trait]
@@ -15,7 +17,7 @@ pub trait AssetQueryHandler: Send + Sync {
     /// # Returns
     ///
     /// * `Ok(Vec<Asset>)` if the assets were found successfully.
-    /// * `Err(AppResult<Asset>)` if the assets could not be found.
+    /// * `Err(AppError)` if the assets could not be found.
     async fn find_all(&self) -> AppResult<Vec<Asset>>;
 
     /// Retrieves a single asset by ID, including its full metadata join.
@@ -27,7 +29,7 @@ pub trait AssetQueryHandler: Send + Sync {
     /// # Returns
     ///
     /// * `Ok(Option<Asset>)` if the asset was found successfully.
-    /// * `Err(AppResult<Asset>)` if the asset could not be found.
+    /// * `Err(AppError)` if the asset could not be found.
     async fn get_by_id(&self, id: &str) -> AppResult<Option<Asset>>;
 
     /// Returns a paginated list of assets focused on performance.
@@ -40,7 +42,7 @@ pub trait AssetQueryHandler: Send + Sync {
     /// # Returns
     ///
     /// * `Ok(Vec<AssetSummaryDto>)` if the assets were found successfully.
-    /// * `Err(AppResult<AssetSummaryDto>)` if the assets could not be found.
+    /// * `Err(AppError)` if the assets could not be found.
     async fn list_paginated(
         &self,
         filter: AssetFilter,
@@ -56,7 +58,7 @@ pub trait AssetQueryHandler: Send + Sync {
     /// # Returns
     ///
     /// * `Ok(Vec<Folder>)` if the folders were found successfully.
-    /// * `Err(AppResult<Folder>)` if the folders could not be found.
+    /// * `Err(AppError)` if the folders could not be found.
     async fn list_folders(&self, parent_id: Option<String>) -> AppResult<Vec<Folder>>;
 
     /// Gets a folder by ID.
@@ -68,7 +70,7 @@ pub trait AssetQueryHandler: Send + Sync {
     /// # Returns
     ///
     /// * `Ok(Option<Folder>)` if the folder was found successfully.
-    /// * `Err(AppResult<Folder>)` if the folder could not be found.
+    /// * `Err(AppError)` if the folder could not be found.
     async fn get_folder_by_id(&self, id: &str) -> AppResult<Option<Folder>>;
 
     /// Lists all unique tags.
@@ -76,7 +78,7 @@ pub trait AssetQueryHandler: Send + Sync {
     /// # Returns
     ///
     /// * `Ok(Vec<Tag>)` if the tags were found successfully.
-    /// * `Err(AppResult<Tag>)` if the tags could not be found.
+    /// * `Err(AppError)` if the tags could not be found.
     async fn list_tags(&self) -> AppResult<Vec<Tag>>;
 
     /// Performs an advanced search using complex criteria.
@@ -89,7 +91,7 @@ pub trait AssetQueryHandler: Send + Sync {
     /// # Returns
     ///
     /// * `Ok(Vec<AssetSummaryDto>)` if the assets were found successfully.
-    /// * `Err(AppResult<AssetSummaryDto>)` if the search fails.
+    /// * `Err(AppError)` if the search fails.
     async fn search_assets(
         &self,
         criteria: crate::core::models::SearchCriteria,
@@ -104,4 +106,11 @@ pub trait AssetQueryHandler: Send + Sync {
 
     /// Retrieves a single asset by its unique ID.
     async fn get_asset_by_id(&self, id: &str) -> AppResult<Asset>;
+
+    /// Returns a map of path -> (file_size, updated_at) for all assets under a root path.
+    /// Used for differential scanning.
+    async fn get_all_files_comparison_data(
+        &self,
+        root_path: &str,
+    ) -> AppResult<HashMap<String, (i64, DateTime<Utc>)>>;
 }
