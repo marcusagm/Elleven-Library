@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\", format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\", created_at as \"created_at: DateTime<Utc>\", updated_at as \"updated_at: DateTime<Utc>\", folder_id as \"folder_id?\", CAST(NULL AS INTEGER) as \"width: i32\", CAST(NULL AS INTEGER) as \"height: i32\", CAST(NULL AS REAL) as \"duration_secs: f64\", CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"dominant_colors: serde_json::Value\" FROM v2_assets WHERE id = ?",
+  "query": "SELECT id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\", format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\", created_at as \"created_at: DateTime<Utc>\", updated_at as \"updated_at: DateTime<Utc>\", folder_id, CAST(NULL AS INTEGER) as \"width: i32\", CAST(NULL AS INTEGER) as \"height: i32\", CAST(NULL AS REAL) as \"duration_secs: f64\", CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"dominant_colors: serde_json::Value\", thumbnail_path as \"thumbnail_path?\" FROM v2_assets WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -49,7 +49,7 @@
         "type_info": "Datetime"
       },
       {
-        "name": "folder_id?",
+        "name": "folder_id",
         "ordinal": 9,
         "type_info": "Text"
       },
@@ -82,6 +82,11 @@
         "name": "dominant_colors: serde_json::Value",
         "ordinal": 15,
         "type_info": "Null"
+      },
+      {
+        "name": "thumbnail_path?",
+        "ordinal": 16,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -103,8 +108,9 @@
       null,
       null,
       null,
-      null
+      null,
+      true
     ]
   },
-  "hash": "bc8adc03152f58617c20144d5661de68f18d8e1ef7394c668363ee5c7bce6079"
+  "hash": "9d0c29e342a3a1b75d596e56e8a93358be941d3edd6fa03cff24205bef3c2632"
 }

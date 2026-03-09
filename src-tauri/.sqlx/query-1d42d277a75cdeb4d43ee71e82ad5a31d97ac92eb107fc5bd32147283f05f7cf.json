@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!\" FROM v2_assets WHERE thumbnail_path IS NULL LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "1d42d277a75cdeb4d43ee71e82ad5a31d97ac92eb107fc5bd32147283f05f7cf"
+}

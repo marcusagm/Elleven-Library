@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT\n                id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\",\n                format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\",\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\",\n                CAST(NULL AS INTEGER) as \"width: i32\",\n                CAST(NULL AS INTEGER) as \"height: i32\",\n                CAST(NULL AS REAL) as \"duration_secs: f64\",\n                CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\",\n                CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\",\n                CAST(NULL AS TEXT) as \"dominant_colors: serde_json::Value\",\n                folder_id as \"folder_id?\"\n            FROM v2_assets\n            ",
+  "query": "\n            SELECT\n                id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\",\n                format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\",\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\",\n                CAST(NULL AS INTEGER) as \"width: i32\",\n                CAST(NULL AS INTEGER) as \"height: i32\",\n                CAST(NULL AS REAL) as \"duration_secs: f64\",\n                CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\",\n                CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\",\n                CAST(NULL AS TEXT) as \"dominant_colors: serde_json::Value\",\n                folder_id as \"folder_id?\",\n                thumbnail_path as \"thumbnail_path?\"\n            FROM v2_assets\n            ",
   "describe": {
     "columns": [
       {
@@ -82,6 +82,11 @@
         "name": "folder_id?",
         "ordinal": 15,
         "type_info": "Text"
+      },
+      {
+        "name": "thumbnail_path?",
+        "ordinal": 16,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -103,8 +108,9 @@
       true,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "393c26cca1c46b162c2cb7b00222d3b7cabf1db46df8eb55d5c6382c9fbb03d8"
+  "hash": "44c6b7df1f33c90130afcc776ed3be70332d66404a1c77f12b6dae744e455a66"
 }
