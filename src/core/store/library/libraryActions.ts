@@ -89,6 +89,9 @@ export const libraryActions = {
                 )
                 .then(count => {
                     setLibraryState('totalItems', count);
+                })
+                .catch(err => {
+                    console.error('Failed to refresh total count:', err);
                 });
         }
     },

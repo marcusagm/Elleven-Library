@@ -52,7 +52,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 CAST(NULL AS REAL) as "duration_secs: f64",
                 CAST(NULL AS TEXT) as "technical_payload: serde_json::Value",
                 CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value",
-                CAST(NULL AS TEXT) as "dominant_colors: serde_json::Value",
+                CAST(NULL AS TEXT) as "dominant_color: serde_json::Value",
                 folder_id as "folder_id?",
                 thumbnail_path as "thumbnail_path?"
             FROM v2_assets
@@ -86,7 +86,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 m.width as "width: i32", m.height as "height: i32", m.duration_secs as "duration_secs: f64",
                 m.technical_payload as "technical_payload: serde_json::Value",
                 m.semantic_payload as "semantic_payload: serde_json::Value",
-                m.dominant_colors as "dominant_colors: serde_json::Value",
+                m.dominant_colors as "dominant_color: serde_json::Value",
                 a.folder_id as "folder_id?",
                 a.thumbnail_path as "thumbnail_path?"
             FROM v2_assets a
@@ -340,7 +340,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 m.width as "width: i32", m.height as "height: i32", m.duration_secs as "duration_secs: f64",
                 m.technical_payload as "technical_payload: serde_json::Value",
                 m.semantic_payload as "semantic_payload: serde_json::Value",
-                m.dominant_colors as "dominant_colors: serde_json::Value",
+                m.dominant_colors as "dominant_color: serde_json::Value",
                 a.folder_id as "folder_id?",
                 a.thumbnail_path as "thumbnail_path?"
             FROM v2_assets a

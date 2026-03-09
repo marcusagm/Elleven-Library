@@ -39,7 +39,7 @@ pub struct AssetDb {
     /// Duration of the asset in seconds
     pub duration_secs: Option<f64>,
     /// Dominant colors of the asset
-    pub dominant_colors: Option<serde_json::Value>,
+    pub dominant_color: Option<serde_json::Value>,
     /// Technical payload of the asset
     pub technical_payload: Option<serde_json::Value>,
     /// Semantic payload of the asset
@@ -81,7 +81,7 @@ pub struct AssetMetadataEnvelopeDb {
     /// Duration of the asset in seconds
     pub duration_secs: Option<f64>,
     /// Dominant colors of the asset
-    pub dominant_colors: Option<serde_json::Value>,
+    pub dominant_color: Option<serde_json::Value>,
     /// Technical payload of the asset
     pub technical_payload: Option<serde_json::Value>,
     /// Semantic payload of the asset
@@ -107,6 +107,34 @@ pub struct AssetOperationLogDb {
     pub error_note: Option<String>,
     /// Timestamp of when the operation was created
     pub created_at: DateTime<Utc>,
+}
+
+/// Database model for asset colors.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct AssetColorDb {
+    pub id: i64,
+    pub asset_id: String,
+    pub hex_color: String,
+    pub lab_lightness: f64,
+    pub lab_green_red: f64,
+    pub lab_blue_yellow: f64,
+    pub percentage: f64,
+    pub rank: i32,
+}
+
+impl From<crate::core::models::asset::AssetColor> for AssetColorDb {
+    fn from(color: crate::core::models::asset::AssetColor) -> Self {
+        Self {
+            id: color.id.unwrap_or(0),
+            asset_id: String::new(), // Will be populated during batch insert
+            hex_color: color.hex_color,
+            lab_lightness: color.lab_lightness,
+            lab_green_red: color.lab_green_red,
+            lab_blue_yellow: color.lab_blue_yellow,
+            percentage: color.percentage,
+            rank: color.rank,
+        }
+    }
 }
 
 /// Converts an AssetDb to an Asset.
@@ -147,7 +175,7 @@ impl From<AssetDb> for crate::core::models::Asset {
             duration_secs: row.duration_secs,
             technical_payload: row.technical_payload,
             semantic_payload: row.semantic_payload,
-            dominant_colors: row.dominant_colors,
+            dominant_color: row.dominant_color,
             thumbnail_path: row.thumbnail_path,
         }
     }

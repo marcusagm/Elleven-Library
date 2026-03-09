@@ -61,11 +61,30 @@ pub struct Asset {
     /// Semantic payload of the asset
     pub semantic_payload: Option<serde_json::Value>,
     /// Dominant colors of the asset
-    pub dominant_colors: Option<serde_json::Value>,
+    pub dominant_color: Option<serde_json::Value>,
     /// Reference to the parent folder in recursive tree
     pub folder_id: Option<String>,
     /// Path to the generated thumbnail file
     pub thumbnail_path: Option<String>,
+}
+
+/// A Domain entity representing a single color extracted from an asset's palette.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssetColor {
+    /// Unique identifier for the color record (optional for new records).
+    pub id: Option<i64>,
+    /// The hexadecimal representation of the color (e.g., "#FFFFFF").
+    pub hex_color: String,
+    /// CIE-LAB L* component (lightness).
+    pub lab_lightness: f64,
+    /// CIE-LAB a* component (green-red axis).
+    pub lab_green_red: f64,
+    /// CIE-LAB b* component (blue-yellow axis).
+    pub lab_blue_yellow: f64,
+    /// Proportion of the asset this color represents (0.0-1.0).
+    pub percentage: f64,
+    /// Dominance rank (1 = most dominant).
+    pub rank: i32,
 }
 
 /// A Domain entity representing a recursive folder.

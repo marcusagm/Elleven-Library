@@ -170,7 +170,7 @@ pub fn run() {
                             asset_ledger.clone(),
                             asset_query_handler.clone(),
                             priority_state_v2,
-                            thumbnails_dir,
+                            thumbnails_dir.clone(),
                             4, // Worker threads
                         );
                         let thumbnail_handle_v2 = worker_v2.start(thumbnail_token_v2.clone());
@@ -179,6 +179,14 @@ pub fn run() {
                             thumbnail_token_v2,
                             thumbnail_handle_v2,
                         );
+
+                        // Start V2 Color Worker (Reactive to Thumbnails)
+                        let color_worker = crate::processing::workers::color_worker::ColorWorker::new(
+                            asset_ledger.clone(),
+                            event_bus.clone(),
+                            thumbnails_dir.to_path_buf(),
+                        );
+                        color_worker.start();
 
                         // Start Watchers for Existing Roots
                         if let Ok(roots) = db_arc.get_all_root_folders().await {

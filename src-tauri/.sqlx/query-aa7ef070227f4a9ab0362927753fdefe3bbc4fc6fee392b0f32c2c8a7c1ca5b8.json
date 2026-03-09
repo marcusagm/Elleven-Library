@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\", format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\", created_at as \"created_at: DateTime<Utc>\", updated_at as \"updated_at: DateTime<Utc>\", folder_id, CAST(NULL AS INTEGER) as \"width: i32\", CAST(NULL AS INTEGER) as \"height: i32\", CAST(NULL AS REAL) as \"duration_secs: f64\", CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"dominant_colors: serde_json::Value\", thumbnail_path as \"thumbnail_path?\" FROM v2_assets WHERE id = ?",
+  "query": "SELECT id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\", format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\", created_at as \"created_at: DateTime<Utc>\", updated_at as \"updated_at: DateTime<Utc>\", folder_id, CAST(NULL AS INTEGER) as \"width: i32\", CAST(NULL AS INTEGER) as \"height: i32\", CAST(NULL AS REAL) as \"duration_secs: f64\", CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\", dominant_color as \"dominant_color: serde_json::Value\", thumbnail_path as \"thumbnail_path?\" FROM v2_assets WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -79,9 +79,9 @@
         "type_info": "Null"
       },
       {
-        "name": "dominant_colors: serde_json::Value",
+        "name": "dominant_color: serde_json::Value",
         "ordinal": 15,
-        "type_info": "Null"
+        "type_info": "Text"
       },
       {
         "name": "thumbnail_path?",
@@ -108,9 +108,9 @@
       null,
       null,
       null,
-      null,
+      true,
       true
     ]
   },
-  "hash": "9d0c29e342a3a1b75d596e56e8a93358be941d3edd6fa03cff24205bef3c2632"
+  "hash": "aa7ef070227f4a9ab0362927753fdefe3bbc4fc6fee392b0f32c2c8a7c1ca5b8"
 }

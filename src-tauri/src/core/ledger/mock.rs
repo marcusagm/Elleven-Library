@@ -76,7 +76,7 @@ impl TransactionalAssetLedger for MockAssetLedger {
                     duration_secs: None,
                     technical_payload: None,
                     semantic_payload: None,
-                    dominant_colors: None,
+                    dominant_color: None,
                     folder_id: payload.folder_id.clone(),
                     thumbnail_path: None,
                 };

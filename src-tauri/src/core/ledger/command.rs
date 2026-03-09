@@ -49,6 +49,15 @@ pub struct CreateFolderPayload {
     pub path: PathBuf,
 }
 
+/// Payload for updating an asset's color palette.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateAssetColorsPayload {
+    /// The unique identifier of the target asset.
+    pub asset_id: String,
+    /// The complete list of extracted colors.
+    pub colors: Vec<crate::core::models::asset::AssetColor>,
+}
+
 /// Centralized Enum representing all mutation intentions (Commands) for the Asset Ledger.
 ///
 /// Under CQRS, this represents the "Write" intent. The Ledger is responsible for
@@ -84,4 +93,6 @@ pub enum LedgerCommand {
         asset_id: String,
         thumbnail_path: String,
     },
+    /// Update an asset's color palette.
+    UpdateAssetColors(UpdateAssetColorsPayload),
 }
