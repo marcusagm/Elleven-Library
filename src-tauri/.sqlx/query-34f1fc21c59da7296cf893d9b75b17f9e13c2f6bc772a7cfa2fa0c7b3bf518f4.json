@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT path as \"path!\", file_size as \"file_size!\", updated_at as \"updated_at!: DateTime<Utc>\" FROM v2_assets WHERE path LIKE ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "path!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_size!",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 2,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "34f1fc21c59da7296cf893d9b75b17f9e13c2f6bc772a7cfa2fa0c7b3bf518f4"
+}
