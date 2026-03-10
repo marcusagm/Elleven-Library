@@ -85,6 +85,16 @@ pub fn run() {
                 std::sync::Arc::new(crate::core::formats::build_format_registry());
             app.manage(format_registry.clone());
 
+            // Initialize HLS On-the-Fly Streaming Manager
+            let hls_manager = crate::feature::transcoding::hls_manager::HlsManager::new(&app_data);
+            app.manage(hls_manager.clone());
+            {
+                let manager = hls_manager.clone();
+                tauri::async_runtime::spawn(async move {
+                    manager.start_cleanup_worker(90).await;
+                });
+            }
+
             // Initialize DB and Worker
             let handle = app.handle().clone();
             let lifecycle_for_setup = lifecycle.clone();

@@ -4,3 +4,4 @@ pub mod analysis;
 pub mod assets;
 pub mod library;
 pub mod search;
+pub mod transcoding;
