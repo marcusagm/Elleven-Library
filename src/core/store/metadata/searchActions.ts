@@ -1,11 +1,11 @@
 import { setMetadataState, type SmartFolder } from './metadataState';
 import { type SearchGroup } from '../filter';
 import { ActionResult, ErrorCode } from '../../types/actions';
+import { invokeCommand as invoke } from '../../../lib/api';
 
 export const searchActions = {
     loadSmartFolders: async () => {
         try {
-            const { invoke } = await import('@tauri-apps/api/core');
             const folders = (await invoke('get_smart_folders')) as SmartFolder[];
             setMetadataState('smartFolders', folders);
         } catch (error) {
@@ -19,7 +19,6 @@ export const searchActions = {
         id?: number
     ): Promise<ActionResult> => {
         try {
-            const { invoke } = await import('@tauri-apps/api/core');
             if (id) {
                 await invoke('update_smart_folder', { id, name, query: JSON.stringify(query) });
             } else {
@@ -41,7 +40,6 @@ export const searchActions = {
 
     deleteSmartFolder: async (id: number): Promise<ActionResult> => {
         try {
-            const { invoke } = await import('@tauri-apps/api/core');
             await invoke('delete_smart_folder', { id });
             await searchActions.loadSmartFolders();
             return { success: true, data: undefined };

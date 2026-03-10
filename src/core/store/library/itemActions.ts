@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand as invoke } from '../../../lib/api';
 import { tagService } from '../../../lib/tags';
 import { libraryStateInternal } from './libraryState';
 

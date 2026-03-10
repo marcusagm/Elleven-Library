@@ -1,6 +1,6 @@
 import { reconcile } from 'solid-js/store';
 import { untrack } from 'solid-js';
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand as invoke } from '../../../lib/api';
 import { getAssets } from '../../../lib/db';
 import { tagService } from '../../../lib/tags';
 import { ActionResult, ErrorCode } from '../../types/actions';

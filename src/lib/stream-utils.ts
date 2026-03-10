@@ -4,7 +4,7 @@
  * Now powered by the central Format Store (Backend Source of Truth)
  */
 
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand as invoke } from './api';
 import { formatActions } from '../core/store/formatStore';
 import {
     HLS_SERVER_URL,

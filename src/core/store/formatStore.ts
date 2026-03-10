@@ -1,5 +1,5 @@
 import { createStore } from 'solid-js/store';
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand as invoke } from '../../lib/api';
 
 // Match Rust types (camelCase enums)
 export type MediaType =

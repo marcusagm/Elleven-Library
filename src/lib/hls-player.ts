@@ -9,7 +9,7 @@
  * The token is fetched once via Tauri IPC and cached for the session lifetime.
  */
 
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand as invoke } from './api';
 import { fetch } from '@tauri-apps/plugin-http';
 
 /**

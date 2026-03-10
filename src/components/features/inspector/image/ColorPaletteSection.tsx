@@ -1,5 +1,5 @@
 import { Component, createResource, createMemo, Show } from 'solid-js';
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand as invoke } from '../../../../lib/api';
 import { type AssetItem } from '../../../../types';
 import { AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { Palette, Loader2 } from 'lucide-solid';

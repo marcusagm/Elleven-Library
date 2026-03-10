@@ -112,7 +112,7 @@ pub struct AssetColor {
     /// Unique row identifier.
     pub id: i64,
     /// The asset this color belongs to.
-    pub asset_id: i64,
+    pub asset_id: String,
     /// Hexadecimal representation (e.g., "#FF5733").
     pub hex_color: String,
     /// CIE-LAB L* component (lightness, 0–100).

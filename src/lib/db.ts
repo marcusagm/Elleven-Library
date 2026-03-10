@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand as invoke } from './api';
 import { type AssetItem } from '../types';
 
 // We primarily use the Rust backend for DB operations now.

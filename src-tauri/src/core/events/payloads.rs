@@ -3,8 +3,10 @@ use serde::Serialize;
 /// Pure Domain Payload (Events).
 ///
 /// Represents state changes and facts that occurred in the system.
-/// Derives `Serialize` to allow sending events to the frontend via Tauri.
+/// Derives `Serialize` to allow sending events to the frontend via Tauri,
+/// mapped as a TypeScript-friendly discriminated union.
 #[derive(Clone, Debug, Serialize)]
+#[serde(tag = "type", content = "payload")]
 pub enum DomainEvent {
     // ├─ Ledger Originated
     /// A new asset was formally created in the database and on disk.

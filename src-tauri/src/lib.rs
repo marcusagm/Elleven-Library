@@ -27,7 +27,7 @@ use crate::indexer::Indexer;
 use crate::infra::events::TokioEventBus;
 use crate::lifecycle::LifecycleRegistry;
 use std::sync::Arc;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 /// Holds the session token used to authenticate streaming server requests.
 ///
@@ -71,6 +71,19 @@ pub fn run() {
             // Initialize Event Bus (System Nervous System)
             let event_bus = Arc::new(TokioEventBus::new());
             app.manage(event_bus.clone() as Arc<dyn AppEventBus>);
+
+            // Bridge Event Bus to Frontend
+            {
+                let mut rx = event_bus.subscribe();
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    while let Ok(event) = rx.recv().await {
+                        if let Err(e) = app_handle.emit("mundam://domain-event", &event) {
+                            tracing::error!("Failed to emit domain event to frontend: {}", e);
+                        }
+                    }
+                });
+            }
 
             // Create the lifecycle registry — central hub for managing all background tasks
             let lifecycle = std::sync::Arc::new(LifecycleRegistry::new());
@@ -317,14 +330,14 @@ pub fn run() {
             library::commands::colors::reextract_asset_colors,
             library::commands::colors::reextract_all_colors,
             // Asset Commands V2
-            delivery::tauri::asset_queries::get_assets,
-            delivery::tauri::asset_queries::get_asset,
-            delivery::tauri::asset_queries::list_folders,
-            delivery::tauri::asset_queries::list_tags,
-            delivery::tauri::asset_queries::search_assets,
-            delivery::tauri::asset_ledger::create_folder,
-            delivery::tauri::asset_ledger::set_asset_folder,
-            delivery::tauri::asset_ledger::update_asset_tags,
+            delivery::tauri::commands::queries::get_assets,
+            delivery::tauri::commands::queries::get_asset,
+            delivery::tauri::commands::queries::list_folders,
+            delivery::tauri::commands::queries::list_tags,
+            delivery::tauri::commands::queries::search_assets,
+            delivery::tauri::commands::mutations::create_folder,
+            delivery::tauri::commands::mutations::set_asset_folder,
+            delivery::tauri::commands::mutations::update_asset_tags,
             delivery::tauri::thumbnails::prioritize_thumbnails
         ])
         .build(tauri::generate_context!())

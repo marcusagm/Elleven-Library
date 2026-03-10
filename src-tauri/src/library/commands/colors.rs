@@ -77,7 +77,7 @@ pub async fn reextract_asset_colors(
                 .enumerate()
                 .map(|(index, color)| AssetColor {
                     id: 0,
-                    asset_id,
+                    asset_id: asset_id.to_string(),
                     hex_color: color.hex_value.clone(),
                     lab_lightness: color.lab_lightness,
                     lab_green_red: color.lab_green_red,
@@ -152,7 +152,7 @@ pub async fn reextract_all_colors(db: State<'_, Arc<Db>>) -> AppResult<i64> {
                     .enumerate()
                     .map(|(index, color)| AssetColor {
                         id: 0,
-                        asset_id: *asset_id,
+                        asset_id: asset_id.to_string(),
                         hex_color: color.hex_value.clone(),
                         lab_lightness: color.lab_lightness,
                         lab_green_red: color.lab_green_red,

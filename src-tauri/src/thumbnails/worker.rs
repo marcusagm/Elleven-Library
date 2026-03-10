@@ -315,7 +315,7 @@ impl ThumbnailWorker {
                                 .enumerate()
                                 .map(|(index, color)| AssetColor {
                                     id: 0,
-                                    asset_id: *id,
+                                    asset_id: id.to_string(),
                                     hex_color: color.hex_value.clone(),
                                     lab_lightness: color.lab_lightness,
                                     lab_green_red: color.lab_green_red,

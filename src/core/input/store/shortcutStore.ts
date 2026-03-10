@@ -4,7 +4,7 @@
  */
 
 import { createSignal, createEffect } from 'solid-js';
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand as invoke } from '../../../lib/api';
 import type {
     ShortcutDefinition,
     RegisteredShortcut,

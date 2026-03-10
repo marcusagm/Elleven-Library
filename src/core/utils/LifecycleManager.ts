@@ -6,7 +6,7 @@
  */
 import { listen, type UnlistenFn, type Event } from '@tauri-apps/api/event';
 import { onCleanup } from 'solid-js';
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand as invoke } from '../../lib/api';
 
 export const LifecycleManager = {
     /**
