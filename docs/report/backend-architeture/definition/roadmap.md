@@ -95,5 +95,23 @@ As Sprints são organizadas em **Fases (Grupos)** que culminam numa Entrega de V
 
 ---
 
+## Fase 6: Cleanup e Consolidação V2
+**Objetivo Testável:** Remover todo o lixo e componentes legados do V1 (Frontend Queries, Rust Obsolete Modules, Sqlite Legacy Tables), unificando inteiramente a arquitetura sobre o modelo Hexagonal e Event-Driven, mantendo o build limpo e com performance estável.
+
+*   **Sprint 6.1: Mapeamento e Refatoração do Frontend**
+    *   **Escopo:** Substituir invocações Tauri (`src/lib/tags.ts`, `src/lib/db.ts`) antigas pelo mapeamento correto dos novos Handlers V2 (`/delivery/tauri/commands`).
+    *   **Teste E2E:** Todas as listas de pastas, assets e smart-searches fluem na interface do SolidJS conectadas ao backend Hexagonal sem erros de unmapped command.
+*   **Sprint 6.2: Purificação do Tidy Backend (Eliminação V1)**
+    *   **Escopo:** Exclusão física das pastas `src-tauri/src/library/`, `db/`, `indexer/`, `transcoding/`, `media/` e `thumbnails/`, expurgando-as do `lib.rs`.
+    *   **Teste E2E:** `cargo build` gerando warnings 0, removendo handlers zumbis e reduzindo o target time.
+*   **Sprint 6.3: Limpeza de Banco de Dados e Migração Definitiva**
+    *   **Escopo:** Construção de SQLx migration descartando estruturas da versão velha (`assets`, `folders`...) garantindo que `v2_assets` e complementares se tornam as entidades únicas de Querying.
+    *   **Teste E2E:** Banco de dados otimizado, `cargo sqlx prepare` sem acoplamentos, operando em FK seguras.
+*   **Sprint 6.4: E2E Validation & Relatório Final**
+    *   **Escopo:** Testes reais no cliente confirmando a integração final, validações de compilação limpa, geração correta do pacote final.
+    *   **Teste E2E:** Geração da Walkthrough definitiva (Phase 6), App funcional e responsivo.
+
+---
+
 ## Próximos Passos
 À medida que as Sprints evoluírem, o AI Agent criará sob demanda os manuais granulares específicos de código, exemplo: `sprints/sprint-1-1.md` descrevendo os arquivos pontuais e testes precisos necessários sem diluir o contexto em conversas extensas contínuas.
