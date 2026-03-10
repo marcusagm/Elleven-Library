@@ -35,10 +35,10 @@ let config: LayoutConfig = {
 };
 
 // Layout cache: id -> position
-const positions = new Map<number, ItemPosition>();
+const positions = new Map<string, ItemPosition>();
 
 // Spatial Grid: cell index -> item IDs in that cell
-const spatialGrid = new Map<number, number[]>();
+const spatialGrid = new Map<number, string[]>();
 const CELL_HEIGHT = 1000; // Each cell covers 1000px of vertical space
 
 let totalHeight = 0;
@@ -75,7 +75,7 @@ function handleScrollMsg(msg: Extract<WorkerInMessage, { type: 'SCROLL' }>) {
 
 function handleQueryPositionMsg(msg: Extract<WorkerInMessage, { type: 'QUERY_POSITION' }>) {
     const { id, requestId } = msg.payload;
-    if (typeof id === 'number' && typeof requestId === 'string') {
+    if (typeof id === 'string' && typeof requestId === 'string') {
         const pos = positions.get(id) || null;
         respond({ type: 'POSITION_RESULT', payload: { requestId, position: pos } });
     }
@@ -324,7 +324,7 @@ function calculateGridLayout(): void {
  * Adds an item to the spatial grid cells it occupies.
  * An item may span multiple cells if it's taller than CELL_HEIGHT.
  */
-function addToSpatialGrid(id: number, startY: number, endY: number): void {
+function addToSpatialGrid(id: string, startY: number, endY: number): void {
     const startCell = Math.floor(startY / CELL_HEIGHT);
     const endCell = Math.floor(endY / CELL_HEIGHT);
 
@@ -352,7 +352,7 @@ function handleScroll(scrollTop: number, viewportHeight: number): void {
     const endCell = Math.floor(endY / CELL_HEIGHT);
 
     // Collect unique IDs from all intersecting cells
-    const visibleIds = new Set<number>();
+    const visibleIds = new Set<string>();
 
     for (let cell = startCell; cell <= endCell; cell++) {
         const cellItems = spatialGrid.get(cell);

@@ -10,7 +10,7 @@ export interface AssetItemContainerProperties {
      * Asset unique identifier
      * @type {number}
      */
-    id: number;
+    id: string;
 
     /**
      * File path to the asset
@@ -60,14 +60,14 @@ export interface AssetItemContainerProperties {
      * @param {Object} modifiers - Shift or Mutli select keys active
      * @returns {void}
      */
-    onSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) => void;
+    onSelect: (id: string, modifiers: { multi: boolean; shift: boolean }) => void;
 
     /**
      * Handler when double clicked to open
      * @param {number} id - The opened asset ID
      * @returns {void}
      */
-    onOpen: (id: number) => void;
+    onOpen: (id: string) => void;
 
     /**
      * Context menu firing handler
@@ -75,20 +75,20 @@ export interface AssetItemContainerProperties {
      * @param {number} id - Target asset ID
      * @returns {void}
      */
-    onContextMenu?: (event: MouseEvent, id: number) => void;
+    onContextMenu?: (event: MouseEvent, id: string) => void;
 
     /**
      * Function to fetch selected IDs for Drag and Drop
      * @returns {(number | string)[]}
      */
-    getSelectedIds: () => (number | string)[];
+    getSelectedIds: () => string[];
 
     /**
      * Function to fetch asset's core info for Drag and Drop
      * @param {number} id - Requesting asset ID
      * @returns {{ path: string; thumbnail_path: string | null } | undefined}
      */
-    getItemInfo: (id: number) => { path: string; thumbnail_path: string | null } | undefined;
+    getItemInfo: (id: string) => { path: string; thumbnail_path: string | null } | undefined;
 
     /**
      * Render prop receiving layout states (active drop, focused, selected).

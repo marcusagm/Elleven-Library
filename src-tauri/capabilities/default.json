@@ -58,6 +58,17 @@
     "allow-get-asset-colors",
     "allow-reextract-asset-colors",
     "allow-reextract-all-colors",
+    "allow-get-assets",
+    "allow-get-asset",
+    "allow-list-folders",
+    "allow-list-tags",
+    "allow-search-assets",
+    "allow-create-folder",
+    "allow-set-asset-folder",
+    "allow-update-asset-tags",
+    "allow-prioritize-thumbnails",
+    "allow-get-app-settings",
+    "allow-update-app-settings",
     {
       "identifier": "http:default",
       "allow": [

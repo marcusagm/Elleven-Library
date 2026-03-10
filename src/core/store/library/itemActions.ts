@@ -5,7 +5,7 @@ import { libraryStateInternal } from './libraryState';
 const { setLibraryState } = libraryStateInternal;
 
 export const itemActions = {
-    updateItemRating: async (id: number, rating: number) => {
+    updateItemRating: async (id: string, rating: number) => {
         try {
             setLibraryState('items', i => i.id === id, 'rating', rating);
             await tagService.updateAssetRating(id, rating);
@@ -14,7 +14,7 @@ export const itemActions = {
         }
     },
 
-    updateItemNotes: async (id: number, notes: string) => {
+    updateItemNotes: async (id: string, notes: string) => {
         try {
             setLibraryState('items', i => i.id === id, 'notes', notes);
             await tagService.updateAssetNotes(id, notes);
@@ -23,11 +23,11 @@ export const itemActions = {
         }
     },
 
-    updateThumbnail: (id: number, path: string) => {
+    updateThumbnail: (id: string, path: string) => {
         setLibraryState('items', item => item.id === id, 'thumbnail_path', path);
     },
 
-    setThumbnailPriority: async (ids: number[]) => {
+    setThumbnailPriority: async (ids: string[]) => {
         try {
             if (ids.length > 0) {
                 await invoke('set_thumbnail_priority', { ids });

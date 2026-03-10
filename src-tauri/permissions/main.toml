@@ -244,3 +244,60 @@ commands.allow = ["reextract_asset_colors"]
 identifier = "allow-reextract-all-colors"
 description = "Enables reextract_all_colors for full library color re-analysis"
 commands.allow = ["reextract_all_colors"]
+
+# V2 Asset Commands
+[[permission]]
+identifier = "allow-get-assets"
+description = "Enables get_assets"
+commands.allow = ["get_assets"]
+
+[[permission]]
+identifier = "allow-get-asset"
+description = "Enables get_asset"
+commands.allow = ["get_asset"]
+
+[[permission]]
+identifier = "allow-list-folders"
+description = "Enables list_folders"
+commands.allow = ["list_folders"]
+
+[[permission]]
+identifier = "allow-list-tags"
+description = "Enables list_tags"
+commands.allow = ["list_tags"]
+
+[[permission]]
+identifier = "allow-search-assets"
+description = "Enables search_assets"
+commands.allow = ["search_assets"]
+
+[[permission]]
+identifier = "allow-create-folder"
+description = "Enables create_folder"
+commands.allow = ["create_folder"]
+
+[[permission]]
+identifier = "allow-set-asset-folder"
+description = "Enables set_asset_folder"
+commands.allow = ["set_asset_folder"]
+
+[[permission]]
+identifier = "allow-update-asset-tags"
+description = "Enables update_asset_tags"
+commands.allow = ["update_asset_tags"]
+
+[[permission]]
+identifier = "allow-prioritize-thumbnails"
+description = "Enables prioritize_thumbnails"
+commands.allow = ["prioritize_thumbnails"]
+
+# V2 Settings Commands
+[[permission]]
+identifier = "allow-get-app-settings"
+description = "Enables get_app_settings"
+commands.allow = ["get_app_settings"]
+
+[[permission]]
+identifier = "allow-update-app-settings"
+description = "Enables update_app_settings"
+commands.allow = ["update_app_settings"]

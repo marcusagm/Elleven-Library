@@ -12,8 +12,8 @@ export type DndActionResult = ActionResult<DndSuccessData | void>;
 // --- Discriminated Union for Dragged Items ---
 
 export interface AssetDragPayload {
-    id: number;
-    ids: number[]; // For batch operations
+    id: string;
+    ids: string[]; // For batch operations
     filename: string;
     path: string;
     thumbnail_path?: string | null;

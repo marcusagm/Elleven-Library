@@ -12,7 +12,7 @@ import type { ItemPosition } from '../viewport';
 
 export interface HitTestResult {
     /** ID of the item under the cursor, or null if none */
-    targetId: number | null;
+    targetId: string | null;
     /** Position relative to the target: "before", "inside", "after" */
     position: 'before' | 'inside' | 'after';
     /** The matched item position for visual feedback */

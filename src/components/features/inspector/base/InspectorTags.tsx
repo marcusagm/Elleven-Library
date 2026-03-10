@@ -7,8 +7,8 @@ import { type Tag } from '../../../../lib/tags';
 import './InspectorTags.css';
 
 interface InspectorTagsProps {
-    itemId?: number;
-    itemIds?: number[];
+    itemId?: string;
+    itemIds?: string[];
 }
 
 export const InspectorTags: Component<InspectorTagsProps> = properties => {
@@ -29,7 +29,7 @@ export const InspectorTags: Component<InspectorTagsProps> = properties => {
 
     // Resource for tags of the selected item(s)
     const [itemTagsByAsset, { refetch }] = createResource(resourceTrigger, async ({ ids }) => {
-        if (ids.length === 0) return new Map<number, Tag[]>();
+        if (ids.length === 0) return new Map<string, Tag[]>();
 
         const results = await Promise.all(
             ids.map(async identifier => {
@@ -38,7 +38,7 @@ export const InspectorTags: Component<InspectorTagsProps> = properties => {
             })
         );
 
-        const map = new Map<number, Tag[]>();
+        const map = new Map<string, Tag[]>();
         results.forEach(result => map.set(result.identifier, result.tags));
         return map;
     });

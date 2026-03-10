@@ -13,7 +13,7 @@ export const AssetDropStrategy: DropStrategy = {
     onDrop: async (item: DragItem, targetId: number | string): Promise<DndActionResult> => {
         if (item.type === 'TAG') {
             const { libraryActions } = await import('../../store/library');
-            const targetAssetId = Number(targetId);
+            const targetAssetId = String(targetId);
             const tagId = Number(item.payload.id);
 
             // Emit intention to library store

@@ -32,7 +32,8 @@ impl DbManager {
         // but many are covered by SQLx options.
 
         let pool = SqlitePoolOptions::new()
-            .max_connections(5)
+            .min_connections(5)
+            .max_connections(20)
             .connect_with(connection_options)
             .await?;
 

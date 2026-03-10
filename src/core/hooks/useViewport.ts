@@ -20,7 +20,7 @@ export const useViewport = () => {
         },
 
         openItem: (id: string | number) => {
-            viewportActions.setFocusedItem(Number(id));
+            viewportActions.setFocusedItem(String(id));
         },
         closeItem: () => {
             viewportActions.setFocusedItem(null);

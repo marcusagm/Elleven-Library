@@ -37,7 +37,7 @@ export interface VirtualViewportResult {
     /** Force a layout recalculation */
     invalidate: () => void;
     /** Query item position */
-    getItemPosition: (id: number) => Promise<ItemPosition | null>;
+    getItemPosition: (id: string) => Promise<ItemPosition | null>;
 }
 
 /**
@@ -144,10 +144,10 @@ export function useVirtualViewport(
  * Only sends minimal data needed for layout calculation.
  */
 export function toLayoutItems<
-    T extends { id: number; width?: number | null; height?: number | null }
+    T extends { id: string | number; width?: number | null; height?: number | null }
 >(items: T[]): LayoutItemInput[] {
     return items.map(item => ({
-        id: item.id,
+        id: String(item.id),
         aspectRatio: item.width && item.height && item.height > 0 ? item.width / item.height : 1 // Default to square if no dimensions
     }));
 }

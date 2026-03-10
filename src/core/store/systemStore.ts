@@ -74,7 +74,7 @@ export const systemActions = {
                 metadataActions.loadLocations();
             });
 
-            listen<{ id: number; path: string }>('thumbnail:ready', e => {
+            listen<{ id: string; path: string }>('thumbnail:ready', e => {
                 import('./library').then(({ libraryActions }) => {
                     libraryActions.updateThumbnail(e.payload.id, e.payload.path);
                 });

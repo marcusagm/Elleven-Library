@@ -22,25 +22,16 @@ export async function addLocation(path: string) {
 }
 
 export async function getLocations() {
-    return await invoke<FolderNode[]>('get_locations');
+    return await invoke<FolderNode[]>('list_folders', { parentId: null });
 }
 
 export async function getAssets(
     limit: number = 100,
-    offset: number = 0,
-    sortBy?: string,
-    sortOrder?: string
+    offset: number = 0
+    // sortBy and sortOrder were removed as V2 handles default sorting or explicit via advanced search
 ) {
-    // Use the backend command which now handles the unified logic
-    return await invoke<AssetItem[]>('get_assets_filtered', {
-        limit,
-        offset,
-        tagIds: [],
-        matchAll: true,
-        untagged: false,
-        folderId: null,
-        recursive: true,
-        sortBy,
-        sortOrder
+    return await invoke<AssetItem[]>('get_assets', {
+        filter: {},
+        page: { page: offset / limit + 1, pageSize: limit }
     });
 }

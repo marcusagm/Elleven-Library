@@ -6,7 +6,7 @@ export interface BatchChangeAddedItem extends AssetItem {
 }
 
 export interface BatchChangeRemovedItem {
-    id: number;
+    id: string;
     folder_id: number;
     tag_ids: number[];
 }

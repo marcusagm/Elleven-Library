@@ -5,13 +5,13 @@ import { listen } from '@tauri-apps/api/event';
 // This persists across component mount/unmount cycles (virtualization)
 
 interface ThumbnailReadyPayload {
-    id: number;
+    id: string;
     path: string;
 }
 
 interface RegenerationState {
-    pending: Set<number>; // IDs that are waiting for regeneration
-    completed: Map<number, string>; // ID -> new thumbnail path
+    pending: Set<string>; // IDs that are waiting for regeneration
+    completed: Map<string, string>; // ID -> new thumbnail path
 }
 
 const [state, setState] = createSignal<RegenerationState>({
@@ -20,8 +20,8 @@ const [state, setState] = createSignal<RegenerationState>({
 });
 
 // Subscribers for thumbnail ready events
-type ThumbnailCallback = (id: number, path: string) => void;
-const subscribers = new Map<number, Set<ThumbnailCallback>>();
+type ThumbnailCallback = (id: string, path: string) => void;
+const subscribers = new Map<string, Set<ThumbnailCallback>>();
 
 // Global listener - initialized once
 let listenerInitialized = false;
@@ -47,7 +47,7 @@ async function initGlobalListener() {
 // Initialize listener immediately
 initGlobalListener();
 
-export function subscribeThumbnailReady(assetId: number, callback: ThumbnailCallback): () => void {
+export function subscribeThumbnailReady(assetId: string, callback: ThumbnailCallback): () => void {
     if (!subscribers.has(assetId)) {
         subscribers.set(assetId, new Set());
     }
@@ -65,7 +65,7 @@ export function subscribeThumbnailReady(assetId: number, callback: ThumbnailCall
     };
 }
 
-export function markPendingRegeneration(assetId: number) {
+export function markPendingRegeneration(assetId: string) {
     setState(s => {
         const newPending = new Set(s.pending);
         newPending.add(assetId);
@@ -73,7 +73,7 @@ export function markPendingRegeneration(assetId: number) {
     });
 }
 
-export function markRegenerationComplete(assetId: number, thumbnailPath: string) {
+export function markRegenerationComplete(assetId: string, thumbnailPath: string) {
     setState(s => {
         const newPending = new Set(s.pending);
         newPending.delete(assetId);
@@ -83,15 +83,15 @@ export function markRegenerationComplete(assetId: number, thumbnailPath: string)
     });
 }
 
-export function isPendingRegeneration(assetId: number): boolean {
+export function isPendingRegeneration(assetId: string): boolean {
     return state().pending.has(assetId);
 }
 
-export function getCompletedThumbnail(assetId: number): string | undefined {
+export function getCompletedThumbnail(assetId: string): string | undefined {
     return state().completed.get(assetId);
 }
 
-export function clearCompleted(assetId: number) {
+export function clearCompleted(assetId: string) {
     setState(s => {
         const newCompleted = new Map(s.completed);
         newCompleted.delete(assetId);

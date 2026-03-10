@@ -289,7 +289,7 @@ export const tagActions = {
      * Batch updates tags for multiple assets.
      */
     updateAssetsTags: async (
-        assetIds: number[],
+        assetIds: string[],
         tagIds: number[],
         mode: 'merge' | 'replace' | 'remove'
     ): Promise<ActionResult> => {
@@ -319,7 +319,7 @@ export const tagActions = {
      * Batch updates metadata (rating, notes) for multiple assets.
      */
     updateAssetsMetadata: async (
-        assetIds: number[],
+        assetIds: string[],
         metadata: { rating?: number; notes?: string }
     ): Promise<ActionResult> => {
         try {
@@ -355,7 +355,7 @@ export const tagActions = {
     /**
      * Retrieves EXIF/Technical metadata for an asset, utilizing the local cache.
      */
-    getAssetExif: async (assetId: number, path: string): Promise<Record<string, string>> => {
+    getAssetExif: async (assetId: string, path: string): Promise<Record<string, string>> => {
         const cached = metadataCache.get<Record<string, string>>(String(assetId));
         if (cached) return cached;
 
@@ -372,7 +372,7 @@ export const tagActions = {
     /**
      * Retrieves the tags associated with a specific asset.
      */
-    getAssetTags: async (assetId: number): Promise<Tag[]> => {
+    getAssetTags: async (assetId: string): Promise<Tag[]> => {
         try {
             return await tagService.getTagsForAsset(assetId);
         } catch (error) {

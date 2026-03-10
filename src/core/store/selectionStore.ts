@@ -3,9 +3,9 @@ import { createSelector } from 'solid-js';
 
 interface SelectionState {
     /** Array of currently selected item IDs */
-    selectedIds: number[];
+    selectedIds: string[];
     /** The ID of the last item interacted with, used as an anchor for range selection */
-    lastSelectedId: number | null;
+    lastSelectedId: string | null;
 }
 
 const [selectionState, setSelectionState] = createStore<SelectionState>({
@@ -19,13 +19,13 @@ export const selectionActions = {
      * @param id - The ID of the item to toggle.
      * @param multi - If true, keeps existing selection (CMD/CTRL key).
      */
-    toggle: (id: number, multi: boolean) => {
+    toggle: (id: string, multi: boolean) => {
         if (multi) {
             const current = selectionState.selectedIds;
             if (current.includes(id)) {
                 setSelectionState(
                     'selectedIds',
-                    current.filter((i: number) => i !== id)
+                    current.filter((i: string) => i !== id)
                 );
                 setSelectionState('lastSelectedId', null);
             } else {
@@ -43,7 +43,7 @@ export const selectionActions = {
      * @param id - The ID of the item clicked with SHIFT.
      * @param itemIds - Ordered list of all item IDs in the current view.
      */
-    selectRange: (id: number, itemIds: number[]) => {
+    selectRange: (id: string, itemIds: string[]) => {
         const lastId = selectionState.lastSelectedId;
         if (lastId === null || lastId === id) {
             selectionActions.toggle(id, true);
@@ -73,7 +73,7 @@ export const selectionActions = {
      * Replaces the current selection with a new set of IDs.
      * @param ids - The new array of selected IDs.
      */
-    select: (ids: number[]) => {
+    select: (ids: string[]) => {
         setSelectionState('selectedIds', ids);
         setSelectionState('lastSelectedId', ids.length > 0 ? ids[ids.length - 1] : null);
     },
@@ -91,7 +91,7 @@ export const selectionActions = {
      * Note: For high-performance UI (AssetCard), use specialized selectors or stores
      * to avoid full list iterations.
      */
-    isSelected: (id: number) => {
+    isSelected: (id: string) => {
         return selectionState.selectedIds.includes(id);
     }
 };
@@ -103,7 +103,7 @@ export const selectionActions = {
  */
 export const isItemSelected = createSelector(
     () => selectionState.selectedIds,
-    (id: number, list: number[]) => list.includes(id)
+    (id: string, list: string[]) => list.includes(id)
 );
 
 export { selectionState };

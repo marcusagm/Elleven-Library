@@ -15,7 +15,7 @@ import { AssetItem } from '../../types';
 
 export interface AssetDragSourceParams {
     /** Unique ID of this item */
-    id: number;
+    id: string;
     /** Path to the asset file */
     path: string;
     /** Thumbnail path for ghost image */
@@ -23,9 +23,9 @@ export interface AssetDragSourceParams {
     /** Whether this item is currently selected */
     isSelected: boolean;
     /** Get all currently selected IDs (for multi-drag) */
-    getSelectedIds: () => (number | string)[];
+    getSelectedIds: () => string[];
     /** Get item info by ID (for ghost creation) */
-    getItemInfo: (id: number) => { path: string; thumbnail_path: string | null } | undefined;
+    getItemInfo: (id: string) => { path: string; thumbnail_path: string | null } | undefined;
 }
 
 /**
@@ -41,11 +41,11 @@ export function assetDragSource(el: HTMLElement, accessor: () => AssetDragSource
         const { id, isSelected, getSelectedIds, getItemInfo } = params;
 
         // Determine which IDs to drag
-        let ids: number[] = [id];
+        let ids: string[] = [id];
         if (isSelected) {
             const selectedIds = getSelectedIds();
             if (selectedIds.includes(id)) {
-                ids = selectedIds.filter((sid): sid is number => typeof sid === 'number');
+                ids = [...selectedIds];
             }
         }
 
@@ -55,7 +55,7 @@ export function assetDragSource(el: HTMLElement, accessor: () => AssetDragSource
             payload: {
                 id,
                 ids,
-                filename: params.id.toString(), // We don't have filename in params, but it's used for UI feedback
+                filename: params.id, // We don't have filename in params, but it's used for UI feedback
                 path: params.path,
                 thumbnail_path: params.thumbnailPath
             }

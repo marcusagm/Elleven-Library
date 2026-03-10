@@ -10,10 +10,10 @@ export type NavigationDirection = 'up' | 'down' | 'left' | 'right';
 
 /** Find an adjacent item by linear index when position-based lookup fails */
 export function findByIndex(
-    currentId: number,
+    currentId: string,
     direction: NavigationDirection,
-    allItems: { id: number }[]
-): number | null {
+    allItems: { id: string }[]
+): string | null {
     const currentIndex = allItems.findIndex(item => item.id === currentId);
     if (direction === 'up' || direction === 'left') {
         return currentIndex > 0 ? allItems[currentIndex - 1].id : null;

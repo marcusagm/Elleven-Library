@@ -106,7 +106,7 @@ export const VirtualGridView: Component = (): JSX.Element => {
      * @type {Map<number, AssetItem>}
      */
     const itemsById = createMemo(() => {
-        const map = new Map<number, (typeof library.items)[0]>();
+        const map = new Map<string, (typeof library.items)[0]>();
         library.items.forEach(item => map.set(item.id, item));
         return map;
     });
@@ -121,9 +121,9 @@ export const VirtualGridView: Component = (): JSX.Element => {
         allItems: () => library.items,
         containerHeight,
         scrollContainer,
-        onSelect: (itemId: number, modifiers: { multi: boolean; shift: boolean }) =>
+        onSelect: (itemId: string, modifiers: { multi: boolean; shift: boolean }) =>
             actions.handleSelect(itemId, modifiers),
-        onOpen: itemId => actions.handleOpen(itemId),
+        onOpen: (itemId: string) => actions.handleOpen(itemId),
         isSelected: actions.isSelected,
         getSelectedIds: actions.getSelectedIds,
         getItemRect: itemId => viewport.getItemPosition(itemId)
@@ -136,7 +136,7 @@ export const VirtualGridView: Component = (): JSX.Element => {
      * @param {{ multi: boolean; shift: boolean }} modifiers
      */
     const handleSelectWithFocus = (
-        itemId: number,
+        itemId: string,
         modifiers: { multi: boolean; shift: boolean }
     ) => {
         keyboardNav.syncFocusWithClick(itemId);
@@ -149,7 +149,7 @@ export const VirtualGridView: Component = (): JSX.Element => {
      * @param {number} itemId
      * @returns {AssetItem | undefined}
      */
-    const getItemInfo = (itemId: number) => {
+    const getItemInfo = (itemId: string) => {
         const item = itemsById().get(itemId);
         if (!item) return undefined;
         return {

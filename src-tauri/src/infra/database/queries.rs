@@ -159,6 +159,12 @@ impl AssetQueryHandler for SqliteAssetQueries {
             }
         }
 
+        if let Some(untagged) = filter.untagged {
+            if untagged {
+                query_builder.push(" AND id NOT IN (SELECT asset_id FROM v2_asset_tags)");
+            }
+        }
+
         // Ordering as per Sprint decision: created_at DESC, name ASC
         query_builder.push(" ORDER BY created_at DESC, name ASC ");
 

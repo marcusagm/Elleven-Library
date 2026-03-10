@@ -120,6 +120,7 @@ pub struct Tag {
 /// A lightweight projection of an asset for grid listings and infinite scroll.
 /// Focuses on visual performance and minimal bridge overhead.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AssetSummaryDto {
     /// Unique identifier (UUID/ULID)
     pub id: String,
@@ -139,6 +140,7 @@ pub struct AssetSummaryDto {
 
 /// Parameters for filtering asset listings.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct AssetFilter {
     /// Family of the asset
     pub family: Option<String>,
@@ -150,10 +152,13 @@ pub struct AssetFilter {
     pub folder_id: Option<String>,
     /// Filter by tags (any of)
     pub tags: Option<Vec<String>>,
+    /// Filter to only get assets without any tags
+    pub untagged: Option<bool>,
 }
 
 /// Pagination parameters for the read model.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PageParams {
     /// Page number
     pub page: u32,

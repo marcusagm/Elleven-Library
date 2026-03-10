@@ -27,7 +27,7 @@ interface ColorPaletteSectionProperties {
 export const ColorPaletteSection: Component<ColorPaletteSectionProperties> = properties => {
     const [colors] = createResource(
         () => properties.item.id,
-        async (assetId: number) => {
+        async (assetId: string) => {
             try {
                 return await invoke<ExtractedColorData[]>('get_asset_colors', {
                     assetId

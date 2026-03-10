@@ -13,7 +13,7 @@ import { createDragGhost } from './ghost';
 export interface AssetDnDParams {
     item: AssetItem;
     selected: boolean;
-    selectedIds: (number | string)[];
+    selectedIds: string[];
     allItems: AssetItem[];
 }
 
@@ -65,9 +65,9 @@ export function assetDnD(el: HTMLElement, accessor: () => AssetDnDParams) {
 
         const { item, selected, selectedIds, allItems } = accessor();
 
-        let ids = [item.id];
+        let ids: string[] = [item.id];
         if (selected && selectedIds.includes(item.id)) {
-            ids = [...selectedIds] as number[];
+            ids = [...selectedIds] as string[];
         }
 
         const data: DragItem = {

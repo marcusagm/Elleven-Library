@@ -26,7 +26,7 @@ interface ViewportState {
         viewportHeight: number;
     };
     /** Currently focused item ID (e.g., in ItemView) */
-    focusedItemId: number | null;
+    focusedItemId: string | null;
     /** Zoom level for the immersive viewer (percentage, default 100) */
     zoom: number;
     /** Fit to screen mapping */
@@ -64,7 +64,7 @@ export const viewportActions = {
     /**
      * Updates the focused item and synchronizes library selection.
      */
-    setFocusedItem: (id: number | null) => {
+    setFocusedItem: (id: string | null) => {
         setViewportState('focusedItemId', id);
         if (id !== null) {
             // Sincroniza seleção global: seleciona apenas o item atual

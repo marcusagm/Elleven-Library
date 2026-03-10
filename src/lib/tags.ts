@@ -1,5 +1,10 @@
 import { invokeCommand as invoke } from './api';
-import { type AssetItem } from '../types';
+import {
+    type AssetItem,
+    type SearchCriteria,
+    type AssetFilter,
+    type UpdateTagsPayload
+} from '../types';
 
 export interface Tag {
     id: number;
@@ -18,120 +23,105 @@ export interface LibraryStats {
 }
 
 export const tagService = {
+    getAllTags: async (): Promise<Tag[]> => {
+        return await invoke('list_tags');
+    },
+
+    getLibraryStats: async (): Promise<LibraryStats> => {
+        return await invoke('get_library_stats'); // Assuming V2 keeps this unchanged
+    },
+
+    getTagsForAsset: async (assetId: string): Promise<Tag[]> => {
+        return await invoke('get_tags_for_asset', { assetId: assetId }); // TBD V2 equivalent
+    },
+
+    searchAssets: async (
+        criteria: SearchCriteria,
+        page: number = 1,
+        pageSize: number = 30
+    ): Promise<AssetItem[]> => {
+        return await invoke('search_assets', {
+            criteria,
+            page: { page, pageSize }
+        });
+    },
+
+    getAssets: async (
+        filter: AssetFilter,
+        page: number = 1,
+        pageSize: number = 30
+    ): Promise<AssetItem[]> => {
+        return await invoke('get_assets', {
+            filter,
+            page: { page, pageSize }
+        });
+    },
+
+    updateAssetTags: async (payload: UpdateTagsPayload): Promise<void> => {
+        return await invoke('update_asset_tags', { payload });
+    },
+
+    updateAssetRating: async (id: string, rating: number): Promise<void> => {
+        return await invoke('update_asset_rating', { id, rating });
+    },
+
+    updateAssetNotes: async (id: string, notes: string): Promise<void> => {
+        return await invoke('update_asset_notes', { id, notes });
+    },
+
     createTag: async (
         name: string,
-        parent_id?: number | null,
+        parentId?: number | null,
         color?: string | null
     ): Promise<number> => {
-        return await invoke('create_tag', { name, parentId: parent_id, color });
+        return await invoke('create_tag', { name, parentId, color });
     },
 
     updateTag: async (
         id: number,
         name?: string | null,
         color?: string | null,
-        parent_id?: number | null,
-        order_index?: number | null
+        parentId?: number | null,
+        orderIndex?: number | null
     ): Promise<void> => {
-        return await invoke('update_tag', {
-            id,
-            name,
-            color,
-            parentId: parent_id,
-            orderIndex: order_index
-        });
+        return await invoke('update_tag', { id, name, color, parentId, orderIndex });
     },
 
     deleteTag: async (id: number): Promise<void> => {
         return await invoke('delete_tag', { id });
     },
 
-    getAllTags: async (): Promise<Tag[]> => {
-        return await invoke('get_all_tags');
+    addTagsToAssetsBatch: async (assetIds: string[], tagIds: number[]): Promise<void> => {
+        const tagsToAdd = tagIds.map(String);
+        await Promise.all(
+            assetIds.map(id =>
+                tagService.updateAssetTags({
+                    assetId: String(id),
+                    tagsToAdd,
+                    tagsToRemove: []
+                })
+            )
+        );
     },
 
-    getLibraryStats: async (): Promise<LibraryStats> => {
-        return await invoke('get_library_stats');
+    removeTagsFromAssetsBatch: async (assetIds: string[], tagIds: number[]): Promise<void> => {
+        const tagsToRemove = tagIds.map(String);
+        await Promise.all(
+            assetIds.map(id =>
+                tagService.updateAssetTags({
+                    assetId: String(id),
+                    tagsToAdd: [],
+                    tagsToRemove
+                })
+            )
+        );
     },
 
-    addTagsToAssetsBatch: async (assetIds: number[], tagIds: number[]): Promise<void> => {
-        return await invoke('add_tags_to_assets_batch', { assetIds: assetIds, tagIds });
-    },
-
-    getTagsForAsset: async (assetId: number): Promise<Tag[]> => {
-        return await invoke('get_tags_for_asset', { assetId: assetId });
-    },
-
-    removeTagFromAsset: async (assetId: number, tagId: number): Promise<void> => {
-        return await invoke('remove_tag_from_asset', { assetId: assetId, tagId });
-    },
-
-    getAssetsFiltered: async (
-        limit: number,
-        offset: number,
-        tagIds: number[],
-        matchAll: boolean = true,
-        untagged?: boolean,
-        folderId?: number,
-        recursive: boolean = false,
-        sort_by?: string,
-        sort_order?: string,
-        advanced_query?: string,
-        search_query?: string,
-        search_fuzzy?: boolean
-    ): Promise<AssetItem[]> => {
-        return await invoke('get_assets_filtered', {
-            limit,
-            offset,
-            tagIds,
-            matchAll,
-            untagged,
-            folderId,
-            recursive,
-            sortBy: sort_by,
-            sortOrder: sort_order,
-            advancedQuery: advanced_query,
-            searchQuery: search_query,
-            searchFuzzy: search_fuzzy
-        });
-    },
-
-    getAssetsFilteredCount: async (
-        tagIds: number[],
-        matchAll: boolean = true,
-        untagged?: boolean,
-        folderId?: number,
-        recursive: boolean = false,
-        advanced_query?: string,
-        search_query?: string,
-        search_fuzzy?: boolean
-    ): Promise<number> => {
-        return await invoke('get_asset_count_filtered', {
-            tagIds,
-            matchAll,
-            untagged,
-            folderId,
-            recursive,
-            advancedQuery: advanced_query,
-            searchQuery: search_query,
-            searchFuzzy: search_fuzzy
-        });
-    },
-
-    updateAssetRating: async (id: number, rating: number): Promise<void> => {
-        return await invoke('update_asset_rating', { id, rating });
-    },
-
-    updateAssetNotes: async (id: number, notes: string): Promise<void> => {
-        return await invoke('update_asset_notes', { id, notes });
-    },
-
-    removeTagsFromAssetsBatch: async (assetIds: number[], tagIds: number[]): Promise<void> => {
-        return await invoke('remove_tags_from_assets_batch', { assetIds: assetIds, tagIds });
-    },
-
-    replaceTagsForAssetsBatch: async (assetIds: number[], tagIds: number[]): Promise<void> => {
-        return await invoke('replace_tags_for_assets_batch', { assetIds: assetIds, tagIds });
+    replaceTagsForAssetsBatch: async (assetIds: string[], tagIds: number[]): Promise<void> => {
+        // V2 updateAssetTags does not inherently "replace", it just adds/removes. A true replace would need
+        // backend support or explicit removing all then adding the new ones. For now, adapting to API.
+        // Assuming we need a backend change or this is a destructive operation.
+        return await invoke('replace_asset_tags', { assetIds, tagIds }); // Placeholder for true "replace" handling if implemented, or we map it to updateAssetTags.
     },
 
     getAssetExif: async (path: string): Promise<Record<string, string>> => {

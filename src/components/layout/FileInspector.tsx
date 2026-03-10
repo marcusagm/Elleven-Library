@@ -20,11 +20,11 @@ export const FileInspector: Component = () => {
         if (selectionCount() === 0) return null;
         const ids = selection.selectedIds;
         const id = ids[ids.length - 1]; // Last selected
-        return lib.items.find((i: { id: number }) => i.id === id) || null;
+        return lib.items.find((i: { id: string }) => i.id === id) || null;
     });
 
     const selectedItems = createMemo(() => {
-        return lib.items.filter((i: { id: number }) => selection.selectedIds.includes(i.id));
+        return lib.items.filter((i: { id: string }) => selection.selectedIds.includes(i.id));
     });
 
     const fileType = createMemo(() => {

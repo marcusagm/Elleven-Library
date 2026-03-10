@@ -138,8 +138,8 @@ export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
                           type: 'ASSET',
                           // This case is rare for tree, but we follow the union
                           payload: {
-                              id: Number(node.id),
-                              ids: [Number(node.id)],
+                              id: String(node.id),
+                              ids: [String(node.id)],
                               filename: node.label,
                               path: nodeData?.path || ''
                           }

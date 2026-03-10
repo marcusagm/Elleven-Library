@@ -21,6 +21,16 @@ impl Db {
         parent_id: Option<i64>,
         color: Option<String>,
     ) -> Result<i64, sqlx::Error> {
+        // Return existing tag ID instead of crashing via internal constraint
+        if let Ok(Some(existing_tag)) = sqlx::query!("SELECT id FROM tags WHERE name = ?", name)
+            .fetch_optional(&self.pool)
+            .await
+        {
+            if let Some(id) = existing_tag.id {
+                return Ok(id);
+            }
+        }
+
         let res = sqlx::query!(
             "INSERT INTO tags (name, parent_id, color) VALUES (?, ?, ?)",
             name,

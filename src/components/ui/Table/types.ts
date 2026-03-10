@@ -59,7 +59,7 @@ export interface TableProps<T> {
     /** Currently active sort order */
     sortOrder?: SortOrder;
     /** List of selected item identifiers */
-    selectedIds?: (string | number)[];
+    selectedIds?: string[];
     /** Callback when column sort state changes */
     onSort?: (key: string, order: SortOrder) => void;
     /** Callback when a column is resized */

@@ -23,8 +23,8 @@ export const TagDropStrategy: DropStrategy = {
             const { libraryActions } = await import('../../store/library');
             const { selectionState } = await import('../../store/selectionStore');
 
-            let assetIds = [item.payload.id];
-            if (selectionState.selectedIds.includes(item.payload.id)) {
+            let assetIds: string[] = [String(item.payload.id)];
+            if (selectionState.selectedIds.includes(String(item.payload.id))) {
                 assetIds = [...selectionState.selectedIds];
             }
 

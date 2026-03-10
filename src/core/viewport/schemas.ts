@@ -6,7 +6,7 @@ import { LayoutMode } from './types';
 // ============================================================================
 
 export const LayoutItemInputSchema = z.object({
-    id: z.number().int().positive(),
+    id: z.string(),
     aspectRatio: z.number().positive()
 });
 
@@ -47,7 +47,7 @@ export const ConfigureMessageSchema = z.object({
 // ============================================================================
 
 const ItemPositionSchema = z.object({
-    id: z.number().int().positive(),
+    id: z.string(),
     x: z.number(),
     y: z.number(),
     width: z.number().nonnegative(),

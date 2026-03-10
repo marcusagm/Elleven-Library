@@ -312,7 +312,7 @@ export function Table<T>(props: TableProps<T>) {
                                 () => visibleRange().start + indexAccessor()
                             );
                             /** Unique identifier for the current row */
-                            const rowIdentifier = rowItem[itemKeyField()] as string | number;
+                            const rowIdentifier = String(rowItem[itemKeyField()]);
                             /** Whether the current row is marked as selected */
                             const isRowSelected = createMemo(() =>
                                 activeSelectedIds().includes(rowIdentifier)

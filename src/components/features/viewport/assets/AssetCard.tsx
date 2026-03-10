@@ -41,15 +41,15 @@ export interface AssetCardProps {
     /**
      * Callbacks (lifted to parent)
      */
-    onSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) => void;
-    onOpen: (id: number) => void;
-    onContextMenu?: (event: MouseEvent, id: number) => void;
+    onSelect: (id: string, modifiers: { multi: boolean; shift: boolean }) => void;
+    onOpen: (id: string) => void;
+    onContextMenu?: (event: MouseEvent, id: string) => void;
 
     /**
      * DnD Support
      */
-    getSelectedIds: () => (number | string)[];
-    getItemInfo: (id: number) => { path: string; thumbnail_path: string | null } | undefined;
+    getSelectedIds: () => string[];
+    getItemInfo: (id: string) => { path: string; thumbnail_path: string | null } | undefined;
 }
 
 /**

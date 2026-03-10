@@ -124,7 +124,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
      * @type {Memo<Map<number, AssetItem>>}
      */
     const itemsById = createMemo(() => {
-        const map = new Map<number, AssetItem>();
+        const map = new Map<string, AssetItem>();
         props.items.forEach(item => map.set(item.id, item));
         return map;
     });
@@ -139,9 +139,9 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
         allItems: () => props.items,
         containerHeight,
         scrollContainer,
-        onSelect: (itemId: number, modifiers: { multi: boolean; shift: boolean }) =>
+        onSelect: (itemId: string, modifiers: { multi: boolean; shift: boolean }) =>
             actions.handleSelect(itemId, modifiers),
-        onOpen: itemId => actions.handleOpen(itemId),
+        onOpen: (itemId: string) => actions.handleOpen(itemId),
         isSelected: actions.isSelected,
         getSelectedIds: actions.getSelectedIds,
         getItemRect: itemId => viewport.getItemPosition(itemId)
@@ -154,7 +154,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
      * @param {{ multi: boolean; shift: boolean }} modifiers - Modifiers for the selection
      */
     const handleSelectWithFocus = (
-        itemId: number,
+        itemId: string,
         modifiers: { multi: boolean; shift: boolean }
     ) => {
         keyboardNav.syncFocusWithClick(itemId);
@@ -167,7 +167,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
      * @param {number} itemId - ID of the item
      * @returns {AssetItem | undefined} Item object or undefined
      */
-    const getItemInfo = (itemId: number) => {
+    const getItemInfo = (itemId: string) => {
         const item = itemsById().get(itemId);
         if (!item) return undefined;
         return {

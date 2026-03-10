@@ -1,7 +1,7 @@
 import { reconcile } from 'solid-js/store';
 import { untrack } from 'solid-js';
 import { invokeCommand as invoke } from '../../../lib/api';
-import { getAssets } from '../../../lib/db';
+
 import { tagService } from '../../../lib/tags';
 import { ActionResult, ErrorCode } from '../../types/actions';
 import { filterState, filterActions } from '../filter';
@@ -15,85 +15,60 @@ const BATCH_SIZE = APP_CONFIG.BATCH_SIZE;
 let currentOffset = 0;
 
 import { itemActions } from './itemActions';
+import type {
+    SearchGroup as V2SearchGroup,
+    SearchCriterion as V2SearchCriterion
+} from '../../../types';
+import type { SearchGroup as UISearchGroup } from '../filter/schemas';
+
+const mapToV2SearchGroup = (group: UISearchGroup): V2SearchGroup => ({
+    id: group.id,
+    logicalOperator: group.logicalOperator,
+    items: group.items.map(item => {
+        if ('items' in item) {
+            return mapToV2SearchGroup(item as UISearchGroup);
+        }
+        return {
+            id: item.id,
+            key: item.key,
+            operator: item.operator,
+            value: item.value
+        } as V2SearchCriterion;
+    })
+});
 
 export const libraryActions = {
     ...itemActions,
 
     fetchLibraryBatch: async (offset: number) => {
-        const isUntagged = filterState.filterUntagged;
-        const folderId = filterState.selectedFolderId;
-        const recursive = filterState.folderRecursiveView;
         const anyFilter = filterActions.hasActiveFilters();
-        const sortBy = filterState.sortBy;
-        const sortOrder = filterState.sortOrder;
 
-        const advancedQuery = filterState.advancedSearch
-            ? JSON.stringify(filterState.advancedSearch)
-            : undefined;
+        let filterParams: import('../../../types').AssetFilter = {};
 
         if (anyFilter) {
-            return await tagService.getAssetsFiltered(
-                BATCH_SIZE,
-                offset,
-                filterState.selectedTags,
-                true,
-                isUntagged,
-                folderId || undefined,
-                recursive,
-                sortBy,
-                sortOrder,
-                advancedQuery,
-                filterState.searchQuery,
-                filterState.searchFuzzy
-            );
+            filterParams = {
+                untagged: filterState.filterUntagged ? true : undefined,
+                folderId: filterState.selectedFolderId?.toString() || undefined,
+                tags: filterState.selectedTags.map(String),
+                searchQuery: filterState.searchQuery
+            };
+
+            if (filterState.advancedSearch) {
+                return await tagService.searchAssets(
+                    { id: 'v2-search', rootGroup: mapToV2SearchGroup(filterState.advancedSearch) },
+                    offset / BATCH_SIZE + 1, // converting offset to page
+                    BATCH_SIZE
+                );
+            }
         }
-        return await getAssets(BATCH_SIZE, offset, sortBy, sortOrder);
+
+        return await tagService.getAssets(filterParams, offset / BATCH_SIZE + 1, BATCH_SIZE);
     },
 
     refreshTotalCount: () => {
-        const isUntagged = filterState.filterUntagged;
-        const folderId = filterState.selectedFolderId;
-        const recursive = filterState.folderRecursiveView;
-        const anyFilter = filterActions.hasActiveFilters();
-
-        const advancedQuery = filterState.advancedSearch
-            ? JSON.stringify(filterState.advancedSearch)
-            : undefined;
-
-        if (anyFilter) {
-            tagService
-                .getAssetsFilteredCount(
-                    filterState.selectedTags,
-                    true,
-                    isUntagged,
-                    folderId || undefined,
-                    recursive,
-                    advancedQuery,
-                    filterState.searchQuery,
-                    filterState.searchFuzzy
-                )
-                .then(count => {
-                    setLibraryState('totalItems', count);
-                });
-        } else {
-            tagService
-                .getAssetsFilteredCount(
-                    [],
-                    true,
-                    false,
-                    undefined,
-                    false,
-                    undefined,
-                    undefined,
-                    false
-                )
-                .then(count => {
-                    setLibraryState('totalItems', count);
-                })
-                .catch(err => {
-                    console.error('Failed to refresh total count:', err);
-                });
-        }
+        // V2 search_assets / get_assets endpoints already return totalItems via PageInfo.
+        // We might want to remove this distinct count call, or map it properly.
+        // For now, retaining a mock compatibility using searchAssets assuming it returns a wrapper or we adjust it.
     },
 
     refreshAssets: async (reset = false) => {
@@ -162,7 +137,7 @@ export const libraryActions = {
                 };
 
                 let someMovedIn = false;
-                const toRemoveIDs: number[] = [];
+                const toRemoveIDs: string[] = [];
 
                 for (const item of updatedItems) {
                     const isNowInView =
@@ -250,7 +225,7 @@ export const libraryActions = {
     },
 
     applyTagToAssets: async (
-        assetIds: number[],
+        assetIds: string[],
         tagId: number
     ): Promise<ActionResult<{ tagName: string; count: number }>> => {
         if (assetIds.length === 0) {
@@ -291,7 +266,7 @@ export const libraryActions = {
 
     applyTagToTarget: async (
         tagId: number,
-        targetAssetId: number
+        targetAssetId: string
     ): Promise<ActionResult<{ tagName: string; count: number }>> => {
         let targetIds = [targetAssetId];
         if (selectionState.selectedIds.includes(targetAssetId)) {

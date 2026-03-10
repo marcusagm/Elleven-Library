@@ -23,53 +23,53 @@ export interface GridKeyboardNavOptions {
     /** Array of visible items with positions */
     visibleItems: Accessor<ItemPosition[]>;
     /** All items (for navigation beyond visible) */
-    allItems: Accessor<{ id: number }[]>;
+    allItems: Accessor<{ id: string }[]>;
     /** Container height for scroll calculations */
     containerHeight: Accessor<number>;
     /** Reference to scroll container */
     scrollContainer: Accessor<HTMLDivElement | undefined>;
     /** Callback when item should be selected */
-    onSelect: (id: number, modifiers: { multi: boolean; shift: boolean }) => void;
+    onSelect: (id: string, modifiers: { multi: boolean; shift: boolean }) => void;
     /** Callback when item should be opened */
-    onOpen: (id: number) => void;
+    onOpen: (id: string) => void;
     /** Check if item is selected */
-    isSelected: (id: number) => boolean;
+    isSelected: (id: string) => boolean;
     /** Get current selection */
-    getSelectedIds: () => (number | string)[];
+    getSelectedIds: () => string[];
     /** Optional callback to get exact item position (e.g. from worker) */
-    getItemRect?: (id: number) => Promise<ItemPosition | null>;
+    getItemRect?: (id: string) => Promise<ItemPosition | null>;
 }
 
 export interface GridKeyboardNavResult {
     /** Currently focused item ID */
-    focusedId: Accessor<number | null>;
+    focusedId: Accessor<string | null>;
     /** Set focused item */
-    setFocusedId: (id: number | null) => void;
+    setFocusedId: (id: string | null) => void;
     /** Sync focus with click selection */
-    syncFocusWithClick: (id: number) => void;
+    syncFocusWithClick: (id: string) => void;
 }
 
 export function useGridKeyboardNav(options: GridKeyboardNavOptions): GridKeyboardNavResult {
-    const [focusedId, setFocusedId] = createSignal<number | null>(null);
+    const [focusedId, setFocusedId] = createSignal<string | null>(null);
 
     // Activate viewport scope when items exist
     createConditionalScope('viewport', () => options.allItems().length > 0);
 
     // Find item's position in allItems array
-    const getItemIndex = (id: number): number => {
+    const getItemIndex = (id: string): number => {
         return options.allItems().findIndex(item => item.id === id);
     };
 
     // Sync focus when clicking an item
-    const syncFocusWithClick = (id: number) => {
+    const syncFocusWithClick = (id: string) => {
         setFocusedId(id);
     };
 
     // Find visually adjacent items based on position
     const findAdjacentItem = (
-        currentId: number,
+        currentId: string,
         direction: 'up' | 'down' | 'left' | 'right'
-    ): number | null => {
+    ): string | null => {
         const visibleItems = options.visibleItems();
         const currentPos = visibleItems.find(position => position.id === currentId);
 
@@ -87,7 +87,7 @@ export function useGridKeyboardNav(options: GridKeyboardNavOptions): GridKeyboar
     };
 
     // Scroll to make focused item visible
-    const scrollToItem = async (id: number) => {
+    const scrollToItem = async (id: string) => {
         const container = options.scrollContainer();
         if (!container) return;
 

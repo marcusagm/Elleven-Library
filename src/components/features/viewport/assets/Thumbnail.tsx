@@ -42,7 +42,7 @@ export interface ThumbnailProperties {
     /**
      * The unique identifier of the asset.
      */
-    id: number;
+    id: string;
     /**
      * The original source file path or URL.
      */
@@ -107,7 +107,7 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
     onMount(() => {
         unsubscribe = subscribeThumbnailReady(
             thumbnailProperties.id,
-            (_id: number, path: string) => {
+            (_id: string, path: string) => {
                 setLocalThumbnail(path);
                 setLocalError(false);
             }

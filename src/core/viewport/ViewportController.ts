@@ -133,7 +133,7 @@ export class ViewportController implements IViewportController {
     /**
      * Queries the exact position of an item from the worker.
      */
-    getItemPosition(id: number): Promise<ItemPosition | null> {
+    getItemPosition(id: string): Promise<ItemPosition | null> {
         if (this.disposed) return Promise.resolve(null);
 
         return new Promise(resolve => {

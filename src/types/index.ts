@@ -5,9 +5,9 @@ export interface AssetItem {
     /**
      * Unique database ID
      *
-     * @type {number}
+     * @type {string}
      */
-    id: number;
+    id: string;
 
     /**
      * Absolute filesystem path
@@ -154,4 +154,56 @@ export interface FileFormat {
         | 'Model3D'
         | 'Font'
         | 'Unknown';
+}
+
+// ==========================================
+// V2 Backend DTOs
+// ==========================================
+
+export interface PageParams {
+    page: number;
+    pageSize: number;
+}
+
+export interface AssetFilter {
+    family?: string;
+    state?: string; // Based on AssetState enum
+    searchQuery?: string;
+    folderId?: string;
+    tags?: string[];
+    untagged?: boolean;
+}
+
+export type LogicalOperator = 'and' | 'or';
+
+export interface SearchCriterion {
+    id: string;
+    key: string;
+    operator: string;
+    value: unknown;
+}
+
+export interface SearchGroup {
+    id: string;
+    logicalOperator: LogicalOperator;
+    items: SearchItem[];
+}
+
+export type SearchItem = SearchGroup | SearchCriterion;
+
+export interface SearchCriteria {
+    id: string;
+    rootGroup: SearchGroup;
+}
+
+export interface UpdateTagsPayload {
+    assetId: string;
+    tagsToAdd: string[];
+    tagsToRemove: string[];
+}
+
+export interface CreateFolderPayload {
+    parentId?: string;
+    name: string;
+    path: string;
 }

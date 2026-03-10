@@ -10,7 +10,7 @@ import { useDndHandlers } from './useDndHandlers';
  * stays correctly bound to the current item even if the underlying DOM node is
  * recycled in a virtualized list.
  */
-export const useAssetDropZone = (getAssetId: () => number) => {
+export const useAssetDropZone = (getAssetId: () => string) => {
     const [dragCounter, setDragCounter] = createSignal(0);
     const { handleDrop } = useDndHandlers();
 

@@ -14,7 +14,7 @@
  * Keep this lean for fast serialization over postMessage.
  */
 export interface LayoutItemInput {
-    id: number;
+    id: string;
     aspectRatio: number; // width / height (1 for grid mode)
 }
 
@@ -46,7 +46,7 @@ export interface LayoutConfig {
  * Calculated position and dimensions for a single item.
  */
 export interface ItemPosition {
-    id: number;
+    id: string;
     x: number;
     y: number;
     width: number;
@@ -74,7 +74,7 @@ export type WorkerInMessage =
     | { type: 'RESIZE'; payload: { width: number } }
     | { type: 'SCROLL'; payload: { scrollTop: number; viewportHeight: number } }
     | { type: 'INVALIDATE' } // Force recalculation
-    | { type: 'QUERY_POSITION'; payload: { id: number; requestId: string } };
+    | { type: 'QUERY_POSITION'; payload: { id: string; requestId: string } };
 
 /**
  * Messages sent FROM worker TO main thread.
@@ -103,7 +103,7 @@ export interface IViewportController {
     setConfig(config: Partial<LayoutConfig>): void;
     handleResize(width: number): void;
     handleScroll(scrollTop: number, viewportHeight: number): void;
-    getItemPosition(id: number): Promise<ItemPosition | null>;
+    getItemPosition(id: string): Promise<ItemPosition | null>;
     dispose(): void;
 }
 
@@ -118,7 +118,7 @@ export interface IViewportController {
 export interface SpatialCell {
     startY: number;
     endY: number;
-    itemIds: number[];
+    itemIds: string[];
 }
 
 /**
