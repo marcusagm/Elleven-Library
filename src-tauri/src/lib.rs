@@ -2,48 +2,19 @@
 #![deny(clippy::expect_used)]
 
 pub mod core;
-pub mod db;
 pub mod delivery;
 pub mod feature;
-mod indexer;
-pub mod infra;
-pub mod processing;
-// Moved to media: metadata_reader, ffmpeg
-mod protocols;
-// Moved to thumbnails: thumbnail_worker, thumbnail_priority
 pub mod formats;
+pub mod infra;
 pub mod lifecycle;
-mod thumbnails;
-// Moved to settings: config
-pub mod library;
-mod media;
-mod settings;
-mod streaming;
-mod transcoding;
-
+pub mod processing;
 use crate::core::events::AppEventBus;
+use crate::core::repository::AssetQueryHandler;
 use crate::core::settings::port::SettingsRepository;
-use crate::db::Db;
-use crate::indexer::Indexer;
 use crate::infra::events::TokioEventBus;
 use crate::lifecycle::LifecycleRegistry;
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
-
-/// Holds the session token used to authenticate streaming server requests.
-///
-/// This token is generated once at app boot (UUID v4) and shared with
-/// the frontend via the `get_streaming_token` Tauri command.
-pub struct StreamingSessionToken(pub String);
-
-/// Returns the streaming session token to the frontend.
-///
-/// The frontend must include this token as a `?token=xxx` query parameter
-/// on every request to the embedded HLS streaming server.
-#[tauri::command]
-fn get_streaming_token(token_state: tauri::State<'_, StreamingSessionToken>) -> String {
-    token_state.0.clone()
-}
 
 /// Runs the application.
 #[allow(clippy::expect_used)]
@@ -53,7 +24,7 @@ pub fn run() {
     crate::infra::telemetry::init_telemetry();
 
     let builder = tauri::Builder::default();
-    crate::protocols::register_all(builder)
+    builder
         .register_uri_scheme_protocol("asset", move |ctx, request| {
             crate::delivery::protocols::asset::handler(ctx.app_handle(), &request)
         })
@@ -70,9 +41,12 @@ pub fn run() {
             let thumbnails_dir = app_data.join("thumbnails");
             std::fs::create_dir_all(&thumbnails_dir).ok();
 
-            // Initialize Settings Infrastructure (Hexagonal V2)
-            let settings_adapter = Arc::new(crate::infra::config::json_adapter::JsonSettingsAdapter::new(settings_path));
-            let settings_service = crate::feature::settings::SettingsService::new(settings_adapter.clone());
+            // Initialize Settings Infrastructure (Hexagonal)
+            let settings_adapter = Arc::new(
+                crate::infra::config::json_adapter::JsonSettingsAdapter::new(settings_path),
+            );
+            let settings_service =
+                crate::feature::settings::SettingsService::new(settings_adapter.clone());
             app.manage(settings_service);
 
             // Initialize Event Bus (System Nervous System)
@@ -96,10 +70,6 @@ pub fn run() {
             let lifecycle = std::sync::Arc::new(LifecycleRegistry::new());
             app.manage(lifecycle.clone());
 
-            // Generate a session token for streaming server authentication
-            let session_token = uuid::Uuid::new_v4().to_string();
-            app.manage(StreamingSessionToken(session_token.clone()));
-
             // Initialize Format Registry (O(1) Router)
             let format_registry =
                 std::sync::Arc::new(crate::core::formats::build_format_registry());
@@ -119,20 +89,19 @@ pub fn run() {
             // Initialize DB and Worker
             let handle = app.handle().clone();
             let lifecycle_for_setup = lifecycle.clone();
-            let streaming_session_token = session_token;
             tauri::async_runtime::spawn(async move {
-                // Initialize V2 Database Infrastructure
-                let v2_db_manager =
+                // Initialize Database Infrastructure
+                let db_manager =
                     match crate::infra::database::manager::DbManager::new(&db_path).await {
                         Ok(manager) => manager,
                         Err(err) => {
-                            tracing::error!("Failed to initialize V2 database manager: {}", err);
+                            tracing::error!("Failed to initialize database manager: {}", err);
                             return;
                         }
                     };
                 let asset_query_handler =
                     Arc::new(crate::infra::database::queries::SqliteAssetQueries::new(
-                        v2_db_manager.pool().clone(),
+                        db_manager.pool().clone(),
                     ));
                 handle.manage(asset_query_handler.clone()
                     as Arc<dyn crate::core::repository::AssetQueryHandler>);
@@ -149,139 +118,88 @@ pub fn run() {
                 // Initialize Asset Ledger (Real SQLx Adapter)
                 let asset_ledger =
                     Arc::new(crate::infra::database::ledger::SqliteAssetLedger::new(
-                        v2_db_manager.pool().clone(),
+                        db_manager.pool().clone(),
                         event_bus.clone(),
                     ));
                 handle.manage(asset_ledger.clone()
                     as Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>);
 
-                match Db::new(db_path).await {
-                    Ok(db) => {
-                        let db_arc = std::sync::Arc::new(db);
-                        let watcher_registry = std::sync::Arc::new(tokio::sync::Mutex::new(
-                            crate::indexer::WatcherRegistry::default(),
-                        ));
+                // Load Settings from JSON
+                let settings: crate::core::settings::AppSettings =
+                    settings_adapter.load().await.unwrap_or_default();
 
-                        // Load Config (Legacy Migration Support)
-                        let app_config = crate::settings::config::load_config(&db_arc).await;
-                        let config_state = crate::settings::config::ConfigState(
-                            std::sync::Mutex::new(app_config.clone()),
-                        );
+                let priority_state = std::sync::Arc::new(
+                    crate::core::workflows::thumbnails::priority::ThumbnailPriorityState::default(),
+                );
 
-                        // Load V2 Settings from JSON
-                        let v2_settings: crate::core::settings::AppSettings = settings_adapter.load().await.unwrap_or_default();
+                handle.manage(priority_state.clone());
 
-                        let priority_state_v1 = std::sync::Arc::new(
-                            crate::thumbnails::priority::ThumbnailPriorityState::default(),
-                        );
-                        let priority_state_v2 = std::sync::Arc::new(
-                            crate::core::workflows::thumbnails::priority::ThumbnailPriorityState::default(),
-                        );
+                // Start Thumbnail Worker (Hybrid Queue)
+                let thumbnail_token = lifecycle_for_setup.child_token();
+                let thumbnail_worker =
+                    crate::processing::workers::thumbnail_worker::ThumbnailWorker::new(
+                        format_registry.clone(),
+                        asset_ledger.clone(),
+                        asset_query_handler.clone(),
+                        priority_state,
+                        thumbnails_dir.clone(),
+                        settings.worker_threads,
+                    );
+                let thumbnail_handle = thumbnail_worker.start(thumbnail_token.clone());
+                lifecycle_for_setup.register(
+                    "thumbnail_worker".to_string(),
+                    thumbnail_token,
+                    thumbnail_handle,
+                );
 
-                        handle.manage(db_arc.clone());
-                        handle.manage(watcher_registry.clone());
-                        handle.manage(config_state);
-                        handle.manage(priority_state_v1.clone());
-                        handle.manage(priority_state_v2.clone());
+                // Start Color Worker (Reactive to Thumbnails)
+                let color_worker = crate::processing::workers::color_worker::ColorWorker::new(
+                    asset_ledger.clone(),
+                    event_bus.clone(),
+                    thumbnails_dir.to_path_buf(),
+                );
+                color_worker.start();
 
-                        // Start V1 Thumbnail Worker with lifecycle token
-                        let thumbnail_token = lifecycle_for_setup.child_token();
-                        let worker = crate::thumbnails::worker::ThumbnailWorker::new(
-                            db_arc.clone(),
-                            thumbnails_dir.clone(),
-                            handle.clone(),
-                            app_config,
-                            priority_state_v1,
-                        );
-                        let thumbnail_handle = worker.start(thumbnail_token.clone());
-                        lifecycle_for_setup.register(
-                            "thumbnail_worker_v1".to_string(),
-                            thumbnail_token,
-                            thumbnail_handle,
-                        );
+                // Start Watchers for Existing Roots
+                if let Ok(roots) = asset_query_handler.list_folders(None).await {
+                    tracing::info!("Starting watchers for {} roots", roots.len());
 
-                        // Start V2 Thumbnail Worker (Hybrid Queue)
-                        let thumbnail_token_v2 = lifecycle_for_setup.child_token();
-                        let worker_v2 = crate::processing::workers::thumbnail_worker::ThumbnailWorker::new(
-                            format_registry.clone(),
-                            asset_ledger.clone(),
-                            asset_query_handler.clone(),
-                            priority_state_v2,
-                            thumbnails_dir.clone(),
-                            v2_settings.worker_threads, // Using V2 threads
-                        );
-                        let thumbnail_handle_v2 = worker_v2.start(thumbnail_token_v2.clone());
-                        lifecycle_for_setup.register(
-                            "thumbnail_worker_v2".to_string(),
-                            thumbnail_token_v2,
-                            thumbnail_handle_v2,
-                        );
+                    // Initialize Indexer
+                    let indexer = Arc::new(crate::feature::library::indexer::LibraryIndexer::new(
+                        asset_query_handler.clone(),
+                        asset_ledger.clone(),
+                    ));
+                    indexer
+                        .clone()
+                        .start_event_listener(event_bus.clone())
+                        .await;
 
-                        // Start V2 Color Worker (Reactive to Thumbnails)
-                        let color_worker = crate::processing::workers::color_worker::ColorWorker::new(
-                            asset_ledger.clone(),
-                            event_bus.clone(),
-                            thumbnails_dir.to_path_buf(),
-                        );
-                        color_worker.start();
+                    // Initialize Watcher Service
+                    let watcher = Arc::new(crate::processing::watcher::WatcherService::new(
+                        event_bus.clone(),
+                    ));
 
-                        // Start Watchers for Existing Roots
-                        if let Ok(roots) = db_arc.get_all_root_folders().await {
-                            tracing::info!("Starting watchers for {} roots", roots.len());
+                    for folder in roots {
+                        let root_path = std::path::PathBuf::from(&folder.path);
 
-                            // Initialize V2 Indexer
-                            let v2_indexer = Arc::new(crate::feature::library::indexer::LibraryIndexer::new(
-                                asset_query_handler.clone(),
-                                asset_ledger.clone(),
-                            ));
-                            v2_indexer.clone().start_event_listener(event_bus.clone()).await;
-
-                            // Initialize V2 Watcher Service
-                            let v2_watcher = Arc::new(crate::processing::watcher::WatcherService::new(
-                                event_bus.clone(),
-                            ));
-
-                            for (_id, path) in roots {
-                                // V1 Indexer/Watcher
-                                let indexer = Indexer::new(
-                                    handle.clone(),
-                                    &db_arc,
-                                    watcher_registry.clone(),
-                                    lifecycle_for_setup.clone(),
-                                    asset_ledger.clone(),
-                                );
-                                let root_path = std::path::PathBuf::from(&path);
-                                indexer.start_scan(root_path.clone()).await;
-
-                                // V2 Watcher (Parallel to V1 during transition)
-                                let watcher_token = lifecycle_for_setup.child_token();
-                                if let Err(e) = v2_watcher.watch(root_path.clone(), watcher_token.clone()).await {
-                                    tracing::error!("Failed to start V2 watcher for {}: {}", path, e);
-                                } else {
-                                    lifecycle_for_setup.register(
-                                        format!("watcher:{}", root_path.display()),
-                                        watcher_token,
-                                        tauri::async_runtime::spawn(async {}), // Fake join handle as the watcher is self-managed
-                                    );
-                                }
-                            }
+                        let watcher_token = lifecycle_for_setup.child_token();
+                        if let Err(e) = watcher
+                            .watch(root_path.clone(), watcher_token.clone())
+                            .await
+                        {
+                            tracing::error!(
+                                "Failed to start watcher for {}: {}",
+                                root_path.display(),
+                                e
+                            );
+                        } else {
+                            lifecycle_for_setup.register(
+                                format!("watcher:{}", root_path.display()),
+                                watcher_token,
+                                tauri::async_runtime::spawn(async {}), // Fake join handle as the watcher is self-managed
+                            );
                         }
-
-                        // Start HLS Streaming Server with lifecycle token
-                        let streaming_token = lifecycle_for_setup.child_token();
-                        let streaming_handle = crate::streaming::server::spawn_server(
-                            handle.clone(),
-                            streaming_token.clone(),
-                            db_arc.clone(),
-                            streaming_session_token,
-                        );
-                        lifecycle_for_setup.register(
-                            "streaming_server".to_string(),
-                            streaming_token,
-                            streaming_handle,
-                        );
                     }
-                    Err(db_error) => tracing::error!("Failed to initialize database: {}", db_error),
                 }
             });
 
@@ -294,59 +212,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_mcp_bridge::init())
         .invoke_handler(tauri::generate_handler![
-            library::commands::indexing::start_indexing,
-            library::commands::tags::create_tag,
-            library::commands::tags::update_tag,
-            library::commands::tags::delete_tag,
-            library::commands::tags::get_all_tags,
-            library::commands::tags::get_library_stats,
-            library::commands::tags::add_tag_to_asset,
-            library::commands::tags::remove_tag_from_asset,
-            library::commands::tags::get_tags_for_asset,
-            library::commands::tags::add_tags_to_assets_batch,
-            library::commands::tags::remove_tags_from_assets_batch,
-            library::commands::tags::replace_tags_for_assets_batch,
-            library::commands::tags::get_assets_filtered,
-            library::commands::tags::get_asset_count_filtered,
-            library::commands::tags::update_asset_rating,
-            library::commands::tags::update_asset_notes,
-            library::commands::metadata::get_asset_exif,
-            thumbnails::commands::request_thumbnail_regenerate,
-            thumbnails::commands::set_thumbnail_priority,
-            library::commands::folders::add_location,
-            library::commands::folders::remove_location,
-            library::commands::folders::get_locations,
-            library::commands::folders::get_all_subfolders,
-            library::commands::folders::get_subfolder_counts,
-            library::commands::folders::get_location_root_counts,
-            library::commands::smart_folders::get_smart_folders,
-            library::commands::smart_folders::save_smart_folder,
-            library::commands::smart_folders::update_smart_folder,
-            library::commands::smart_folders::delete_smart_folder,
-            settings::commands::get_setting,
-            settings::commands::set_setting,
-            settings::commands::run_db_maintenance,
-            settings::commands::send_telemetry_log,
-            library::commands::formats::get_library_supported_formats,
-            media::commands::get_audio_waveform_data,
-            // Transcoding commands
-            transcoding::commands::needs_transcoding,
-            transcoding::commands::is_native_format,
-            transcoding::commands::get_stream_url,
-            transcoding::commands::get_quality_options,
-            transcoding::commands::transcode_file,
-            transcoding::commands::is_cached,
-            transcoding::commands::get_cache_stats,
-            transcoding::commands::cleanup_cache,
-            transcoding::commands::clear_cache,
-            transcoding::commands::ffmpeg_available,
-            // Streaming security
-            get_streaming_token,
-            // Color Analysis
-            library::commands::colors::get_asset_colors,
-            library::commands::colors::reextract_asset_colors,
-            library::commands::colors::reextract_all_colors,
-            // Asset Commands V2
+            // IPC Commands
             delivery::tauri::commands::queries::get_assets,
             delivery::tauri::commands::queries::get_asset,
             delivery::tauri::commands::queries::list_folders,
@@ -356,27 +222,29 @@ pub fn run() {
             delivery::tauri::commands::mutations::set_asset_folder,
             delivery::tauri::commands::mutations::update_asset_tags,
             delivery::tauri::thumbnails::prioritize_thumbnails,
-            // V2 Settings Commands
+            // Settings Commands
             delivery::tauri::commands::settings::get_app_settings,
             delivery::tauri::commands::settings::update_app_settings
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app_handle, event| {
-            match event {
-                tauri::RunEvent::WindowEvent { event: tauri::WindowEvent::CloseRequested { api, .. }, .. } => {
-                    tracing::info!("Close requested. Orchestrating graceful shutdown.");
-                    api.prevent_close();
+        .run(|app_handle, event| match event {
+            tauri::RunEvent::WindowEvent {
+                event: tauri::WindowEvent::CloseRequested { api, .. },
+                ..
+            } => {
+                tracing::info!("Close requested. Orchestrating graceful shutdown.");
+                api.prevent_close();
 
-                    let handle = app_handle.clone();
-                    tauri::async_runtime::spawn(async move {
-                        if let Some(lifecycle) = handle.try_state::<std::sync::Arc<LifecycleRegistry>>() {
-                            lifecycle.shutdown_all().await;
-                        }
-                        handle.exit(0);
-                    });
-                }
-                _ => {}
+                let handle = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Some(lifecycle) = handle.try_state::<std::sync::Arc<LifecycleRegistry>>()
+                    {
+                        lifecycle.shutdown_all().await;
+                    }
+                    handle.exit(0);
+                });
             }
+            _ => {}
         });
 }

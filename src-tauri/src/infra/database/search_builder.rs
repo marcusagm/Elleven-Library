@@ -4,7 +4,6 @@
 //! hexagonal architecture and v2 table schema.
 
 use crate::core::models::search::{LogicalOperator, SearchCriterion, SearchGroup, SearchItem};
-use crate::thumbnails::color_analysis::hex_to_lab;
 use sqlx::{QueryBuilder, Sqlite};
 
 /// Builds the WHERE clause for an advanced search query.
@@ -340,4 +339,30 @@ mod tests {
         ));
         assert!(sql.contains("< ?"));
     }
+}
+
+/// Converts a hexadecimal color string to CIE-LAB components.
+///
+/// Supports formats: "#RRGGBB" and "RRGGBB".
+///
+/// # Errors
+///
+/// Returns an error if the hex string is invalid.
+fn hex_to_lab(
+    hex_color: &str,
+) -> Result<(f64, f64, f64), Box<dyn std::error::Error + Send + Sync>> {
+    let hex_trimmed = hex_color.trim_start_matches('#');
+    if hex_trimmed.len() != 6 {
+        return Err(format!("Invalid hex color length: {}", hex_color).into());
+    }
+    let red = u8::from_str_radix(&hex_trimmed[0..2], 16)?;
+    let green = u8::from_str_radix(&hex_trimmed[2..4], 16)?;
+    let blue = u8::from_str_radix(&hex_trimmed[4..6], 16)?;
+    let srgb_color = palette::Srgb::new(
+        red as f32 / 255.0,
+        green as f32 / 255.0,
+        blue as f32 / 255.0,
+    );
+    let lab_color: palette::Lab = palette::IntoColor::into_color(srgb_color);
+    Ok((lab_color.l as f64, lab_color.a as f64, lab_color.b as f64))
 }
