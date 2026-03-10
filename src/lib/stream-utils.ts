@@ -162,6 +162,7 @@ function requiresStandardHls(path: string, probe?: VideoProbeResult | null): boo
  * Optionally accepts a probe result to check for specific codecs that require linear transcoding.
  */
 export function getVideoUrl(
+    assetId: string,
     path: string,
     quality: TranscodeQuality = 'standard',
     probe?: VideoProbeResult | null
@@ -184,8 +185,8 @@ export function getVideoUrl(
         return `video-stream://localhost/${encodedPath}?quality=${quality}`;
     }
 
-    // Native format (MP4/MOV) - Direct file access
-    return `video://localhost/${encodedPath}`;
+    // Native format (MP4/MOV) - Direct file access over custom protocol
+    return `asset://localhost/${encodeURIComponent(assetId)}`;
 }
 
 /**

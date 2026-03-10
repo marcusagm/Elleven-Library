@@ -12,6 +12,7 @@ import {
  * Consolidates streaming strategy logic used in both ItemView and Inspector.
  */
 export function useVideoSource(
+    assetIdAccessor: () => string | undefined,
     pathAccessor: () => string | undefined,
     qualityAccessor: () => TranscodeQuality = () => 'standard'
 ) {
@@ -47,15 +48,15 @@ export function useVideoSource(
     // Update URL when path, quality, or probe result changes
     createEffect(
         on(
-            () => [pathAccessor(), qualityAccessor(), probeResult()] as const,
-            ([path, q, probe]) => {
-                if (!path) {
+            () => [assetIdAccessor(), pathAccessor(), qualityAccessor(), probeResult()] as const,
+            ([id, path, q, probe]) => {
+                if (!id || !path) {
                     setVideoUrl('');
                     return;
                 }
 
                 // Delegate URL construction to central logic in stream-utils
-                const url = getVideoUrl(path, q, probe);
+                const url = getVideoUrl(id, path, q, probe);
                 setVideoUrl(url);
             }
         )

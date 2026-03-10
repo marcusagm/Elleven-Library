@@ -53,6 +53,9 @@ pub fn run() {
 
     let builder = tauri::Builder::default();
     crate::protocols::register_all(builder)
+        .register_uri_scheme_protocol("asset", move |ctx, request| {
+            crate::delivery::protocols::asset::handler(ctx.app_handle(), &request)
+        })
         .setup(|app| {
             // Resolve paths
             let app_data = app

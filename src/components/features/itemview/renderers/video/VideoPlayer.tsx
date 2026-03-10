@@ -7,6 +7,8 @@ import { useVideoSource } from '../../../../../core/hooks/useVideoSource';
 import '../renderers.css';
 
 interface VideoPlayerProps {
+    /** Asset ID */
+    assetId: string;
     /** Full file path (not URL) */
     path: string;
 }
@@ -19,7 +21,11 @@ export const VideoPlayer: Component<VideoPlayerProps> = props => {
     const [quality, setQuality] = createSignal<TranscodeQuality>(transcodeState.quality());
 
     // Use consolidated video source hook
-    const { videoUrl, probeResult, probeError } = useVideoSource(() => props.path, quality);
+    const { videoUrl, probeResult, probeError } = useVideoSource(
+        () => props.assetId,
+        () => props.path,
+        quality
+    );
 
     const handleQualityChange = (newQuality: TranscodeQuality) => {
         setQuality(newQuality);

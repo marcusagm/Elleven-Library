@@ -187,7 +187,7 @@ const ItemViewContent: Component = () => {
                             />
                         </Match>
                         <Match when={getMediaType(item()!.filename) === 'video'}>
-                            <VideoPlayer path={item()!.path} />
+                            <VideoPlayer assetId={item()!.id.toString()} path={item()!.path} />
                         </Match>
                         <Match when={getMediaType(item()!.filename) === 'audio'}>
                             <AudioRenderer path={item()!.path} />

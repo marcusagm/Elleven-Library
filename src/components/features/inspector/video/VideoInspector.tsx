@@ -16,7 +16,10 @@ interface VideoInspectorProps {
  */
 export const VideoInspector: Component<VideoInspectorProps> = props => {
     // Use consolidated video source hook (default quality is 'standard')
-    const { videoUrl, probeResult } = useVideoSource(() => props.item.path);
+    const { videoUrl, probeResult } = useVideoSource(
+        () => props.item.id.toString(),
+        () => props.item.path
+    );
 
     return (
         <div class="inspector-content">
