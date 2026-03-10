@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT\n                a.id as \"id!\", a.name as \"name!\", a.path as \"path!\", a.state as \"state!\",\n                a.format_type as \"format_type!\", a.family as \"family!\", a.file_size as \"file_size!\",\n                a.created_at as \"created_at: DateTime<Utc>\",\n                a.updated_at as \"updated_at: DateTime<Utc>\",\n                m.width as \"width: i32\", m.height as \"height: i32\", m.duration_secs as \"duration_secs: f64\",\n                m.technical_payload as \"technical_payload: serde_json::Value\",\n                m.semantic_payload as \"semantic_payload: serde_json::Value\",\n                m.dominant_colors as \"dominant_color: serde_json::Value\",\n                a.folder_id as \"folder_id?\",\n                a.thumbnail_path as \"thumbnail_path?\"\n            FROM v2_assets a\n            LEFT JOIN v2_asset_metadata_envelope m ON a.id = m.asset_id\n            WHERE a.id = ?\n            ",
+  "query": "SELECT id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\", format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\", created_at as \"created_at: DateTime<Utc>\", updated_at as \"updated_at: DateTime<Utc>\", folder_id as \"folder_id?\", CAST(NULL AS INTEGER) as \"width: i32\", CAST(NULL AS INTEGER) as \"height: i32\", CAST(NULL AS REAL) as \"duration_secs: f64\", CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\", dominant_color as \"dominant_color: serde_json::Value\", thumbnail_path as \"thumbnail_path?\" FROM assets WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -49,37 +49,37 @@
         "type_info": "Datetime"
       },
       {
-        "name": "width: i32",
+        "name": "folder_id?",
         "ordinal": 9,
-        "type_info": "Integer"
+        "type_info": "Text"
+      },
+      {
+        "name": "width: i32",
+        "ordinal": 10,
+        "type_info": "Null"
       },
       {
         "name": "height: i32",
-        "ordinal": 10,
-        "type_info": "Integer"
+        "ordinal": 11,
+        "type_info": "Null"
       },
       {
         "name": "duration_secs: f64",
-        "ordinal": 11,
-        "type_info": "Float"
-      },
-      {
-        "name": "technical_payload: serde_json::Value",
         "ordinal": 12,
         "type_info": "Null"
       },
       {
-        "name": "semantic_payload: serde_json::Value",
+        "name": "technical_payload: serde_json::Value",
         "ordinal": 13,
         "type_info": "Null"
       },
       {
-        "name": "dominant_color: serde_json::Value",
+        "name": "semantic_payload: serde_json::Value",
         "ordinal": 14,
         "type_info": "Null"
       },
       {
-        "name": "folder_id?",
+        "name": "dominant_color: serde_json::Value",
         "ordinal": 15,
         "type_info": "Text"
       },
@@ -103,14 +103,14 @@
       true,
       true,
       true,
-      true,
-      true,
-      true,
-      true,
-      true,
+      null,
+      null,
+      null,
+      null,
+      null,
       true,
       true
     ]
   },
-  "hash": "aa1bb29bd36f146356760e1f6caedadbdd377533c9d6785fe3fa456330a4c665"
+  "hash": "9960bf04d22a173680513c209b641f063fc7bc651009ffd6b704477443e903aa"
 }

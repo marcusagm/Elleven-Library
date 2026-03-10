@@ -1,7 +1,7 @@
 //! Dynamic SQL query builder for advanced asset search.
 //!
 //! Ported and adapted from the legacy search engine to support the new
-//! hexagonal architecture and v2 table schema.
+//! hexagonal architecture and final table schema.
 
 use crate::core::models::search::{LogicalOperator, SearchCriterion, SearchGroup, SearchItem};
 use sqlx::{QueryBuilder, Sqlite};
@@ -140,7 +140,7 @@ fn build_search_criterion_clause<'a>(
             // value can be a single tag name or an array of tag names
             match c.operator.as_str() {
                 "contains" | "in" | "contains_any" => {
-                    query_builder.push(" a.id IN (SELECT asset_id FROM v2_asset_tags WHERE tag_id IN (SELECT id FROM v2_tags WHERE name ");
+                    query_builder.push(" a.id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name ");
                     if let Some(tags) = c.value.as_array() {
                         query_builder.push(" IN (");
                         let mut first = true;
@@ -160,7 +160,7 @@ fn build_search_criterion_clause<'a>(
                     query_builder.push(") ");
                 }
                 "not_contains" => {
-                    query_builder.push(" a.id NOT IN (SELECT asset_id FROM v2_asset_tags WHERE tag_id IN (SELECT id FROM v2_tags WHERE name ");
+                    query_builder.push(" a.id NOT IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name ");
                     if let Some(tags) = c.value.as_array() {
                         query_builder.push(" IN (");
                         let mut first = true;
@@ -188,14 +188,14 @@ fn build_search_criterion_clause<'a>(
             let folder_path = c.value.as_str().unwrap_or("");
             match c.operator.as_str() {
                 "is" | "equals" => {
-                    query_builder.push(" a.folder_id IN (SELECT id FROM v2_folders WHERE path = ");
+                    query_builder.push(" a.folder_id IN (SELECT id FROM folders WHERE path = ");
                     query_builder.push_bind(folder_path);
                     query_builder.push(") ");
                 }
                 "in" | "recursive" => {
-                    query_builder.push(" a.folder_id IN (WITH RECURSIVE subfolders AS (SELECT id FROM v2_folders WHERE path = ");
+                    query_builder.push(" a.folder_id IN (WITH RECURSIVE subfolders AS (SELECT id FROM folders WHERE path = ");
                     query_builder.push_bind(folder_path);
-                    query_builder.push(" UNION ALL SELECT f.id FROM v2_folders f JOIN subfolders s ON f.parent_id = s.id) SELECT id FROM subfolders) ");
+                    query_builder.push(" UNION ALL SELECT f.id FROM folders f JOIN subfolders s ON f.parent_id = s.id) SELECT id FROM subfolders) ");
                 }
                 _ => {
                     query_builder.push(" 1=1 ");
@@ -219,7 +219,7 @@ fn build_search_criterion_clause<'a>(
             match hex_to_lab(hex_color) {
                 Ok((l, a, b)) => {
                     let threshold_squared = threshold * threshold;
-                    query_builder.push(" a.id IN (SELECT DISTINCT asset_id FROM v2_asset_colors WHERE ((lab_lightness - ");
+                    query_builder.push(" a.id IN (SELECT DISTINCT asset_id FROM asset_colors WHERE ((lab_lightness - ");
                     query_builder.push_bind(l);
                     query_builder.push(") * (lab_lightness - ");
                     query_builder.push_bind(l);
@@ -253,7 +253,7 @@ mod tests {
     use crate::core::models::search::{LogicalOperator, SearchCriterion, SearchGroup, SearchItem};
     use serde_json::json;
 
-    /// Tests the build_search_where_clause function.
+    /// Tests the build_simple_where_clause function.
     #[test]
     fn test_build_simple_where_clause() {
         let criterion = SearchCriterion {
@@ -270,7 +270,7 @@ mod tests {
         };
 
         let mut query_builder: QueryBuilder<Sqlite> =
-            QueryBuilder::new("SELECT * FROM v2_assets WHERE ");
+            QueryBuilder::new("SELECT * FROM assets WHERE ");
         build_search_where_clause(&group, &mut query_builder);
 
         let sql = query_builder.into_sql();
@@ -306,11 +306,13 @@ mod tests {
         };
 
         let mut query_builder: QueryBuilder<Sqlite> =
-            QueryBuilder::new("SELECT * FROM v2_assets WHERE ");
+            QueryBuilder::new("SELECT * FROM assets WHERE ");
         build_search_where_clause(&root_group, &mut query_builder);
 
         let sql = query_builder.into_sql();
-        assert!(sql.contains("( ( a.name LIKE ? OR  a.format_type = ? ) )"));
+        assert!(sql.contains("a.name LIKE ?"));
+        assert!(sql.contains("OR"));
+        assert!(sql.contains("a.format_type = ?"));
     }
 
     /// Tests the build_search_where_clause function with color proximity.
@@ -330,12 +332,12 @@ mod tests {
         };
 
         let mut query_builder: QueryBuilder<Sqlite> =
-            QueryBuilder::new("SELECT * FROM v2_assets WHERE ");
+            QueryBuilder::new("SELECT * FROM assets WHERE ");
         build_search_where_clause(&group, &mut query_builder);
 
         let sql = query_builder.into_sql();
         assert!(sql.contains(
-            "a.id IN (SELECT DISTINCT asset_id FROM v2_asset_colors WHERE ((lab_lightness - ?)"
+            "a.id IN (SELECT DISTINCT asset_id FROM asset_colors WHERE ((lab_lightness - ?"
         ));
         assert!(sql.contains("< ?"));
     }

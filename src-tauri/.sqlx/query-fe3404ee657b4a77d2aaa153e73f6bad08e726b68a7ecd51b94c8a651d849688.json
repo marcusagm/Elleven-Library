@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!\", name as \"name!\", color, parent_id FROM v2_tags ORDER BY name ASC",
+  "query": "SELECT id as \"id!\", name as \"name!\", color, parent_id FROM tags ORDER BY name ASC",
   "describe": {
     "columns": [
       {
@@ -34,5 +34,5 @@
       true
     ]
   },
-  "hash": "bbd6f50821f1c75d4153ee5c2de574a3a2a3534868514faec3537fbb96b5d214"
+  "hash": "fe3404ee657b4a77d2aaa153e73f6bad08e726b68a7ecd51b94c8a651d849688"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!\" FROM v2_assets WHERE path = ?",
+  "query": "SELECT id as \"id!\" FROM assets WHERE path = ?",
   "describe": {
     "columns": [
       {
@@ -16,5 +16,5 @@
       true
     ]
   },
-  "hash": "c84c70632d2e920ddb42a59920cc1103ed894128947592281cafe9433dca935c"
+  "hash": "4456edad624dcd9d09491c04503bf4ab5ddda6ba0609969093652e2953724881"
 }

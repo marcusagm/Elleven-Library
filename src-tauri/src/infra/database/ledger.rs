@@ -13,7 +13,7 @@ use crate::core::models::asset::{Asset, AssetState};
 /// SQLite implementation of the Asset Ledger using SQLx.
 ///
 /// This adapter ensures that all mutations are atomic and audited
-/// via the `v2_asset_operations_log` table before publishing domain events.
+/// via the `asset_operations_log` table before publishing domain events.
 pub struct SqliteAssetLedger {
     pool: SqlitePool,
     event_bus: Arc<dyn AppEventBus>,
@@ -61,7 +61,7 @@ impl SqliteAssetLedger {
 
         sqlx::query!(
             r#"
-            INSERT INTO v2_asset_operations_log (id, operation_type, asset_id, payload, status, error_note, created_at)
+            INSERT INTO asset_operations_log (id, operation_type, asset_id, payload, status, error_note, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             "#,
             op_id,
@@ -126,7 +126,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 let row = sqlx::query!(
                     r#"
-                    INSERT INTO v2_assets (id, name, path, state, format_type, family, file_size, created_at, updated_at, folder_id)
+                    INSERT INTO assets (id, name, path, state, format_type, family, file_size, created_at, updated_at, folder_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(path) DO UPDATE SET
                         updated_at = excluded.updated_at
@@ -146,7 +146,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 .fetch_one(&mut *tx)
                 .await?;
 
-                let asset_id_final = row.id;
+                let asset_id_final = row.id.to_string();
 
                 // 2. Audit Log
                 let op_payload = serde_json::to_value(payload).map_err(|e| {
@@ -212,7 +212,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     // 1. Insert Asset (Upsert)
                     let row = sqlx::query!(
                         r#"
-                        INSERT INTO v2_assets (id, name, path, state, format_type, family, file_size, created_at, updated_at, folder_id)
+                        INSERT INTO assets (id, name, path, state, format_type, family, file_size, created_at, updated_at, folder_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(path) DO UPDATE SET
                             updated_at = excluded.updated_at
@@ -289,7 +289,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 {
                     let tag_id = Uuid::new_v4().to_string();
                     sqlx::query!(
-                        "INSERT INTO v2_tags (id, name) VALUES (?, ?) ON CONFLICT(name) DO NOTHING",
+                        "INSERT INTO tags (id, name) VALUES (?, ?) ON CONFLICT(name) DO NOTHING",
                         tag_id,
                         tag_name
                     )
@@ -301,8 +301,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 for tag_name in &payload.tags_to_add {
                     sqlx::query!(
                         r#"
-                        INSERT INTO v2_asset_tags (asset_id, tag_id)
-                        SELECT ?, id FROM v2_tags WHERE name = ?
+                        INSERT INTO asset_tags (asset_id, tag_id)
+                        SELECT ?, id FROM tags WHERE name = ?
                         ON CONFLICT DO NOTHING
                         "#,
                         payload.asset_id,
@@ -316,8 +316,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 for tag_name in &payload.tags_to_remove {
                     sqlx::query!(
                         r#"
-                        DELETE FROM v2_asset_tags
-                        WHERE asset_id = ? AND tag_id IN (SELECT id FROM v2_tags WHERE name = ?)
+                        DELETE FROM asset_tags
+                        WHERE asset_id = ? AND tag_id IN (SELECT id FROM tags WHERE name = ?)
                         "#,
                         payload.asset_id,
                         tag_name
@@ -328,7 +328,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 // 4. Update Asset timestamp
                 sqlx::query!(
-                    "UPDATE v2_assets SET updated_at = ? WHERE id = ?",
+                    "UPDATE assets SET updated_at = ? WHERE id = ?",
                     now,
                     payload.asset_id
                 )
@@ -354,7 +354,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 let asset_id_ref = &payload.asset_id;
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id as "folder_id?", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id as "folder_id?", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM assets WHERE id = ?"#,
                     asset_id_ref
                 )
                 .fetch_optional(&mut *tx)
@@ -372,12 +372,12 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     (None, Some(old_path)) => {
                         let old_path_str = old_path.to_string_lossy().to_string();
                         let row = sqlx::query!(
-                            r#"SELECT id as "id!" FROM v2_assets WHERE path = ?"#,
+                            r#"SELECT id as "id!" FROM assets WHERE path = ?"#,
                             old_path_str
                         )
                         .fetch_optional(&mut *tx)
                         .await?;
-                        row.map(|r| r.id).ok_or_else(|| {
+                        row.map(|r| r.id.to_string()).ok_or_else(|| {
                             AppError::NotFound(format!("Asset not found at path: {}", old_path_str))
                         })?
                     }
@@ -399,7 +399,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 // 2. Update Asset
                 sqlx::query!(
-                    "UPDATE v2_assets SET path = ?, name = ?, updated_at = ? WHERE id = ?",
+                    "UPDATE assets SET path = ?, name = ?, updated_at = ? WHERE id = ?",
                     new_path_str,
                     new_name,
                     now,
@@ -426,7 +426,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 // 4. Fetch and return
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -440,7 +440,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 let state_stale = AssetState::Stale.to_string();
 
                 sqlx::query!(
-                    "UPDATE v2_assets SET state = ?, updated_at = ? WHERE id = ?",
+                    "UPDATE assets SET state = ?, updated_at = ? WHERE id = ?",
                     state_stale,
                     now,
                     asset_id
@@ -460,7 +460,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -480,12 +480,12 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     (None, Some(p)) => {
                         let path_str = p.to_string_lossy().to_string();
                         let row = sqlx::query!(
-                            r#"SELECT id as "id!" FROM v2_assets WHERE path = ?"#,
+                            r#"SELECT id as "id!" FROM assets WHERE path = ?"#,
                             path_str
                         )
                         .fetch_optional(&mut *tx)
                         .await?;
-                        row.map(|r| r.id).ok_or_else(|| {
+                        row.map(|r| r.id.to_string()).ok_or_else(|| {
                             AppError::NotFound(format!("Asset not found at path: {}", path_str))
                         })?
                     }
@@ -497,7 +497,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 };
 
                 // 2. Perform Delete
-                sqlx::query!("DELETE FROM v2_assets WHERE id = ?", resolved_id)
+                sqlx::query!("DELETE FROM assets WHERE id = ?", resolved_id)
                     .execute(&mut *tx)
                     .await?;
 
@@ -540,7 +540,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 sqlx::query!(
                     r#"
-                    INSERT INTO v2_folders (id, parent_id, name, path, created_at, updated_at)
+                    INSERT INTO folders (id, parent_id, name, path, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                     "#,
                     folder_id,
@@ -599,7 +599,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 let now = Utc::now();
 
                 sqlx::query!(
-                    "UPDATE v2_assets SET folder_id = ?, updated_at = ? WHERE id = ?",
+                    "UPDATE assets SET folder_id = ?, updated_at = ? WHERE id = ?",
                     folder_id,
                     now,
                     asset_id
@@ -619,7 +619,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -637,7 +637,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 // 1. Update Asset
                 sqlx::query!(
-                    "UPDATE v2_assets SET thumbnail_path = ?, state = ?, updated_at = ? WHERE id = ?",
+                    "UPDATE assets SET thumbnail_path = ?, state = ?, updated_at = ? WHERE id = ?",
                     thumbnail_path,
                     state_thumb,
                     now,
@@ -660,7 +660,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 // 3. Fetch and return
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM assets WHERE id = ?"#,
                     asset_id
                 )
                 .fetch_optional(&mut *tx)
@@ -700,7 +700,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 // 3. Update dominant_color in assets table if we have colors
                 if let Some(dominant) = payload.colors.first() {
                     sqlx::query(
-                        "UPDATE v2_assets SET dominant_color = ?, updated_at = ? WHERE id = ?",
+                        "UPDATE assets SET dominant_color = ?, updated_at = ? WHERE id = ?",
                     )
                     .bind(&dominant.hex_color)
                     .bind(now)
@@ -727,7 +727,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 // 5. Fetch and return
                 let row = sqlx::query_as!(
                     crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM v2_assets WHERE id = ?"#,
+                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?" FROM assets WHERE id = ?"#,
                     asset_id_ref
                 )
                 .fetch_optional(&mut *tx)

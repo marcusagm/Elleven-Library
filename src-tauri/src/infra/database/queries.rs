@@ -55,7 +55,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 CAST(NULL AS TEXT) as "dominant_color: serde_json::Value",
                 folder_id as "folder_id?",
                 thumbnail_path as "thumbnail_path?"
-            FROM v2_assets
+            FROM assets
             "#
         )
         .fetch_all(&self.pool)
@@ -89,8 +89,8 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 m.dominant_colors as "dominant_color: serde_json::Value",
                 a.folder_id as "folder_id?",
                 a.thumbnail_path as "thumbnail_path?"
-            FROM v2_assets a
-            LEFT JOIN v2_asset_metadata_envelope m ON a.id = m.asset_id
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE a.id = ?
             "#,
             id
@@ -118,7 +118,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
         page: PageParams,
     ) -> AppResult<Vec<AssetSummaryDto>> {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "SELECT id, name, state, format_type, family, created_at, folder_id FROM v2_assets WHERE 1=1 ",
+            "SELECT id, name, state, format_type, family, created_at, folder_id FROM assets WHERE 1=1 ",
         );
 
         if let Some(family) = filter.family {
@@ -146,7 +146,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         if let Some(tags) = filter.tags {
             if !tags.is_empty() {
-                query_builder.push(" AND id IN (SELECT asset_id FROM v2_asset_tags WHERE tag_id IN (SELECT id FROM v2_tags WHERE name IN (");
+                query_builder.push(" AND id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name IN (");
                 let mut first = true;
                 for tag in tags {
                     if !first {
@@ -161,7 +161,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         if let Some(untagged) = filter.untagged {
             if untagged {
-                query_builder.push(" AND id NOT IN (SELECT asset_id FROM v2_asset_tags)");
+                query_builder.push(" AND id NOT IN (SELECT asset_id FROM asset_tags)");
             }
         }
 
@@ -199,7 +199,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
         let rows = if let Some(parent) = parent_id {
             sqlx::query_as!(
                 crate::infra::database::models::FolderDb,
-                r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM v2_folders WHERE parent_id = ?"#,
+                r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM folders WHERE parent_id = ?"#,
                 parent
             )
             .fetch_all(&self.pool)
@@ -207,7 +207,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
         } else {
             sqlx::query_as!(
                 crate::infra::database::models::FolderDb,
-                r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM v2_folders WHERE parent_id IS NULL"#
+                r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM folders WHERE parent_id IS NULL"#
             )
             .fetch_all(&self.pool)
             .await?
@@ -229,7 +229,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
     async fn get_folder_by_id(&self, id: &str) -> AppResult<Option<crate::core::models::Folder>> {
         let row = sqlx::query_as!(
             crate::infra::database::models::FolderDb,
-            r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM v2_folders WHERE id = ?"#,
+            r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM folders WHERE id = ?"#,
             id
         )
         .fetch_optional(&self.pool)
@@ -247,7 +247,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
     async fn list_tags(&self) -> AppResult<Vec<crate::core::models::Tag>> {
         let rows = sqlx::query_as!(
             crate::infra::database::models::TagDb,
-            r#"SELECT id as "id!", name as "name!", color, parent_id FROM v2_tags ORDER BY name ASC"#
+            r#"SELECT id as "id!", name as "name!", color, parent_id FROM tags ORDER BY name ASC"#
         )
         .fetch_all(&self.pool)
         .await?;
@@ -277,8 +277,8 @@ impl AssetQueryHandler for SqliteAssetQueries {
             r#"
             SELECT DISTINCT
                 a.id, a.name, a.state, a.format_type, a.family, a.created_at, a.folder_id
-            FROM v2_assets a
-            LEFT JOIN v2_asset_metadata_envelope m ON a.id = m.asset_id
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE 1=1 AND
             "#,
         );
@@ -315,7 +315,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
     async fn get_assets_needing_thumbnails(&self, limit: u32) -> AppResult<Vec<String>> {
         let limit_i64 = limit as i64;
         let rows = sqlx::query!(
-            r#"SELECT id as "id!" FROM v2_assets WHERE thumbnail_path IS NULL LIMIT ?"#,
+            r#"SELECT id as "id!" FROM assets WHERE thumbnail_path IS NULL LIMIT ?"#,
             limit_i64
         )
         .fetch_all(&self.pool)
@@ -349,8 +349,8 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 m.dominant_colors as "dominant_color: serde_json::Value",
                 a.folder_id as "folder_id?",
                 a.thumbnail_path as "thumbnail_path?"
-            FROM v2_assets a
-            LEFT JOIN v2_asset_metadata_envelope m ON a.id = m.asset_id
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE a.id = ?
             "#,
             id
@@ -378,7 +378,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
     ) -> AppResult<std::collections::HashMap<String, (i64, DateTime<Utc>)>> {
         let pattern = format!("{}%", root_path);
         let rows = sqlx::query!(
-            r#"SELECT path as "path!", file_size as "file_size!", updated_at as "updated_at!: DateTime<Utc>" FROM v2_assets WHERE path LIKE ?"#,
+            r#"SELECT path as "path!", file_size as "file_size!", updated_at as "updated_at!: DateTime<Utc>" FROM assets WHERE path LIKE ?"#,
             pattern
         )
         .fetch_all(&self.pool)
@@ -412,7 +412,7 @@ mod tests {
 
         // Insert multiple mock assets
         for i in 1..=10 {
-            sqlx::query("INSERT INTO v2_assets (id, name, path, state, format_type, family, file_size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            sqlx::query("INSERT INTO assets (id, name, path, state, format_type, family, file_size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
                 .bind(format!("id-{}", i))
                 .bind(format!("file-{}.png", i))
                 .bind(format!("/tmp/file-{}.png", i))

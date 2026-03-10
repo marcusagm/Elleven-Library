@@ -89,7 +89,7 @@ mod tests {
 
         // Verify migrations (one of the V2 tables should exist)
         let table_exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='v2_assets')",
+            "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='assets')",
         )
         .fetch_one(manager.pool())
         .await

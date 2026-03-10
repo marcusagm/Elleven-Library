@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!\" FROM v2_assets WHERE thumbnail_path IS NULL LIMIT ?",
+  "query": "SELECT id as \"id!\" FROM assets WHERE thumbnail_path IS NULL LIMIT ?",
   "describe": {
     "columns": [
       {
@@ -16,5 +16,5 @@
       true
     ]
   },
-  "hash": "1d42d277a75cdeb4d43ee71e82ad5a31d97ac92eb107fc5bd32147283f05f7cf"
+  "hash": "2af137fd76d00254a6d52e40487e8a98a16870a2bba81c9ddcc1c00f303dcc96"
 }

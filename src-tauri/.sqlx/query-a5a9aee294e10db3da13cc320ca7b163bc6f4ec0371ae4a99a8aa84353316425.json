@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "DELETE FROM v2_assets WHERE id = ?",
+  "query": "DELETE FROM assets WHERE id = ?",
   "describe": {
     "columns": [],
     "parameters": {
@@ -8,5 +8,5 @@
     },
     "nullable": []
   },
-  "hash": "b0d9e916142c70901287c36ff9b003d69689994737da24679a6d9af2ac105332"
+  "hash": "a5a9aee294e10db3da13cc320ca7b163bc6f4ec0371ae4a99a8aa84353316425"
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    INSERT INTO folders (id, parent_id, name, path, created_at, updated_at)\n                    VALUES (?, ?, ?, ?, ?, ?)\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "c69804c437b73e588524f898aae9a09d27ab18eba8f5ef4e2f670297a86434f9"
+}

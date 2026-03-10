@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                        INSERT INTO assets (id, name, path, state, format_type, family, file_size, created_at, updated_at, folder_id)\n                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n                        ON CONFLICT(path) DO UPDATE SET\n                            updated_at = excluded.updated_at\n                        RETURNING id as \"id!\"\n                        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "9ff27c48c9fc5dd05608a5d293d0d563ce28c16ffc634f508b17fc66fb54602e"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT path as \"path!\", file_size as \"file_size!\", updated_at as \"updated_at!: DateTime<Utc>\" FROM v2_assets WHERE path LIKE ?",
+  "query": "SELECT path as \"path!\", file_size as \"file_size!\", updated_at as \"updated_at!: DateTime<Utc>\" FROM assets WHERE path LIKE ?",
   "describe": {
     "columns": [
       {
@@ -28,5 +28,5 @@
       true
     ]
   },
-  "hash": "34f1fc21c59da7296cf893d9b75b17f9e13c2f6bc772a7cfa2fa0c7b3bf518f4"
+  "hash": "6dcb121cb77c4aa2694cddd1511d2727fa27735c98637c2cf4f49ce98c45804a"
 }

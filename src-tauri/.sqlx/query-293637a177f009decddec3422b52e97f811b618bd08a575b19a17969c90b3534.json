@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!\", parent_id, name as \"name!\", path as \"path!\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\" FROM v2_folders WHERE parent_id IS NULL",
+  "query": "SELECT id as \"id!\", parent_id, name as \"name!\", path as \"path!\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\" FROM folders WHERE parent_id IS NULL",
   "describe": {
     "columns": [
       {
@@ -46,5 +46,5 @@
       true
     ]
   },
-  "hash": "ed1c413ba7302370dc5ab053809ff31ea46330abb8cf377d89b20d2ddf873bfd"
+  "hash": "293637a177f009decddec3422b52e97f811b618bd08a575b19a17969c90b3534"
 }
