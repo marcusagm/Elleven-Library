@@ -118,6 +118,32 @@ impl TransactionalAssetLedger for MockAssetLedger {
                 // Return the asset (cloned for the mock)
                 Ok(_asset.clone())
             }
+            LedgerCommand::CreateTag(payload) => {
+                let tag_id = Uuid::new_v4().to_string();
+                self.event_bus.publish(DomainEvent::TagCreated {
+                    id: tag_id.clone(),
+                    name: payload.name.clone(),
+                })?;
+                Ok(Asset {
+                    id: tag_id,
+                    name: payload.name,
+                    path: std::path::PathBuf::new(),
+                    state: crate::core::models::asset::AssetState::Idle,
+                    format_type: "tag".to_string(),
+                    family: "TAG".to_string(),
+                    file_size: 0,
+                    created_at: Some(Utc::now()),
+                    updated_at: None,
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_color: None,
+                    folder_id: None,
+                    thumbnail_path: None,
+                })
+            }
             _ => Err(AppError::Internal(
                 "Command not implemented in Mock".to_string(),
             )),

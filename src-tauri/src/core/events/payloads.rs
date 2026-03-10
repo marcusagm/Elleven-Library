@@ -41,6 +41,14 @@ pub enum DomainEvent {
         folder_id: Option<String>,
     },
 
+    // ├─ Tag CRUD Originated
+    /// A new taxonomy tag was created.
+    TagCreated { id: String, name: String },
+    /// An existing tag's properties were updated.
+    TagUpdated { id: String },
+    /// A tag was deleted and removed from all assets.
+    TagDeleted { id: String },
+
     // ├─ OS Watcher Originated
     /// The Watcher detected a new file in the filesystem.
     FsFileDiscovered { path: String, size_bytes: u64 },

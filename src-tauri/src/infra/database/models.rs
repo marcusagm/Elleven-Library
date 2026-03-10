@@ -261,6 +261,8 @@ pub struct TagDb {
     pub name: String,
     pub color: Option<String>,
     pub parent_id: Option<String>,
+    /// Sorting order index for UI display ordering.
+    pub order_index: i64,
 }
 
 /// Converts a TagDb to a Tag.
@@ -279,6 +281,7 @@ impl From<TagDb> for crate::core::models::asset::Tag {
             name: row.name,
             color: row.color,
             parent_id: row.parent_id,
+            order_index: row.order_index,
         }
     }
 }

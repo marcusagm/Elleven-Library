@@ -113,4 +113,16 @@ pub trait AssetQueryHandler: Send + Sync {
         &self,
         root_path: &str,
     ) -> AppResult<HashMap<String, (i64, DateTime<Utc>)>>;
+
+    /// Retrieves all tags associated with a specific asset.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_id` - The unique identifier of the asset.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Tag>)` if the tags were found successfully.
+    /// * `Err(AppError)` if the query fails.
+    async fn get_tags_for_asset(&self, asset_id: &str) -> AppResult<Vec<Tag>>;
 }

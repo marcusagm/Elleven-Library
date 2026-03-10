@@ -115,6 +115,8 @@ pub struct Tag {
     pub color: Option<String>,
     /// ID of the parent tag
     pub parent_id: Option<String>,
+    /// Sorting order index for UI display ordering
+    pub order_index: i64,
 }
 
 /// A lightweight projection of an asset for grid listings and infinite scroll.

@@ -79,4 +79,18 @@ impl AssetQueryService {
     pub async fn list_tags(&self) -> AppResult<Vec<Tag>> {
         self.repository.list_tags().await
     }
+
+    /// Gets all tags associated with a specific asset.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_id` - The unique identifier of the asset.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Tag>)` if the tags were found successfully.
+    /// * `Err(AppError)` if the query fails.
+    pub async fn get_tags_for_asset(&self, asset_id: &str) -> AppResult<Vec<Tag>> {
+        self.repository.get_tags_for_asset(asset_id).await
+    }
 }

@@ -98,3 +98,22 @@ pub async fn search_assets(
 ) -> AppResult<Vec<AssetSummaryDto>> {
     service.search(criteria, page).await
 }
+
+/// RPC Command to get all tags associated with a specific asset.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+/// * `asset_id` - The unique identifier of the asset.
+///
+/// # Returns
+///
+/// * `Ok(Vec<Tag>)` if the tags were found successfully.
+/// * `Err(AppError)` if the query fails.
+#[tauri::command]
+pub async fn get_tags_for_asset(
+    service: State<'_, AssetQueryService>,
+    asset_id: String,
+) -> AppResult<Vec<Tag>> {
+    service.get_tags_for_asset(&asset_id).await
+}

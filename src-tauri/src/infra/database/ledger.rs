@@ -736,6 +736,350 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 Ok(row.into())
             }
+
+            // ── Tag CRUD Handlers ──────────────────────────────────────────
+            LedgerCommand::CreateTag(payload) => {
+                let tag_id = Uuid::new_v4().to_string();
+
+                sqlx::query!(
+                    r#"INSERT INTO tags (id, name, color, parent_id) VALUES (?, ?, ?, ?)"#,
+                    tag_id,
+                    payload.name,
+                    payload.color,
+                    payload.parent_id
+                )
+                .execute(&mut *tx)
+                .await?;
+
+                let operation_payload =
+                    serde_json::to_value(payload).map_err(|serialization_error| {
+                        AppError::Internal(format!(
+                            "Failed to serialize payload: {}",
+                            serialization_error
+                        ))
+                    })?;
+
+                Self::log_operation(
+                    &mut tx,
+                    "CREATE_TAG",
+                    &tag_id,
+                    operation_payload,
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                // Return dummy Asset carrying the tag_id in the id field
+                Ok(Asset {
+                    id: tag_id,
+                    name: payload.name.clone(),
+                    path: std::path::PathBuf::new(),
+                    state: AssetState::Idle,
+                    format_type: "tag".to_string(),
+                    family: "TAG".to_string(),
+                    file_size: 0,
+                    created_at: None,
+                    updated_at: None,
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_color: None,
+                    folder_id: None,
+                    thumbnail_path: None,
+                })
+            }
+            LedgerCommand::UpdateTag(payload) => {
+                // Build a dynamic UPDATE query only for non-None fields
+                let mut set_clauses = Vec::new();
+
+                if payload.name.is_some() {
+                    set_clauses.push("name = ?");
+                }
+                if payload.color.is_some() {
+                    set_clauses.push("color = ?");
+                }
+                if payload.parent_id.is_some() {
+                    set_clauses.push("parent_id = ?");
+                }
+                if payload.order_index.is_some() {
+                    set_clauses.push("order_index = ?");
+                }
+
+                if !set_clauses.is_empty() {
+                    let update_sql =
+                        format!("UPDATE tags SET {} WHERE id = ?", set_clauses.join(", "));
+                    let mut query = sqlx::query(&update_sql);
+
+                    if let Some(ref tag_name) = payload.name {
+                        query = query.bind(tag_name);
+                    }
+                    if let Some(ref tag_color) = payload.color {
+                        query = query.bind(tag_color);
+                    }
+                    if let Some(ref parent_tag_id) = payload.parent_id {
+                        if parent_tag_id.is_empty() {
+                            query = query.bind(None::<String>);
+                        } else {
+                            query = query.bind(parent_tag_id);
+                        }
+                    }
+                    if let Some(sort_order) = payload.order_index {
+                        query = query.bind(sort_order);
+                    }
+
+                    query = query.bind(&payload.id);
+                    query.execute(&mut *tx).await?;
+                }
+
+                let operation_payload =
+                    serde_json::to_value(payload).map_err(|serialization_error| {
+                        AppError::Internal(format!(
+                            "Failed to serialize payload: {}",
+                            serialization_error
+                        ))
+                    })?;
+
+                Self::log_operation(
+                    &mut tx,
+                    "UPDATE_TAG",
+                    &payload.id,
+                    operation_payload,
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                Ok(Asset {
+                    id: payload.id.clone(),
+                    name: "updated_tag".to_string(),
+                    path: std::path::PathBuf::new(),
+                    state: AssetState::Idle,
+                    format_type: "tag".to_string(),
+                    family: "TAG".to_string(),
+                    file_size: 0,
+                    created_at: None,
+                    updated_at: None,
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_color: None,
+                    folder_id: None,
+                    thumbnail_path: None,
+                })
+            }
+            LedgerCommand::DeleteTag { id } => {
+                // 1. Remove all asset associations first
+                sqlx::query!("DELETE FROM asset_tags WHERE tag_id = ?", id)
+                    .execute(&mut *tx)
+                    .await?;
+
+                // 2. Delete the tag itself
+                sqlx::query!("DELETE FROM tags WHERE id = ?", id)
+                    .execute(&mut *tx)
+                    .await?;
+
+                Self::log_operation(
+                    &mut tx,
+                    "DELETE_TAG",
+                    &id,
+                    serde_json::json!({ "tag_id": id }),
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                Ok(Asset {
+                    id: id.clone(),
+                    name: "deleted_tag".to_string(),
+                    path: std::path::PathBuf::new(),
+                    state: AssetState::Offline,
+                    format_type: "tag".to_string(),
+                    family: "TAG".to_string(),
+                    file_size: 0,
+                    created_at: None,
+                    updated_at: None,
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_color: None,
+                    folder_id: None,
+                    thumbnail_path: None,
+                })
+            }
+            LedgerCommand::AddTagsToAssetsBatch(payload) => {
+                if !payload.asset_ids.is_empty() && !payload.tag_ids.is_empty() {
+                    for current_asset_id in &payload.asset_ids {
+                        for current_tag_id in &payload.tag_ids {
+                            sqlx::query!(
+                                "INSERT INTO asset_tags (asset_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                                current_asset_id,
+                                current_tag_id
+                            )
+                            .execute(&mut *tx)
+                            .await?;
+                        }
+                    }
+                }
+
+                let operation_payload =
+                    serde_json::to_value(payload).map_err(|serialization_error| {
+                        AppError::Internal(format!(
+                            "Failed to serialize payload: {}",
+                            serialization_error
+                        ))
+                    })?;
+
+                Self::log_operation(
+                    &mut tx,
+                    "ADD_TAGS_BATCH",
+                    "batch",
+                    operation_payload,
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                Ok(Asset {
+                    id: "batch_add_tags".to_string(),
+                    name: "batch_operation".to_string(),
+                    path: std::path::PathBuf::new(),
+                    state: AssetState::Idle,
+                    format_type: "batch".to_string(),
+                    family: "TAG".to_string(),
+                    file_size: 0,
+                    created_at: None,
+                    updated_at: None,
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_color: None,
+                    folder_id: None,
+                    thumbnail_path: None,
+                })
+            }
+            LedgerCommand::RemoveTagsFromAssetsBatch(payload) => {
+                if !payload.asset_ids.is_empty() && !payload.tag_ids.is_empty() {
+                    for current_asset_id in &payload.asset_ids {
+                        for current_tag_id in &payload.tag_ids {
+                            sqlx::query!(
+                                "DELETE FROM asset_tags WHERE asset_id = ? AND tag_id = ?",
+                                current_asset_id,
+                                current_tag_id
+                            )
+                            .execute(&mut *tx)
+                            .await?;
+                        }
+                    }
+                }
+
+                let operation_payload =
+                    serde_json::to_value(payload).map_err(|serialization_error| {
+                        AppError::Internal(format!(
+                            "Failed to serialize payload: {}",
+                            serialization_error
+                        ))
+                    })?;
+
+                Self::log_operation(
+                    &mut tx,
+                    "REMOVE_TAGS_BATCH",
+                    "batch",
+                    operation_payload,
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                Ok(Asset {
+                    id: "batch_remove_tags".to_string(),
+                    name: "batch_operation".to_string(),
+                    path: std::path::PathBuf::new(),
+                    state: AssetState::Idle,
+                    format_type: "batch".to_string(),
+                    family: "TAG".to_string(),
+                    file_size: 0,
+                    created_at: None,
+                    updated_at: None,
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_color: None,
+                    folder_id: None,
+                    thumbnail_path: None,
+                })
+            }
+            LedgerCommand::ReplaceTagsForAssetsBatch(payload) => {
+                if !payload.asset_ids.is_empty() {
+                    for current_asset_id in &payload.asset_ids {
+                        // Remove all existing tags for this asset
+                        sqlx::query!(
+                            "DELETE FROM asset_tags WHERE asset_id = ?",
+                            current_asset_id
+                        )
+                        .execute(&mut *tx)
+                        .await?;
+
+                        // Add the new set of tags
+                        for current_tag_id in &payload.tag_ids {
+                            sqlx::query!(
+                                "INSERT INTO asset_tags (asset_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                                current_asset_id,
+                                current_tag_id
+                            )
+                            .execute(&mut *tx)
+                            .await?;
+                        }
+                    }
+                }
+
+                let operation_payload =
+                    serde_json::to_value(payload).map_err(|serialization_error| {
+                        AppError::Internal(format!(
+                            "Failed to serialize payload: {}",
+                            serialization_error
+                        ))
+                    })?;
+
+                Self::log_operation(
+                    &mut tx,
+                    "REPLACE_TAGS_BATCH",
+                    "batch",
+                    operation_payload,
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                Ok(Asset {
+                    id: "batch_replace_tags".to_string(),
+                    name: "batch_operation".to_string(),
+                    path: std::path::PathBuf::new(),
+                    state: AssetState::Idle,
+                    format_type: "batch".to_string(),
+                    family: "TAG".to_string(),
+                    file_size: 0,
+                    created_at: None,
+                    updated_at: None,
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_color: None,
+                    folder_id: None,
+                    thumbnail_path: None,
+                })
+            }
         };
 
         match result {
@@ -792,6 +1136,27 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                             asset_id: asset.id.clone(),
                             capability: "COLORS".to_string(),
                         })?;
+                    }
+                    LedgerCommand::CreateTag(_) => {
+                        self.event_bus.publish(DomainEvent::TagCreated {
+                            id: asset.id.clone(),
+                            name: asset.name.clone(),
+                        })?;
+                    }
+                    LedgerCommand::UpdateTag(tag_payload) => {
+                        self.event_bus.publish(DomainEvent::TagUpdated {
+                            id: tag_payload.id.clone(),
+                        })?;
+                    }
+                    LedgerCommand::DeleteTag { id } => {
+                        self.event_bus
+                            .publish(DomainEvent::TagDeleted { id: id.clone() })?;
+                    }
+                    LedgerCommand::AddTagsToAssetsBatch(_)
+                    | LedgerCommand::RemoveTagsFromAssetsBatch(_)
+                    | LedgerCommand::ReplaceTagsForAssetsBatch(_) => {
+                        // Batch operations don't emit individual events
+                        // The frontend should refresh tag counts after batch ops
                     }
                     _ => {}
                 }

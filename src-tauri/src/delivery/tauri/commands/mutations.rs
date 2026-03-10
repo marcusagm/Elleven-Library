@@ -1,6 +1,10 @@
-use crate::core::ledger::command::{CreateFolderPayload, LedgerCommand, UpdateTagsPayload};
+use crate::core::ledger::command::{
+    BatchTagsPayload, CreateFolderPayload, CreateTagPayload, LedgerCommand, UpdateTagPayload,
+    UpdateTagsPayload,
+};
 use crate::core::ledger::port::TransactionalAssetLedger;
-use crate::core::models::Asset;
+use crate::core::models::{Asset, Tag};
+use crate::feature::assets::queries::AssetQueryService;
 use std::sync::Arc;
 use tauri::State;
 
@@ -65,4 +69,183 @@ pub async fn update_asset_tags(
     payload: UpdateTagsPayload,
 ) -> AppResult<Asset> {
     ledger.execute(LedgerCommand::UpdateTags(payload)).await
+}
+
+/// RPC Command to create a new taxonomy tag.
+///
+/// Creates the tag via the Ledger (mutation) and then queries it back
+/// to return the full Tag entity with generated UUID.
+///
+/// # Arguments
+///
+/// * `ledger` - The transactional asset ledger.
+/// * `service` - The asset query service for reading back the created tag.
+/// * `name` - The display name of the tag (must be unique).
+/// * `parent_id` - Optional parent tag ID for hierarchical organization.
+/// * `color` - Optional hex color code for the tag.
+///
+/// # Errors
+///
+/// Returns `AppError` if the tag name is not unique or the DB operation fails.
+#[tauri::command]
+pub async fn create_tag(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    service: State<'_, AssetQueryService>,
+    name: String,
+    parent_id: Option<String>,
+    color: Option<String>,
+) -> AppResult<Tag> {
+    let result = ledger
+        .execute(LedgerCommand::CreateTag(CreateTagPayload {
+            name,
+            parent_id,
+            color,
+        }))
+        .await?;
+
+    // The Ledger returns a dummy Asset with the tag_id in the id field.
+    // Query the actual tag from the database to return the real Tag entity.
+    let all_tags = service.list_tags().await?;
+    let created_tag = all_tags
+        .into_iter()
+        .find(|tag| tag.id == result.id)
+        .ok_or_else(|| {
+            crate::core::error::AppError::Internal(
+                "Tag was created but could not be read back".to_string(),
+            )
+        })?;
+
+    Ok(created_tag)
+}
+
+/// RPC Command to update an existing tag's properties.
+///
+/// # Arguments
+///
+/// * `ledger` - The transactional asset ledger.
+/// * `id` - The unique identifier of the tag.
+/// * `name` - Optional new display name.
+/// * `color` - Optional new hex color code.
+/// * `parent_id` - Optional new parent tag ID.
+/// * `order_index` - Optional new sorting order index.
+///
+/// # Errors
+///
+/// Returns `AppError` if the tag doesn't exist or the DB operation fails.
+#[tauri::command]
+pub async fn update_tag(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    id: String,
+    name: Option<String>,
+    color: Option<String>,
+    parent_id: Option<String>,
+    order_index: Option<i64>,
+) -> AppResult<()> {
+    ledger
+        .execute(LedgerCommand::UpdateTag(UpdateTagPayload {
+            id,
+            name,
+            color,
+            parent_id,
+            order_index,
+        }))
+        .await?;
+    Ok(())
+}
+
+/// RPC Command to delete a tag, removing it from all assets.
+///
+/// # Arguments
+///
+/// * `ledger` - The transactional asset ledger.
+/// * `id` - The unique identifier of the tag to delete.
+///
+/// # Errors
+///
+/// Returns `AppError` if the DB operation fails.
+#[tauri::command]
+pub async fn delete_tag(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    id: String,
+) -> AppResult<()> {
+    ledger.execute(LedgerCommand::DeleteTag { id }).await?;
+    Ok(())
+}
+
+/// RPC Command to associate multiple tags with multiple assets in a single transaction.
+///
+/// # Arguments
+///
+/// * `ledger` - The transactional asset ledger.
+/// * `asset_ids` - The asset IDs to tag.
+/// * `tag_ids` - The tag IDs to apply.
+///
+/// # Errors
+///
+/// Returns `AppError` if the DB operation fails.
+#[tauri::command]
+pub async fn add_tags_to_assets_batch(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    asset_ids: Vec<String>,
+    tag_ids: Vec<String>,
+) -> AppResult<()> {
+    ledger
+        .execute(LedgerCommand::AddTagsToAssetsBatch(BatchTagsPayload {
+            asset_ids,
+            tag_ids,
+        }))
+        .await?;
+    Ok(())
+}
+
+/// RPC Command to remove specific tags from multiple assets in a single transaction.
+///
+/// # Arguments
+///
+/// * `ledger` - The transactional asset ledger.
+/// * `asset_ids` - The asset IDs to untag.
+/// * `tag_ids` - The tag IDs to remove.
+///
+/// # Errors
+///
+/// Returns `AppError` if the DB operation fails.
+#[tauri::command]
+pub async fn remove_tags_from_assets_batch(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    asset_ids: Vec<String>,
+    tag_ids: Vec<String>,
+) -> AppResult<()> {
+    ledger
+        .execute(LedgerCommand::RemoveTagsFromAssetsBatch(BatchTagsPayload {
+            asset_ids,
+            tag_ids,
+        }))
+        .await?;
+    Ok(())
+}
+
+/// RPC Command to replace all tags for multiple assets with a new set.
+///
+/// # Arguments
+///
+/// * `ledger` - The transactional asset ledger.
+/// * `asset_ids` - The asset IDs to update.
+/// * `tag_ids` - The new set of tag IDs.
+///
+/// # Errors
+///
+/// Returns `AppError` if the DB operation fails.
+#[tauri::command]
+pub async fn replace_tags_for_assets_batch(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    asset_ids: Vec<String>,
+    tag_ids: Vec<String>,
+) -> AppResult<()> {
+    ledger
+        .execute(LedgerCommand::ReplaceTagsForAssetsBatch(BatchTagsPayload {
+            asset_ids,
+            tag_ids,
+        }))
+        .await?;
+    Ok(())
 }

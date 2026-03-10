@@ -58,6 +58,48 @@ pub struct UpdateAssetColorsPayload {
     pub colors: Vec<crate::core::models::asset::AssetColor>,
 }
 
+/// Payload for creating a new taxonomy tag.
+///
+/// The Ledger will generate a UUID for the tag and persist it in the tags table.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateTagPayload {
+    /// Display name of the tag (must be unique).
+    pub name: String,
+    /// Optional parent tag ID for hierarchical organization.
+    pub parent_id: Option<String>,
+    /// Optional hex color code for the tag.
+    pub color: Option<String>,
+}
+
+/// Payload for updating an existing taxonomy tag's properties.
+///
+/// Only non-None fields will be applied in the UPDATE statement.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateTagPayload {
+    /// The unique identifier of the tag to update.
+    pub id: String,
+    /// New display name (optional).
+    pub name: Option<String>,
+    /// New hex color (optional).
+    pub color: Option<String>,
+    /// New parent tag ID (optional; use Some("") or None logic to unparent).
+    pub parent_id: Option<String>,
+    /// New sorting order index (optional).
+    pub order_index: Option<i64>,
+}
+
+/// Payload for batch tag-asset association operations.
+///
+/// Used by AddTagsToAssetsBatch, RemoveTagsFromAssetsBatch,
+/// and ReplaceTagsForAssetsBatch commands.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchTagsPayload {
+    /// The asset IDs to operate on.
+    pub asset_ids: Vec<String>,
+    /// The tag IDs to add/remove/replace.
+    pub tag_ids: Vec<String>,
+}
+
 /// Centralized Enum representing all mutation intentions (Commands) for the Asset Ledger.
 ///
 /// Under CQRS, this represents the "Write" intent. The Ledger is responsible for
@@ -95,4 +137,17 @@ pub enum LedgerCommand {
     },
     /// Update an asset's color palette.
     UpdateAssetColors(UpdateAssetColorsPayload),
+
+    /// Create a new taxonomy tag with name, optional color and parent.
+    CreateTag(CreateTagPayload),
+    /// Update an existing tag's properties (name, color, parent_id, order_index).
+    UpdateTag(UpdateTagPayload),
+    /// Delete a tag and remove all its asset associations.
+    DeleteTag { id: String },
+    /// Associate multiple tags with multiple assets in a single transaction.
+    AddTagsToAssetsBatch(BatchTagsPayload),
+    /// Remove specific tag associations from multiple assets.
+    RemoveTagsFromAssetsBatch(BatchTagsPayload),
+    /// Replace all tag associations for multiple assets with a new set.
+    ReplaceTagsForAssetsBatch(BatchTagsPayload),
 }
