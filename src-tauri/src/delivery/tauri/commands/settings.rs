@@ -1,0 +1,38 @@
+use crate::core::error::AppResult;
+use crate::core::settings::AppSettings;
+use crate::feature::settings::SettingsService;
+use tauri::State;
+
+/// Retrieves the current application settings.
+///
+/// # Arguments
+///
+/// * `settings_service` - State containing the settings service.
+///
+/// # Returns
+///
+/// Default settings for the application.
+#[tauri::command]
+pub async fn get_app_settings(
+    settings_service: State<'_, SettingsService>,
+) -> AppResult<AppSettings> {
+    settings_service.get_settings().await
+}
+
+/// Updates the application settings.
+///
+/// # Arguments
+///
+/// * `settings` - Settings to persist.
+/// * `settings_service` - State containing the settings service.
+///
+/// # Returns
+///
+/// Ok(()) if settings were persisted successfully.
+#[tauri::command]
+pub async fn update_app_settings(
+    settings: AppSettings,
+    settings_service: State<'_, SettingsService>,
+) -> AppResult<()> {
+    settings_service.update_settings(settings).await
+}

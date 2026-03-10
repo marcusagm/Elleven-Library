@@ -1,7 +1,14 @@
 //! Application Layer / CQRS Handlers.
 
+/// Module for asset analysis.
 pub mod analysis;
+/// Module for asset management.
 pub mod assets;
+/// Module for library management.
 pub mod library;
+/// Module for search functionality.
 pub mod search;
+/// Module for settings management.
+pub mod settings;
+/// Module for transcoding functionality.
 pub mod transcoding;

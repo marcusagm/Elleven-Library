@@ -22,6 +22,7 @@ mod streaming;
 mod transcoding;
 
 use crate::core::events::AppEventBus;
+use crate::core::settings::port::SettingsRepository;
 use crate::db::Db;
 use crate::indexer::Indexer;
 use crate::infra::events::TokioEventBus;
@@ -65,8 +66,14 @@ pub fn run() {
             std::fs::create_dir_all(&app_data).ok();
 
             let db_path = app_data.join("mundam.db");
+            let settings_path = app_data.join("settings.json");
             let thumbnails_dir = app_data.join("thumbnails");
             std::fs::create_dir_all(&thumbnails_dir).ok();
+
+            // Initialize Settings Infrastructure (Hexagonal V2)
+            let settings_adapter = Arc::new(crate::infra::config::json_adapter::JsonSettingsAdapter::new(settings_path));
+            let settings_service = crate::feature::settings::SettingsService::new(settings_adapter.clone());
+            app.manage(settings_service);
 
             // Initialize Event Bus (System Nervous System)
             let event_bus = Arc::new(TokioEventBus::new());
@@ -103,8 +110,9 @@ pub fn run() {
             app.manage(hls_manager.clone());
             {
                 let manager = hls_manager.clone();
+                let hls_token = lifecycle.child_token();
                 tauri::async_runtime::spawn(async move {
-                    manager.start_cleanup_worker(90).await;
+                    manager.start_cleanup_worker(hls_token, 90).await;
                 });
             }
 
@@ -154,11 +162,14 @@ pub fn run() {
                             crate::indexer::WatcherRegistry::default(),
                         ));
 
-                        // Load Config
+                        // Load Config (Legacy Migration Support)
                         let app_config = crate::settings::config::load_config(&db_arc).await;
                         let config_state = crate::settings::config::ConfigState(
                             std::sync::Mutex::new(app_config.clone()),
                         );
+
+                        // Load V2 Settings from JSON
+                        let v2_settings: crate::core::settings::AppSettings = settings_adapter.load().await.unwrap_or_default();
 
                         let priority_state_v1 = std::sync::Arc::new(
                             crate::thumbnails::priority::ThumbnailPriorityState::default(),
@@ -197,7 +208,7 @@ pub fn run() {
                             asset_query_handler.clone(),
                             priority_state_v2,
                             thumbnails_dir.clone(),
-                            4, // Worker threads
+                            v2_settings.worker_threads, // Using V2 threads
                         );
                         let thumbnail_handle_v2 = worker_v2.start(thumbnail_token_v2.clone());
                         lifecycle_for_setup.register(
@@ -243,14 +254,20 @@ pub fn run() {
                                 indexer.start_scan(root_path.clone()).await;
 
                                 // V2 Watcher (Parallel to V1 during transition)
-                                if let Err(e) = v2_watcher.watch(root_path).await {
+                                let watcher_token = lifecycle_for_setup.child_token();
+                                if let Err(e) = v2_watcher.watch(root_path.clone(), watcher_token.clone()).await {
                                     tracing::error!("Failed to start V2 watcher for {}: {}", path, e);
+                                } else {
+                                    lifecycle_for_setup.register(
+                                        format!("watcher:{}", root_path.display()),
+                                        watcher_token,
+                                        tauri::async_runtime::spawn(async {}), // Fake join handle as the watcher is self-managed
+                                    );
                                 }
                             }
                         }
 
                         // Start HLS Streaming Server with lifecycle token
-                        // Started after DB init because it needs Arc<Db> for path scope validation
                         let streaming_token = lifecycle_for_setup.child_token();
                         let streaming_handle = crate::streaming::server::spawn_server(
                             handle.clone(),
@@ -338,22 +355,28 @@ pub fn run() {
             delivery::tauri::commands::mutations::create_folder,
             delivery::tauri::commands::mutations::set_asset_folder,
             delivery::tauri::commands::mutations::update_asset_tags,
-            delivery::tauri::thumbnails::prioritize_thumbnails
+            delivery::tauri::thumbnails::prioritize_thumbnails,
+            // V2 Settings Commands
+            delivery::tauri::commands::settings::get_app_settings,
+            delivery::tauri::commands::settings::update_app_settings
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                // Ensure graceful shutdown of all background tasks
-                if let Some(lifecycle) = app_handle.try_state::<std::sync::Arc<LifecycleRegistry>>()
-                {
-                    tracing::info!(
-                        "Application exit requested. Starting graceful background shutdown."
-                    );
-                    tauri::async_runtime::block_on(async {
-                        lifecycle.shutdown_all().await;
+            match event {
+                tauri::RunEvent::WindowEvent { event: tauri::WindowEvent::CloseRequested { api, .. }, .. } => {
+                    tracing::info!("Close requested. Orchestrating graceful shutdown.");
+                    api.prevent_close();
+
+                    let handle = app_handle.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Some(lifecycle) = handle.try_state::<std::sync::Arc<LifecycleRegistry>>() {
+                            lifecycle.shutdown_all().await;
+                        }
+                        handle.exit(0);
                     });
                 }
+                _ => {}
             }
         });
 }

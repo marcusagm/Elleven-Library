@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 use tokio::time::Duration;
+use tokio_util::sync::CancellationToken;
 use tracing::{info, instrument};
 
 /// Singleton service that manages active filesystem watchers.
@@ -42,12 +43,13 @@ impl WatcherService {
     /// # Arguments
     ///
     /// * `path` - Path to watch.
+    /// * `token` - Cancellation token for the background loop.
     ///
     /// # Returns
     ///
     /// * `AppResult<()>` - Result of the watch operation.
     #[instrument(skip_all)]
-    pub async fn watch(&self, path: PathBuf) -> AppResult<()> {
+    pub async fn watch(&self, path: PathBuf, token: CancellationToken) -> AppResult<()> {
         let (tx, mut rx) = mpsc::channel::<Event>(1000);
         let event_bus = self.event_bus.clone();
 
@@ -61,6 +63,7 @@ impl WatcherService {
         )?;
 
         watcher.watch(&path, RecursiveMode::Recursive)?;
+        let path_for_log = path.clone();
 
         // Spawn the debouncer loop
         tokio::spawn(async move {
@@ -71,6 +74,10 @@ impl WatcherService {
 
             loop {
                 tokio::select! {
+                    _ = token.cancelled() => {
+                        info!("Watcher: Shutdown signal received for path: {:?}", path);
+                        break;
+                    }
                     Some(event) = rx.recv() => {
                         debouncer.handle_event(event).await;
                     }
@@ -87,7 +94,7 @@ impl WatcherService {
         let mut guard = self.native_watcher.lock().await;
         *guard = Some(watcher);
 
-        info!("Watcher service started for: {:?}", path);
+        info!("Watcher service started for: {:?}", path_for_log);
         Ok(())
     }
 }

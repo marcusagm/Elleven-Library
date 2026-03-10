@@ -10,6 +10,7 @@ pub use events::{AppEventBus, DomainEvent};
 pub mod ledger;
 pub mod models;
 pub mod repository;
+pub mod settings;
 pub mod workflows;
 
 pub use ledger::{LedgerCommand, TransactionalAssetLedger};

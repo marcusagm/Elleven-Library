@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::process::{Child, Command};
+use tokio_util::sync::CancellationToken;
 
 use super::profiles::TranscodingProfile;
 use crate::core::error::{AppError, AppResult};
@@ -31,6 +32,7 @@ pub struct HlsManager {
     pub streams_dir: PathBuf,
 }
 
+/// Implementation of HlsManager.
 impl HlsManager {
     /// Initializes a new HLS Subprocess Factory.
     ///
@@ -51,6 +53,14 @@ impl HlsManager {
 
     /// Extends the lifetime of a specific running stream.
     /// To be called by the `asset://` handler whenever a segment or playlist is fetched.
+    ///
+    /// # Arguments
+    ///
+    /// * `session_id` - ID of the session to touch.
+    ///
+    /// # Returns
+    ///
+    /// Ok(()) if the session was touched successfully.
     pub fn touch_session(&self, session_id: &str) {
         if let Some(mut session) = self.sessions.get_mut(session_id) {
             session.last_accessed = Instant::now();
@@ -103,8 +113,10 @@ impl HlsManager {
             .arg(&playlist_path);
 
         // Crucial: hide output pipelines so we do not freeze Tauri RPC threads implicitly.
+        // Also ensure children die if the manager drops them.
         cmd.stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null());
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true);
 
         let child = cmd
             .spawn()
@@ -128,36 +140,53 @@ impl HlsManager {
     }
 
     /// Background task to sweep the tracker locking down orphaned unused processes.
-    /// Intended to be invoked via `tokio::spawn(manager.start_cleanup_worker(90))` in boot.
-    pub async fn start_cleanup_worker(&self, timeout_secs: u64) {
+    /// Intended to be invoked via `tokio::spawn(manager.start_cleanup_worker(token, 90))` in boot.
+    ///
+    /// # Arguments
+    ///
+    /// * `token` - Cancellation token to signal shutdown.
+    /// * `timeout_secs` - Timeout in seconds to wait before killing a session.
+    ///
+    /// # Returns
+    ///
+    /// Ok(()) if the cleanup worker was started successfully.
+    pub async fn start_cleanup_worker(&self, token: CancellationToken, timeout_secs: u64) {
         let sessions = self.sessions.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
             loop {
-                interval.tick().await;
-                let now = Instant::now();
-                let mut expired_keys = Vec::new();
-
-                for entry in sessions.iter() {
-                    if now.duration_since(entry.value().last_accessed).as_secs() > timeout_secs {
-                        expired_keys.push(entry.key().clone());
+                tokio::select! {
+                    _ = token.cancelled() => {
+                        tracing::info!("HlsManager: Shutdown signal received. Cleaning up active streams.");
+                        sessions.clear();
+                        break;
                     }
-                }
+                    _ = interval.tick() => {
+                        let now = Instant::now();
+                        let mut expired_keys = Vec::new();
 
-                for key in expired_keys {
-                    if let Some((_, mut session)) = sessions.remove(&key) {
-                        tracing::info!(
-                            "Sweeping inactive HLS stream for '{}' to free memory...",
-                            key
-                        );
-                        let _ = session.process.start_kill();
+                        for entry in sessions.iter() {
+                            if now.duration_since(entry.value().last_accessed).as_secs() > timeout_secs {
+                                expired_keys.push(entry.key().clone());
+                            }
+                        }
 
-                        // Async FS operations gracefully erasing the fragments
-                        let out_dir = session.output_dir.clone();
-                        tokio::spawn(async move {
-                            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                            let _ = tokio::fs::remove_dir_all(&out_dir).await;
-                        });
+                        for key in expired_keys {
+                            if let Some((_, session)) = sessions.remove(&key) {
+                                tracing::info!(
+                                    "Sweeping inactive HLS stream for '{}' to free memory...",
+                                    key
+                                );
+                                // Child process killed on drop thanks to .kill_on_drop(true)
+
+                                // Async FS operations gracefully erasing the fragments
+                                let out_dir = session.output_dir.clone();
+                                tokio::spawn(async move {
+                                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                                    let _ = tokio::fs::remove_dir_all(&out_dir).await;
+                                });
+                            }
+                        }
                     }
                 }
             }
