@@ -107,11 +107,51 @@ As Sprints são organizadas em **Fases (Grupos)** que culminam numa Entrega de V
 *   **Sprint 6.3: Limpeza de Banco de Dados e Migração Definitiva**
     *   **Escopo:** Construção de SQLx migration descartando estruturas da versão velha (`assets`, `folders`...) garantindo que `v2_assets` e complementares se tornam as entidades únicas de Querying.
     *   **Teste E2E:** Banco de dados otimizado, `cargo sqlx prepare` sem acoplamentos, operando em FK seguras.
-*   **Sprint 6.4: E2E Validation & Relatório Final**
-    *   **Escopo:** Testes reais no cliente confirmando a integração final, validações de compilação limpa, geração correta do pacote final.
-    *   **Teste E2E:** Geração da Walkthrough definitiva (Phase 6), App funcional e responsivo.
+*   **~~Sprint 6.4: E2E Validation & Relatório Final~~** *(Cancelada — substituída pela Fase 8, Sprint 8.4)*
 
 ---
 
-## Próximos Passos
-À medida que as Sprints evoluírem, o AI Agent criará sob demanda os manuais granulares específicos de código, exemplo: `sprints/sprint-1-1.md` descrevendo os arquivos pontuais e testes precisos necessários sem diluir o contexto em conversas extensas contínuas.
+## Fase 7: Paridade IPC — Taxonomia e Organização
+**Objetivo Testável:** Restaurar todas as funcionalidades de organização de assets (Tags, Folders, Smart Folders, Ratings, Notes, Metadata, Cores) que existiam no V1, agora fluindo pela arquitetura Hexagonal (Ledger + QueryHandler + EventBus). Ao final, o frontend opera 100% sobre os novos endpoints V2 para taxonomia e metadados.
+
+*   **Sprint 7.1: Tags CRUD Completo**
+    *   **Escopo:** Criar/Editar/Deletar tags via Ledger, queries de tags por asset, batch operations (add/remove/replace tags em múltiplos assets). Total: 7 novos IPC commands.
+    *   **Teste E2E:** Criar tag no frontend, aplicar a assets, editar cor, deletar — tudo sem erros.
+*   **Sprint 7.2: Folders Avançados, Indexação Manual e Contadores**
+    *   **Escopo:** `remove_location` com limpeza de thumbs e stop watcher, `get_all_subfolders`, `get_subfolder_counts`, `get_location_root_counts`, `start_indexing`. Total: 5 novos IPC commands.
+    *   **Teste E2E:** Remover pasta pela UI, confirmar limpeza. Disparar re-scan manual. Contadores na sidebar corretos.
+*   **Sprint 7.3: Smart Folders CRUD e Contadores de Biblioteca**
+    *   **Escopo:** Tabela `smart_folders` + CRUD (4 commands), `get_asset_count_filtered`, `get_library_stats`. Total: 6 novos IPC commands.
+    *   **Teste E2E:** Criar smart folder com query, ver resultados filtrados, editar, deletar. Badges de contagem na sidebar atualizando.
+*   **Sprint 7.4: Ratings, Notes, Metadata EXIF e Cores**
+    *   **Escopo:** `update_asset_rating`, `update_asset_notes` via Ledger, `get_asset_exif` via FormatProvider MetadataCapability, `get_asset_colors`, `reextract_asset_colors`. Total: 5 novos IPC commands.
+    *   **Teste E2E:** Atribuir rating, escrever nota, visualizar EXIF no inspector, ver paleta de cores.
+
+---
+
+## Fase 8: Paridade IPC — Mídia, Manutenção e Validação Final
+**Objetivo Testável:** Restaurar as funcionalidades de mídia pesada (streaming, transcoding, waveforms), utilidades de manutenção, auditar cobertura de FormatProviders, e validar a migração completa end-to-end. Ao final, o backend V2 é 100% equivalente ao V1 em features com arquitetura drasticamente superior.
+
+*   **Sprint 8.1: Thumbnails Avançados, Formatos Suportados e DB Maintenance**
+    *   **Escopo:** `request_thumbnail_regenerate`, `get_library_supported_formats` (via FormatRegistry), `run_db_maintenance`, `send_telemetry_log`, `get_audio_waveform_data`. Total: 5 novos IPC commands.
+    *   **Teste E2E:** Regenerar thumb de asset, listar formatos, disparar VACUUM, enviar log do frontend.
+*   **Sprint 8.2: Streaming Server HTTP e Transcoding Commands**
+    *   **Escopo:** Servidor HTTP embarcado com Range Requests (206), token de sessão, `get_stream_url`, `needs_transcoding`, `is_native_format`, `get_quality_options`, `transcode_file`, cache management, `ffmpeg_available`. Total: 11 novos IPC commands.
+    *   **Teste E2E:** Reproduzir vídeo MP4 nativo no player, reproduzir formato que requer transcoding, verificar cache stats.
+*   **Sprint 8.3: Auditoria de FormatProviders e Cobertura de Extratores**
+    *   **Escopo:** Auditoria completa de todos os formatos V1 (SAI, SAI2, Rebelle, CorelDRAW, CorelPainter, Sketch, Penpot, MDP, EPS, XCF, CLIP, etc.) contra FormatProviders V2. Criação de providers faltantes.
+    *   **Teste E2E:** Cada extensão do V1 `definitions.rs` resolve para um FormatProvider V2 específico (não fallback).
+*   **Sprint 8.4: Validação E2E, Compilação Limpa e Relatório Final**
+    *   **Escopo:** `cargo build --release` 0 warnings, `cargo clippy` limpo, testes manuais de todos os fluxos UI, graceful shutdown, geração do walkthrough final.
+    *   **Teste E2E:** App funcional, responsivo, com total paridade de features V1 e arquitetura Hexagonal V2 consolidada.
+
+---
+
+## Resumo de Sprints por Fase
+
+| Fase                 | Sprints    | IPC Commands Adicionados | Foco                                                       |
+| -------------------- | ---------- | ------------------------ | ---------------------------------------------------------- |
+| **1-6** (concluídas) | 1.1 → 6.3  | 11                       | Fundação, Domínio, Formatos, Workers, Delivery, Cleanup    |
+| **7**                | 7.1 → 7.4  | 23                       | Tags, Folders, Smart Folders, Ratings, Notes, EXIF, Colors |
+| **8**                | 8.1 → 8.4  | 21 + Audit               | Thumbnails, Streaming, Transcoding, FormatProviders, E2E   |
+| **Total**            | 31 sprints | **55+ IPC commands**     | Backend V2 completo e validado                             |
