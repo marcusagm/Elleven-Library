@@ -7,6 +7,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 /// Manages the SQLite database connection pool and initialization.
+#[derive(Clone, Debug)]
 pub struct DbManager {
     pool: SqlitePool,
 }
@@ -57,6 +58,13 @@ impl DbManager {
     /// * `&SqlitePool` - The connection pool.
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
+    }
+
+    /// Runs database maintenance operations (VACUUM and ANALYZE).
+    pub async fn run_maintenance(&self) -> AppResult<()> {
+        sqlx::query("VACUUM").execute(&self.pool).await?;
+        sqlx::query("ANALYZE").execute(&self.pool).await?;
+        Ok(())
     }
 }
 

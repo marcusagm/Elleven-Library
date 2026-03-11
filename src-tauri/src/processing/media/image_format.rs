@@ -106,10 +106,23 @@ impl MetadataCapability for ImageFormatProvider {
                 .into_dimensions()
                 .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
 
+            // Extract EXIF if available
+            let mut exif_metadata = serde_json::Map::new();
+            if let Ok(exif_data) = rexif::parse_file(&path_owned) {
+                for entry in exif_data.entries {
+                    let key = entry.tag.to_string();
+                    let value = entry.value_more_readable.to_string();
+                    if !value.trim().is_empty() {
+                        exif_metadata.insert(key, serde_json::Value::String(value));
+                    }
+                }
+            }
+
             Ok(serde_json::json!({
                 "width": dimensions.0,
                 "height": dimensions.1,
                 "format": format.map(|f| format!("{:?}", f)).unwrap_or_default(),
+                "exif": exif_metadata,
             }))
         })
         .await

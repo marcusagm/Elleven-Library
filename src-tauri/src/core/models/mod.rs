@@ -4,6 +4,6 @@ pub mod asset;
 pub mod search;
 pub mod smart_folder;
 
-pub use asset::{Asset, AssetFilter, AssetState, AssetSummaryDto, Folder, LibraryStats, PageParams, Tag, TagCount, FolderCount};
+pub use asset::{Asset, AssetColor, AssetFilter, AssetState, AssetSummaryDto, Folder, LibraryStats, PageParams, Tag, TagCount, FolderCount};
 pub use search::{LogicalOperator, SearchCriteria, SearchCriterion, SearchGroup, SearchItem};
 pub use smart_folder::SmartFolder;

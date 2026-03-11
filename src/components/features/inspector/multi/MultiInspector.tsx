@@ -37,7 +37,7 @@ export const MultiInspector: Component<MultiInspectorProps> = props => {
                                     <img
                                         src={
                                             item.thumbnail_path
-                                                ? `thumb://localhost/${encodeURIComponent(item.thumbnail_path.split(/[\\/]/).pop() || '')}`
+                                                ? `asset://localhost/${item.id}?type=thumb`
                                                 : ''
                                         }
                                         class="deck-card-image"

@@ -182,7 +182,7 @@ const ItemViewContent: Component = () => {
                             }
                         >
                             <ImageViewer
-                                src={`image://localhost/${encodeURIComponent(item()!.path)}`}
+                                src={`asset://localhost/${item()!.id}`}
                                 alt={item()!.filename}
                             />
                         </Match>
@@ -194,13 +194,14 @@ const ItemViewContent: Component = () => {
                         </Match>
                         <Match when={mediaType() === 'font'}>
                             <FontView
-                                src={`font://localhost/${encodeURIComponent(item()!.path)}`}
+                                src={`asset://localhost/${item()!.id}`}
                                 fontName={item()!.filename}
                             />
                         </Match>
                         <Match when={getMediaType(item()!.filename) === 'model3d'}>
                             <ModelViewer
-                                src={`model://localhost/${encodeURIComponent(item()!.path)}`}
+                                src={`asset://localhost/${item()!.id}`}
+                                id={item()!.id}
                                 filename={item()!.filename}
                                 thumbnail={item()!.thumbnail_path}
                             />

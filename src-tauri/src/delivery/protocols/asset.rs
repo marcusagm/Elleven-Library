@@ -88,7 +88,7 @@ pub fn handler<R: tauri::Runtime>(
     // 3. Resolve physical path based on type
     let mut physical_path = asset.path;
 
-    if is_thumb {
+    if is_thumb || uri.contains("type=glb") {
         let app_data = match app_handle.path().app_local_data_dir() {
             Ok(dir) => dir,
             Err(_) => {
@@ -98,9 +98,10 @@ pub fn handler<R: tauri::Runtime>(
                 )
             }
         };
+        let extension = if is_thumb { "webp" } else { "glb" };
         physical_path = app_data
             .join("thumbnails")
-            .join(format!("{}.webp", asset.id));
+            .join(format!("{}.{}", asset.id, extension));
     }
 
     if !physical_path.exists() {

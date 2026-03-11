@@ -24,7 +24,7 @@ export const ModelInspector: Component<ModelInspectorProps> = props => {
                 >
                     <img
                         class="preview-image"
-                        src={`thumb://localhost/${encodeURIComponent(props.item.thumbnail_path?.split(/[\\/]/).pop() || '')}`}
+                        src={`asset://localhost/${props.item.id}?type=thumb`}
                         alt={props.item.filename}
                     />
                 </Show>

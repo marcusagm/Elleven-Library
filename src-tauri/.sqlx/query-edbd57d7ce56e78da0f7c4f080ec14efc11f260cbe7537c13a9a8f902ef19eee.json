@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id as \"id!\", hex_color, lab_lightness, lab_green_red, lab_blue_yellow, percentage, rank\n            FROM asset_colors\n            WHERE asset_id = ?\n            ORDER BY rank ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "hex_color",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "lab_lightness",
+        "ordinal": 2,
+        "type_info": "Float"
+      },
+      {
+        "name": "lab_green_red",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "lab_blue_yellow",
+        "ordinal": 4,
+        "type_info": "Float"
+      },
+      {
+        "name": "percentage",
+        "ordinal": 5,
+        "type_info": "Float"
+      },
+      {
+        "name": "rank",
+        "ordinal": 6,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "edbd57d7ce56e78da0f7c4f080ec14efc11f260cbe7537c13a9a8f902ef19eee"
+}

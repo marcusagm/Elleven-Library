@@ -171,4 +171,18 @@ impl AssetQueryService {
     pub async fn get_library_stats(&self) -> AppResult<crate::core::models::LibraryStats> {
         self.repository.get_library_stats().await
     }
+
+    /// Retrieves all colors extracted for a specific asset.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_id` - The unique identifier of the asset.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<AssetColor>)` if successful.
+    /// * `Err(AppError)` if the query fails.
+    pub async fn get_asset_colors(&self, asset_id: &str) -> AppResult<Vec<crate::core::models::AssetColor>> {
+        self.repository.get_asset_colors(asset_id).await
+    }
 }

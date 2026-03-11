@@ -20,7 +20,7 @@ export const ImageInspector: Component<ImageInspectorProps> = props => {
                     class="preview-image"
                     src={
                         props.item.thumbnail_path
-                            ? `thumb://localhost/${encodeURIComponent(props.item.thumbnail_path.split(/[\\/]/).pop() || '')}`
+                            ? `asset://localhost/${props.item.id}?type=thumb`
                             : ''
                     }
                     alt={props.item.filename}

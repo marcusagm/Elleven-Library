@@ -79,6 +79,8 @@ impl TransactionalAssetLedger for MockAssetLedger {
                     dominant_color: None,
                     folder_id: payload.folder_id.clone(),
                     thumbnail_path: None,
+                    rating: None,
+                    notes: None,
                 };
 
                 // Store in memory
@@ -142,6 +144,8 @@ impl TransactionalAssetLedger for MockAssetLedger {
                     dominant_color: None,
                     folder_id: None,
                     thumbnail_path: None,
+                    rating: None,
+                    notes: None,
                 })
             }
             _ => Err(AppError::Internal(

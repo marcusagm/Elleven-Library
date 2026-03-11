@@ -12,3 +12,5 @@ pub mod search;
 pub mod settings;
 /// Module for transcoding functionality.
 pub mod transcoding;
+/// Module for media-related features (waveforms, etc).
+pub mod media;

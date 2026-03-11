@@ -34,20 +34,25 @@ pub struct Asset {
     /// Unique identifier (UUID/ULID)
     pub id: String,
     /// Name of the asset
+    #[serde(rename = "filename")]
     pub name: String,
     /// Path to the asset
     pub path: PathBuf,
     /// State of the asset
     pub state: AssetState,
     /// Format type of the asset
+    #[serde(rename = "format")]
     pub format_type: String,
     /// Family of the asset
+    #[serde(rename = "media_type")]
     pub family: String,
     /// File size of the asset
+    #[serde(rename = "size")]
     pub file_size: u64,
     /// Timestamp of when the asset was created
     pub created_at: Option<DateTime<Utc>>,
     /// Timestamp of when the asset was updated
+    #[serde(rename = "modified_at")]
     pub updated_at: Option<DateTime<Utc>>,
 
     /// Width of the asset
@@ -66,6 +71,10 @@ pub struct Asset {
     pub folder_id: Option<String>,
     /// Path to the generated thumbnail file
     pub thumbnail_path: Option<String>,
+    /// User-assigned rating (0-5 stars)
+    pub rating: Option<i32>,
+    /// Free-text personal notes
+    pub notes: Option<String>,
 }
 
 /// A Domain entity representing a single color extracted from an asset's palette.
@@ -122,22 +131,40 @@ pub struct Tag {
 /// A lightweight projection of an asset for grid listings and infinite scroll.
 /// Focuses on visual performance and minimal bridge overhead.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct AssetSummaryDto {
     /// Unique identifier (UUID/ULID)
     pub id: String,
     /// Name of the asset
+    #[serde(rename = "filename")]
     pub name: String,
     /// State of the asset
     pub state: AssetState,
     /// Format type of the asset
+    #[serde(rename = "format")]
     pub format_type: String,
     /// Family of the asset
+    #[serde(rename = "media_type")]
     pub family: String,
     /// Timestamp of when the asset was created
     pub created_at: Option<DateTime<Utc>>,
+    /// Timestamp of when the asset was updated
+    #[serde(rename = "modified_at")]
+    pub updated_at: Option<DateTime<Utc>>,
     /// Parent folder ID
     pub folder_id: Option<String>,
+    /// Path to the generated thumbnail file
+    pub thumbnail_path: Option<String>,
+    /// File size in bytes
+    #[serde(rename = "size")]
+    pub file_size: i64,
+    /// Width in pixels
+    pub width: Option<i32>,
+    /// Height in pixels
+    pub height: Option<i32>,
+    /// User-assigned rating (0-5 stars)
+    pub rating: i32,
+    /// Free-text personal notes
+    pub notes: Option<String>,
 }
 
 /// Count of assets associated with a specific tag.

@@ -1,5 +1,5 @@
 use crate::core::error::AppResult;
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
+use crate::core::models::{Asset, AssetColor, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
 use crate::core::repository::AssetQueryHandler;
 use crate::infra::database::models::{AssetDb, AssetSummaryDb};
 use async_trait::async_trait;
@@ -52,9 +52,11 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 CAST(NULL AS REAL) as "duration_secs: f64",
                 CAST(NULL AS TEXT) as "technical_payload: serde_json::Value",
                 CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value",
-                CAST(NULL AS TEXT) as "dominant_color: serde_json::Value",
+                dominant_color as "dominant_color: serde_json::Value",
                 folder_id as "folder_id?",
-                thumbnail_path as "thumbnail_path?"
+                thumbnail_path as "thumbnail_path?",
+                CAST(NULL AS INTEGER) as "rating: i32",
+                CAST(NULL AS TEXT) as "notes: String"
             FROM assets
             "#
         )
@@ -86,9 +88,11 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 m.width as "width: i32", m.height as "height: i32", m.duration_secs as "duration_secs: f64",
                 m.technical_payload as "technical_payload: serde_json::Value",
                 m.semantic_payload as "semantic_payload: serde_json::Value",
-                m.dominant_colors as "dominant_color: serde_json::Value",
+                a.dominant_color as "dominant_color: serde_json::Value",
                 a.folder_id as "folder_id?",
-                a.thumbnail_path as "thumbnail_path?"
+                a.thumbnail_path as "thumbnail_path?",
+                a.rating as "rating: i32",
+                a.notes as "notes: String"
             FROM assets a
             LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE a.id = ?
@@ -118,35 +122,43 @@ impl AssetQueryHandler for SqliteAssetQueries {
         page: PageParams,
     ) -> AppResult<Vec<AssetSummaryDto>> {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "SELECT id, name, state, format_type, family, created_at, folder_id FROM assets WHERE 1=1 ",
+            r#"
+            SELECT 
+                a.id, a.name, a.state, a.format_type, a.family, a.created_at, a.updated_at, 
+                a.folder_id, a.thumbnail_path, a.file_size, 
+                m.width, m.height, a.rating, a.notes 
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
+            WHERE 1=1 
+            "#,
         );
 
         if let Some(family) = filter.family {
-            query_builder.push(" AND family = ");
+            query_builder.push(" AND a.family = ");
             query_builder.push_bind(family);
         }
 
         if let Some(state) = filter.state {
-            query_builder.push(" AND state = ");
+            query_builder.push(" AND a.state = ");
             query_builder.push_bind(state.to_string());
         }
 
         if let Some(search) = filter.search_query {
-            query_builder.push(" AND (name LIKE ");
+            query_builder.push(" AND (a.name LIKE ");
             query_builder.push_bind(format!("%{}%", search));
-            query_builder.push(" OR path LIKE ");
+            query_builder.push(" OR a.path LIKE ");
             query_builder.push_bind(format!("%{}%", search));
             query_builder.push(")");
         }
 
         if let Some(folder_id) = filter.folder_id {
-            query_builder.push(" AND folder_id = ");
+            query_builder.push(" AND a.folder_id = ");
             query_builder.push_bind(folder_id);
         }
 
         if let Some(tags) = filter.tags {
             if !tags.is_empty() {
-                query_builder.push(" AND id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name IN (");
+                query_builder.push(" AND a.id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name IN (");
                 let mut first = true;
                 for tag in tags {
                     if !first {
@@ -161,12 +173,12 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         if let Some(untagged) = filter.untagged {
             if untagged {
-                query_builder.push(" AND id NOT IN (SELECT asset_id FROM asset_tags)");
+                query_builder.push(" AND a.id NOT IN (SELECT asset_id FROM asset_tags)");
             }
         }
 
         // Ordering as per Sprint decision: created_at DESC, name ASC
-        query_builder.push(" ORDER BY created_at DESC, name ASC ");
+        query_builder.push(" ORDER BY a.created_at DESC, a.name ASC ");
 
         // Pagination
         query_builder.push(" LIMIT ");
@@ -381,7 +393,8 @@ impl AssetQueryHandler for SqliteAssetQueries {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
             r#"
             SELECT DISTINCT
-                a.id, a.name, a.state, a.format_type, a.family, a.created_at, a.folder_id
+                a.id, a.name, a.state, a.format_type, a.family, a.created_at, a.updated_at,
+                a.folder_id, a.thumbnail_path, a.file_size, m.width, m.height, a.rating, a.notes
             FROM assets a
             LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE 1=1 AND
@@ -451,9 +464,11 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 m.width as "width: i32", m.height as "height: i32", m.duration_secs as "duration_secs: f64",
                 m.technical_payload as "technical_payload: serde_json::Value",
                 m.semantic_payload as "semantic_payload: serde_json::Value",
-                m.dominant_colors as "dominant_color: serde_json::Value",
+                a.dominant_color as "dominant_color: serde_json::Value",
                 a.folder_id as "folder_id?",
-                a.thumbnail_path as "thumbnail_path?"
+                a.thumbnail_path as "thumbnail_path?",
+                a.rating as "rating: i32",
+                a.notes as "notes: String"
             FROM assets a
             LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE a.id = ?
@@ -678,6 +693,45 @@ impl AssetQueryHandler for SqliteAssetQueries {
             folder_counts,
             folder_counts_recursive: None,
         })
+    }
+
+    /// Retrieves all colors extracted for a specific asset.
+    async fn get_asset_colors(&self, asset_id: &str) -> AppResult<Vec<crate::core::models::AssetColor>> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id as "id!", hex_color, lab_lightness, lab_green_red, lab_blue_yellow, percentage, rank
+            FROM asset_colors
+            WHERE asset_id = ?
+            ORDER BY rank ASC
+            "#,
+            asset_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| AssetColor {
+                id: Some(r.id),
+                hex_color: r.hex_color,
+                lab_lightness: r.lab_lightness,
+                lab_green_red: r.lab_green_red,
+                lab_blue_yellow: r.lab_blue_yellow,
+                percentage: r.percentage,
+                rank: r.rank as i32,
+            })
+            .collect())
+    }
+
+    async fn find_folder_by_path(&self, path: &str) -> AppResult<Option<String>> {
+        let row = sqlx::query!(
+            r#"SELECT id as "id!" FROM folders WHERE path = ?"#,
+            path
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| r.id))
     }
 }
 

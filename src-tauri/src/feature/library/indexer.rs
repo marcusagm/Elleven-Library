@@ -52,9 +52,20 @@ impl LibraryIndexer {
     ///
     /// * `AppResult<()>` - Result of the scan operation.
     #[instrument(skip(self), fields(path = %path.display()))]
-    pub async fn scan_directory(&self, path: PathBuf) -> AppResult<()> {
+    pub async fn scan_directory(&self, path: PathBuf, folder_id: Option<String>) -> AppResult<()> {
         let root_str = path.to_string_lossy().to_string();
         info!("Starting differential scan for: {}", root_str);
+
+        // Resolve folder_id if not provided
+        let resolved_folder_id = if let Some(id) = folder_id {
+            Some(id)
+        } else {
+            self.query_handler.find_folder_by_path(&root_str).await?
+        };
+
+        if resolved_folder_id.is_none() {
+            debug!("Parent folder not found in database for path: {}. Assets will be untagged/root-level.", root_str);
+        }
 
         // 1. Load comparison cache (Size, MTime)
         let cache = self
@@ -115,7 +126,7 @@ impl LibraryIndexer {
                     format_type: "unknown".to_string(), // FormatRegistry will refine this later
                     family: "unknown".to_string(),
                     state_init: AssetState::Indexed,
-                    folder_id: None,
+                    folder_id: resolved_folder_id.clone(),
                 });
 
                 if let Err(e) = self.ledger.execute(cmd).await {
@@ -149,13 +160,13 @@ impl LibraryIndexer {
                 match event {
                     crate::core::events::DomainEvent::FsFileDiscovered { path, .. } => {
                         let path_buf = PathBuf::from(path);
-                        if let Err(e) = self.scan_directory(path_buf).await {
+                        if let Err(e) = self.scan_directory(path_buf, None).await {
                             error!("Background scan failed: {}", e);
                         }
                     }
                     crate::core::events::DomainEvent::FsPathRenamed { from: _, to } => {
                         let path_buf = PathBuf::from(to);
-                        if let Err(e) = self.scan_directory(path_buf).await {
+                        if let Err(e) = self.scan_directory(path_buf, None).await {
                             error!("Background scan (after rename) failed: {}", e);
                         }
                     }

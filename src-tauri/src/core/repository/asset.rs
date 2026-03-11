@@ -170,4 +170,10 @@ pub trait AssetQueryHandler: Send + Sync {
 
     /// Retrieves comprehensive statistics about the library.
     async fn get_library_stats(&self) -> AppResult<LibraryStats>;
+
+    /// Retrieves all colors extracted for a specific asset.
+    async fn get_asset_colors(&self, asset_id: &str) -> AppResult<Vec<crate::core::models::AssetColor>>;
+
+    /// Finds a folder ID by its physical path.
+    async fn find_folder_by_path(&self, path: &str) -> AppResult<Option<String>>;
 }

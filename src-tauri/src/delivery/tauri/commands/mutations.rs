@@ -1,6 +1,7 @@
 use crate::core::ledger::command::{
-    BatchTagsPayload, CreateFolderPayload, CreateTagPayload, LedgerCommand, UpdateTagPayload,
-    UpdateTagsPayload, CreateSmartFolderPayload, UpdateSmartFolderPayload, DeleteSmartFolderPayload,
+    BatchTagsPayload, CreateFolderPayload, CreateSmartFolderPayload, CreateTagPayload,
+    DeleteSmartFolderPayload, LedgerCommand, UpdateAssetNotesPayload, UpdateAssetRatingPayload,
+    UpdateSmartFolderPayload, UpdateTagPayload, UpdateTagsPayload,
 };
 use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::core::models::{Asset, Tag};
@@ -8,7 +9,7 @@ use crate::feature::assets::queries::AssetQueryService;
 use crate::feature::library::indexer::LibraryIndexer;
 use crate::processing::watcher::WatcherService;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::core::error::AppResult;
 
@@ -308,12 +309,13 @@ pub async fn remove_location(
 #[tauri::command]
 pub async fn start_indexing(
     path: String,
+    folder_id: Option<String>,
     indexer: State<'_, Arc<LibraryIndexer>>,
 ) -> AppResult<()> {
     let indexer_ref = indexer.inner().clone();
     let path_buf = std::path::PathBuf::from(path);
     tauri::async_runtime::spawn(async move {
-        let _ = indexer_ref.scan_directory(path_buf).await;
+        let _ = indexer_ref.scan_directory(path_buf, folder_id).await;
     });
     Ok(())
 }
@@ -391,4 +393,161 @@ pub async fn delete_smart_folder(
             id,
         }))
         .await
+}
+
+/// RPC Command to update an asset's rating.
+///
+/// # Arguments
+///
+/// * `ledger` - The asset ledger.
+/// * `payload` - The payload containing the asset ID and rating.
+///
+/// # Returns
+///
+/// The updated asset as an Asset placeholder.
+#[tauri::command]
+pub async fn update_asset_rating(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    payload: UpdateAssetRatingPayload,
+) -> AppResult<Asset> {
+    ledger
+        .execute(LedgerCommand::UpdateAssetRating(payload))
+        .await
+}
+
+/// RPC Command to update an asset's notes.
+///
+/// # Arguments
+///
+/// * `ledger` - The asset ledger.
+/// * `payload` - The payload containing the asset ID and notes.
+///
+/// # Returns
+///
+/// The updated asset as an Asset placeholder.
+#[tauri::command]
+pub async fn update_asset_notes(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    payload: UpdateAssetNotesPayload,
+) -> AppResult<Asset> {
+    ledger
+        .execute(LedgerCommand::UpdateAssetNotes(payload))
+        .await
+}
+
+/// RPC Command to trigger re-extraction of asset colors.
+///
+/// # Arguments
+///
+/// * `ledger` - The asset ledger.
+/// * `asset_id` - The ID of the asset to re-extract colors from.
+///
+/// # Returns
+///
+/// The updated asset as an Asset placeholder.
+#[tauri::command]
+pub async fn reextract_asset_colors(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    asset_id: String,
+) -> AppResult<Asset> {
+    ledger
+        .execute(LedgerCommand::ReextractColors { asset_id })
+        .await
+}
+
+/// RPC Command to request regeneration of thumbnails for an asset.
+///
+/// # Arguments
+///
+/// * `ledger` - The asset ledger.
+/// * `asset_id` - The ID of the asset to regenerate thumbnails for.
+///
+/// # Returns
+///
+/// The updated asset as an Asset placeholder.
+#[tauri::command]
+pub async fn request_thumbnail_regenerate(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    asset_id: String,
+) -> AppResult<Asset> {
+    ledger
+        .execute(LedgerCommand::RegenerateThumbnail { asset_id })
+        .await
+}
+
+/// RPC Command to run database maintenance (VACUUM/ANALYZE).
+///
+/// # Arguments
+///
+/// * `pool_manager` - The database manager.
+///
+/// # Returns
+///
+/// An empty result.
+#[tauri::command]
+pub async fn run_db_maintenance(
+    pool_manager: State<'_, crate::infra::database::manager::DbManager>,
+) -> AppResult<()> {
+    pool_manager.run_maintenance().await
+}
+
+/// RPC Command to send a telemetry log from the frontend.
+///
+/// # Arguments
+///
+/// * `level` - The log level.
+/// * `component` - The component name.
+/// * `message` - The log message.
+///
+/// # Returns
+///
+/// An empty result.
+#[tauri::command]
+pub fn send_telemetry_log(level: String, component: String, message: String) {
+    match level.to_lowercase().as_str() {
+        "error" => tracing::error!(component = %component, "{}", message),
+        "warn" => tracing::warn!(component = %component, "{}", message),
+        "info" => tracing::info!(component = %component, "{}", message),
+        "debug" => tracing::debug!(component = %component, "{}", message),
+        _ => tracing::info!(component = %component, "[{}] {}", level, message),
+    }
+}
+
+/// RPC Command to clean up old cache entries.
+#[tauri::command]
+pub async fn cleanup_cache(handle: tauri::AppHandle) -> AppResult<()> {
+    let app_data = handle
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
+
+    let hls_dir = app_data.join("hls");
+    if hls_dir.exists() {
+        // Simple implementation: remove HLS directory
+        let _ = tokio::fs::remove_dir_all(&hls_dir).await;
+        let _ = tokio::fs::create_dir_all(&hls_dir).await;
+    }
+    Ok(())
+}
+
+/// RPC Command to clear the entire cache (thumbnails and HLS).
+#[tauri::command]
+pub async fn clear_cache(handle: tauri::AppHandle) -> AppResult<()> {
+    let app_data = handle
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
+
+    let thumb_dir = app_data.join("thumbnails");
+    let hls_dir = app_data.join("hls");
+
+    if thumb_dir.exists() {
+        let _ = tokio::fs::remove_dir_all(&thumb_dir).await;
+        let _ = tokio::fs::create_dir_all(&thumb_dir).await;
+    }
+    if hls_dir.exists() {
+        let _ = tokio::fs::remove_dir_all(&hls_dir).await;
+        let _ = tokio::fs::create_dir_all(&hls_dir).await;
+    }
+    Ok(())
 }

@@ -2,11 +2,16 @@ use crate::core::formats::provider::FormatProvider;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use serde::Serialize;
+
+/// Represents a format supported by the application.
+#[derive(Debug, Serialize, Clone)]
+pub struct SupportedFormat {
+    pub name: String,
+    pub extensions: Vec<String>,
+}
 
 /// The central "Cartório" (Registry) for all supported file formats.
-///
-/// It maintains high-performance routing for format resolution using
-/// a HashMap for extension-based lookups and a Vec for magic-byte-based fallbacks.
 pub struct FormatRegistry {
     /// Instant routing (O(1)) for 99% of cases using normalized extensions.
     by_extension: HashMap<String, Arc<dyn FormatProvider>>,
@@ -67,6 +72,21 @@ impl FormatRegistry {
         }
 
         None
+    }
+
+    /// Returns a list of all supported formats and their extensions.
+    pub fn get_supported_formats(&self) -> Vec<SupportedFormat> {
+        self.deep_checkers
+            .iter()
+            .map(|provider| SupportedFormat {
+                name: provider.name().to_string(),
+                extensions: provider
+                    .supported_extensions()
+                    .into_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+            })
+            .collect()
     }
 }
 

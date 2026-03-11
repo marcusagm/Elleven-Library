@@ -99,6 +99,14 @@ pub fn run() {
                             return;
                         }
                     };
+
+                // Generate a session token for streaming server authentication
+                let session_token = uuid::Uuid::new_v4().to_string();
+                handle.manage(
+                    crate::delivery::tauri::commands::queries::StreamingSessionToken(session_token),
+                );
+
+                handle.manage(db_manager.clone());
                 let asset_query_handler =
                     Arc::new(crate::infra::database::queries::SqliteAssetQueries::new(
                         db_manager.pool().clone(),
@@ -170,7 +178,7 @@ pub fn run() {
                         asset_ledger.clone(),
                     ));
                     handle.manage(indexer.clone());
-                    
+
                     indexer
                         .clone()
                         .start_event_listener(event_bus.clone())
@@ -226,8 +234,10 @@ pub fn run() {
             delivery::tauri::commands::queries::get_subfolder_counts,
             delivery::tauri::commands::queries::get_location_root_counts,
             delivery::tauri::commands::queries::get_smart_folders,
-            delivery::tauri::commands::queries::get_asset_count_filtered,
             delivery::tauri::commands::queries::get_library_stats,
+            delivery::tauri::commands::queries::get_asset_exif,
+            delivery::tauri::commands::queries::get_asset_colors,
+            delivery::tauri::commands::queries::get_cache_stats,
             delivery::tauri::commands::mutations::create_folder,
             delivery::tauri::commands::mutations::remove_location,
             delivery::tauri::commands::mutations::start_indexing,
@@ -242,27 +252,43 @@ pub fn run() {
             delivery::tauri::commands::mutations::save_smart_folder,
             delivery::tauri::commands::mutations::update_smart_folder,
             delivery::tauri::commands::mutations::delete_smart_folder,
-            delivery::tauri::thumbnails::prioritize_thumbnails,
+            delivery::tauri::commands::mutations::update_asset_rating,
+            delivery::tauri::commands::mutations::update_asset_notes,
+            delivery::tauri::commands::mutations::reextract_asset_colors,
+            delivery::tauri::commands::mutations::request_thumbnail_regenerate,
+            delivery::tauri::commands::mutations::run_db_maintenance,
+            delivery::tauri::commands::mutations::send_telemetry_log,
+            delivery::tauri::commands::mutations::cleanup_cache,
+            delivery::tauri::commands::mutations::clear_cache,
+            delivery::tauri::commands::queries::get_library_supported_formats,
+            delivery::tauri::commands::queries::get_audio_waveform_data,
+            delivery::tauri::thumbnails::set_thumbnail_priority,
             // Settings Commands
             delivery::tauri::commands::settings::get_app_settings,
-            delivery::tauri::commands::settings::update_app_settings
+            delivery::tauri::commands::settings::update_app_settings,
+            delivery::tauri::commands::settings::get_setting,
+            delivery::tauri::commands::settings::set_setting,
+            delivery::tauri::commands::queries::get_streaming_token
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app_handle, event| if let tauri::RunEvent::WindowEvent {
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::WindowEvent {
                 event: tauri::WindowEvent::CloseRequested { api, .. },
                 ..
-            } = event {
-            tracing::info!("Close requested. Orchestrating graceful shutdown.");
-            api.prevent_close();
+            } = event
+            {
+                tracing::info!("Close requested. Orchestrating graceful shutdown.");
+                api.prevent_close();
 
-            let handle = app_handle.clone();
-            tauri::async_runtime::spawn(async move {
-                if let Some(lifecycle) = handle.try_state::<std::sync::Arc<LifecycleRegistry>>()
-                {
-                    lifecycle.shutdown_all().await;
-                }
-                handle.exit(0);
-            });
+                let handle = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Some(lifecycle) = handle.try_state::<std::sync::Arc<LifecycleRegistry>>()
+                    {
+                        lifecycle.shutdown_all().await;
+                    }
+                    handle.exit(0);
+                });
+            }
         });
 }

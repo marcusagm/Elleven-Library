@@ -1,8 +1,22 @@
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag, SmartFolder, LibraryStats};
+use crate::core::formats::FormatRegistry;
+use crate::core::models::{
+    Asset, AssetColor, AssetFilter, AssetSummaryDto, Folder, LibraryStats, PageParams, SmartFolder,
+    Tag,
+};
 use crate::feature::assets::queries::AssetQueryService;
-use tauri::State;
+use std::sync::Arc;
+use tauri::{Manager, State};
 
 use crate::core::error::AppResult;
+
+/// Holds the session token used to authenticate streaming server requests.
+pub struct StreamingSessionToken(pub String);
+
+/// Returns the streaming session token to the frontend.
+#[tauri::command]
+pub fn get_streaming_token(token_state: State<'_, StreamingSessionToken>) -> String {
+    token_state.0.clone()
+}
 
 /// RPC Command to list assets with filters and pagination.
 ///
@@ -214,8 +228,141 @@ pub async fn get_asset_count_filtered(
 /// * `Ok(LibraryStats)` object containing aggregates.
 /// * `Err(AppError)` if the query fails.
 #[tauri::command]
-pub async fn get_library_stats(
-    service: State<'_, AssetQueryService>,
-) -> AppResult<LibraryStats> {
+pub async fn get_library_stats(service: State<'_, AssetQueryService>) -> AppResult<LibraryStats> {
     service.get_library_stats().await
+}
+
+/// RPC Command to get all colors extracted for a specific asset.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+/// * `asset_id` - The ID of the asset to get colors for.
+///
+/// # Returns
+///
+/// * `Ok(Vec<AssetColor>)` if the colors were found successfully.
+/// * `Err(AppError)` if the query fails.
+#[tauri::command]
+pub async fn get_asset_colors(
+    service: State<'_, AssetQueryService>,
+    asset_id: String,
+) -> AppResult<Vec<AssetColor>> {
+    service.get_asset_colors(&asset_id).await
+}
+
+/// RPC Command to get advanced EXIF/technical metadata for an asset.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+/// * `registry` - The format registry.
+/// * `asset_id` - The ID of the asset to get metadata for.
+///
+/// # Returns
+///
+/// * `Ok(serde_json::Value)` if the metadata was found successfully.
+/// * `Err(AppError)` if the query fails.
+#[tauri::command]
+pub async fn get_asset_exif(
+    service: State<'_, AssetQueryService>,
+    registry: State<'_, Arc<FormatRegistry>>,
+    asset_id: Option<String>,
+    path: Option<String>,
+) -> AppResult<serde_json::Value> {
+    let final_path = if let Some(id) = asset_id {
+        service.get_asset(&id).await?.ok_or_else(|| {
+            crate::core::error::AppError::NotFound(format!("Asset {} not found", id))
+        })?.path
+    } else if let Some(p) = path {
+        std::path::PathBuf::from(p)
+    } else {
+        return Err(crate::core::error::AppError::Generic(
+            "Either assetId or path must be provided".to_string(),
+        ));
+    };
+
+    let provider = registry.resolve(&final_path, &[]).ok_or_else(|| {
+        crate::core::error::AppError::UnsupportedFormat(format!(
+            "No provider found for path {:?}",
+            final_path
+        ))
+    })?;
+
+    let metadata_cap = provider.metadata().ok_or_else(|| {
+        crate::core::error::AppError::Generic(format!(
+            "Provider for {:?} does not support metadata extraction",
+            final_path
+        ))
+    })?;
+
+    metadata_cap.extract_technical(&final_path).await
+}
+
+/// RPC Command to get statistics about the transcoding and thumbnail cache.
+#[tauri::command]
+pub async fn get_cache_stats(handle: tauri::AppHandle) -> AppResult<serde_json::Value> {
+    let app_data = handle
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
+
+    let thumb_dir = app_data.join("thumbnails");
+    let hls_dir = app_data.join("hls");
+
+    async fn get_dir_stats(dir: &std::path::Path) -> (u64, u64) {
+        let mut count = 0;
+        let mut size = 0;
+        if let Ok(mut entries) = tokio::fs::read_dir(dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                if let Ok(metadata) = entry.metadata().await {
+                    if metadata.is_file() {
+                        count += 1;
+                        size += metadata.len();
+                    } else if metadata.is_dir() {
+                        let (c, s) = Box::pin(get_dir_stats(&entry.path())).await;
+                        count += c;
+                        size += s;
+                    }
+                }
+            }
+        }
+        (count, size)
+    }
+
+    let (thumb_count, thumb_size) = get_dir_stats(&thumb_dir).await;
+    let (hls_count, hls_size) = get_dir_stats(&hls_dir).await;
+
+    Ok(serde_json::json!({
+        "thumbnails": {
+            "count": thumb_count,
+            "size": thumb_size,
+        },
+        "hls": {
+            "count": hls_count,
+            "size": hls_size,
+        },
+        "total": {
+            "count": thumb_count + hls_count,
+            "size": thumb_size + hls_size,
+        }
+    }))
+}
+
+/// RPC Command to get all supported file formats.
+#[tauri::command]
+pub fn get_library_supported_formats(
+    registry: State<'_, Arc<FormatRegistry>>,
+) -> Vec<crate::core::formats::registry::SupportedFormat> {
+    registry.get_supported_formats()
+}
+
+/// RPC Command to get audio waveform data for a file.
+#[tauri::command]
+pub async fn get_audio_waveform_data(
+    app_handle: tauri::AppHandle,
+    path: String,
+) -> AppResult<Vec<f32>> {
+    let path_buf = std::path::PathBuf::from(path);
+    crate::feature::media::waveform::extract_audio_waveform(&path_buf, &app_handle).await
 }

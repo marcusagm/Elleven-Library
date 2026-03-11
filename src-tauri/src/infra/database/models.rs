@@ -31,6 +31,10 @@ pub struct AssetDb {
     pub folder_id: Option<String>,
     /// Path to the generated thumbnail file
     pub thumbnail_path: Option<String>,
+    /// User-assigned rating (0-5 stars)
+    pub rating: Option<i32>,
+    /// Free-text personal notes
+    pub notes: Option<String>,
 
     /// Width of the asset
     pub width: Option<i32>,
@@ -61,8 +65,22 @@ pub struct AssetSummaryDb {
     pub family: String,
     /// Timestamp of when the asset was created
     pub created_at: Option<DateTime<Utc>>,
+    /// Timestamp of when the asset was updated
+    pub updated_at: Option<DateTime<Utc>>,
     /// ID of the parent folder
     pub folder_id: Option<String>,
+    /// Path to the generated thumbnail file
+    pub thumbnail_path: Option<String>,
+    /// File size in bytes
+    pub file_size: i64,
+    /// Width in pixels
+    pub width: Option<i32>,
+    /// Height in pixels
+    pub height: Option<i32>,
+    /// User-assigned rating (0-5 stars)
+    pub rating: Option<i32>,
+    /// Free-text personal notes
+    pub notes: Option<String>,
 }
 
 /// Dynamic metadata envelope for specific format capabilities.
@@ -86,6 +104,10 @@ pub struct AssetMetadataEnvelopeDb {
     pub technical_payload: Option<serde_json::Value>,
     /// Semantic payload of the asset
     pub semantic_payload: Option<serde_json::Value>,
+    /// User-assigned rating (0-5 stars)
+    pub rating: Option<i32>,
+    /// Free-text personal notes
+    pub notes: Option<String>,
 }
 
 /// Record of an operation performed on an asset, used for audit and undo.
@@ -177,6 +199,8 @@ impl From<AssetDb> for crate::core::models::Asset {
             semantic_payload: row.semantic_payload,
             dominant_color: row.dominant_color,
             thumbnail_path: row.thumbnail_path,
+            rating: row.rating,
+            notes: row.notes,
         }
     }
 }
@@ -210,7 +234,14 @@ impl From<AssetSummaryDb> for crate::core::models::AssetSummaryDto {
             format_type: row.format_type,
             family: row.family,
             created_at: row.created_at,
+            updated_at: row.updated_at,
             folder_id: row.folder_id,
+            thumbnail_path: row.thumbnail_path,
+            file_size: row.file_size,
+            width: row.width,
+            height: row.height,
+            rating: row.rating.unwrap_or(0),
+            notes: row.notes,
         }
     }
 }

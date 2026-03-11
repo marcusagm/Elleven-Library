@@ -34,6 +34,10 @@ pub struct AppSettings {
 
     /// Whether to automatically scan watched directories on boot.
     pub auto_scan_enabled: bool,
+
+    /// Extra generic settings (e.g., appearance, shortcuts).
+    #[serde(default)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// Default settings for the application.
@@ -53,6 +57,7 @@ impl Default for AppSettings {
             worker_threads: std::cmp::max(1, available_parallelism / 2),
             ui_language: AppLanguage::default(),
             auto_scan_enabled: true,
+            extra: std::collections::HashMap::new(),
         }
     }
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\", format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\", created_at as \"created_at: DateTime<Utc>\", updated_at as \"updated_at: DateTime<Utc>\", folder_id, CAST(NULL AS INTEGER) as \"width: i32\", CAST(NULL AS INTEGER) as \"height: i32\", CAST(NULL AS REAL) as \"duration_secs: f64\", CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\", dominant_color as \"dominant_color: serde_json::Value\", thumbnail_path as \"thumbnail_path?\" FROM assets WHERE id = ?",
+  "query": "SELECT id as \"id!\", name as \"name!\", path as \"path!\", state as \"state!\", format_type as \"format_type!\", family as \"family!\", file_size as \"file_size!\", created_at as \"created_at: DateTime<Utc>\", updated_at as \"updated_at: DateTime<Utc>\", folder_id as \"folder_id?\", CAST(NULL AS INTEGER) as \"width: i32\", CAST(NULL AS INTEGER) as \"height: i32\", CAST(NULL AS REAL) as \"duration_secs: f64\", CAST(NULL AS TEXT) as \"technical_payload: serde_json::Value\", CAST(NULL AS TEXT) as \"semantic_payload: serde_json::Value\", dominant_color as \"dominant_color: serde_json::Value\", thumbnail_path as \"thumbnail_path?\", rating as \"rating: i32\", notes as \"notes: String\" FROM assets WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -49,7 +49,7 @@
         "type_info": "Datetime"
       },
       {
-        "name": "folder_id",
+        "name": "folder_id?",
         "ordinal": 9,
         "type_info": "Text"
       },
@@ -87,6 +87,16 @@
         "name": "thumbnail_path?",
         "ordinal": 16,
         "type_info": "Text"
+      },
+      {
+        "name": "rating: i32",
+        "ordinal": 17,
+        "type_info": "Integer"
+      },
+      {
+        "name": "notes: String",
+        "ordinal": 18,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -109,8 +119,10 @@
       null,
       null,
       true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "0f5fb5f9e6ea19d3f8d142cb0569abe6415379a14a515a60907646e6484328ae"
+  "hash": "441fda04a6229c6383825c206dd859aad191f439d5b39530c666b9c78dbd43ca"
 }

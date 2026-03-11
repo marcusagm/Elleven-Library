@@ -166,8 +166,7 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
         const path = effectiveThumbnail();
         if (!path || path === '') return undefined;
 
-        const normalizedPath = path.replace(/\\/g, '/');
-        return `thumb://localhost/${normalizedPath}`;
+        return `asset://localhost/${thumbnailProperties.id}?type=thumb`;
     });
 
     /**

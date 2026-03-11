@@ -219,7 +219,16 @@ export const tagActions = {
         position: 'before' | 'inside' | 'after'
     ): Promise<ActionResult> => {
         try {
-            const allTags = metadataState.tags;
+            let allTags = metadataState.tags;
+            let draggedTag = allTags.find(t => t.id === draggedTagId);
+
+            if (!draggedTag) {
+                await tagActions.loadTags();
+                allTags = metadataState.tags;
+                draggedTag = allTags.find(t => t.id === draggedTagId);
+            }
+
+            if (!draggedTag) throw new Error('Dragged tag not found');
 
             let newParentId: string | null = null;
             if (position === 'inside') {
@@ -242,10 +251,7 @@ export const tagActions = {
                 }
             }
 
-            const draggedTag = allTags.find(t => t.id === draggedTagId);
-            if (!draggedTag) throw new Error('Dragged tag not found');
-
-            siblings.splice(insertIndex, 0, draggedTag);
+            siblings.splice(insertIndex, 0, draggedTag!);
 
             // 3. Create and execute updates
             const updates = siblings.map((tag, index) => {
@@ -355,7 +361,7 @@ export const tagActions = {
         if (cached) return cached;
 
         try {
-            const exif = await tagService.getAssetExif(path);
+            const exif = await tagService.getAssetExif(assetId, path);
             metadataCache.set(String(assetId), exif);
             return exif;
         } catch (error) {

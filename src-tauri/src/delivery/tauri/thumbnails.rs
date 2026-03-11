@@ -14,10 +14,10 @@ use crate::core::workflows::thumbnails::priority::ThumbnailPriorityState;
 /// This pushes the IDs to the LIFO queue in the shared `ThumbnailPriorityState`.
 #[tauri::command]
 #[instrument(skip(priority_state))]
-pub async fn prioritize_thumbnails(
-    asset_ids: Vec<String>,
+pub async fn set_thumbnail_priority(
+    ids: Vec<String>,
     priority_state: State<'_, Arc<ThumbnailPriorityState>>,
 ) -> AppResult<()> {
-    priority_state.push_priorities(asset_ids);
+    priority_state.push_priorities(ids);
     Ok(())
 }

@@ -41,6 +41,10 @@ pub enum AppError {
     #[error("Format signature '{0}' is not supported by any known Capability Provider.")]
     FormatNotSupported(String),
 
+    /// Error when a file format is not supported.
+    #[error("Unsupported format: {0}")]
+    UnsupportedFormat(String),
+
     /// Timeout during a heavy processing task (FFmpeg, Image extraction, etc).
     #[error("Extraction process timed out.")]
     ExtractionProcessTimeout,

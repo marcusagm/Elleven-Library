@@ -43,8 +43,7 @@ export const createDragGhost = (items: AssetItem[]) => {
 
         if (item.thumbnail_path) {
             const img = document.createElement('img');
-            const filename = item.thumbnail_path.split(/[\\/]/).pop();
-            img.src = `thumb://localhost/${filename}`;
+            img.src = `asset://localhost/${item.id}?type=thumb`;
 
             Object.assign(img.style, {
                 width: '100%',

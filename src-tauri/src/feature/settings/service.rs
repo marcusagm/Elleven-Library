@@ -44,4 +44,17 @@ impl SettingsService {
     pub async fn update_settings(&self, settings: AppSettings) -> AppResult<()> {
         self.repository.save(&settings).await
     }
+
+    /// Gets a specific setting by key from the extra settings map.
+    pub async fn get_setting(&self, key: &str) -> AppResult<Option<serde_json::Value>> {
+        let settings = self.repository.load().await?;
+        Ok(settings.extra.get(key).cloned())
+    }
+
+    /// Sets a specific setting by key in the extra settings map.
+    pub async fn set_setting(&self, key: String, value: serde_json::Value) -> AppResult<()> {
+        let mut settings = self.repository.load().await?;
+        settings.extra.insert(key, value);
+        self.repository.save(&settings).await
+    }
 }

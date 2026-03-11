@@ -1,8 +1,8 @@
 # Sprint 7.4: Ratings, Notes, Metadata EXIF e Cores
 
-**Status:** Pendente
-**Data e hora de inicio:** -  
-**Data da conclusão:** -
+**Status:** Concluído
+**Data e hora de inicio:** 2026-03-10 09:00
+**Data da conclusão:** 2026-03-11 10:43
 
 **Fase 7:** Paridade IPC — Taxonomia e Organização
 **Objetivo:** Restaurar as operações de edição de `rating` e `notes` por asset, a consulta de metadados EXIF via FormatProvider, e a exposição via IPC dos dados de cor extraídos pelo ColorWorker.
@@ -22,30 +22,30 @@
 ## 📋 Tarefas (Checklist do Agente)
 
 ### 1. Adicionar Rating e Notes ao Ledger
-- [ ] Em `core/ledger/command.rs`, adicionar:
+- [x] Em `core/ledger/command.rs`, adicionar:
   ```
   UpdateAssetRating { asset_id: String, rating: i32 }
   UpdateAssetNotes { asset_id: String, notes: String }
   ```
-- [ ] Em `infra/database/ledger.rs`, implementar:
+- [x] Em `infra/database/ledger.rs`, implementar:
   - `UpdateAssetRating` → `UPDATE assets SET rating = ? WHERE id = ?` + emit `DomainEvent::AssetMetadataUpdated`.
   - `UpdateAssetNotes` → `UPDATE assets SET notes = ? WHERE id = ?` (verificar se coluna `notes` existe no schema V2, se não, adicionar via migration).
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/db/assets.rs` → `update_asset_rating()`, `update_asset_notes()`.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/db/assets.rs` → `update_asset_rating()`, `update_asset_notes()`.
 
 ### 2. Verificar colunas `rating` e `notes` no schema V2
-- [ ] Verificar as migrations em `src-tauri/migrations/`. Se `rating` ou `notes` não existirem na tabela `v2_assets` ou `assets`:
+- [x] Verificar as migrations em `src-tauri/migrations/`. Se `rating` ou `notes` não existirem na tabela `v2_assets` ou `assets`:
   ```sql
   ALTER TABLE assets ADD COLUMN rating INTEGER DEFAULT 0;
   ALTER TABLE assets ADD COLUMN notes TEXT DEFAULT '';
   ```
-- [ ] Criar nova migration se necessário.
+- [x] Criar nova migration se necessário.
 
 ### 3. Implementar `get_asset_exif` via MetadataCapability
-- [ ] No V2, **ao invés** de usar o `metadata_reader.rs` do V1, utilizar o `FormatRegistry`:
-  1. Resolver o provider para o path do asset.
+- [x] No V2, **ao invés** de usar o `metadata_reader.rs` do V1, utilizar o `FormatRegistry`:
+  1. Resolver o provider for the path do asset.
   2. Invocar `provider.metadata()?.extract_technical(path)`.
   3. Retornar o `serde_json::Value` como `HashMap<String, String>` (ou `serde_json::Value` diretamente).
-- [ ] Criar IPC command:
+- [x] Criar IPC command:
   ```rust
   #[tauri::command]
   pub async fn get_asset_exif(
@@ -53,37 +53,37 @@
       path: String
   ) -> AppResult<serde_json::Value> { ... }
   ```
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/library/commands/metadata.rs` → `get_asset_exif()`, e `Mundam-main/src-tauri/src/media/metadata_reader.rs`.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/library/commands/metadata.rs` → `get_asset_exif()`, e `Mundam-main/src-tauri/src/media/metadata_reader.rs`.
 
 ### 4. Implementar Color Query IPC
-- [ ] Em `core/repository/asset.rs`, adicionar:
+- [x] Em `core/repository/asset.rs`, adicionar:
   ```rust
   async fn get_asset_colors(&self, asset_id: &str) -> AppResult<Vec<AssetColor>>;
   ```
-- [ ] Em `infra/database/queries.rs`, implementar SELECT na tabela `asset_colors`.
-- [ ] Verificar modelo `AssetColor` no V2 (pode já existir em `feature/analysis/colors.rs`).
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/db/colors.rs` → `get_asset_colors()`.
+- [x] Em `infra/database/queries.rs`, implementar SELECT na tabela `asset_colors`.
+- [x] Verificar modelo `AssetColor` no V2 (pode já existir em `feature/analysis/colors.rs`).
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/db/colors.rs` → `get_asset_colors()`.
 
 ### 5. Implementar Re-extração de Cores (opcional, se existir infraestrutura)
-- [ ] O V2 já possui `processing/workers/color_worker.rs`. Verificar se é possível forçar re-extração de um asset individual.
-- [ ] Criar `LedgerCommand::ReextractColors { asset_id: String }` que limpa as cores existentes e agenda nova extração (ou executa imediatamente).
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/library/commands/colors.rs` → `reextract_asset_colors()` (113 linhas de lógica).
+- [x] O V2 já possui `processing/workers/color_worker.rs`. Verificar se é possível forçar re-extração de um asset individual.
+- [x] Criar `LedgerCommand::ReextractColors { asset_id: String }` que limpa as cores existentes e agenda nova extração (ou executa imediatamente).
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/library/commands/colors.rs` → `reextract_asset_colors()` (113 linhas de lógica).
 
 ### 6. Criar IPC Commands
-- [ ] Em `delivery/tauri/commands/mutations.rs`:
+- [x] Em `delivery/tauri/commands/mutations.rs`:
   ```rust
   update_asset_rating(asset_id, rating) -> AppResult<()>
   update_asset_notes(asset_id, notes) -> AppResult<()>
   reextract_asset_colors(asset_id) -> AppResult<Vec<AssetColor>>
   ```
-- [ ] Em `delivery/tauri/commands/queries.rs`:
+- [x] Em `delivery/tauri/commands/queries.rs`:
   ```rust
   get_asset_exif(path) -> AppResult<serde_json::Value>
   get_asset_colors(asset_id) -> AppResult<Vec<AssetColor>>
   ```
 
 ### 7. Registrar no `lib.rs`
-- [ ] Adicionar 5 novos commands ao `invoke_handler`.
+- [x] Adicionar 5 novos commands ao `invoke_handler`.
 
 ---
 
@@ -125,10 +125,23 @@
 ## 🚀 Informações da Implementação
 
 ### Dificuldades e Desafios
-- 
+- Sincronização de tipos de ID (UUID string vs int i64 do V1) em todas as camadas do sistema (Database, Core, Frontend).
+- Implementação da re-extração de cores mantendo a reatividade do `ColorWorker` baseada em eventos.
+- Alinhamento de propriedades de DTOs (`AssetSummaryDto`) para evitar campos `undefined` no frontend.
 
 ### Melhorias Realizadas
-- 
+- Arquitetura de extração de metadados técnica centralizada no `FormatRegistry`, eliminando o leitor genérico centralizado do V1.
+- Uso de `DomainEvent` para notificar mudanças de metadados, permitindo que outros componentes respondam a alterações de `rating` e `notes`.
+- Expansão do `AssetSummaryDto` para incluir dimensões e caminho da thumbnail, melhorando a performance do grid.
 
 ### 📄 Arquivos Criados ou Modificados
-- 
+- `src-tauri/migrations/20250310000000_add_rating_notes.sql`
+- `src-tauri/src/core/ledger/command.rs`
+- `src-tauri/src/core/repository/asset.rs`
+- `src-tauri/src/infra/database/ledger.rs`
+- `src-tauri/src/infra/database/queries.rs`
+- `src-tauri/src/delivery/tauri/commands/mutations.rs`
+- `src-tauri/src/delivery/tauri/commands/queries.rs`
+- `src-tauri/src/lib.rs`
+- `src-tauri/src/core/models/asset.rs`
+- `src-tauri/src/infra/database/models.rs`

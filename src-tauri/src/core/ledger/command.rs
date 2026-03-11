@@ -7,6 +7,7 @@ use std::path::PathBuf;
 /// This structure captures all mandatory information required by the Ledger
 /// to formally register an asset in the database and filesystem registry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateAssetPayload {
     /// Absolute path to the file.
     pub path: PathBuf,
@@ -24,17 +25,19 @@ pub struct CreateAssetPayload {
 
 /// Payload for updating tags associated with an asset.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTagsPayload {
     /// The unique identifier of the target asset.
     pub asset_id: String,
-    /// List of tag names to be added.
+    /// List of tag IDs to be added.
     pub tags_to_add: Vec<String>,
-    /// List of tag names to be removed.
+    /// List of tag IDs to be removed.
     pub tags_to_remove: Vec<String>,
 }
 
 /// Payload for updating asset core identity (e.g., after a rename).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateAssetPayload {
     pub asset_id: Option<String>,
     pub old_path: Option<PathBuf>,
@@ -43,6 +46,7 @@ pub struct UpdateAssetPayload {
 
 /// Payload for creating a new folder.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateFolderPayload {
     pub parent_id: Option<String>,
     pub name: String,
@@ -57,6 +61,7 @@ pub struct RemoveFolderPayload {
 
 /// Payload for updating an asset's color palette.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateAssetColorsPayload {
     /// The unique identifier of the target asset.
     pub asset_id: String,
@@ -64,10 +69,31 @@ pub struct UpdateAssetColorsPayload {
     pub colors: Vec<crate::core::models::asset::AssetColor>,
 }
 
+/// Payload for updating an asset's rating.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAssetRatingPayload {
+    /// The unique identifier of the target asset.
+    pub asset_id: String,
+    /// The new rating value (0-5).
+    pub rating: i32,
+}
+
+/// Payload for updating an asset's personal notes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAssetNotesPayload {
+    /// The unique identifier of the target asset.
+    pub asset_id: String,
+    /// The new notes content.
+    pub notes: String,
+}
+
 /// Payload for creating a new taxonomy tag.
 ///
 /// The Ledger will generate a UUID for the tag and persist it in the tags table.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateTagPayload {
     /// Display name of the tag (must be unique).
     pub name: String,
@@ -81,6 +107,7 @@ pub struct CreateTagPayload {
 ///
 /// Only non-None fields will be applied in the UPDATE statement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTagPayload {
     /// The unique identifier of the tag to update.
     pub id: String,
@@ -99,6 +126,7 @@ pub struct UpdateTagPayload {
 /// Used by AddTagsToAssetsBatch, RemoveTagsFromAssetsBatch,
 /// and ReplaceTagsForAssetsBatch commands.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchTagsPayload {
     /// The asset IDs to operate on.
     pub asset_ids: Vec<String>,
@@ -166,6 +194,14 @@ pub enum LedgerCommand {
     },
     /// Update an asset's color palette.
     UpdateAssetColors(UpdateAssetColorsPayload),
+    /// Update an asset's rating.
+    UpdateAssetRating(UpdateAssetRatingPayload),
+    /// Update an asset's notes.
+    UpdateAssetNotes(UpdateAssetNotesPayload),
+    /// Re-trigger color extraction for an asset.
+    ReextractColors { asset_id: String },
+    /// Regenerate thumbnails for an asset.
+    RegenerateThumbnail { asset_id: String },
 
     /// Create a new taxonomy tag with name, optional color and parent.
     CreateTag(CreateTagPayload),

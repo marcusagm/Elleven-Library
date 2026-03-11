@@ -120,11 +120,9 @@ export const VirtualListView: Component = (): JSX.Element => {
      * @param {string | null} path - The path to the thumbnail.
      * @returns {string | undefined} The thumbnail URL.
      */
-    const getThumbUrl = (path: string | null) => {
+    const getThumbUrl = (id: string, path: string | null) => {
         if (!path) return undefined;
-        // Don't just take the filename! 'extensions/icon_xxx.webp' needs the full path.
-        const normalizedPath = path.replace(/\\/g, '/');
-        return `thumb://localhost/${normalizedPath}`;
+        return `asset://localhost/${id}?type=thumb`;
     };
 
     /**
@@ -239,7 +237,7 @@ export const VirtualListView: Component = (): JSX.Element => {
                 >
                     {item.thumbnail_path && (
                         <img
-                            src={getThumbUrl(item.thumbnail_path)}
+                            src={getThumbUrl(item.id, item.thumbnail_path)}
                             alt=""
                             draggable={false}
                             class="list-view-thumbnail"

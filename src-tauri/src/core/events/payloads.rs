@@ -20,8 +20,11 @@ pub enum DomainEvent {
         asset_id: String,
         active_tags: Vec<String>,
     },
-    /// An asset's metadata (path, name) has been changed.
     AssetMetadataUpdated { asset_id: String },
+    /// Request to re-extract colors for a specific asset
+    ReextractAssetColors { asset_id: String },
+    /// A thumbnail has been invalidated and needs regeneration.
+    ThumbnailInvalidated { asset_id: String },
     /// The internal state (e.g., Processing -> Ready) of an asset has changed.
     AssetStateChanged {
         asset_id: String,

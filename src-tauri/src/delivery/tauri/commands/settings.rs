@@ -36,3 +36,22 @@ pub async fn update_app_settings(
 ) -> AppResult<()> {
     settings_service.update_settings(settings).await
 }
+
+/// Retrieves a specific setting by key.
+#[tauri::command]
+pub async fn get_setting(
+    key: String,
+    settings_service: State<'_, SettingsService>,
+) -> AppResult<Option<serde_json::Value>> {
+    settings_service.get_setting(&key).await
+}
+
+/// Updates a specific setting by key.
+#[tauri::command]
+pub async fn set_setting(
+    key: String,
+    value: serde_json::Value,
+    settings_service: State<'_, SettingsService>,
+) -> AppResult<()> {
+    settings_service.set_setting(key, value).await
+}

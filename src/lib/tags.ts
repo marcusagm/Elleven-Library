@@ -62,11 +62,11 @@ export const tagService = {
     },
 
     updateAssetRating: async (id: string, rating: number): Promise<void> => {
-        return await invoke('update_asset_rating', { id, rating });
+        return await invoke('update_asset_rating', { payload: { assetId: id, rating } });
     },
 
     updateAssetNotes: async (id: string, notes: string): Promise<void> => {
-        return await invoke('update_asset_notes', { id, notes });
+        return await invoke('update_asset_notes', { payload: { assetId: id, notes } });
     },
 
     createTag: async (
@@ -92,29 +92,11 @@ export const tagService = {
     },
 
     addTagsToAssetsBatch: async (assetIds: string[], tagIds: string[]): Promise<void> => {
-        const tagsToAdd = tagIds;
-        await Promise.all(
-            assetIds.map(id =>
-                tagService.updateAssetTags({
-                    assetId: String(id),
-                    tagsToAdd,
-                    tagsToRemove: []
-                })
-            )
-        );
+        return await invoke('add_tags_to_assets_batch', { payload: { assetIds, tagIds } });
     },
 
     removeTagsFromAssetsBatch: async (assetIds: string[], tagIds: string[]): Promise<void> => {
-        const tagsToRemove = tagIds;
-        await Promise.all(
-            assetIds.map(id =>
-                tagService.updateAssetTags({
-                    assetId: String(id),
-                    tagsToAdd: [],
-                    tagsToRemove
-                })
-            )
-        );
+        return await invoke('remove_tags_from_assets_batch', { payload: { assetIds, tagIds } });
     },
 
     replaceTagsForAssetsBatch: async (assetIds: string[], tagIds: string[]): Promise<void> => {
@@ -124,7 +106,7 @@ export const tagService = {
         return await invoke('replace_asset_tags', { assetIds, tagIds }); // Placeholder for true "replace" handling if implemented, or we map it to updateAssetTags.
     },
 
-    getAssetExif: async (path: string): Promise<Record<string, string>> => {
-        return await invoke('get_asset_exif', { path });
+    getAssetExif: async (assetId?: string, path?: string): Promise<Record<string, string>> => {
+        return await invoke('get_asset_exif', { assetId, path });
     }
 };
