@@ -238,6 +238,111 @@ impl AssetQueryHandler for SqliteAssetQueries {
         Ok(row.map(Folder::from))
     }
 
+    /// Lists all folders (entire hierarchy).
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Folder>)` if the folders were found successfully.
+    /// * `Err(sqlx::Error)` if the folders could not be found.
+    async fn list_all_subfolders(&self) -> AppResult<Vec<Folder>> {
+        let rows = sqlx::query_as!(
+            crate::infra::database::models::FolderDb,
+            r#"SELECT id as "id!", parent_id, name as "name!", path as "path!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM folders ORDER BY path"#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(Folder::from).collect())
+    }
+
+    /// Returns the asset counts for all folders (recursive).
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<(String, i64)>)` if the counts were found successfully.
+    /// * `Err(sqlx::Error)` if the counts could not be found.
+    async fn get_subfolder_asset_counts(&self) -> AppResult<Vec<(String, i64)>> {
+        let rows = sqlx::query!(
+            r#"
+            WITH RECURSIVE folder_tree AS (
+                SELECT id as root_id, id as child_id
+                FROM folders
+                UNION ALL
+                SELECT ft.root_id, f.id
+                FROM folders f
+                JOIN folder_tree ft ON f.parent_id = ft.child_id
+            )
+            SELECT ft.root_id as "folder_id!", COUNT(a.id) as "count!"
+            FROM folder_tree ft
+            LEFT JOIN assets a ON a.folder_id = ft.child_id
+            GROUP BY ft.root_id
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| (r.folder_id, r.count)).collect())
+    }
+
+    /// Returns the asset counts for root locations.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<(String, i64)>)` if the counts were found successfully.
+    /// * `Err(sqlx::Error)` if the counts could not be found.
+    async fn get_location_root_counts(&self) -> AppResult<Vec<(String, i64)>> {
+        let rows = sqlx::query!(
+            r#"
+            WITH RECURSIVE folder_tree AS (
+                SELECT id as root_id, id as child_id
+                FROM folders
+                WHERE parent_id IS NULL
+                UNION ALL
+                SELECT ft.root_id, f.id
+                FROM folders f
+                JOIN folder_tree ft ON f.parent_id = ft.child_id
+            )
+            SELECT ft.root_id as "folder_id!", COUNT(a.id) as "count!"
+            FROM folder_tree ft
+            LEFT JOIN assets a ON a.folder_id = ft.child_id
+            GROUP BY ft.root_id
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| (r.folder_id, r.count)).collect())
+    }
+
+    /// Returns thumbnail paths for all assets in a folder and its subfolders.
+    ///
+    /// # Arguments
+    ///
+    /// * `folder_id` - The ID of the folder to retrieve thumbnails for.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<String>)` if the thumbnails were found successfully.
+    /// * `Err(sqlx::Error)` if the thumbnails could not be found.
+    async fn get_folder_thumbnails(&self, folder_id: &str) -> AppResult<Vec<String>> {
+        let rows = sqlx::query!(
+            r#"
+            WITH RECURSIVE family AS (
+                SELECT id FROM folders WHERE id = ?
+                UNION ALL
+                SELECT f.id FROM folders f JOIN family ON f.parent_id = family.id
+            )
+            SELECT thumbnail_path as "thumbnail_path!" FROM assets
+            WHERE folder_id IN family AND thumbnail_path IS NOT NULL
+            "#,
+            folder_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| r.thumbnail_path).collect())
+    }
+
     /// Lists tags in the database.
     ///
     /// # Returns

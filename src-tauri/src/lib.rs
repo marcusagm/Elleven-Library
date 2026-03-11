@@ -169,6 +169,8 @@ pub fn run() {
                         asset_query_handler.clone(),
                         asset_ledger.clone(),
                     ));
+                    handle.manage(indexer.clone());
+                    
                     indexer
                         .clone()
                         .start_event_listener(event_bus.clone())
@@ -178,6 +180,7 @@ pub fn run() {
                     let watcher = Arc::new(crate::processing::watcher::WatcherService::new(
                         event_bus.clone(),
                     ));
+                    handle.manage(watcher.clone());
 
                     for folder in roots {
                         let root_path = std::path::PathBuf::from(&folder.path);
@@ -219,7 +222,12 @@ pub fn run() {
             delivery::tauri::commands::queries::list_tags,
             delivery::tauri::commands::queries::search_assets,
             delivery::tauri::commands::queries::get_tags_for_asset,
+            delivery::tauri::commands::queries::get_all_subfolders,
+            delivery::tauri::commands::queries::get_subfolder_counts,
+            delivery::tauri::commands::queries::get_location_root_counts,
             delivery::tauri::commands::mutations::create_folder,
+            delivery::tauri::commands::mutations::remove_location,
+            delivery::tauri::commands::mutations::start_indexing,
             delivery::tauri::commands::mutations::set_asset_folder,
             delivery::tauri::commands::mutations::update_asset_tags,
             delivery::tauri::commands::mutations::create_tag,

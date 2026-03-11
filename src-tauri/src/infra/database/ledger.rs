@@ -592,6 +592,82 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     thumbnail_path: None,
                 })
             }
+            LedgerCommand::RemoveFolder(payload) => {
+                let folder_id_ref = &payload.folder_id;
+
+                // 1. Get folder path to include in the event
+                let folder_path = sqlx::query!(
+                    r#"SELECT path as "path!" FROM folders WHERE id = ?"#,
+                    folder_id_ref
+                )
+                .fetch_optional(&mut *tx)
+                .await?
+                .map(|r| r.path)
+                .ok_or_else(|| AppError::NotFound(format!("Folder ID not found: {}", folder_id_ref)))?;
+
+                // 2. Perform Cascade Delete
+                // To be safe with tags and colors, we use the recursive CTE to find all subfolders
+                let all_folder_ids = sqlx::query!(
+                    r#"
+                    WITH RECURSIVE family AS (
+                        SELECT id FROM folders WHERE id = ?
+                        UNION ALL
+                        SELECT f.id FROM folders f JOIN family ON f.parent_id = family.id
+                    )
+                    SELECT id as "id!" FROM family
+                    "#,
+                    folder_id_ref
+                )
+                .fetch_all(&mut *tx)
+                .await?;
+
+                for record in all_folder_ids {
+                    // Manual cascade: delete assets for this specific subfolder first
+                    sqlx::query!("DELETE FROM assets WHERE folder_id = ?", record.id)
+                        .execute(&mut *tx)
+                        .await?;
+                        
+                    sqlx::query!("DELETE FROM folders WHERE id = ?", record.id)
+                        .execute(&mut *tx)
+                        .await?;
+                }
+
+                // 3. Audit Log
+                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                    AppError::Internal(format!("Failed to serialize payload: {}", e))
+                })?;
+
+                Self::log_operation(
+                    &mut tx,
+                    "REMOVE_FOLDER",
+                    folder_id_ref,
+                    op_payload,
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                // Return a dummy/tombstone Asset
+                Ok(Asset {
+                    id: payload.folder_id.clone(),
+                    name: "deleted_folder".to_string(),
+                    path: std::path::PathBuf::from(folder_path),
+                    state: AssetState::Offline,
+                    format_type: "folder".to_string(),
+                    family: "FOLDER".to_string(),
+                    file_size: 0,
+                    created_at: None,
+                    updated_at: None,
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_color: None,
+                    folder_id: None,
+                    thumbnail_path: None,
+                })
+            }
             LedgerCommand::SetAssetFolder {
                 asset_id,
                 folder_id,

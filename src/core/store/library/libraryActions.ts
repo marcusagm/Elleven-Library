@@ -208,10 +208,10 @@ export const libraryActions = {
         }
     },
 
-    removeLocation: async (locationId: number) => {
+    removeLocation: async (locationId: number | string) => {
         try {
             const { metadataActions } = await import('../metadata');
-            await invoke('remove_location', { locationId });
+            await invoke('remove_location', { folderId: String(locationId) });
 
             await Promise.all([metadataActions.loadLocations(), metadataActions.loadStats()]);
 

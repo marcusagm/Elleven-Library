@@ -49,6 +49,12 @@ pub struct CreateFolderPayload {
     pub path: PathBuf,
 }
 
+/// Payload for removing a folder.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RemoveFolderPayload {
+    pub folder_id: String,
+}
+
 /// Payload for updating an asset's color palette.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateAssetColorsPayload {
@@ -125,6 +131,8 @@ pub enum LedgerCommand {
     },
     /// Create a new logical folder.
     CreateFolder(CreateFolderPayload),
+    /// Removes a logical folder and all its contents.
+    RemoveFolder(RemoveFolderPayload),
     /// Assign an asset to a folder.
     SetAssetFolder {
         asset_id: String,

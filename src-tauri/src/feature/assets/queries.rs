@@ -93,4 +93,48 @@ impl AssetQueryService {
     pub async fn get_tags_for_asset(&self, asset_id: &str) -> AppResult<Vec<Tag>> {
         self.repository.get_tags_for_asset(asset_id).await
     }
+
+    /// Lists all folders (entire hierarchy).
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Folder>)` if the folders were found successfully.
+    /// * `Err(AppResult<Folder>)` if the folders could not be found.
+    pub async fn list_all_subfolders(&self) -> AppResult<Vec<Folder>> {
+        self.repository.list_all_subfolders().await
+    }
+
+    /// Returns the asset counts for all folders (recursive).
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<(String, i64)>)` if the counts were found successfully.
+    /// * `Err(AppResult<Vec<(String, i64)>>)` if the counts could not be found.
+    pub async fn get_subfolder_asset_counts(&self) -> AppResult<Vec<(String, i64)>> {
+        self.repository.get_subfolder_asset_counts().await
+    }
+
+    /// Returns the asset counts for root locations.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<(String, i64)>)` if the counts were found successfully.
+    /// * `Err(AppResult<Vec<(String, i64)>>)` if the counts could not be found.
+    pub async fn get_location_root_counts(&self) -> AppResult<Vec<(String, i64)>> {
+        self.repository.get_location_root_counts().await
+    }
+
+    /// Returns thumbnail paths for all assets in a folder and its subfolders.
+    ///
+    /// # Arguments
+    ///
+    /// * `folder_id` - The ID of the folder to retrieve thumbnails for.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<String>)` if the thumbnails were found successfully.
+    /// * `Err(AppResult<Vec<String>>)` if the thumbnails could not be found.
+    pub async fn get_folder_thumbnails(&self, folder_id: &str) -> AppResult<Vec<String>> {
+        self.repository.get_folder_thumbnails(folder_id).await
+    }
 }

@@ -117,3 +117,52 @@ pub async fn get_tags_for_asset(
 ) -> AppResult<Vec<Tag>> {
     service.get_tags_for_asset(&asset_id).await
 }
+
+/// RPC Command to get all subfolders.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+///
+/// # Returns
+///
+/// * `Ok(Vec<Folder>)` if the folders were found successfully.
+/// * `Err(AppError)` if the folders could not be found.
+#[tauri::command]
+pub async fn get_all_subfolders(service: State<'_, AssetQueryService>) -> AppResult<Vec<Folder>> {
+    service.list_all_subfolders().await
+}
+
+/// RPC Command to get subfolder asset counts.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+///
+/// # Returns
+///
+/// * `Ok(Vec<(String, i64)>)` if the counts were found successfully.
+/// * `Err(AppError)` if the counts could not be found.
+#[tauri::command]
+pub async fn get_subfolder_counts(
+    service: State<'_, AssetQueryService>,
+) -> AppResult<Vec<(String, i64)>> {
+    service.get_subfolder_asset_counts().await
+}
+
+/// RPC Command to get root location counts.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+///
+/// # Returns
+///
+/// * `Ok(Vec<(String, i64)>)` if the counts were found successfully.
+/// * `Err(AppError)` if the counts could not be found.
+#[tauri::command]
+pub async fn get_location_root_counts(
+    service: State<'_, AssetQueryService>,
+) -> AppResult<Vec<(String, i64)>> {
+    service.get_location_root_counts().await
+}

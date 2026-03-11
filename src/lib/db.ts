@@ -5,11 +5,11 @@ import { type AssetItem } from '../types';
 // This file wraps those invocations or provides legacy support where needed.
 
 interface FolderNode {
-    id: number;
+    id: string;
     path: string;
     name: string;
-    parent_id: number | null;
-    is_root: boolean;
+    parent_id: string | null;
+    is_root?: boolean;
 }
 
 export async function initDb() {
@@ -18,7 +18,14 @@ export async function initDb() {
 }
 
 export async function addLocation(path: string) {
-    return await invoke('add_location', { path });
+    const name = path.split(/[\\/]/).pop() || 'Unnamed Folder';
+    return await invoke('create_folder', {
+        payload: {
+            parent_id: null,
+            name,
+            path
+        }
+    });
 }
 
 export async function getLocations() {

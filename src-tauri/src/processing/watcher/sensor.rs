@@ -97,4 +97,26 @@ impl WatcherService {
         info!("Watcher service started for: {:?}", path_for_log);
         Ok(())
     }
+
+    /// Stop watching a directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to unwatch.
+    ///
+    /// # Returns
+    ///
+    /// * `AppResult<()>` - Result of the unwatch operation.
+    #[instrument(skip(self))]
+    pub async fn unwatch(&self, path: PathBuf) -> AppResult<()> {
+        let mut guard = self.native_watcher.lock().await;
+        if let Some(watcher) = guard.as_mut() {
+            if let Err(e) = watcher.unwatch(&path) {
+                tracing::error!("Failed to unwatch path {:?}: {}", path, e);
+            } else {
+                info!("Watcher stopped for: {:?}", path);
+            }
+        }
+        Ok(())
+    }
 }

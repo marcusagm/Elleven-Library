@@ -123,8 +123,7 @@ CREATE TABLE IF NOT EXISTS asset_operations_log (
     payload TEXT NOT NULL,
     status TEXT NOT NULL,
     error_note TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS asset_colors (
@@ -163,11 +162,12 @@ INSERT OR IGNORE INTO asset_operations_log (id, operation_type, asset_id, payloa
 SELECT id, operation_type, asset_id, payload, status, error_note, created_at FROM v2_asset_operations_log;
 
 -- 6. FINAL CLEANUP OF V2 TRANSITIONAL INFRA
-DROP TABLE IF EXISTS v2_folders;
-DROP TABLE IF EXISTS v2_assets;
-DROP TABLE IF EXISTS v2_tags;
-DROP TABLE IF EXISTS v2_asset_tags;
-DROP TABLE IF EXISTS v2_asset_metadata_envelope;
 DROP TABLE IF EXISTS v2_asset_operations_log;
+DROP TABLE IF EXISTS v2_asset_metadata_envelope;
+DROP TABLE IF EXISTS v2_asset_thumbnails_registry;
+DROP TABLE IF EXISTS v2_asset_tags;
+DROP TABLE IF EXISTS v2_tags;
+DROP TABLE IF EXISTS v2_assets;
+DROP TABLE IF EXISTS v2_folders;
 
 PRAGMA foreign_keys = ON;

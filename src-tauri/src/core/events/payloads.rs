@@ -35,6 +35,11 @@ pub enum DomainEvent {
         name: String,
         path: String,
     },
+    /// A logical folder was removed.
+    FolderRemoved {
+        folder_id: String,
+        path: String,
+    },
     /// An asset was moved to a different logical folder.
     AssetFolderChanged {
         asset_id: String,

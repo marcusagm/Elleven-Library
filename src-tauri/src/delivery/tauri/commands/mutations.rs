@@ -5,6 +5,8 @@ use crate::core::ledger::command::{
 use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::core::models::{Asset, Tag};
 use crate::feature::assets::queries::AssetQueryService;
+use crate::feature::library::indexer::LibraryIndexer;
+use crate::processing::watcher::WatcherService;
 use std::sync::Arc;
 use tauri::State;
 
@@ -247,5 +249,71 @@ pub async fn replace_tags_for_assets_batch(
             tag_ids,
         }))
         .await?;
+    Ok(())
+}
+
+/// RPC Command to remove a location/folder.
+///
+/// # Arguments
+///
+/// * `folder_id` - The folder ID to remove.
+///
+/// # Errors
+///
+/// Returns `AppError` if the DB operation fails.
+#[tauri::command]
+pub async fn remove_location(
+    folder_id: String,
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    queries: State<'_, AssetQueryService>,
+    watcher: State<'_, Arc<WatcherService>>,
+) -> AppResult<()> {
+    // 1. Get thumbnails before delete
+    let thumbnails = queries
+        .get_folder_thumbnails(&folder_id)
+        .await
+        .unwrap_or_default();
+
+    // 2. Ledger operation
+    let result = ledger
+        .execute(LedgerCommand::RemoveFolder(
+            crate::core::ledger::command::RemoveFolderPayload {
+                folder_id: folder_id.clone(),
+            },
+        ))
+        .await?;
+
+    // 3. Cleanup Watcher
+    let path = result.path;
+    let _ = watcher.unwatch(path).await;
+
+    // 4. Cleanup thumbnails
+    for thumb in thumbnails {
+        let _ = tokio::fs::remove_file(&thumb).await;
+    }
+
+    Ok(())
+}
+
+/// RPC Command to manually start indexing a location.
+///
+/// # Arguments
+///
+/// * `path` - The path to index.
+/// * `indexer` - The library indexer.
+///
+/// # Errors
+///
+/// Returns `AppError` if the indexing fails.
+#[tauri::command]
+pub async fn start_indexing(
+    path: String,
+    indexer: State<'_, Arc<LibraryIndexer>>,
+) -> AppResult<()> {
+    let indexer_ref = indexer.inner().clone();
+    let path_buf = std::path::PathBuf::from(path);
+    tauri::async_runtime::spawn(async move {
+        let _ = indexer_ref.scan_directory(path_buf).await;
+    });
     Ok(())
 }

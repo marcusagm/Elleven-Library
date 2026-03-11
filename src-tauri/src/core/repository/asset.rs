@@ -73,6 +73,42 @@ pub trait AssetQueryHandler: Send + Sync {
     /// * `Err(AppError)` if the folder could not be found.
     async fn get_folder_by_id(&self, id: &str) -> AppResult<Option<Folder>>;
 
+    /// Lists all folders (entire hierarchy).
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Folder>)` if the folders were found successfully.
+    /// * `Err(AppError)` if the folders could not be found.
+    async fn list_all_subfolders(&self) -> AppResult<Vec<Folder>>;
+
+    /// Returns the asset counts for all folders (recursive).
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<(String, i64)>)` map of folder id to count.
+    /// * `Err(AppError)` if the query fails.
+    async fn get_subfolder_asset_counts(&self) -> AppResult<Vec<(String, i64)>>;
+
+    /// Returns the asset counts for root locations.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<(String, i64)>)` map of folder id to count.
+    /// * `Err(AppError)` if the query fails.
+    async fn get_location_root_counts(&self) -> AppResult<Vec<(String, i64)>>;
+
+    /// Returns thumbnail paths for all assets in a folder and its subfolders.
+    ///
+    /// # Arguments
+    ///
+    /// * `folder_id` - The ID of the target folder.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<String>)` thumbnail paths.
+    /// * `Err(AppError)` if the query fails.
+    async fn get_folder_thumbnails(&self, folder_id: &str) -> AppResult<Vec<String>>;
+
     /// Lists all unique tags.
     ///
     /// # Returns
