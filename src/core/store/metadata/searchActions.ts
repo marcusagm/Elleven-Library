@@ -16,11 +16,15 @@ export const searchActions = {
     saveSmartFolder: async (
         name: string,
         query: SearchGroup | null,
-        id?: number
+        id?: string
     ): Promise<ActionResult> => {
         try {
             if (id) {
-                await invoke('update_smart_folder', { id, name, query: JSON.stringify(query) });
+                await invoke('update_smart_folder', {
+                    id: String(id),
+                    name,
+                    query: JSON.stringify(query)
+                });
             } else {
                 await invoke('save_smart_folder', { name, query: JSON.stringify(query) });
             }
@@ -38,9 +42,9 @@ export const searchActions = {
         }
     },
 
-    deleteSmartFolder: async (id: number): Promise<ActionResult> => {
+    deleteSmartFolder: async (id: string): Promise<ActionResult> => {
         try {
-            await invoke('delete_smart_folder', { id });
+            await invoke('delete_smart_folder', { id: String(id) });
             await searchActions.loadSmartFolders();
             return { success: true, data: undefined };
         } catch (error) {

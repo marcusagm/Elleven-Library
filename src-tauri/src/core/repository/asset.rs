@@ -1,5 +1,5 @@
 use crate::core::error::AppResult;
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
+use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, LibraryStats, PageParams, SmartFolder, Tag};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
@@ -161,4 +161,13 @@ pub trait AssetQueryHandler: Send + Sync {
     /// * `Ok(Vec<Tag>)` if the tags were found successfully.
     /// * `Err(AppError)` if the query fails.
     async fn get_tags_for_asset(&self, asset_id: &str) -> AppResult<Vec<Tag>>;
+
+    /// Retrieves all saved smart folders.
+    async fn list_smart_folders(&self) -> AppResult<Vec<SmartFolder>>;
+
+    /// Gets the total count of assets matching the criteria.
+    async fn get_asset_count(&self, filter: AssetFilter) -> AppResult<i64>;
+
+    /// Retrieves comprehensive statistics about the library.
+    async fn get_library_stats(&self) -> AppResult<LibraryStats>;
 }

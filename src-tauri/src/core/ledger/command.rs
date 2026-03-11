@@ -106,6 +106,27 @@ pub struct BatchTagsPayload {
     pub tag_ids: Vec<String>,
 }
 
+/// Payload for creating a smart folder.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateSmartFolderPayload {
+    pub name: String,
+    pub query_json: String,
+}
+
+/// Payload for updating a smart folder.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateSmartFolderPayload {
+    pub id: String,
+    pub name: String,
+    pub query_json: String,
+}
+
+/// Payload for deleting a smart folder.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeleteSmartFolderPayload {
+    pub id: String,
+}
+
 /// Centralized Enum representing all mutation intentions (Commands) for the Asset Ledger.
 ///
 /// Under CQRS, this represents the "Write" intent. The Ledger is responsible for
@@ -158,4 +179,11 @@ pub enum LedgerCommand {
     RemoveTagsFromAssetsBatch(BatchTagsPayload),
     /// Replace all tag associations for multiple assets with a new set.
     ReplaceTagsForAssetsBatch(BatchTagsPayload),
+
+    /// Create a new smart folder.
+    CreateSmartFolder(CreateSmartFolderPayload),
+    /// Update an existing smart folder.
+    UpdateSmartFolder(UpdateSmartFolderPayload),
+    /// Delete a smart folder.
+    DeleteSmartFolder(DeleteSmartFolderPayload),
 }

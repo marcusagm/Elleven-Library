@@ -1,6 +1,6 @@
 use crate::core::ledger::command::{
     BatchTagsPayload, CreateFolderPayload, CreateTagPayload, LedgerCommand, UpdateTagPayload,
-    UpdateTagsPayload,
+    UpdateTagsPayload, CreateSmartFolderPayload, UpdateSmartFolderPayload, DeleteSmartFolderPayload,
 };
 use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::core::models::{Asset, Tag};
@@ -316,4 +316,79 @@ pub async fn start_indexing(
         let _ = indexer_ref.scan_directory(path_buf).await;
     });
     Ok(())
+}
+
+/// RPC Command to save a new smart folder.
+///
+/// # Arguments
+///
+/// * `ledger` - The asset ledger.
+/// * `name` - The smart folder display name.
+/// * `query` - The JSON search query.
+///
+/// # Returns
+///
+/// The created smart folder as an Asset placeholder.
+#[tauri::command]
+pub async fn save_smart_folder(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    name: String,
+    query: String,
+) -> AppResult<Asset> {
+    ledger
+        .execute(LedgerCommand::CreateSmartFolder(CreateSmartFolderPayload {
+            name,
+            query_json: query,
+        }))
+        .await
+}
+
+/// RPC Command to update an existing smart folder.
+///
+/// # Arguments
+///
+/// * `ledger` - The asset ledger.
+/// * `id` - The smart folder ID.
+/// * `name` - The updated name.
+/// * `query` - The updated JSON search query.
+///
+/// # Returns
+///
+/// The updated smart folder as an Asset placeholder.
+#[tauri::command]
+pub async fn update_smart_folder(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    id: String,
+    name: String,
+    query: String,
+) -> AppResult<Asset> {
+    ledger
+        .execute(LedgerCommand::UpdateSmartFolder(UpdateSmartFolderPayload {
+            id,
+            name,
+            query_json: query,
+        }))
+        .await
+}
+
+/// RPC Command to delete a smart folder.
+///
+/// # Arguments
+///
+/// * `ledger` - The asset ledger.
+/// * `id` - The ID of the smart folder to delete.
+///
+/// # Returns
+///
+/// A tombstone placeholder Asset.
+#[tauri::command]
+pub async fn delete_smart_folder(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    id: String,
+) -> AppResult<Asset> {
+    ledger
+        .execute(LedgerCommand::DeleteSmartFolder(DeleteSmartFolderPayload {
+            id,
+        }))
+        .await
 }

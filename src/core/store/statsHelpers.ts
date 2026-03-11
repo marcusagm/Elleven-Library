@@ -11,25 +11,25 @@ import {
 } from './library';
 
 interface FolderNode {
-    id: number;
+    id: string;
     path: string;
     name: string;
-    parent_id: number | null;
+    parent_id: string | null;
     is_root: boolean;
 }
 
 export interface StatsSnapshot {
     total_assets: number;
     untagged_assets: number;
-    tag_counts: Map<number, number>;
-    folder_counts: Map<number, number>;
-    folder_counts_recursive: Map<number, number>;
+    tag_counts: Map<string, number>;
+    folder_counts: Map<string, number>;
+    folder_counts_recursive: Map<string, number>;
 }
 
 /** Get all ancestor folder IDs for the given folder */
-function getAncestors(folderId: number, locations: FolderNode[]): number[] {
-    const ancestors: number[] = [];
-    let currentId: number | null = folderId;
+function getAncestors(folderId: string, locations: FolderNode[]): string[] {
+    const ancestors: string[] = [];
+    let currentId: string | null = folderId;
     while (currentId) {
         ancestors.push(currentId);
         const node = locations.find(location => location.id === currentId);
@@ -39,13 +39,13 @@ function getAncestors(folderId: number, locations: FolderNode[]): number[] {
 }
 
 /** Decrement a map counter, flooring at 0 */
-function decrementCounter(counterMap: Map<number, number>, key: number): void {
+function decrementCounter(counterMap: Map<string, number>, key: string): void {
     const current = counterMap.get(key) || 0;
     if (current > 0) counterMap.set(key, current - 1);
 }
 
 /** Increment a map counter */
-function incrementCounter(counterMap: Map<number, number>, key: number): void {
+function incrementCounter(counterMap: Map<string, number>, key: string): void {
     const current = counterMap.get(key) || 0;
     counterMap.set(key, current + 1);
 }
@@ -53,9 +53,9 @@ function incrementCounter(counterMap: Map<number, number>, key: number): void {
 /** Apply removals to the stats snapshot */
 function applyRemovals(
     removed: BatchChangeRemovedItem[],
-    tagCounts: Map<number, number>,
-    folderCounts: Map<number, number>,
-    folderRecursive: Map<number, number>,
+    tagCounts: Map<string, number>,
+    folderCounts: Map<string, number>,
+    folderRecursive: Map<string, number>,
     locations: FolderNode[]
 ): { totalDiff: number; untaggedDiff: number } {
     let totalDiff = 0;
@@ -86,8 +86,8 @@ function applyRemovals(
 /** Apply additions to the stats snapshot */
 function applyAdditions(
     added: BatchChangeAddedItem[],
-    folderCounts: Map<number, number>,
-    folderRecursive: Map<number, number>,
+    folderCounts: Map<string, number>,
+    folderRecursive: Map<string, number>,
     locations: FolderNode[]
 ): { totalDiff: number; untaggedDiff: number } {
     let totalDiff = 0;
@@ -112,10 +112,10 @@ function applyAdditions(
 /** Apply folder move updates to the stats snapshot */
 function applyUpdates(
     updated: BatchChangeAddedItem[],
-    folderCounts: Map<number, number>,
-    folderRecursive: Map<number, number>,
+    folderCounts: Map<string, number>,
+    folderRecursive: Map<string, number>,
     locations: FolderNode[],
-    knownIds: Set<number>
+    knownIds: Set<string>
 ): boolean {
     let needsRefresh = false;
 
@@ -147,7 +147,7 @@ export function computeStatsFromBatchChange(
     currentStats: StatsSnapshot,
     payload: BatchChangePayload,
     locations: FolderNode[],
-    knownIds: Set<number>
+    knownIds: Set<string>
 ): { newStats: StatsSnapshot; needsRefresh: boolean } {
     const tagCounts = new Map(currentStats.tag_counts);
     const folderCounts = new Map(currentStats.folder_counts);

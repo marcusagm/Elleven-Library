@@ -54,8 +54,8 @@ const formatUsingTypeHandler = (
 export const computeDisplayValue = (
     criterionItem: Partial<SearchCriterion>,
     metadata: {
-        locations: { id: number; name: string }[];
-        tags: { id: number; name: string }[];
+        locations: { id: string; name: string }[];
+        tags: { id: string; name: string }[];
     }
 ): string => {
     if (criterionItem.displayValue) return criterionItem.displayValue;
@@ -92,8 +92,8 @@ export const computeDisplayValue = (
  * @returns A flat list of options with prefixed labels for hierarchy.
  */
 export const getHierarchicalTags = (
-    tags: { id: number; name: string; parent_id?: number | null }[],
-    parentId: number | null = null,
+    tags: { id: string; name: string; parent_id?: string | null }[],
+    parentId: string | null = null,
     depth = 0
 ): { value: string; label: string }[] => {
     return tags
@@ -113,8 +113,8 @@ export const getHierarchicalTags = (
  * @returns A flat list of options with prefixed labels.
  */
 export const getHierarchicalFolders = (
-    folders: { id: number; name: string; parent_id?: number | null }[],
-    parentId: number | null = null,
+    folders: { id: string; name: string; parent_id?: string | null }[],
+    parentId: string | null = null,
     depth = 0
 ): { value: string; label: string }[] => {
     return folders

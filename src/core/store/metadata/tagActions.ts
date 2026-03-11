@@ -56,9 +56,9 @@ export const tagActions = {
      */
     createTag: async (
         name: string,
-        parentId?: number | null,
+        parentId?: string | null,
         color?: string | null
-    ): Promise<ActionResult<number>> => {
+    ): Promise<ActionResult<string>> => {
         try {
             const id = await tagService.createTag(name, parentId, color);
             await tagActions.loadTags();
@@ -77,10 +77,10 @@ export const tagActions = {
      * Updates an existing tag and refreshes metadata.
      */
     updateTag: async (
-        itemId: number,
+        itemId: string,
         name?: string | null,
         color?: string | null,
-        parentId?: number | null,
+        parentId?: string | null,
         orderIndex?: number | null
     ): Promise<ActionResult> => {
         try {
@@ -114,10 +114,10 @@ export const tagActions = {
      * Applies local store updates after a tag modification.
      */
     applyTagStoreUpdates: (
-        itemId: number,
+        itemId: string,
         name?: string | null,
         color?: string | null,
-        parentId?: number | null,
+        parentId?: string | null,
         orderIndex?: number | null
     ) => {
         const tagUpdates: Partial<Tag> = {};
@@ -127,7 +127,7 @@ export const tagActions = {
         if (orderIndex !== null && orderIndex !== undefined) tagUpdates.order_index = orderIndex;
 
         if (parentId !== undefined) {
-            tagUpdates.parent_id = parentId === 0 || parentId === null ? null : parentId;
+            tagUpdates.parent_id = parentId === null ? null : String(parentId);
         }
 
         setMetadataState('tags', (tag: Tag) => tag.id === itemId, tagUpdates);
@@ -138,7 +138,7 @@ export const tagActions = {
      */
     resolveTagNotificationType: async (
         name?: string | null,
-        parentId?: number | null,
+        parentId?: string | null,
         orderIndex?: number | null
     ) => {
         const isStructuralChange = parentId !== undefined || orderIndex !== undefined;
@@ -154,14 +154,10 @@ export const tagActions = {
         }
     },
 
-    /**
-     * Deletes a tag and all its descendants recursively.
-     * @param id - The ID of the tag to delete.
-     */
-    deleteTagRecursive: async (id: number): Promise<ActionResult> => {
+    deleteTagRecursive: async (id: string): Promise<ActionResult> => {
         try {
             const allTags = metadataState.tags;
-            const toDelete = new Set<number>([id]);
+            const toDelete = new Set<string>([id]);
 
             // Simple BFS to find all descendants
             const queue = [id];
@@ -197,7 +193,7 @@ export const tagActions = {
     /**
      * Reorders multiple tags in a single operation.
      */
-    reorderTags: async (updates: { id: number; order: number }[]): Promise<ActionResult> => {
+    reorderTags: async (updates: { id: string; order: number }[]): Promise<ActionResult> => {
         try {
             // Apply updates sequentially to the DB
             await Promise.all(
@@ -218,15 +214,14 @@ export const tagActions = {
      * Moves a tag to a new parent or reorders it among siblings.
      */
     moveTag: async (
-        draggedTagId: number,
-        targetTagId: number | null,
+        draggedTagId: string,
+        targetTagId: string | null,
         position: 'before' | 'inside' | 'after'
     ): Promise<ActionResult> => {
         try {
             const allTags = metadataState.tags;
 
-            // 1. Resolve new parent
-            let newParentId: number | null = null;
+            let newParentId: string | null = null;
             if (position === 'inside') {
                 newParentId = targetTagId;
             } else if (targetTagId !== null) {
@@ -265,7 +260,7 @@ export const tagActions = {
                         tag.id,
                         null,
                         null,
-                        isDragged ? (newParentId ?? 0) : tag.parent_id,
+                        isDragged ? (newParentId ?? null) : tag.parent_id,
                         newOrder
                     );
                 }
@@ -290,7 +285,7 @@ export const tagActions = {
      */
     updateAssetsTags: async (
         assetIds: string[],
-        tagIds: number[],
+        tagIds: string[],
         mode: 'merge' | 'replace' | 'remove'
     ): Promise<ActionResult> => {
         try {

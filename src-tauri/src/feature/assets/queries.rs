@@ -137,4 +137,38 @@ impl AssetQueryService {
     pub async fn get_folder_thumbnails(&self, folder_id: &str) -> AppResult<Vec<String>> {
         self.repository.get_folder_thumbnails(folder_id).await
     }
+
+    /// Lists all smart folders.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<crate::core::models::SmartFolder>)` if successful.
+    /// * `Err(AppError)` if the query fails.
+    pub async fn list_smart_folders(&self) -> AppResult<Vec<crate::core::models::SmartFolder>> {
+        self.repository.list_smart_folders().await
+    }
+
+    /// Gets the total count of assets matching the specified filter.
+    ///
+    /// # Arguments
+    ///
+    /// * `filter` - The given filters.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(i64)` asset count.
+    /// * `Err(AppError)` on query failure.
+    pub async fn get_asset_count(&self, filter: AssetFilter) -> AppResult<i64> {
+        self.repository.get_asset_count(filter).await
+    }
+
+    /// Gets library statistics (total assets, folders, tags, size).
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(crate::core::models::LibraryStats)` with aggregated data.
+    /// * `Err(AppError)` on query failure.
+    pub async fn get_library_stats(&self) -> AppResult<crate::core::models::LibraryStats> {
+        self.repository.get_library_stats().await
+    }
 }

@@ -7,9 +7,9 @@ import {
 } from '../types';
 
 export interface Tag {
-    id: number;
+    id: string;
     name: string;
-    parent_id: number | null;
+    parent_id: string | null;
     color: string | null;
     order_index: number;
 }
@@ -17,9 +17,9 @@ export interface Tag {
 export interface LibraryStats {
     total_assets: number;
     untagged_assets: number;
-    tag_counts: { tag_id: number; count: number }[];
-    folder_counts: { folder_id: number; count: number }[];
-    folder_counts_recursive: { folder_id: number; count: number }[];
+    tag_counts: { tag_id: string; count: number }[];
+    folder_counts: { folder_id: string; count: number }[];
+    folder_counts_recursive: { folder_id: string; count: number }[];
 }
 
 export const tagService = {
@@ -71,28 +71,28 @@ export const tagService = {
 
     createTag: async (
         name: string,
-        parentId?: number | null,
+        parentId?: string | null,
         color?: string | null
-    ): Promise<number> => {
+    ): Promise<string> => {
         return await invoke('create_tag', { name, parentId, color });
     },
 
     updateTag: async (
-        id: number,
+        id: string,
         name?: string | null,
         color?: string | null,
-        parentId?: number | null,
+        parentId?: string | null,
         orderIndex?: number | null
     ): Promise<void> => {
         return await invoke('update_tag', { id, name, color, parentId, orderIndex });
     },
 
-    deleteTag: async (id: number): Promise<void> => {
+    deleteTag: async (id: string): Promise<void> => {
         return await invoke('delete_tag', { id });
     },
 
-    addTagsToAssetsBatch: async (assetIds: string[], tagIds: number[]): Promise<void> => {
-        const tagsToAdd = tagIds.map(String);
+    addTagsToAssetsBatch: async (assetIds: string[], tagIds: string[]): Promise<void> => {
+        const tagsToAdd = tagIds;
         await Promise.all(
             assetIds.map(id =>
                 tagService.updateAssetTags({
@@ -104,8 +104,8 @@ export const tagService = {
         );
     },
 
-    removeTagsFromAssetsBatch: async (assetIds: string[], tagIds: number[]): Promise<void> => {
-        const tagsToRemove = tagIds.map(String);
+    removeTagsFromAssetsBatch: async (assetIds: string[], tagIds: string[]): Promise<void> => {
+        const tagsToRemove = tagIds;
         await Promise.all(
             assetIds.map(id =>
                 tagService.updateAssetTags({
@@ -117,7 +117,7 @@ export const tagService = {
         );
     },
 
-    replaceTagsForAssetsBatch: async (assetIds: string[], tagIds: number[]): Promise<void> => {
+    replaceTagsForAssetsBatch: async (assetIds: string[], tagIds: string[]): Promise<void> => {
         // V2 updateAssetTags does not inherently "replace", it just adds/removes. A true replace would need
         // backend support or explicit removing all then adding the new ones. For now, adapting to API.
         // Assuming we need a backend change or this is a destructive operation.

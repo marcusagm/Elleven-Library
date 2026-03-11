@@ -9,7 +9,7 @@ use crate::core::workflows::thumbnails::priority::ThumbnailPriorityState;
 ///
 /// Under Hexagonal Architecture, this is the "Delivery Layer" (Infrastructure/Application layer)
 /// that translates UI requests into domain/workflow actions.
-
+///
 /// Prioritizes a batch of asset IDs for thumbnail generation.
 /// This pushes the IDs to the LIFO queue in the shared `ThumbnailPriorityState`.
 #[tauri::command]

@@ -61,8 +61,8 @@ const extractSingleValue = (key: string, value: unknown, unitMultiplier: string)
  */
 export const useAdvancedSearch = (
     metadata: {
-        locations: { id: number; name: string }[];
-        tags: { id: number; name: string }[];
+        locations: { id: string; name: string }[];
+        tags: { id: string; name: string }[];
     },
     queryOptions: {
         /** Function that returns whether the advanced search panel is currently open. */

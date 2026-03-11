@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use tauri::http::{header, Request, Response, StatusCode};
 use tauri::{AppHandle, Manager};
@@ -86,7 +86,7 @@ pub fn handler<R: tauri::Runtime>(
     };
 
     // 3. Resolve physical path based on type
-    let mut physical_path = PathBuf::from(asset.path);
+    let mut physical_path = asset.path;
 
     if is_thumb {
         let app_data = match app_handle.path().app_local_data_dir() {
@@ -186,7 +186,7 @@ fn parse_asset_uri(uri: &str) -> (String, bool) {
     let decoded_id = percent_decode_str(path_part)
         .decode_utf8_lossy()
         .into_owned();
-    let is_thumb = query_part.map_or(false, |q| q.contains("type=thumb"));
+    let is_thumb = query_part.is_some_and(|q| q.contains("type=thumb"));
 
     (decoded_id, is_thumb)
 }
@@ -419,7 +419,7 @@ fn hls_stream_handler<R: tauri::Runtime>(
             Err(_) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, b"Database error".to_vec()),
         };
 
-        let original_path = PathBuf::from(asset.path);
+        let original_path = asset.path;
         if !original_path.exists() {
             return error_response(StatusCode::NOT_FOUND, b"Original media missing on disk".to_vec());
         }

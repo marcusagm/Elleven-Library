@@ -21,7 +21,7 @@ interface AdvancedSearchModalProperties {
     /** Whether the modal is in 'Smart Folder' creation/edit mode. */
     isSmartFolderMode?: boolean;
     /** Optional identifier for the smart folder being edited. */
-    initialIdentifier?: number;
+    initialIdentifier?: string;
     /** Initial name of the smart folder. */
     initialName?: string;
     /** Initial search query configuration. */
@@ -30,7 +30,7 @@ interface AdvancedSearchModalProperties {
     onSave?: (
         name: string,
         query: SearchGroup,
-        identifier?: number
+        identifier?: string
     ) => Promise<ActionResult<void>> | ActionResult<void>;
 }
 

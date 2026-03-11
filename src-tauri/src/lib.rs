@@ -225,6 +225,9 @@ pub fn run() {
             delivery::tauri::commands::queries::get_all_subfolders,
             delivery::tauri::commands::queries::get_subfolder_counts,
             delivery::tauri::commands::queries::get_location_root_counts,
+            delivery::tauri::commands::queries::get_smart_folders,
+            delivery::tauri::commands::queries::get_asset_count_filtered,
+            delivery::tauri::commands::queries::get_library_stats,
             delivery::tauri::commands::mutations::create_folder,
             delivery::tauri::commands::mutations::remove_location,
             delivery::tauri::commands::mutations::start_indexing,
@@ -236,6 +239,9 @@ pub fn run() {
             delivery::tauri::commands::mutations::add_tags_to_assets_batch,
             delivery::tauri::commands::mutations::remove_tags_from_assets_batch,
             delivery::tauri::commands::mutations::replace_tags_for_assets_batch,
+            delivery::tauri::commands::mutations::save_smart_folder,
+            delivery::tauri::commands::mutations::update_smart_folder,
+            delivery::tauri::commands::mutations::delete_smart_folder,
             delivery::tauri::thumbnails::prioritize_thumbnails,
             // Settings Commands
             delivery::tauri::commands::settings::get_app_settings,
@@ -243,23 +249,20 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app_handle, event| match event {
-            tauri::RunEvent::WindowEvent {
+        .run(|app_handle, event| if let tauri::RunEvent::WindowEvent {
                 event: tauri::WindowEvent::CloseRequested { api, .. },
                 ..
-            } => {
-                tracing::info!("Close requested. Orchestrating graceful shutdown.");
-                api.prevent_close();
+            } = event {
+            tracing::info!("Close requested. Orchestrating graceful shutdown.");
+            api.prevent_close();
 
-                let handle = app_handle.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Some(lifecycle) = handle.try_state::<std::sync::Arc<LifecycleRegistry>>()
-                    {
-                        lifecycle.shutdown_all().await;
-                    }
-                    handle.exit(0);
-                });
-            }
-            _ => {}
+            let handle = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Some(lifecycle) = handle.try_state::<std::sync::Arc<LifecycleRegistry>>()
+                {
+                    lifecycle.shutdown_all().await;
+                }
+                handle.exit(0);
+            });
         });
 }

@@ -169,6 +169,9 @@ impl ThumbnailWorker {
         // 4. Parallel Generation
         let thumbnails_dir = self.thumbnails_dir.clone();
         let pool_clone = pool.clone();
+        
+        // Capture the Tokio runtime handle to use inside Rayon threads
+        let handle = tokio::runtime::Handle::current();
 
         let results: Vec<(String, AppResult<Vec<u8>>)> = pool_clone.install(|| {
             use rayon::prelude::*;
@@ -176,7 +179,7 @@ impl ThumbnailWorker {
                 .into_par_iter()
                 .map(|(asset, provider)| {
                     let id = asset.id.clone();
-                    let result = tokio::runtime::Handle::current().block_on(async {
+                    let result = handle.block_on(async {
                         if let Some(capability) = provider.thumbnail() {
                             capability.generate(&asset.path, 300).await
                         } else {

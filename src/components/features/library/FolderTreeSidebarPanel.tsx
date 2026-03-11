@@ -14,7 +14,7 @@ import './folder-tree-sidebar-panel.css';
  */
 interface FolderNodeData {
     /** The unique identifier of the folder. */
-    folderIdentifier: number;
+    folderIdentifier: string;
     /** The full file system path. */
     path: string;
     /** The display name of the folder. */
@@ -50,7 +50,7 @@ export const FolderTreeSidebarPanel: Component = () => {
             ? metadata.stats.folder_counts_recursive
             : metadata.stats.folder_counts;
 
-        const nodeMap = new Map<number, TreeNode>();
+        const nodeMap = new Map<string, TreeNode>();
         const rootNodes: TreeNode[] = [];
 
         // Phase 1: Create all nodes

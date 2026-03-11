@@ -16,6 +16,12 @@ use std::path::Path;
 pub struct GenericByteFallbackProvider {}
 
 /// Implementação do provedor de fallback genérico.
+impl Default for GenericByteFallbackProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GenericByteFallbackProvider {
     pub fn new() -> Self {
         Self {}

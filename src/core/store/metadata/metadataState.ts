@@ -2,15 +2,15 @@ import { createStore } from 'solid-js/store';
 import { Tag } from '../../../lib/tags';
 
 export interface FolderNode {
-    id: number;
+    id: string;
     path: string;
     name: string;
-    parent_id: number | null;
+    parent_id: string | null;
     is_root: boolean;
 }
 
 export interface SmartFolder {
-    id: number;
+    id: string;
     name: string;
     query_json: string;
     created_at: string;
@@ -23,9 +23,9 @@ export interface MetadataState {
     libraryStats: {
         total_assets: number;
         untagged_assets: number;
-        tag_counts: Map<number, number>;
-        folder_counts: Map<number, number>;
-        folder_counts_recursive: Map<number, number>;
+        tag_counts: Map<string, number>;
+        folder_counts: Map<string, number>;
+        folder_counts_recursive: Map<string, number>;
     };
     tagUpdateVersion: number;
 }

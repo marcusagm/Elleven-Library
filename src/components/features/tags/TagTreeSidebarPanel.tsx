@@ -35,7 +35,7 @@ export const TagTreeSidebarPanel: Component = () => {
     });
     const [contextMenuNode, setContextMenuNode] = createSignal<TreeNode | null>(null);
 
-    const [editingId, setEditingId] = createSignal<number | null>(null);
+    const [editingId, setEditingId] = createSignal<string | null>(null);
 
     const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
     const [nodeToDelete, setNodeToDelete] = createSignal<TreeNode | null>(null);
@@ -59,7 +59,7 @@ export const TagTreeSidebarPanel: Component = () => {
 
         return untrack(() => {
             const allTags = metadata.tags || [];
-            const nodeMap = new Map<number, TreeNode>();
+            const nodeMap = new Map<string, TreeNode>();
             const rootNodes: TreeNode[] = [];
 
             // Phase 1: Create all nodes with reactive getters
@@ -126,7 +126,7 @@ export const TagTreeSidebarPanel: Component = () => {
         }
     };
 
-    const handleCreateChildTag = async (parentId: number) => {
+    const handleCreateChildTag = async (parentId: string) => {
         tree.setExpanded(parentId, true);
         const name = getUniqueTagName('New Tag');
         const result = await metadata.createTag(name, parentId);
@@ -148,7 +148,7 @@ export const TagTreeSidebarPanel: Component = () => {
         const oldName = node.label;
         const isPlaceholder = /^New Tag( \(\d+\))?$/.test(oldName);
 
-        const result = await metadata.updateTag(Number(node.id), normalized);
+        const result = await metadata.updateTag(String(node.id), normalized);
 
         if (result.success) {
             if (isPlaceholder) {
@@ -184,14 +184,14 @@ export const TagTreeSidebarPanel: Component = () => {
     const isValidTagDrop = (draggedItem: DragItem, targetNode: TreeNode): boolean => {
         if (draggedItem.type !== 'TAG') return true;
 
-        const draggedId = Number(draggedItem.payload.id);
-        const targetId = Number(targetNode.id);
+        const draggedId = String(draggedItem.payload.id);
+        const targetId = String(targetNode.id);
 
         /** Recursive check for descendants */
-        const isDescendant = (node: TreeNode, searchId: number): boolean => {
+        const isDescendant = (node: TreeNode, searchId: string): boolean => {
             if (node.children) {
                 for (const child of node.children) {
-                    if (Number(child.id) === searchId) return true;
+                    if (String(child.id) === searchId) return true;
                     if (isDescendant(child, searchId)) return true;
                 }
             }
@@ -201,7 +201,7 @@ export const TagTreeSidebarPanel: Component = () => {
         // Find the dragged node in our local tree to check its children
         const findDraggedNode = (nodes: TreeNode[]): TreeNode | null => {
             for (const node of nodes) {
-                if (Number(node.id) === draggedId) return node;
+                if (String(node.id) === draggedId) return node;
                 if (node.children) {
                     const found = findDraggedNode(node.children);
                     if (found) return found;
@@ -259,7 +259,7 @@ export const TagTreeSidebarPanel: Component = () => {
         >
             <TreeView
                 items={tagTreeHierarchy()}
-                onSelect={node => filters.toggleTag(Number(node.id))}
+                onSelect={node => filters.toggleTag(String(node.id))}
                 selectedIds={filters.selectedTags}
                 onContextMenu={handleContextMenu}
                 editingId={editingId()}

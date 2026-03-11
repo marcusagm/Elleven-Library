@@ -140,6 +140,42 @@ pub struct AssetSummaryDto {
     pub folder_id: Option<String>,
 }
 
+/// Count of assets associated with a specific tag.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TagCount {
+    pub tag_id: String,
+    pub count: i64,
+}
+
+/// Count of assets within a specific folder.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FolderCount {
+    pub folder_id: String,
+    pub count: i64,
+}
+
+/// Comprehensive statistics about the library.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LibraryStats {
+    /// Total number of assets in the library.
+    pub total_assets: i64,
+    /// Total number of folders in the library.
+    pub total_folders: i64,
+    /// Total number of tags in the library.
+    pub total_tags: i64,
+    /// Total size of all assets in bytes.
+    pub total_size_bytes: i64,
+    /// Number of assets that have no tags assigned.
+    pub untagged_assets: i64,
+    /// Distribution of assets across tags.
+    pub tag_counts: Vec<TagCount>,
+    /// Direct asset counts per folder.
+    pub folder_counts: Vec<FolderCount>,
+    /// Asset counts per folder including all subfolders.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub folder_counts_recursive: Option<Vec<FolderCount>>,
+}
+
 /// Parameters for filtering asset listings.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]

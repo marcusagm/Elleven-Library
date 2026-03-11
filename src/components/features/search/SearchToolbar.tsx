@@ -257,7 +257,7 @@ export const SearchToolbar: Component = () => {
                 initialIdentifier={currentSmartFolder()?.id}
                 initialName={currentSmartFolder()?.name}
                 initialQuery={filters.advancedSearch || undefined}
-                onSave={(name: string, query: SearchGroup, id?: number) =>
+                onSave={(name: string, query: SearchGroup, id?: string) =>
                     metadata.saveSmartFolder(name, query, id).then(result => {
                         if (result.success) {
                             notification.success(

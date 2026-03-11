@@ -12,7 +12,7 @@ interface FolderDeleteModalProperties {
     /** Callback invoked when the modal requests closure. */
     onClose: () => void;
     /** The unique identifier of the folder to be removed. */
-    folderIdentifier: number | null;
+    folderIdentifier: string | null;
     /** The display name of the folder. */
     folderName: string;
 }

@@ -14,7 +14,7 @@ export const AssetDropStrategy: DropStrategy = {
         if (item.type === 'TAG') {
             const { libraryActions } = await import('../../store/library');
             const targetAssetId = String(targetId);
-            const tagId = Number(item.payload.id);
+            const tagId = String(item.payload.id);
 
             // Emit intention to library store
             return await libraryActions.applyTagToTarget(tagId, targetAssetId);

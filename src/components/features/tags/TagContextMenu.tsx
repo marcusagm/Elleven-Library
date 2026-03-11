@@ -11,8 +11,8 @@ interface TagContextMenuProps {
     isOpen: boolean;
     node: TreeNode | null;
     onClose: () => void;
-    onAddChild: (id: number) => void;
-    onRename: (id: number) => void;
+    onAddChild: (id: string) => void;
+    onRename: (id: string) => void;
     onDelete: (node: TreeNode) => void;
 }
 
@@ -32,7 +32,7 @@ export const TagContextMenu: Component<TagContextMenuProps> = properties => {
      * @param {number} tagId - The unique identifier of the tag.
      * @param {string} newColor - The new hexadecimal color code.
      */
-    const handleColorChange = async (tagId: number, newColor: string) => {
+    const handleColorChange = async (tagId: string, newColor: string) => {
         await metadata.updateTag(tagId, null, newColor);
     };
 
@@ -45,13 +45,13 @@ export const TagContextMenu: Component<TagContextMenuProps> = properties => {
                 type: 'item',
                 label: 'Add Child Tag',
                 icon: Plus,
-                action: () => properties.onAddChild(Number(treeNode.id))
+                action: () => properties.onAddChild(String(treeNode.id))
             },
             {
                 type: 'item',
                 label: 'Rename',
                 icon: Pencil,
-                action: () => properties.onRename(Number(treeNode.id))
+                action: () => properties.onRename(String(treeNode.id))
             },
             {
                 type: 'submenu',
@@ -64,7 +64,7 @@ export const TagContextMenu: Component<TagContextMenuProps> = properties => {
                             <ColorPicker
                                 color={treeNode.iconColor || '#cccccc'}
                                 onChange={newColor =>
-                                    handleColorChange(Number(treeNode.id), newColor)
+                                    handleColorChange(String(treeNode.id), newColor)
                                 }
                             />
                         )

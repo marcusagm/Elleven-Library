@@ -16,6 +16,12 @@ use std::process::Command;
 pub struct ModernImageFormatProvider {}
 
 /// Implementação do provedor de formatos modernos de imagem.
+impl Default for ModernImageFormatProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModernImageFormatProvider {
     pub fn new() -> Self {
         Self {}

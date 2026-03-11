@@ -54,6 +54,14 @@ pub enum DomainEvent {
     /// A tag was deleted and removed from all assets.
     TagDeleted { id: String },
 
+    // ├─ Smart Folders Originated
+    /// A smart folder was created.
+    SmartFolderCreated { id: String, name: String },
+    /// A smart folder was updated.
+    SmartFolderUpdated { id: String },
+    /// A smart folder was deleted.
+    SmartFolderDeleted { id: String },
+
     // ├─ OS Watcher Originated
     /// The Watcher detected a new file in the filesystem.
     FsFileDiscovered { path: String, size_bytes: u64 },

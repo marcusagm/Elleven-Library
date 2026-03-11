@@ -5,7 +5,7 @@ import { computeStatsFromBatchChange } from '../statsHelpers';
 import { type BatchChangePayload } from '../library';
 
 /** Check if some added items belong to unknown folders */
-function hasUnknownFolders(added: BatchChangePayload['added'], knownIds: Set<number>): boolean {
+function hasUnknownFolders(added: BatchChangePayload['added'], knownIds: Set<string>): boolean {
     if (!added) return false;
     return added.some(item => item.folder_id && !knownIds.has(item.folder_id));
 }
@@ -25,7 +25,10 @@ export const locationActions = {
     loadLocations: async () => {
         try {
             const locations = await getLocations();
-            setMetadataState('locations', locations);
+            setMetadataState(
+                'locations',
+                locations.map(l => ({ ...l, is_root: !!l.is_root }))
+            );
         } catch (error) {
             console.error('Failed to load locations:', error);
         }

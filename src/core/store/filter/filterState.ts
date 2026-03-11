@@ -14,8 +14,8 @@ export type SortOrder = 'asc' | 'desc';
 export type ViewLayout = 'masonry-v' | 'masonry-h' | 'grid' | 'list';
 
 export interface FilterSnapshot {
-    selectedTags: number[];
-    selectedFolderId: number | null;
+    selectedTags: string[];
+    selectedFolderId: string | null;
     folderRecursiveView: boolean;
     filterUntagged: boolean;
     searchQuery: string;

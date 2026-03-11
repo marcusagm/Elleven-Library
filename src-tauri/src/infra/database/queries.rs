@@ -520,6 +520,165 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         Ok(rows.into_iter().map(Tag::from).collect())
     }
+
+    /// Lists all smart folders.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<SmartFolder>)` if successful.
+    /// * `Err(sqlx::Error)` on query failure.
+    async fn list_smart_folders(&self) -> AppResult<Vec<crate::core::models::SmartFolder>> {
+        let rows = sqlx::query!(
+            r#"SELECT id as "id!", name as "name!", query_json as "query_json!", created_at as "created_at?: chrono::DateTime<chrono::Utc>", updated_at as "updated_at?: chrono::DateTime<chrono::Utc>" FROM smart_folders ORDER BY name ASC"#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut folders = Vec::new();
+        for r in rows {
+            folders.push(crate::core::models::SmartFolder {
+                id: r.id,
+                name: r.name,
+                query_json: r.query_json,
+                created_at: r.created_at.unwrap_or_else(chrono::Utc::now),
+                updated_at: r.updated_at.unwrap_or_else(chrono::Utc::now),
+            });
+        }
+        
+        Ok(folders)
+    }
+
+    /// Gets the total count of assets matching the specified filter.
+    ///
+    /// # Arguments
+    ///
+    /// * `filter` - The given filters.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(i64)` asset count.
+    /// * `Err(sqlx::Error)` on query failure.
+    async fn get_asset_count(&self, filter: AssetFilter) -> AppResult<i64> {
+        let mut query_builder: QueryBuilder<Sqlite> =
+            QueryBuilder::new("SELECT COUNT(*) as count FROM assets WHERE 1=1 ");
+
+        if let Some(family) = filter.family {
+            query_builder.push(" AND family = ");
+            query_builder.push_bind(family);
+        }
+
+        if let Some(state) = filter.state {
+            query_builder.push(" AND state = ");
+            query_builder.push_bind(state.to_string());
+        }
+
+        if let Some(search) = filter.search_query {
+            query_builder.push(" AND (name LIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(" OR path LIKE ");
+            query_builder.push_bind(format!("%{}%", search));
+            query_builder.push(")");
+        }
+
+        if let Some(folder_id) = filter.folder_id {
+            query_builder.push(" AND folder_id = ");
+            query_builder.push_bind(folder_id);
+        }
+
+        if let Some(tags) = filter.tags {
+            if !tags.is_empty() {
+                query_builder.push(" AND id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name IN (");
+                let mut first = true;
+                for tag in tags {
+                    if !first {
+                        query_builder.push(", ");
+                    }
+                    query_builder.push_bind(tag);
+                    first = false;
+                }
+                query_builder.push(")))");
+            }
+        }
+
+        if let Some(untagged) = filter.untagged {
+            if untagged {
+                query_builder.push(" AND id NOT IN (SELECT asset_id FROM asset_tags)");
+            }
+        }
+
+        let count: (i64,) = query_builder.build_query_as().fetch_one(&self.pool).await?;
+
+        Ok(count.0)
+    }
+
+    /// Gets library statistics (total assets, folders, tags, size).
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(LibraryStats)` with aggregated data.
+    /// * `Err(sqlx::Error)` on query failure.
+    async fn get_library_stats(&self) -> AppResult<crate::core::models::LibraryStats> {
+        let stats_row = sqlx::query!(
+            r#"
+            SELECT 
+                (SELECT COUNT(*) FROM assets) as "total_assets!: i64",
+                (SELECT COUNT(*) FROM folders) as "total_folders!: i64",
+                (SELECT COUNT(*) FROM tags) as "total_tags!: i64",
+                (SELECT COALESCE(SUM(file_size), 0) FROM assets) as "total_size_bytes!: i64",
+                (SELECT COUNT(*) FROM assets WHERE id NOT IN (SELECT asset_id FROM asset_tags)) as "untagged_assets!: i64"
+            "#
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let tag_counts_rows = sqlx::query!(
+            r#"
+            SELECT tag_id, COUNT(asset_id) as "count!: i64"
+            FROM asset_tags
+            GROUP BY tag_id
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let tag_counts = tag_counts_rows
+            .into_iter()
+            .map(|r| crate::core::models::TagCount {
+                tag_id: r.tag_id,
+                count: r.count,
+            })
+            .collect();
+
+        let folder_counts_rows = sqlx::query!(
+            r#"
+            SELECT folder_id as "folder_id: String", COUNT(id) as "count!: i64"
+            FROM assets
+            WHERE folder_id IS NOT NULL
+            GROUP BY folder_id
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let folder_counts = folder_counts_rows
+            .into_iter()
+            .filter_map(|r| r.folder_id.map(|id| crate::core::models::FolderCount {
+                folder_id: id,
+                count: r.count,
+            }))
+            .collect();
+
+        Ok(crate::core::models::LibraryStats {
+            total_assets: stats_row.total_assets,
+            total_folders: stats_row.total_folders,
+            total_tags: stats_row.total_tags,
+            total_size_bytes: stats_row.total_size_bytes,
+            untagged_assets: stats_row.untagged_assets,
+            tag_counts,
+            folder_counts,
+            folder_counts_recursive: None,
+        })
+    }
 }
 
 /// Tests for the SqliteAssetQueries struct.

@@ -124,8 +124,8 @@ export const libraryActions = {
 
                 const locationMap = new Map(locations.map(location => [location.id, location]));
 
-                const isChildOf = (childId: number, rootId: number): boolean => {
-                    let current: number | null = childId;
+                const isChildOf = (childId: string, rootId: string): boolean => {
+                    let current: string | null = childId;
                     let depth = 0;
                     while (current && depth < APP_CONFIG.MAX_FOLDER_DEPTH) {
                         if (current === rootId) return true;
@@ -226,7 +226,7 @@ export const libraryActions = {
 
     applyTagToAssets: async (
         assetIds: string[],
-        tagId: number
+        tagId: string
     ): Promise<ActionResult<{ tagName: string; count: number }>> => {
         if (assetIds.length === 0) {
             return {
@@ -259,13 +259,13 @@ export const libraryActions = {
     },
 
     applyTagToSelection: async (
-        tagId: number
+        tagId: string
     ): Promise<ActionResult<{ tagName: string; count: number }>> => {
         return libraryActions.applyTagToAssets(selectionState.selectedIds, tagId);
     },
 
     applyTagToTarget: async (
-        tagId: number,
+        tagId: string,
         targetAssetId: string
     ): Promise<ActionResult<{ tagName: string; count: number }>> => {
         let targetIds = [targetAssetId];
@@ -275,7 +275,7 @@ export const libraryActions = {
         return libraryActions.applyTagToAssets(targetIds, tagId);
     },
 
-    removeTagFromSelection: async (tagId: number): Promise<ActionResult> => {
+    removeTagFromSelection: async (tagId: string): Promise<ActionResult> => {
         const selectedIds = selectionState.selectedIds;
         if (selectedIds.length === 0) {
             return {

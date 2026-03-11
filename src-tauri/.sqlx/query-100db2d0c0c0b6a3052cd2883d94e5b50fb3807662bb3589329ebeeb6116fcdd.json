@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT tag_id, COUNT(asset_id) as \"count!: i64\"\n            FROM asset_tags\n            GROUP BY tag_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "tag_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "count!: i64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "100db2d0c0c0b6a3052cd2883d94e5b50fb3807662bb3589329ebeeb6116fcdd"
+}

@@ -63,7 +63,7 @@ export const InspectorTags: Component<InspectorTagsProps> = properties => {
         const commonTags = allTagsList[0].filter(tag => commonIds.includes(tag.id));
 
         // Find partial tags (union minus common)
-        const partialMap = new Map<number, Tag>();
+        const partialMap = new Map<string, Tag>();
         const commonSet = new Set(commonIds);
 
         allTagsList.forEach(list => {
@@ -108,7 +108,7 @@ export const InspectorTags: Component<InspectorTagsProps> = properties => {
         // Calculate differences to perform atomic batch operations
         const tagsToAdd = newOptions
             .filter((option: TagOption) => !currentIdsSet.has(String(option.id)))
-            .map((option: TagOption) => Number(option.id));
+            .map((option: TagOption) => String(option.id));
 
         if (tagsToAdd.length > 0) {
             await metadata.updateAssetsTags(ids, tagsToAdd, 'merge');
@@ -116,7 +116,7 @@ export const InspectorTags: Component<InspectorTagsProps> = properties => {
 
         const tagsToRemove = currentSelected
             .filter((option: TagOption) => !newIdsSet.has(String(option.id)))
-            .map((option: TagOption) => Number(option.id));
+            .map((option: TagOption) => String(option.id));
 
         if (tagsToRemove.length > 0) {
             await metadata.updateAssetsTags(ids, tagsToRemove, 'remove');
@@ -136,7 +136,7 @@ export const InspectorTags: Component<InspectorTagsProps> = properties => {
         }
     };
 
-    const handlePartialAdd = async (tagId: number) => {
+    const handlePartialAdd = async (tagId: string) => {
         const ids = targetIds();
         if (ids.length === 0) return;
 

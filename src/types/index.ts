@@ -103,9 +103,9 @@ export interface AssetItem {
     /**
      * Associated folder primary key
      *
-     * @type {number}
+     * @type {string}
      */
-    folder_id: number;
+    folder_id: string;
 
     /**
      * Most prominent extracted color hex value (e.g., "#FF5733")

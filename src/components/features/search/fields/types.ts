@@ -56,10 +56,10 @@ export type CriterionFieldRendererComponent = Component<CriterionFieldRendererPr
  */
 export type StoreMetadata = {
     /** List of available storage locations or folders. */
-    locations: { id: number; name: string }[];
+    locations: { id: string; name: string }[];
 
     /** List of globally defined tags. */
-    tags: { id: number; name: string }[];
+    tags: { id: string; name: string }[];
 
     /** Optional list of file formats supported by the current system environment. */
     supportedFormats?: { name: string; extensions: string[] }[];

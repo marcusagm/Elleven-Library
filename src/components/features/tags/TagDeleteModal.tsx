@@ -32,11 +32,11 @@ export const TagDeleteModal: Component<TagDeleteModalProperties> = componentProp
      * @param node - The starting tree node.
      * @returns An array of descendant numeric identifiers.
      */
-    const getAllDescendantIdentifiers = (node: TreeNode): number[] => {
-        let identifiers: number[] = [];
+    const getAllDescendantIdentifiers = (node: TreeNode): string[] => {
+        let identifiers: string[] = [];
         if (node.children) {
             node.children.forEach(child => {
-                identifiers.push(Number(child.id));
+                identifiers.push(String(child.id));
                 identifiers = [...identifiers, ...getAllDescendantIdentifiers(child)];
             });
         }
@@ -53,9 +53,11 @@ export const TagDeleteModal: Component<TagDeleteModalProperties> = componentProp
         }
 
         const tagName = node.label;
-        const parentIdentifier = (node.data as Record<string, unknown>)?.parent_id as number;
+        const parentIdentifier = (node.data as Record<string, unknown>)?.parent_id as
+            | string
+            | undefined;
         const tagColor = (node.data as Record<string, unknown>)?.color as string;
-        const tagIdentifier = Number(node.id);
+        const tagIdentifier = String(node.id);
 
         const result = await deleteTag(tagIdentifier);
 

@@ -14,8 +14,8 @@ export const TagDropStrategy: DropStrategy = {
         targetId: number | string,
         position: 'before' | 'inside' | 'after' = 'inside'
     ): Promise<DndActionResult> => {
-        let targetTagId: number | null = Number(targetId);
-        if (targetId === 'root' || isNaN(targetTagId)) {
+        let targetTagId: string | null = String(targetId);
+        if (targetId === 'root' || targetId === undefined || targetId === null) {
             targetTagId = null;
         }
 
@@ -35,7 +35,7 @@ export const TagDropStrategy: DropStrategy = {
 
         if (item.type === 'TAG') {
             const { metadataActions } = await import('../../store/metadata');
-            const draggedTagId = Number(item.payload.id);
+            const draggedTagId = String(item.payload.id);
             return await metadataActions.moveTag(draggedTagId, targetTagId, position);
         }
 

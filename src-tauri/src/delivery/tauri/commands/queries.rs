@@ -1,4 +1,4 @@
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
+use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag, SmartFolder, LibraryStats};
 use crate::feature::assets::queries::AssetQueryService;
 use tauri::State;
 
@@ -165,4 +165,57 @@ pub async fn get_location_root_counts(
     service: State<'_, AssetQueryService>,
 ) -> AppResult<Vec<(String, i64)>> {
     service.get_location_root_counts().await
+}
+
+/// RPC Command to get all smart folders.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+///
+/// # Returns
+///
+/// * `Ok(Vec<SmartFolder>)` if the smart folders were found successfully.
+/// * `Err(AppError)` if the query fails.
+#[tauri::command]
+pub async fn get_smart_folders(
+    service: State<'_, AssetQueryService>,
+) -> AppResult<Vec<SmartFolder>> {
+    service.list_smart_folders().await
+}
+
+/// RPC Command to get the total number of assets matching a filter.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+/// * `filter` - The asset filter parameters.
+///
+/// # Returns
+///
+/// * `Ok(i64)` count of assets.
+/// * `Err(AppError)` if the query fails.
+#[tauri::command]
+pub async fn get_asset_count_filtered(
+    service: State<'_, AssetQueryService>,
+    filter: AssetFilter,
+) -> AppResult<i64> {
+    service.get_asset_count(filter).await
+}
+
+/// RPC Command to get library wide statistics.
+///
+/// # Arguments
+///
+/// * `service` - The asset query service.
+///
+/// # Returns
+///
+/// * `Ok(LibraryStats)` object containing aggregates.
+/// * `Err(AppError)` if the query fails.
+#[tauri::command]
+pub async fn get_library_stats(
+    service: State<'_, AssetQueryService>,
+) -> AppResult<LibraryStats> {
+    service.get_library_stats().await
 }

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT folder_id as \"folder_id: String\", COUNT(id) as \"count!: i64\"\n            FROM assets\n            WHERE folder_id IS NOT NULL\n            GROUP BY folder_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "folder_id: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "count!: i64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "11c5f59ea8f32f84e8d63a9252a4cdb6c25143b734e7d8bc79e30f47df7b22c8"
+}

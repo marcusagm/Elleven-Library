@@ -26,7 +26,7 @@ export const filterActions = {
     ...historyActions,
     ...criterionHelpers,
 
-    toggleTag: (tagId: number) => {
+    toggleTag: (tagId: string) => {
         const current = filterState.selectedTags;
         if (current.includes(tagId)) {
             setFilterState('selectedTags', tags => tags.filter(id => id !== tagId));
@@ -51,7 +51,7 @@ export const filterActions = {
         filterActions.setUntagged(!filterState.filterUntagged);
     },
 
-    setFolder: (folderId: number | null) => {
+    setFolder: (folderId: string | null) => {
         setFilterState('selectedFolderId', folderId);
         historyActions.pushHistory();
     },
