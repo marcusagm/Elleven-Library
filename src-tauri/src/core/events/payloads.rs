@@ -88,6 +88,12 @@ pub enum DomainEvent {
     // ├─ System
     /// A library scan has started.
     ScanStarted { library_id: String },
+    /// Progress update for an ongoing scan.
+    ScanProgress {
+        total: usize,
+        processed: usize,
+        current_file: String,
+    },
     /// A library scan has completed.
     ScanCompleted { library_id: String },
     /// A new thumbnail has been generated and is ready at the given path.

@@ -29,7 +29,7 @@ export async function addLocation(path: string) {
 }
 
 export async function getLocations() {
-    return await invoke<FolderNode[]>('list_folders', { parentId: null });
+    return await invoke<FolderNode[]>('get_all_subfolders');
 }
 
 export async function getAssets(

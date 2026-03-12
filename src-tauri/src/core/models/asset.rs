@@ -219,6 +219,8 @@ pub struct AssetFilter {
     pub tags: Option<Vec<String>>,
     /// Filter to only get assets without any tags
     pub untagged: Option<bool>,
+    /// Whether to include assets from subfolders recursively
+    pub recursive: Option<bool>,
 }
 
 /// Pagination parameters for the read model.

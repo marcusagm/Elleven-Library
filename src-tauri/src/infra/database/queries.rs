@@ -152,8 +152,14 @@ impl AssetQueryHandler for SqliteAssetQueries {
         }
 
         if let Some(folder_id) = filter.folder_id {
-            query_builder.push(" AND a.folder_id = ");
-            query_builder.push_bind(folder_id);
+            if filter.recursive.unwrap_or(false) {
+                query_builder.push(" AND a.folder_id IN (WITH RECURSIVE subfolders AS (SELECT id FROM folders WHERE id = ");
+                query_builder.push_bind(folder_id);
+                query_builder.push(" UNION ALL SELECT f.id FROM folders f JOIN subfolders ON f.parent_id = subfolders.id) SELECT id FROM subfolders)");
+            } else {
+                query_builder.push(" AND a.folder_id = ");
+                query_builder.push_bind(folder_id);
+            }
         }
 
         if let Some(tags) = filter.tags {
@@ -596,8 +602,14 @@ impl AssetQueryHandler for SqliteAssetQueries {
         }
 
         if let Some(folder_id) = filter.folder_id {
-            query_builder.push(" AND folder_id = ");
-            query_builder.push_bind(folder_id);
+            if filter.recursive.unwrap_or(false) {
+                query_builder.push(" AND folder_id IN (WITH RECURSIVE subfolders AS (SELECT id FROM folders WHERE id = ");
+                query_builder.push_bind(folder_id);
+                query_builder.push(" UNION ALL SELECT f.id FROM folders f JOIN subfolders ON f.parent_id = subfolders.id) SELECT id FROM subfolders)");
+            } else {
+                query_builder.push(" AND folder_id = ");
+                query_builder.push_bind(folder_id);
+            }
         }
 
         if let Some(tags) = filter.tags {
@@ -683,6 +695,33 @@ impl AssetQueryHandler for SqliteAssetQueries {
             }))
             .collect();
 
+        // Calculate recursive counts
+        let folder_counts_recursive_rows = sqlx::query!(
+            r#"
+            WITH RECURSIVE folder_hierarchy(root_id, sub_id) AS (
+                SELECT id, id FROM folders
+                UNION ALL
+                SELECT fh.root_id, f.id
+                FROM folder_hierarchy fh
+                JOIN folders f ON f.parent_id = fh.sub_id
+            )
+            SELECT fh.root_id as "folder_id!", COUNT(a.id) as "count!: i64"
+            FROM folder_hierarchy fh
+            LEFT JOIN assets a ON a.folder_id = fh.sub_id
+            GROUP BY fh.root_id
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let folder_counts_recursive = folder_counts_recursive_rows
+            .into_iter()
+            .map(|r| crate::core::models::FolderCount {
+                folder_id: r.folder_id,
+                count: r.count,
+            })
+            .collect();
+
         Ok(crate::core::models::LibraryStats {
             total_assets: stats_row.total_assets,
             total_folders: stats_row.total_folders,
@@ -691,7 +730,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
             untagged_assets: stats_row.untagged_assets,
             tag_counts,
             folder_counts,
-            folder_counts_recursive: None,
+            folder_counts_recursive: Some(folder_counts_recursive),
         })
     }
 

@@ -49,6 +49,7 @@ export const libraryActions = {
             filterParams = {
                 untagged: filterState.filterUntagged ? true : undefined,
                 folderId: filterState.selectedFolderId?.toString() || undefined,
+                recursive: filterState.folderRecursiveView,
                 tags: filterState.selectedTags.map(String),
                 searchQuery: filterState.searchQuery
             };

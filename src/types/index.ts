@@ -170,6 +170,7 @@ export interface AssetFilter {
     state?: string; // Based on AssetState enum
     searchQuery?: string;
     folderId?: string;
+    recursive?: boolean;
     tags?: string[];
     untagged?: boolean;
 }

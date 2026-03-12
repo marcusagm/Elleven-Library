@@ -18,6 +18,8 @@ pub struct LibraryIndexer {
     query_handler: Arc<dyn AssetQueryHandler>,
     /// Port for state mutations.
     ledger: Arc<dyn TransactionalAssetLedger>,
+    /// Event bus for publishing domain events.
+    event_bus: Arc<dyn AppEventBus>,
 }
 
 /// Implementation of the LibraryIndexer struct.
@@ -35,10 +37,12 @@ impl LibraryIndexer {
     pub fn new(
         query_handler: Arc<dyn AssetQueryHandler>,
         ledger: Arc<dyn TransactionalAssetLedger>,
+        event_bus: Arc<dyn AppEventBus>,
     ) -> Self {
         Self {
             query_handler,
             ledger,
+            event_bus,
         }
     }
 
@@ -57,17 +61,27 @@ impl LibraryIndexer {
         info!("Starting differential scan for: {}", root_str);
 
         // Resolve folder_id if not provided
-        let resolved_folder_id = if let Some(id) = folder_id {
+        let current_root_id = if let Some(id) = folder_id {
             Some(id)
         } else {
             self.query_handler.find_folder_by_path(&root_str).await?
         };
 
-        if resolved_folder_id.is_none() {
-            debug!("Parent folder not found in database for path: {}. Assets will be untagged/root-level.", root_str);
-        }
+        // Emit ScanStarted
+        let _ = self.event_bus.publish(crate::core::events::DomainEvent::ScanStarted {
+            library_id: current_root_id.clone().unwrap_or_else(|| "root".to_string()),
+        });
 
-        // 1. Load comparison cache (Size, MTime)
+        // 1. Initial walk to count total files for progress reporting
+        let total_files = WalkDir::new(&path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file() && crate::formats::FileFormat::is_supported_extension(e.path()))
+            .count();
+
+        debug!("Total files to process: {}", total_files);
+
+        // 2. Load comparison cache (Size, MTime)
         let cache = self
             .query_handler
             .get_all_files_comparison_data(&root_str)
@@ -75,26 +89,72 @@ impl LibraryIndexer {
         debug!("Loaded {} items from cache", cache.len());
 
         let mut discovered_count = 0;
+        let mut processed_count = 0;
         let mut unchanged_count = 0;
 
-        // 2. Iterate filesystem
+        // 3. Iterate filesystem
+        let mut folder_cache = std::collections::HashMap::new();
+        if let Some(id) = current_root_id.clone() {
+            folder_cache.insert(path.clone(), id);
+        }
+
         for entry in WalkDir::new(&path).into_iter().filter_map(|e| e.ok()) {
+            let entry_path = entry.path().to_path_buf();
+            
             if entry.file_type().is_dir() {
+                // Ensure folder hierarchy exists in DB
+                if entry_path == path {
+                    continue; // Root already handled
+                }
+
+                let path_str = entry_path.to_string_lossy().to_string();
+                if let Some(existing_id) = self.query_handler.find_folder_by_path(&path_str).await? {
+                    folder_cache.insert(entry_path, existing_id);
+                } else {
+                    // Create folder
+                    let parent_path = entry_path.parent().unwrap_or(&path);
+                    let parent_id = folder_cache.get(parent_path).cloned();
+                    
+                    let name = entry_path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string();
+
+                    let cmd = LedgerCommand::CreateFolder(crate::core::ledger::command::CreateFolderPayload {
+                        parent_id,
+                        name,
+                        path: entry_path.clone(),
+                    });
+
+                    if let Ok(folder_asset) = self.ledger.execute(cmd).await {
+                        folder_cache.insert(entry_path, folder_asset.id);
+                    }
+                }
                 continue;
             }
 
-            let path_buf = entry.path().to_path_buf();
-            let path_str = path_buf.to_string_lossy().to_string();
+            let path_str = entry_path.to_string_lossy().to_string();
 
-            // Filter supported assets (using legacy registry for now, or just extensions)
-            if !crate::formats::FileFormat::is_supported_extension(&path_buf) {
+            // Filter supported assets
+            if !crate::formats::FileFormat::is_supported_extension(&entry_path) {
                 continue;
+            }
+
+            processed_count += 1;
+            
+            // Emit progress
+            if processed_count % 10 == 0 || processed_count == total_files {
+                let _ = self.event_bus.publish(crate::core::events::DomainEvent::ScanProgress {
+                    total: total_files,
+                    processed: processed_count,
+                    current_file: entry_path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string(),
+                });
             }
 
             let metadata = match entry.metadata() {
                 Ok(m) => m,
                 Err(e) => {
-                    error!("Failed to read metadata for {:?}: {}", path_buf, e);
+                    error!("Failed to read metadata for {:?}: {}", entry_path, e);
                     continue;
                 }
             };
@@ -106,9 +166,8 @@ impl LibraryIndexer {
                 .map(|t| t.into())
                 .unwrap_or_else(Utc::now);
 
-            // 3. Differential Check
+            // 4. Differential Check
             let needs_index = if let Some((db_size, db_mtime)) = cache.get(&path_str) {
-                // Strict comparison: size must match and time difference < 1s
                 disk_size != *db_size || (disk_mtime - *db_mtime).num_seconds().abs() >= 1
             } else {
                 true // New file
@@ -117,16 +176,18 @@ impl LibraryIndexer {
             if needs_index {
                 debug!("Indexing asset: {}", path_str);
 
-                // Prepare Command for Ledger
-                // We'll use "Indexed" or "Discovered" as initial state.
-                // The Ledger will handle the atomic DB write.
+                let asset_folder_id = entry_path.parent()
+                    .and_then(|p| folder_cache.get(p))
+                    .cloned()
+                    .or(current_root_id.clone());
+
                 let cmd = LedgerCommand::CreateAsset(CreateAssetPayload {
-                    path: path_buf,
+                    path: entry_path.clone(),
                     file_size: disk_size as u64,
-                    format_type: "unknown".to_string(), // FormatRegistry will refine this later
+                    format_type: "unknown".to_string(),
                     family: "unknown".to_string(),
                     state_init: AssetState::Indexed,
-                    folder_id: resolved_folder_id.clone(),
+                    folder_id: asset_folder_id,
                 });
 
                 if let Err(e) = self.ledger.execute(cmd).await {
@@ -143,6 +204,11 @@ impl LibraryIndexer {
             "Scan complete. Discovered/Updated: {}, Unchanged: {}",
             discovered_count, unchanged_count
         );
+
+        // Emit ScanCompleted
+        let _ = self.event_bus.publish(crate::core::events::DomainEvent::ScanCompleted {
+            library_id: current_root_id.unwrap_or_else(|| "root".to_string()),
+        });
 
         Ok(())
     }

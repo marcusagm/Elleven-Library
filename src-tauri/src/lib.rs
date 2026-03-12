@@ -60,8 +60,24 @@ pub fn run() {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     while let Ok(event) = rx.recv().await {
+                        // Standard Domain Event Bridge
                         if let Err(e) = app_handle.emit("mundam://domain-event", &event) {
                             tracing::error!("Failed to emit domain event to frontend: {}", e);
+                        }
+
+                        // Special Mapping for Legacy Indexer Events (Frontend compatibility)
+                        match event {
+                            crate::core::events::DomainEvent::ScanProgress { total, processed, current_file } => {
+                                let _ = app_handle.emit("indexer:progress", serde_json::json!({
+                                    "total": total,
+                                    "processed": processed,
+                                    "current_file": current_file,
+                                }));
+                            }
+                            crate::core::events::DomainEvent::ScanCompleted { .. } => {
+                                let _ = app_handle.emit("indexer:complete", 0);
+                            }
+                            _ => {}
                         }
                     }
                 });
@@ -190,6 +206,7 @@ pub fn run() {
                     let indexer = Arc::new(crate::feature::library::indexer::LibraryIndexer::new(
                         asset_query_handler.clone(),
                         asset_ledger.clone(),
+                        event_bus.clone(),
                     ));
                     handle.manage(indexer.clone());
 
