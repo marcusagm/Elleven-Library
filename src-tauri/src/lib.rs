@@ -9,8 +9,9 @@ pub mod infra;
 pub mod lifecycle;
 pub mod processing;
 use crate::core::events::AppEventBus;
-use crate::core::repository::AssetQueryHandler;
 use crate::core::settings::port::SettingsRepository;
+use crate::delivery::streaming::server::start_server;
+use crate::feature::transcoding::cache::TranscodeCache;
 use crate::infra::events::TokioEventBus;
 use crate::lifecycle::LifecycleRegistry;
 use std::sync::Arc;
@@ -86,10 +87,10 @@ pub fn run() {
                 });
             }
 
-            // Initialize DB and Worker
+            // Initialize DB and Worker (Blocking setup to avoid state race conditions)
             let handle = app.handle().clone();
             let lifecycle_for_setup = lifecycle.clone();
-            tauri::async_runtime::spawn(async move {
+            tauri::async_runtime::block_on(async move {
                 // Initialize Database Infrastructure
                 let db_manager =
                     match crate::infra::database::manager::DbManager::new(&db_path).await {
@@ -99,21 +100,24 @@ pub fn run() {
                             return;
                         }
                     };
-
-                // Generate a session token for streaming server authentication
-                let session_token = uuid::Uuid::new_v4().to_string();
-                handle.manage(
-                    crate::delivery::tauri::commands::queries::StreamingSessionToken(session_token),
-                );
-
                 handle.manage(db_manager.clone());
-                let asset_query_handler =
+
+                // Initialize Query Handler early (needed by streaming server and IPC)
+                let asset_query_handler: Arc<dyn crate::core::repository::AssetQueryHandler> =
                     Arc::new(crate::infra::database::queries::SqliteAssetQueries::new(
                         db_manager.pool().clone(),
                     ));
-                handle.manage(asset_query_handler.clone()
-                    as Arc<dyn crate::core::repository::AssetQueryHandler>);
+                handle.manage(asset_query_handler.clone());
 
+                // Initialize Asset Ledger (Real SQLx Adapter)
+                let asset_ledger: Arc<dyn crate::core::ledger::port::TransactionalAssetLedger> =
+                    Arc::new(crate::infra::database::ledger::SqliteAssetLedger::new(
+                        db_manager.pool().clone(),
+                        event_bus.clone(),
+                    ));
+                handle.manage(asset_ledger.clone());
+
+                // Initialize High-level query/search services
                 let asset_query_service = crate::feature::assets::queries::AssetQueryService::new(
                     asset_query_handler.clone(),
                 );
@@ -123,14 +127,25 @@ pub fn run() {
                     crate::feature::search::SearchQueryHandler::new(asset_query_handler.clone());
                 handle.manage(search_query_handler);
 
-                // Initialize Asset Ledger (Real SQLx Adapter)
-                let asset_ledger =
-                    Arc::new(crate::infra::database::ledger::SqliteAssetLedger::new(
-                        db_manager.pool().clone(),
-                        event_bus.clone(),
-                    ));
-                handle.manage(asset_ledger.clone()
-                    as Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>);
+                // Generate a session token for streaming server authentication
+                let session_token = uuid::Uuid::new_v4().to_string();
+                handle.manage(
+                    crate::delivery::tauri::commands::queries::StreamingSessionToken(
+                        session_token.clone(),
+                    ),
+                );
+
+                // Initialize Transcode Cache
+                let transcode_cache = Arc::new(TranscodeCache::new(&app_data));
+                handle.manage(transcode_cache);
+
+                // Start Streaming Server (Axum)
+                let server_handle = start_server(handle.clone(), 9876).await;
+                lifecycle_for_setup.register(
+                    "streaming_server".to_string(),
+                    lifecycle_for_setup.child_token(),
+                    server_handle,
+                );
 
                 // Load Settings from JSON
                 let settings: crate::core::settings::AppSettings =
@@ -139,7 +154,6 @@ pub fn run() {
                 let priority_state = std::sync::Arc::new(
                     crate::core::workflows::thumbnails::priority::ThumbnailPriorityState::default(),
                 );
-
                 handle.manage(priority_state.clone());
 
                 // Start Thumbnail Worker (Hybrid Queue)
@@ -237,7 +251,7 @@ pub fn run() {
             delivery::tauri::commands::queries::get_library_stats,
             delivery::tauri::commands::queries::get_asset_exif,
             delivery::tauri::commands::queries::get_asset_colors,
-            delivery::tauri::commands::queries::get_cache_stats,
+            delivery::tauri::commands::queries::get_library_cache_stats,
             delivery::tauri::commands::mutations::create_folder,
             delivery::tauri::commands::mutations::remove_location,
             delivery::tauri::commands::mutations::start_indexing,
@@ -268,7 +282,17 @@ pub fn run() {
             delivery::tauri::commands::settings::update_app_settings,
             delivery::tauri::commands::settings::get_setting,
             delivery::tauri::commands::settings::set_setting,
-            delivery::tauri::commands::queries::get_streaming_token
+            delivery::tauri::commands::queries::get_streaming_token,
+            delivery::tauri::commands::streaming::needs_transcoding,
+            delivery::tauri::commands::streaming::is_native_format,
+            delivery::tauri::commands::streaming::get_stream_url,
+            delivery::tauri::commands::streaming::get_quality_options,
+            delivery::tauri::commands::streaming::ffmpeg_available,
+            delivery::tauri::commands::streaming::is_cached,
+            delivery::tauri::commands::streaming::get_streaming_cache_stats,
+            delivery::tauri::commands::streaming::transcode_file,
+            delivery::tauri::commands::streaming::cleanup_cache_streaming,
+            delivery::tauri::commands::streaming::clear_cache_streaming
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

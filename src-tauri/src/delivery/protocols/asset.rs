@@ -4,7 +4,6 @@ use tauri::http::{header, Request, Response, StatusCode};
 use tauri::{AppHandle, Manager};
 
 use crate::core::repository::AssetQueryHandler;
-use crate::feature::transcoding::hls_manager::HlsManager;
 use percent_encoding::percent_decode_str;
 
 /// Setup the custom asset:// protocol for V2 Hexagonal Architecture
@@ -44,11 +43,6 @@ pub fn handler<R: tauri::Runtime>(
     request: &Request<Vec<u8>>,
 ) -> Response<Vec<u8>> {
     let uri = request.uri().to_string();
-
-    // Route to HLS Stream handler if this is a video chunk or playlist playback
-    if uri.contains("/stream/hls/") {
-        return hls_stream_handler(app_handle, request, &uri);
-    }
 
     let (asset_id, is_thumb) = parse_asset_uri(&uri);
 
@@ -355,134 +349,4 @@ async fn serve_file_async(
         .header(header::CACHE_CONTROL, "public, max-age=3600")
         .body(all_data)
         .unwrap_or_else(|_| Response::default()))
-}
-
-/// Specialized subset handler for On-the-Fly HLS Delivery
-///
-/// Converts a specific physical asset chunk to an HLS format by wrapping `HlsManager`.
-///
-/// # Arguments
-/// * `app_handle` - Injected app instance
-/// * `request` - The HTTP Request
-/// * `uri` - Extracted raw URI string
-fn hls_stream_handler<R: tauri::Runtime>(
-    app_handle: &AppHandle<R>,
-    request: &Request<Vec<u8>>,
-    uri: &str,
-) -> Response<Vec<u8>> {
-    // Expected URI: asset://localhost/stream/hls/{asset_id}/playlist.m3u8
-    // or asset://localhost/stream/hls/{asset_id}/segment_00001.ts
-    // Extract asset_id and the target file name
-    let prefix = "asset://localhost/stream/hls/";
-    let path_with_query = if uri.starts_with(prefix) {
-        &uri[prefix.len()..]
-    } else {
-        return error_response(StatusCode::BAD_REQUEST, b"Invalid HLS URI".to_vec());
-    };
-
-    // Split on queries ignoring them if any
-    let (path_part, _query_part) = if let Some(pos) = path_with_query.find('?') {
-        (&path_with_query[..pos], Some(&path_with_query[pos + 1..]))
-    } else {
-        (path_with_query, None)
-    };
-
-    // Split into asset_id and filename
-    let parts: Vec<&str> = path_part.split('/').collect();
-    if parts.len() < 2 {
-        return error_response(StatusCode::BAD_REQUEST, b"Missing asset_id or filename".to_vec());
-    }
-
-    let asset_id = parts[0];
-    let file_name = parts[1];
-
-    let hls_manager = match app_handle.try_state::<Arc<HlsManager>>() {
-        Some(manager) => manager,
-        None => {
-            tracing::error!("HlsManager not found in Tauri AppState.");
-            return error_response(StatusCode::INTERNAL_SERVER_ERROR, b"HLS Manager state missing".to_vec());
-        }
-    };
-
-    if file_name == "playlist.m3u8" {
-        // Find the physical path from DB first
-        let query_handler = match app_handle.try_state::<Arc<dyn AssetQueryHandler>>() {
-            Some(handler) => handler,
-            None => {
-                return error_response(StatusCode::INTERNAL_SERVER_ERROR, b"Query handler not found".to_vec());
-            }
-        };
-
-        let asset_result = tauri::async_runtime::block_on(async { query_handler.get_by_id(asset_id).await });
-        let asset = match asset_result {
-            Ok(Some(a)) => a,
-            Ok(None) => return error_response(StatusCode::NOT_FOUND, b"Asset not found".to_vec()),
-            Err(_) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, b"Database error".to_vec()),
-        };
-
-        let original_path = asset.path;
-        if !original_path.exists() {
-            return error_response(StatusCode::NOT_FOUND, b"Original media missing on disk".to_vec());
-        }
-
-        let mime = mime_guess::from_path(&original_path).first_or_octet_stream().to_string();
-
-        let session_dir_res = tauri::async_runtime::block_on(async {
-            hls_manager.get_or_start_stream(asset_id, &original_path, Some(&mime)).await
-        });
-
-        let session_dir = match session_dir_res {
-            Ok(dir) => dir,
-            Err(e) => {
-                tracing::error!("HLS spawn failed: {:?}", e);
-                return error_response(StatusCode::INTERNAL_SERVER_ERROR, b"HLS transcode pipeline failed".to_vec());
-            }
-        };
-
-        let playlist_path = session_dir.join("playlist.m3u8");
-
-        // Wait up to ~10 seconds for the first playlist chunks to be available parsing by FFmpeg
-        let mut tries = 0;
-        while !playlist_path.exists() && tries < 50 {
-            std::thread::sleep(std::time::Duration::from_millis(200));
-            tries += 1;
-        }
-
-        if !playlist_path.exists() {
-            return error_response(StatusCode::GATEWAY_TIMEOUT, b"Playlist segmenting timed out".to_vec());
-        }
-
-        let content = std::fs::read(&playlist_path).unwrap_or_default();
-        return Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .header(header::CACHE_CONTROL, "no-cache")
-            .body(content)
-            .unwrap_or_else(|_| Response::default());
-
-    } else if file_name.ends_with(".ts") {
-        hls_manager.touch_session(asset_id);
-
-        let session_dir = hls_manager.streams_dir.join(asset_id);
-        let segment_path = session_dir.join(file_name);
-
-        let range_header = request.headers().get(header::RANGE).cloned();
-        let response_result = tauri::async_runtime::block_on(async {
-            serve_file_async(&segment_path, range_header.as_ref()).await
-        });
-
-        return match response_result {
-            Ok(mut res) => {
-                // Ensure proper content type for segments
-                res.headers_mut().insert(header::CONTENT_TYPE, "video/MP2T".parse().unwrap());
-                // Short cache control for segments
-                res.headers_mut().insert(header::CACHE_CONTROL, "public, max-age=3600".parse().unwrap());
-                res
-            },
-            Err(res) => res, // 404 or Read errors naturally propagated
-        };
-    }
-
-    error_response(StatusCode::BAD_REQUEST, b"Only .m3u8 and .ts are allowed for HLS pipeline".to_vec())
 }

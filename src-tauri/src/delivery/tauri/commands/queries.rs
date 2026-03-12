@@ -301,7 +301,7 @@ pub async fn get_asset_exif(
 
 /// RPC Command to get statistics about the transcoding and thumbnail cache.
 #[tauri::command]
-pub async fn get_cache_stats(handle: tauri::AppHandle) -> AppResult<serde_json::Value> {
+pub async fn get_library_cache_stats(handle: tauri::AppHandle) -> AppResult<serde_json::Value> {
     let app_data = handle
         .path()
         .app_local_data_dir()

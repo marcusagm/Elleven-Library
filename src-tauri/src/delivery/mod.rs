@@ -23,4 +23,5 @@
 ///     .unwrap();
 /// ```
 pub mod protocols;
+pub mod streaming;
 pub mod tauri;

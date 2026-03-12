@@ -1,0 +1,132 @@
+//! Streaming and Transcoding IPC Gateway
+//!
+//! Provides the Tauri commands required for the frontend to interact with
+//! the streaming server and transcoding engine.
+
+use std::sync::Arc;
+use tauri::{AppHandle, Manager, State};
+use crate::core::repository::AssetQueryHandler;
+use crate::core::error::AppResult;
+use crate::feature::transcoding::detector::{self, MediaKind};
+use crate::feature::transcoding::cache::{TranscodeCache, CacheStats};
+use crate::feature::transcoding::profiles::TranscodeQuality;
+use crate::delivery::tauri::commands::queries::StreamingSessionToken;
+
+/// Checks if a file needs transcoding for playback.
+#[tauri::command]
+pub async fn needs_transcoding(path: String) -> bool {
+    detector::needs_transcoding(std::path::Path::new(&path))
+}
+
+/// Checks if a file is natively supported by the webview.
+#[tauri::command]
+pub async fn is_native_format(path: String) -> bool {
+    detector::is_native_format(std::path::Path::new(&path))
+}
+
+/// Generates a streaming URL for an asset.
+#[tauri::command]
+pub async fn get_stream_url(
+    app_handle: AppHandle,
+    asset_id: String,
+) -> AppResult<String> {
+    let session_token = app_handle.state::<StreamingSessionToken>();
+    let port = 9876; // Default port
+    
+    // Check if it's native or needs HLS
+    let query_handler = app_handle.state::<Arc<dyn AssetQueryHandler>>();
+    let asset = query_handler.get_by_id(&asset_id).await?
+        .ok_or_else(|| crate::core::error::AppError::NotFound(asset_id.clone()))?;
+    
+    let is_native = detector::is_native_format(&asset.path);
+    let media_kind = detector::get_media_kind(&asset.path);
+
+    if is_native {
+        Ok(format!("http://localhost:{}/stream/{}?token={}", port, asset_id, session_token.0))
+    } else if media_kind != MediaKind::Unknown {
+        Ok(format!("http://localhost:{}/playlist/{}/playlist.m3u8?token={}", port, asset_id, session_token.0))
+    } else {
+        Err(crate::core::error::AppError::UnsupportedFormat(asset.path.to_string_lossy().to_string()))
+    }
+}
+
+/// Returns available quality options for a video asset.
+#[tauri::command]
+pub async fn get_quality_options(_asset_id: String) -> Vec<TranscodeQuality> {
+    vec![
+        TranscodeQuality::Low,
+        TranscodeQuality::Medium,
+        TranscodeQuality::High,
+        TranscodeQuality::Original,
+    ]
+}
+
+/// Checks if FFmpeg is available on the system.
+#[tauri::command]
+pub async fn ffmpeg_available() -> bool {
+    crate::processing::transcoding::check_transcoding_availability()
+}
+
+/// Checks if a cached version of the file exists for a given quality.
+#[tauri::command]
+pub async fn is_cached(
+    app_handle: AppHandle,
+    asset_id: String,
+    quality: TranscodeQuality,
+) -> AppResult<bool> {
+    let cache = app_handle.state::<Arc<TranscodeCache>>();
+    let query_handler = app_handle.state::<Arc<dyn AssetQueryHandler>>();
+    
+    let asset = query_handler.get_by_id(&asset_id).await?
+        .ok_or_else(|| crate::core::error::AppError::NotFound(asset_id))?;
+        
+    Ok(cache.exists(&asset.path, quality))
+}
+
+/// Returns statistics about the transcode cache.
+#[tauri::command]
+pub async fn get_streaming_cache_stats(cache: State<'_, Arc<TranscodeCache>>) -> AppResult<CacheStats> {
+    Ok(cache.get_stats())
+}
+
+/// Manually triggers transcoding for a file (useful for pre-caching).
+#[tauri::command]
+pub async fn transcode_file(
+    app_handle: AppHandle,
+    asset_id: String,
+    _quality: TranscodeQuality,
+) -> AppResult<()> {
+    let query_handler = app_handle.state::<Arc<dyn AssetQueryHandler>>();
+    let hls_manager = app_handle.state::<Arc<crate::feature::transcoding::hls_manager::HlsManager>>();
+
+    let asset = query_handler
+        .get_by_id(&asset_id)
+        .await?
+        .ok_or_else(|| crate::core::error::AppError::NotFound(asset_id))?;
+
+    let mime = mime_guess::from_path(&asset.path)
+        .first_or_octet_stream()
+        .to_string();
+
+    hls_manager
+        .get_or_start_stream(&asset.id, &asset.path, Some(&mime))
+        .await
+        .map_err(|e| crate::core::error::AppError::Streaming(format!("{:?}", e)))?;
+
+    Ok(())
+}
+
+/// Cleans up the transcode cache.
+#[tauri::command]
+pub async fn cleanup_cache_streaming(
+    cache: State<'_, Arc<TranscodeCache>>,
+    max_age_days: u64,
+) -> AppResult<usize> {
+    Ok(cache.cleanup(max_age_days))
+}
+
+/// Clears the entire transcode cache.
+#[tauri::command]
+pub async fn clear_cache_streaming(cache: State<'_, Arc<TranscodeCache>>) -> AppResult<usize> {
+    Ok(cache.clear_all())
+}

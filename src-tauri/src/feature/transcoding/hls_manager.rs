@@ -99,10 +99,10 @@ impl HlsManager {
 
         let profile = TranscodingProfile::resolve_for_hls(original_path, mime_type);
         let playlist_path = session_dir.join("playlist.m3u8");
-        // E.g segment pattern: /streams/abcd1234/segment_%05d.ts
         let segment_pattern = session_dir.join("segment_%05d.ts");
 
-        let mut cmd = Command::new("ffmpeg");
+        let tools = crate::processing::transcoding::resolve_transcoding_tools::<tauri::Wry>(None)?;
+        let mut cmd = Command::new(tools.ffmpeg);
 
         cmd.args(&profile.input_args)
             .arg("-i")

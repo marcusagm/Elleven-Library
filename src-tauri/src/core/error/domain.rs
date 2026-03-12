@@ -33,6 +33,10 @@ pub enum AppError {
     #[error("Transcoding error: {0}")]
     Transcoding(String),
 
+    /// Error related to streaming operations.
+    #[error("Streaming error: {0}")]
+    Streaming(String),
+
     /// Error when a resource (file, folder, tag) is not found.
     #[error("Requested resource not found: {0}")]
     NotFound(String),

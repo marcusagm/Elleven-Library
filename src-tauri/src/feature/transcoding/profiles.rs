@@ -4,7 +4,18 @@
 //! The goal is to prioritize latency over master quality to allow instant playback
 //! of heavy MKV and unsupported video files in the Solid.js UI.
 
+use serde::{Deserialize, Serialize};
 use std::path::Path;
+
+/// Available transcoding quality presets.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum TranscodeQuality {
+    Low,      // 480p, low bitrate
+    Medium,   // 720p, medium bitrate
+    High,     // 1080p, high bitrate
+    Original, // Max resolution, high bitrate
+}
 
 /// Defines the FFmpeg arguments to execute a fragmented HLS conversion.
 #[derive(Debug, Clone)]

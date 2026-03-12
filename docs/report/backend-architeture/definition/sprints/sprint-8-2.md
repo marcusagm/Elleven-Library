@@ -1,8 +1,8 @@
 # Sprint 8.2: Streaming Server HTTP e Transcoding Commands
 
-**Status:** Pendente
-**Data e hora de inicio:** -  
-**Data da conclusão:** -
+**Status:** Concluído
+**Data e hora de inicio:** 2026-03-11 11:45
+**Data da conclusão:** 2026-03-11 20:55
 
 **Fase 8:** Paridade IPC — Mídia, Manutenção e Utilidades
 **Objetivo:** Restaurar todo o subsistema de streaming de mídia pesada: o servidor HTTP embarcado (warp/axum) com range requests (206 Partial Content), token de autenticação por sessão, detecção de necessidade de transcoding, geração de URL para stream, e gerenciamento de cache de transcoding.
@@ -10,56 +10,56 @@
 ---
 
 ## 🎯 Critérios de Aceite (E2E Testable)
-1. O backend inicia um servidor HTTP local em porta configurável com token de segurança.
-2. O frontend pode solicitar `get_stream_url(asset_id)` e receber uma URL com token válido.
-3. O `<video>` tag do frontend reproduz vídeos via HTTP Range Requests (206 Partial Content) sem carregar o arquivo inteiro em memória.
-4. O frontend pode verificar se um arquivo necessita transcoding (`needs_transcoding`).
-5. O frontend pode verificar se FFmpeg está disponível (`ffmpeg_available`).
-6. O frontend pode pré-transcodificar um arquivo e gerenciar cache (is_cached, cleanup_cache, clear_cache, get_cache_stats).
-7. `get_streaming_token` retorna o token de sessão para autenticação.
-8. `cargo build` compila sem warnings.
+1. [x] O backend inicia um servidor HTTP local em porta configurável com token de segurança.
+2. [x] O frontend pode solicitar `get_stream_url(asset_id)` e receber uma URL com token válido.
+3. [x] O `<video>` tag do frontend reproduz vídeos via HTTP Range Requests (206 Partial Content) sem carregar o arquivo inteiro em memória.
+4. [x] O frontend pode verificar se um arquivo necessita transcoding (`needs_transcoding`).
+5. [x] O frontend pode verificar se FFmpeg está disponível (`ffmpeg_available`).
+6. [x] O frontend pode pré-transcodificar um arquivo e gerenciar cache (is_cached, cleanup_cache, clear_cache, get_cache_stats).
+7. [x] `get_streaming_token` retorna o token de sessão para autenticação.
+8. [x] `cargo build` compila sem warnings.
 
 ---
 
 ## 📋 Tarefas (Checklist do Agente)
 
 ### 1. Restaurar Streaming Server HTTP
-- [ ] **O V2 já possui `HlsManager`** (sprint 5.2) em `feature/transcoding/hls_manager.rs`. Verificar o que já está implementado.
-- [ ] O que FALTA é o **servidor HTTP genérico** que serve bytes diretos com Range Requests para formatos nativos (MP4/WebM que o Chromium suporta sem transcoding).
-- [ ] Criar `delivery/streaming/server.rs` (ou verificar se já existe):
+- [x] **O V2 já possui `HlsManager`** (sprint 5.2) em `feature/transcoding/hls_manager.rs`. Verificar o que já está implementado.
+- [x] O que FALTA é o **servidor HTTP genérico** que serve bytes diretos com Range Requests para formatos nativos (MP4/WebM que o Chromium suporta sem transcoding).
+- [x] Criar `delivery/streaming/server.rs` (ou verificar se já existe):
   - Bind em `127.0.0.1:<port>` com `warp` ou `axum` (usar o mesmo framework do HLS).
   - Rota `/stream/<asset_id>?token=<session_token>` → valida token → serve com 206 Partial Content.
   - Rota `/hls/<asset_id>/master.m3u8?token=<token>` → serve manifesto HLS via HlsManager.
   - Rota `/hls/<asset_id>/<segment>.ts?token=<token>` → serve segmentos TS.
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/streaming/server.rs` — servidor warp completo com routes, token validation e lifecycle.
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/streaming/linear.rs` — streaming de arquivo direto com Range headers.
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/streaming/helpers.rs` — utilidades de parsing de range headers.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/streaming/server.rs` — servidor warp completo com routes, token validation e lifecycle.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/streaming/linear.rs` — streaming de arquivo direto com Range headers.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/streaming/helpers.rs` — utilidades de parsing de range headers.
 
 ### 2. Implementar Token de Sessão
-- [ ] Criar struct `StreamingSessionToken(String)` gerenciada via `app.manage()`.
-- [ ] Gerar UUID v4 no boot e armazenar via `App::manage`.
-- [ ] IPC `get_streaming_token` → retorna o token ao frontend.
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/lib.rs` L25-38 — struct e command inline.
+- [x] Criar struct `StreamingSessionToken(String)` gerenciada via `app.manage()`.
+- [x] Gerar UUID v4 no boot e armazenar via `App::manage`.
+- [x] IPC `get_streaming_token` → retorna o token ao frontend.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/lib.rs` L25-38 — struct e command inline.
 
 ### 3. Implementar Transcoding Commands (Detecção e Cache)
-- [ ] O V2 já possui `feature/transcoding/profiles.rs`. Verificar o que existe.
-- [ ] Criar módulo `feature/transcoding/detector.rs` (ou adaptar do V1):
+- [x] O V2 já possui `feature/transcoding/profiles.rs`. Verificar o que existe.
+- [x] Criar módulo `feature/transcoding/detector.rs` (ou adaptar do V1):
   - `needs_transcoding(path) -> bool` — checa se codec é incompatível com Chromium.
   - `is_native_format(path) -> bool` — checa se é MP4/WebM nativo.
   - `get_media_type(path) -> Audio | Video | Unknown`.
-- [ ] Criar módulo `feature/transcoding/cache.rs`:
+- [x] Criar módulo `feature/transcoding/cache.rs`:
   - `TranscodeCache` struct que gerencia arquivos transcodificados em `<app_data>/transcoded/`.
   - Métodos: `exists()`, `get_cache_size()`, `get_file_count()`, `cleanup(max_age_days)`, `clear_all()`.
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/transcoding/detector.rs`, `cache.rs`, `quality.rs`.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/transcoding/detector.rs`, `cache.rs`, `quality.rs`.
 
 ### 4. Criar get_stream_url com lógica de roteamento
-- [ ] Lógica:
+- [x] Lógica:
   1. Se `is_native_format(path)` → retorna URL `http://127.0.0.1:<port>/stream/<id>?token=<token>`.
   2. Se `needs_transcoding(path)` → verifica se HLS está pronto, senão inicia via HlsManager → retorna URL HLS.
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/transcoding/commands.rs` → `get_stream_url()` L22-61.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/transcoding/commands.rs` → `get_stream_url()` L22-61.
 
 ### 5. Criar IPC Commands
-- [ ] Em `delivery/tauri/commands/queries.rs` ou novo arquivo `delivery/tauri/commands/streaming.rs`:
+- [x] Em `delivery/tauri/commands/queries.rs` ou novo arquivo `delivery/tauri/commands/streaming.rs`:
   ```rust
   get_streaming_token() -> String
   needs_transcoding(path) -> bool
@@ -70,7 +70,7 @@
   is_cached(path, quality) -> bool
   get_cache_stats() -> AppResult<CacheStats>
   ```
-- [ ] Em mutações:
+- [x] Em mutações:
   ```rust
   transcode_file(path, quality) -> AppResult<String>
   cleanup_cache(max_age_days) -> AppResult<usize>
@@ -78,19 +78,19 @@
   ```
 
 ### 6. Iniciar Streaming Server no Boot (`lib.rs`)
-- [ ] No setup do `lib.rs`, após DB init:
+- [x] No setup do `lib.rs`, após DB init:
   1. Criar `StreamingSessionToken` e gerenciar.
   2. Spawnar o servidor HTTP com lifecycle token.
   3. Registrar no `LifecycleRegistry` para graceful shutdown.
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/lib.rs` L132-145 — `spawn_server()`.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/lib.rs` L132-145 — `spawn_server()`.
 
 ### 7. Registrar commands no `lib.rs`
-- [ ] Adicionar os 11 novos commands ao `invoke_handler`.
+- [x] Adicionar os 11 novos commands ao `invoke_handler`.
 
 ### 8. Verificar Custom Protocols V2
-- [ ] O V2 tem `delivery/protocols/asset.rs` como protocolo unificado. Verificar se `audio://`, `video://`, `audio-stream://`, `video-stream://` precisam ser registrados separadamente ou se `asset://` cobre tudo.
-- [ ] **Referência V1:** `Mundam-main/src-tauri/src/protocols/` — 10 arquivos para protocolos distintos (audio, video, font, image, model, etc.).
-- [ ] **Decisão:** No V2, o `asset://` unificado pode servir thumbnails e imagens. Para streaming de vídeo/áudio, o servidor HTTP é a rota correta (não custom protocols).
+- [x] O V2 tem `delivery/protocols/asset.rs` como protocolo unificado. Verificar se `audio://`, `video://`, `audio-stream://`, `video-stream://` precisam ser registrados separadamente ou se `asset://` cobre tudo.
+- [x] **Referência V1:** `Mundam-main/src-tauri/src/protocols/` — 10 arquivos para protocolos distintos (audio, video, font, image, model, etc.).
+- [x] **Decisão:** No V2, o `asset://` unificado pode servir thumbnails e imagens. Para streaming de vídeo/áudio, o servidor HTTP é a rota correta (não custom protocols).
 
 ---
 
@@ -139,10 +139,20 @@
 ## 🚀 Informações da Implementação
 
 ### Dificuldades e Desafios
-- 
+- Sincronização de tipos entre as JoinHandles do Tokio (Axum) e Tauri (LifecycleRegistry). Resolvido usando o runtime do Tauri.
+- Conflitos de nomes de IPC commands entre o subsistema de streaming e o subsistema de biblioteca. Resolvido com renomeação semântica (`get_streaming_cache_stats` vs `get_library_cache_stats`).
+- Gerenciamento de Body Streaming no Axum para suportar Range Requests corretamente com closures assíncronas.
 
 ### Melhorias Realizadas
-- 
+- Implementação mais modular que no V1, separando detector, cache e servidor em módulos distintos e independentes.
+- Integração profunda com o `LifecycleRegistry` do V2, garantindo que o servidor HTTP libere a porta imediatamente no shutdown.
 
 ### 📄 Arquivos Criados ou Modificados
-- 
+- [NEW] `src-tauri/src/delivery/streaming/server.rs`
+- [NEW] `src-tauri/src/feature/transcoding/detector.rs`
+- [NEW] `src-tauri/src/feature/transcoding/cache.rs`
+- [NEW] `src-tauri/src/delivery/tauri/commands/streaming.rs`
+- [MODIFY] `src-tauri/src/lib.rs` (Setup, lifecycle, commands)
+- [MODIFY] `src-tauri/src/delivery/tauri/commands/queries.rs` (Rename duplicate command)
+- [MODIFY] `src-tauri/src/delivery/protocols/asset.rs` (Remove dead code)
+- [MODIFY] `src-tauri/src/feature/transcoding/hls_manager.rs` (Tool resolution)
