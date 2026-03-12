@@ -38,6 +38,11 @@ export const tagActions = {
         }
     },
 
+    /**
+     * Loads all tags from the service and updates the metadata state.
+     *
+     * @returns {Promise<void>}
+     */
     loadTags: async () => {
         try {
             const tags = await tagService.getAllTags();
@@ -60,7 +65,10 @@ export const tagActions = {
         color?: string | null
     ): Promise<ActionResult<string>> => {
         try {
-            const id = await tagService.createTag(name, parentId, color);
+            const result = await tagService.createTag(name, parentId, color);
+            // In V2, service returns a full Tag object.
+            const id = result.id;
+
             await tagActions.loadTags();
             tagActions.notifyTagUpdate();
             return { success: true, data: id };
@@ -174,9 +182,7 @@ export const tagActions = {
 
             // Delete in chunks or parallel? Sequential for now to ensure consistency
             // if DB has constraints, though usually it's fine.
-            for (const tagId of toDelete) {
-                await tagService.deleteTag(tagId);
-            }
+            for (const tagId of toDelete) await tagService.deleteTag(tagId);
 
             await tagActions.loadTags();
             tagActions.notifyTagUpdate();
@@ -220,15 +226,21 @@ export const tagActions = {
     ): Promise<ActionResult> => {
         try {
             let allTags = metadataState.tags;
-            let draggedTag = allTags.find(t => t.id === draggedTagId);
+            let draggedTag = allTags.find(t => String(t.id) === String(draggedTagId));
 
             if (!draggedTag) {
+                console.warn(`[tagActions] Tag ${draggedTagId} not found in state, refreshing...`);
                 await tagActions.loadTags();
                 allTags = metadataState.tags;
-                draggedTag = allTags.find(t => t.id === draggedTagId);
+                draggedTag = allTags.find(t => String(t.id) === String(draggedTagId));
             }
 
-            if (!draggedTag) throw new Error('Dragged tag not found');
+            if (!draggedTag) {
+                console.error(
+                    `[tagActions] Failed to move tag: Tag ${draggedTagId} still not found after refresh.`
+                );
+                throw new Error('Dragged tag not found');
+            }
 
             let newParentId: string | null = null;
             if (position === 'inside') {
@@ -259,14 +271,14 @@ export const tagActions = {
                 const isDragged = tag.id === draggedTagId;
 
                 // Only update if parent changed or order changed.
-                // NOTE: We pass 0 for newParentId if it's null, as the Rust backend
-                // interprets 0 as a signal to set parent_id to NULL.
+                // NOTE: We pass "0" for newParentId if it's null, as the Rust backend
+                // normalizes "0" or "" as NULL in the database.
                 if (isDragged || tag.order_index !== newOrder) {
                     return tagService.updateTag(
                         tag.id,
                         null,
                         null,
-                        isDragged ? (newParentId ?? null) : tag.parent_id,
+                        isDragged ? (newParentId ?? '0') : tag.parent_id,
                         newOrder
                     );
                 }

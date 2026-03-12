@@ -129,7 +129,7 @@ export const useTreeDragDrop = (dragDropOptions: TreeDragDropOptions) => {
                     ? {
                           type: 'TAG',
                           payload: {
-                              id: Number(node.id),
+                              id: String(node.id),
                               name: node.label,
                               parent_id: nodeData?.parent_id
                           }

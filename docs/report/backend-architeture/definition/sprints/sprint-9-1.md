@@ -31,9 +31,9 @@
 
 ### Tags
 
-**Status:** Pendente
-**Data e hora de inicio:** -
-**Data e hora da conclusão:** -
+**Status:** Concluído
+**Data e hora de inicio:** 2026-03-12 15:12
+**Data e hora da conclusão:** 2026-03-12 16:04
 
 **Arquivos da arquitetura v1 para referência:**
 - `mundam-main/src-tauri/src/db/tags.rs`
@@ -41,9 +41,9 @@
 
 **Lista de problemas**
 
-- [ ] Ao criar clicar para criar uma nova tag em `src/components/features/tags/TagTreeSidebarPanel.tsx` deveria ficar um campo de texto para digitar o nome da tag e apertar enter para criar. Atualmente ele cria a tag, mas é preciso ir no menu de contexto para renomear.
-- [ ] As tags não permitem mais a definição hierarquica igual o backend v1 permitia. Onde era possível criar tags filhas de outras tags. Agora ele cria tags como se fossem todas do mesmo nível.
-- [ ] Os seguintes erros ocorrem ao tentar usar o DND para atribuir uma tag a um asset, seja arrastando a tag para um asset, arrastando um ou mais assets selecionados para uma tag, ou atribuindo via `TagInput` pelo `src/components/features/inspector/base/InspectorTags.tsx`:
+- [x] Ao criar clicar para criar uma nova tag em `src/components/features/tags/TagTreeSidebarPanel.tsx` deveria ficar um campo de texto para digitar o nome da tag e apertar enter para criar. Atualmente ele cria a tag, mas é preciso ir no menu de contexto para renomear.
+- [x] As tags não permitem mais a definição hierarquica igual o backend v1 permitia. Onde era possível criar tags filhas de outras tags. Agora ele cria tags como se fossem todas do mesmo nível.
+- [x] Os seguintes erros ocorrem ao tentar usar o DND para atribuir uma tag a um asset, seja arrastando a tag para um asset, arrastando um ou mais assets selecionados para uma tag, ou atribuindo via `TagInput` pelo `src/components/features/inspector/base/InspectorTags.tsx`:
   ```shell
   [Error] [IPC Error: add_tags_to_assets_batch] – "invalid args `assetIds` for command `add_tags_to_assets_batch`: command add_tags_to_assets_batch missing required key assetIds"
 	(anonymous function) (api.ts:30)
@@ -58,7 +58,7 @@
 	promiseReactionJobWithoutPromise
 	promiseReactionJob
   ```
-- [ ] Ao tentar reordenar ou adicionar uma tag como filha de outra tag usando o DND, ocorre o seguinte erro:
+- [x] Ao tentar reordenar ou adicionar uma tag como filha de outra tag usando o DND, ocorre o seguinte erro:
   ```shell
   [Error] Failed to move tag:
   Error: Dragged tag not found
@@ -151,6 +151,7 @@
 
 **Lista de problemas**
 - [ ] A alteração da ordenação de assets não está funcionando corretamente ao acionar `src/core/store/filter/filterState.tsx`
+- [ ] Em `src/components/features/statusbar/StatusCounts.tsx`, o contador de assets total indica sempre zero, apenas o contador de itens carregados está correto.
 
 ### Smart Folders e advanced search
 
@@ -205,6 +206,8 @@
 
 > Todos os formatos que eram suportados pelo backend v1, foram exaustivavente testados e todos estavam funcionando perfeitamente tanto na geração de thumbnails, quanto preview e extração de metadados. Precisamos que o backend v2 estja no mesmo nível ou superior, qualquer regressão é inadimissivel. 
 
+> Quando necessário, os arquivos de store que chamam o invoke para metodos do backend, podem ser atualizados para refletir as mudanças feitas no backend.
+
 ## 🚀 Informações da Implementação
 
 ### Dificuldades e Desafios
@@ -217,7 +220,9 @@ Durante a implementação da descoberta da árvore de pastas, houve uma inconsis
 
 #### Tags
 
-Adicione informações sobre os problemas encontrados na tags.
+Durante a migração para a arquitetura V2, diversos problemas críticos foram identificados no sistema de tags. O principal desafio foi a quebra do contrato IPC entre frontend e backend: enquanto o frontend enviava dados em camelCase (ex: `assetIds`), o backend esperava campos diretos que falhavam na desserialização do Rust, gerando erros de "missing required key". 
+
+Além disso, houve uma regressão grave nos tipos de identificadores: IDs de tags (UUIDs) estavam sendo convertidos incorretamente para `Number` na camada de Drag and Drop do frontend, o que resultava em falhas de busca ("Dragged tag not found") e violações de integridade referencial no SQLite (Foreign Key constraint failed). Por fim, o fluxo de criação de tags estava dessincronizado, pois o serviço retornava um objeto `Tag` completo onde a UI esperava apenas a string do ID, impedindo o acionamento automático do modo de renomeação.
 
 #### ItemInspector e ItemView
 
@@ -247,7 +252,11 @@ Adicione informações sobre os problemas encontrados na settings.
 
 #### Tags
 
-Adicione informações sobre as melhorias realizadas na tags.
+- **Hierarquia e Normalização:** O `SqliteAssetLedger` foi atualizado para interpretar corretamente sinais de parentesco (tratando `"0"` como Root), restaurando a paridade de paridade com o V1 para sub-tags.
+- **Correção de Contrato IPC:** Os comandos de mutação em lote (`add_tags_to_assets_batch`, etc.) foram ajustados para aceitar o payload envelopado e tipado corretamente, eliminando erros de serialização.
+- **Normalização de IDs:** Todos os identificadores de tags foram padronizados como `String` (UUID) em todas as camadas (DND, Stores, Actions), resolvendo inconsistências de tipo e erros de banco de dados.
+- **UX de Criação:** O fluxo foi aprimorado para extrair automaticamente o ID do objeto retornado pelo backend, permitindo foco e edição imediata do nome sem necessidade de `setTimeout` ou menus manuais.
+- **Refatoração com Type Safety:** Removidos casts de tipo inseguros (`any`) e atualizadas as interfaces do `tagService` para refletir os reais retornos do backend, aumentando a robustez do código.
 
 #### ItemInspector e ItemView
 
@@ -282,7 +291,14 @@ Adicione informações sobre as melhorias realizadas na settings.
 
 #### Tags
 
-Adicione a lista de arquivos criados ou modificados na tags.
+- `src-tauri/src/infra/database/ledger.rs`: Normalização de `parent_id` e integridade de tags.
+- `src-tauri/src/delivery/tauri/commands/mutations.rs`: Ajuste de contratos IPC para comandos em lote.
+- `src-tauri/src/core/ledger/command.rs`: Padronização do `BatchTagsPayload`.
+- `src/lib/tags.ts`: Correção de tipagem no `tagService` (retorno de `createTag`).
+- `src/core/dnd/dnd-core.ts`: Atualização do `TagDragPayload` para suportar IDs UUID.
+- `src/core/store/metadata/tagActions.ts`: Correção de lógica de busca, extração de ID e normalização em lote.
+- `src/components/ui/TreeView/hooks/useTreeDragDrop.ts`: Correção de cast de ID de `Number` para `String`.
+- `src/components/features/tags/TagTreeSidebarPanel.tsx`: Melhoria no fluxo de criação e remoção de delays artificiais.
 
 #### ItemInspector e ItemView
 

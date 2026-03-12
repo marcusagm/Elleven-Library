@@ -20,9 +20,9 @@ export interface AssetDragPayload {
 }
 
 export interface TagDragPayload {
-    id: number;
+    id: string | number;
     name: string;
-    parent_id?: number | null;
+    parent_id?: string | number | null;
     color?: string | null;
 }
 

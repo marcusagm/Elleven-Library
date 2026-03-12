@@ -120,7 +120,10 @@ export const TagTreeSidebarPanel: Component = () => {
         const result = await metadata.createTag(name);
 
         if (result.success && result.data) {
-            setEditingId(result.data);
+            // Give the tree a moment to render the new node before entering edit mode
+            setTimeout(() => {
+                setEditingId(result.data);
+            }, 100);
         } else {
             notification.error('Failed to Create Tag');
         }
@@ -132,7 +135,10 @@ export const TagTreeSidebarPanel: Component = () => {
         const result = await metadata.createTag(name, parentId);
 
         if (result.success && result.data) {
-            setEditingId(result.data);
+            // Give the tree a moment to render the new node before entering edit mode
+            setTimeout(() => {
+                setEditingId(result.data);
+            }, 100);
         } else {
             notification.error('Failed to Create Child Tag');
         }

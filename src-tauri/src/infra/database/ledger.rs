@@ -946,12 +946,21 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
             LedgerCommand::CreateTag(payload) => {
                 let tag_id = Uuid::new_v4().to_string();
 
+                let normalized_parent_id = payload.parent_id.as_ref().and_then(|id| {
+                    if id.is_empty() || id == "0" {
+                        None
+                    } else {
+                        Some(id.clone())
+                    }
+                });
+
                 sqlx::query!(
-                    r#"INSERT INTO tags (id, name, color, parent_id) VALUES (?, ?, ?, ?)"#,
+                    r#"INSERT INTO tags (id, name, color, parent_id, order_index) VALUES (?, ?, ?, ?, ?)"#,
                     tag_id,
                     payload.name,
                     payload.color,
-                    payload.parent_id
+                    normalized_parent_id,
+                    0 // Default order_index for new tags
                 )
                 .execute(&mut *tx)
                 .await?;
@@ -1026,7 +1035,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         query = query.bind(tag_color);
                     }
                     if let Some(ref parent_tag_id) = payload.parent_id {
-                        if parent_tag_id.is_empty() {
+                        if parent_tag_id.is_empty() || parent_tag_id == "0" {
                             query = query.bind(None::<String>);
                         } else {
                             query = query.bind(parent_tag_id);

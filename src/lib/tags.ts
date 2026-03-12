@@ -73,7 +73,7 @@ export const tagService = {
         name: string,
         parentId?: string | null,
         color?: string | null
-    ): Promise<string> => {
+    ): Promise<Tag> => {
         return await invoke('create_tag', { name, parentId, color });
     },
 

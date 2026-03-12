@@ -189,14 +189,10 @@ pub async fn delete_tag(
 #[tauri::command]
 pub async fn add_tags_to_assets_batch(
     ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
-    asset_ids: Vec<String>,
-    tag_ids: Vec<String>,
+    payload: BatchTagsPayload,
 ) -> AppResult<()> {
     ledger
-        .execute(LedgerCommand::AddTagsToAssetsBatch(BatchTagsPayload {
-            asset_ids,
-            tag_ids,
-        }))
+        .execute(LedgerCommand::AddTagsToAssetsBatch(payload))
         .await?;
     Ok(())
 }
@@ -215,14 +211,10 @@ pub async fn add_tags_to_assets_batch(
 #[tauri::command]
 pub async fn remove_tags_from_assets_batch(
     ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
-    asset_ids: Vec<String>,
-    tag_ids: Vec<String>,
+    payload: BatchTagsPayload,
 ) -> AppResult<()> {
     ledger
-        .execute(LedgerCommand::RemoveTagsFromAssetsBatch(BatchTagsPayload {
-            asset_ids,
-            tag_ids,
-        }))
+        .execute(LedgerCommand::RemoveTagsFromAssetsBatch(payload))
         .await?;
     Ok(())
 }
@@ -241,14 +233,10 @@ pub async fn remove_tags_from_assets_batch(
 #[tauri::command]
 pub async fn replace_tags_for_assets_batch(
     ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
-    asset_ids: Vec<String>,
-    tag_ids: Vec<String>,
+    payload: BatchTagsPayload,
 ) -> AppResult<()> {
     ledger
-        .execute(LedgerCommand::ReplaceTagsForAssetsBatch(BatchTagsPayload {
-            asset_ids,
-            tag_ids,
-        }))
+        .execute(LedgerCommand::ReplaceTagsForAssetsBatch(payload))
         .await?;
     Ok(())
 }
