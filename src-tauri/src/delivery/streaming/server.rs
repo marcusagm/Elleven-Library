@@ -74,8 +74,16 @@ pub async fn start_server(app_handle: AppHandle, port: u16) -> tauri::async_runt
     tracing::info!("Streaming server listening on {}", addr);
 
     tauri::async_runtime::spawn(async move {
-        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-        axum::serve(listener, app).await.unwrap();
+        let listener = match tokio::net::TcpListener::bind(addr).await {
+            Ok(listener) => listener,
+            Err(error) => {
+                tracing::error!("Failed to bind streaming server to {}: {}", addr, error);
+                return;
+            }
+        };
+        if let Err(error) = axum::serve(listener, app).await {
+            tracing::error!("Streaming server exited with error: {}", error);
+        }
     })
 }
 
@@ -180,11 +188,11 @@ async fn playlist_handler(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Response::builder()
+    Response::builder()
         .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
         .header(header::CACHE_CONTROL, "no-cache")
         .body(Body::from(content))
-        .unwrap())
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 /// Handler for HLS segments.
@@ -234,24 +242,24 @@ async fn serve_file(path: &StdPath, range: Option<header::HeaderValue>) -> Resul
             let stream = ReaderStream::new(AsyncReadExt::take(file, length));
             let body = Body::from_stream(stream);
 
-            return Ok(Response::builder()
+            return Response::builder()
                 .status(StatusCode::PARTIAL_CONTENT)
                 .header(header::CONTENT_TYPE, mime)
                 .header(header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, end, size))
                 .header(header::ACCEPT_RANGES, "bytes")
                 .header(header::CONTENT_LENGTH, length)
                 .body(body)
-                .unwrap());
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
     }
 
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);
 
-    Ok(Response::builder()
+    Response::builder()
         .header(header::CONTENT_TYPE, mime)
         .header(header::CONTENT_LENGTH, size)
         .header(header::ACCEPT_RANGES, "bytes")
         .body(body)
-        .unwrap())
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }

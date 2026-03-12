@@ -68,6 +68,7 @@ fn extract_zip_best(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error
     Err("No ZIP preview".into())
 }
 
+#[allow(clippy::type_complexity)]
 fn extract_riff_previews(
     path: &Path,
 ) -> Result<Vec<(Vec<u8>, String)>, Box<dyn std::error::Error>> {

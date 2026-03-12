@@ -6,6 +6,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for OpenEXR image files (.exr).
+#[derive(Default)]
 pub struct ExrFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

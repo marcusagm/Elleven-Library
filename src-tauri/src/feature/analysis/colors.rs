@@ -190,7 +190,11 @@ fn build_color_palette(
         .filter(|color| color.percentage > 0.001)
         .collect();
 
-    palette.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).unwrap());
+    palette.sort_by(|a, b| {
+        b.percentage
+            .partial_cmp(&a.percentage)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     // Set ranks
     for (idx, color) in palette.iter_mut().enumerate() {

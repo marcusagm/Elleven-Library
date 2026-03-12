@@ -11,6 +11,7 @@ use tracing::instrument;
 /// 1. LibRaw (rsraw) - Fast and official preview extraction.
 /// 2. Brute-Force JPEG Scan - Search for JPEG markers in file headers.
 /// 3. FFmpeg Fallback - Ultimate fallback for complex formats.
+#[derive(Default)]
 pub struct RawFormatProvider;
 
 impl RawFormatProvider {

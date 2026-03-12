@@ -13,6 +13,7 @@ use std::path::Path;
 use std::process::Command;
 
 /// Provedor de formato de áudio.
+#[derive(Default)]
 pub struct AudioFormatProvider {}
 
 /// Implementação do provedor de formato de áudio.

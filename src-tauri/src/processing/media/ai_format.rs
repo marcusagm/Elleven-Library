@@ -7,6 +7,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for Adobe Illustrator files (.ai).
+#[derive(Default)]
 pub struct AiFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

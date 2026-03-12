@@ -7,6 +7,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for Aseprite files (.ase, .aseprite).
+#[derive(Default)]
 pub struct AsepriteFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

@@ -32,6 +32,12 @@ impl TokioEventBus {
     }
 }
 
+impl Default for TokioEventBus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Implementation of the AppEventBus trait for TokioEventBus.
 #[async_trait]
 impl AppEventBus for TokioEventBus {

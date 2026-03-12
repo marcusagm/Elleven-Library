@@ -939,7 +939,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 self.handle_update_notes(&mut tx, payload.clone()).await
             }
             LedgerCommand::ReextractColors { asset_id } => {
-                self.handle_reextract_colors(&mut tx, &asset_id).await
+                self.handle_reextract_colors(&mut tx, asset_id).await
             }
 
             // ── Tag CRUD Handlers ──────────────────────────────────────────

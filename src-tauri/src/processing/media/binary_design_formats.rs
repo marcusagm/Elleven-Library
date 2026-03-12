@@ -7,6 +7,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for proprietary binary design formats (SAI, GIMP XCF, Corel Painter RIF, CLIP Studio)
+#[derive(Default)]
 pub struct BinaryDesignFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

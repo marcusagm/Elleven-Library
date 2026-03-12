@@ -66,7 +66,7 @@ pub fn extract_clip_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
 async fn query_preview(path: &Path) -> Result<(Vec<u8>, String), ClipError> {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
-        .connect(&format!("sqlite://{}", path.to_str().unwrap()))
+        .connect(&format!("sqlite://{}", path.to_str().unwrap_or_default()))
         .await?;
     let (data,): (Vec<u8>,) = sqlx::query_as("SELECT ImageData FROM CanvasPreview LIMIT 1")
         .fetch_one(&pool)

@@ -28,19 +28,19 @@ pub fn extract_any_embedded(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
     }
 
     if let Ok(data) = scan_mmap_for_png(&mmap) {
-        if best.as_ref().map_or(true, |(old, _)| data.len() > old.len()) {
+        if best.as_ref().is_none_or(|(old, _)| data.len() > old.len()) {
             best = Some((data, "image/png".to_string()));
         }
     }
 
     if let Ok(data) = scan_mmap_for_tiff(&mmap) {
-        if best.as_ref().map_or(true, |(old, _)| data.len() > old.len()) {
+        if best.as_ref().is_none_or(|(old, _)| data.len() > old.len()) {
             best = Some((data, "image/tiff".to_string()));
         }
     }
 
     if let Ok(data) = extract_xmp_thumbnail(path) {
-        if best.as_ref().map_or(true, |(old, _)| data.len() > old.len()) {
+        if best.as_ref().is_none_or(|(old, _)| data.len() > old.len()) {
             best = Some((data, "image/png".to_string()));
         }
     }
@@ -60,7 +60,7 @@ pub fn scan_mmap_for_jpeg(mmap: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Er
             if let Some(eoi_pos) = mmap[j..eoi_limit].windows(2).position(|w| w == JPEG_EOI) {
                 let end = j + eoi_pos + 2;
                 let len = end - start;
-                if best.as_ref().map_or(true, |(_, bl)| len > *bl) { best = Some((start, len)); }
+                if best.as_ref().is_none_or(|(_, bl)| len > *bl) { best = Some((start, len)); }
                 i = end;
                 continue;
             }
@@ -81,7 +81,7 @@ pub fn scan_mmap_for_png(mmap: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Err
             if let Some(end_pos) = mmap[j..].windows(4).position(|w| w == PNG_FOOTER) {
                 let end = j + end_pos + 8; // IEND + CRC
                 let len = end - start;
-                if best.as_ref().map_or(true, |(_, bl)| len > *bl) { best = Some((start, len)); }
+                if best.as_ref().is_none_or(|(_, bl)| len > *bl) { best = Some((start, len)); }
                 i = end.min(mmap.len());
                 continue;
             }

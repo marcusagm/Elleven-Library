@@ -12,6 +12,7 @@ const PNG_SIGNATURE: &[u8; 8] = b"\x89\x50\x4e\x47\x0d\x0a\x1a\x0a";
 const PNG_IEND: &[u8; 4] = b"IEND";
 
 /// Provider for Affinity files (.afphoto, .afdesign, .afpub)
+#[derive(Default)]
 pub struct AffinityFormatProvider;
 
 /// Implementation of `AffinityFormatProvider`.
@@ -62,7 +63,7 @@ impl AffinityFormatProvider {
                 if let Some(iend_rel_offset) = self.find_iend(&buffer[i + 8..search_limit]) {
                     let png_length = iend_rel_offset + 8 + 4 + 4; // Signature + data until IEND + IEND + CRC
 
-                    if best_png.is_none() || png_length > best_png.unwrap().1 {
+                    if best_png.is_none_or(|(_, previous_size)| png_length > previous_size) {
                         best_png = Some((i, png_length));
                     }
                     i += png_length;

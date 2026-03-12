@@ -28,12 +28,11 @@ fn extract_v1_zip(file: &mut File) -> Result<(Vec<u8>, String), Box<dyn std::err
     for i in 0..archive.len() {
         if let Ok(entry) = archive.by_index(i) {
             let name = entry.name().to_lowercase();
-            if name.starts_with("objects/") && name.ends_with(".png") {
-                if entry.size() > max_size {
+            if name.starts_with("objects/") && name.ends_with(".png")
+                && entry.size() > max_size {
                     max_size = entry.size();
                     best_idx = Some(i);
                 }
-            }
         }
     }
     if let Some(idx) = best_idx {

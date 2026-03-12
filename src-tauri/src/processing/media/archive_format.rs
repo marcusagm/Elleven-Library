@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use std::path::Path;
 
 /// Provider for archive formats (.clip, .zip, .cbz).
+#[derive(Default)]
 pub struct ArchiveFormatProvider;
 
 /// Implementation of `ArchiveFormatProvider`.

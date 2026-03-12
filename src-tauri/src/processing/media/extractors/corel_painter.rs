@@ -10,9 +10,8 @@ pub fn extract_corel_painter_preview(path: &Path) -> Result<(Vec<u8>, String), B
     let mut file = File::open(path)?;
     let mut header = [0u8; 8];
     if file.read_exact(&mut header).is_err() { return Err("File too small".into()); }
-    if header[0] != 0x00 || header[1] != 0x02 {
-        if &header[0..4] != b"RIFF" { return Err("Invalid header".into()); }
-    }
+    if (header[0] != 0x00 || header[1] != 0x02)
+        && &header[0..4] != b"RIFF" { return Err("Invalid header".into()); }
     let mut buffer = Vec::new();
     file.seek(SeekFrom::Start(0))?;
     file.read_to_end(&mut buffer)?;

@@ -7,6 +7,7 @@ use std::path::Path;
 use tiny_skia::Pixmap;
 
 /// Provider for SVG vector files
+#[derive(Default)]
 pub struct SvgFormatProvider;
 
 /// Implementation of `SvgFormatProvider`.
@@ -106,7 +107,11 @@ impl ThumbnailCapability for SvgFormatProvider {
                 crate::core::error::AppError::Generic(format!("SVG parse error: {}", e))
             })?;
 
-            let target_size = tree.size().scale_to(usvg::Size::from_wh(size_hint as f32, size_hint as f32).unwrap());
+            let bounding_size = usvg::Size::from_wh(size_hint as f32, size_hint as f32)
+                .ok_or_else(|| {
+                    crate::core::error::AppError::Generic("Invalid SVG target size".to_string())
+                })?;
+            let target_size = tree.size().scale_to(bounding_size);
 
             let transform = tiny_skia::Transform::from_scale(
                 target_size.width() / tree.size().width(),

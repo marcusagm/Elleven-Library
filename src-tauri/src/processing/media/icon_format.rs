@@ -7,6 +7,7 @@ use std::path::Path;
 use tiny_skia::Pixmap;
 
 /// Provider for generic file icons as a fallback
+#[derive(Default)]
 pub struct IconFormatProvider;
 
 /// Implementation of `IconFormatProvider`.

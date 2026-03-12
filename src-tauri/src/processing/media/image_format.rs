@@ -7,6 +7,7 @@ use std::path::Path;
 use zune_jpeg::JpegDecoder;
 
 /// Provider for rasterized image formats (JPG, PNG, WebP, etc.)
+#[derive(Default)]
 pub struct ImageFormatProvider;
 
 /// Implementation of `ImageFormatProvider`.

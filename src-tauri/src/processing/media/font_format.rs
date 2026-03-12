@@ -18,6 +18,7 @@ const FONT_SVG_TEMPLATE: &str = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewB
 </svg>";
 
 /// Provider for Font files (.ttf, .otf, .woff, .woff2).
+#[derive(Default)]
 pub struct FontFormatProvider;
 
 impl FontFormatProvider {
@@ -230,8 +231,10 @@ impl ThumbnailCapability for FontFormatProvider {
                 .unwrap_or_else(|| face.post_script_name.clone());
 
             // 3. Prepare options with the custom fontdb
-            let mut opt = usvg::Options::default();
-            opt.fontdb = Arc::new(fontdb);
+            let opt = usvg::Options {
+                fontdb: Arc::new(fontdb),
+                ..Default::default()
+            };
 
             // 4. Inject family name into SVG
             let safe_family = family_name.replace("\"", "&quot;").replace("'", "&apos;");

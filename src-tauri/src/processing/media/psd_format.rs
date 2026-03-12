@@ -6,6 +6,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for Adobe Photoshop files (.psd, .psb).
+#[derive(Default)]
 pub struct PsdFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

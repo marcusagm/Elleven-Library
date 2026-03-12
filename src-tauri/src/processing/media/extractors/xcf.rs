@@ -101,8 +101,8 @@ pub fn extract_xcf_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std
         let _ = reader.read_u32::<BigEndian>()?;
         let _ = reader.read_u32::<BigEndian>()?;
 
-        let txs = (layer.width + 63) / 64;
-        let tys = (layer.height + 63) / 64;
+        let txs = layer.width.div_ceil(64);
+        let tys = layer.height.div_ceil(64);
         for ty in 0..tys {
             for tx in 0..txs {
                 reader.seek(SeekFrom::Start(lptr + 8 + ((ty * txs + tx) * bpo as u32) as u64))?;
@@ -140,6 +140,7 @@ fn read_gimp_string<R: Read>(reader: &mut R) -> Result<String, Box<dyn std::erro
     Ok(String::from_utf8_lossy(&buf[..end]).to_string())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn decode_tile<R: Read>(reader: &mut R, canvas: &mut [u8], tx: u32, ty: u32, lw: u32, lh: u32, cw: u32, ch: u32, ox: i32, oy: i32, bpp: u32) -> Result<(), Box<dyn std::error::Error>> {
     let xs = tx * 64;
     let ys = ty * 64;

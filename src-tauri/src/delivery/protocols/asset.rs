@@ -164,10 +164,10 @@ fn parse_asset_uri(uri: &str) -> (String, bool) {
     let prefix = "asset://localhost/";
     let fallback = "asset://";
 
-    let path_with_query = if uri.starts_with(prefix) {
-        &uri[prefix.len()..]
-    } else if uri.starts_with(fallback) {
-        &uri[fallback.len()..]
+    let path_with_query = if let Some(rest) = uri.strip_prefix(prefix) {
+        rest
+    } else if let Some(rest) = uri.strip_prefix(fallback) {
+        rest
     } else {
         uri
     };

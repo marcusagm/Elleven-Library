@@ -8,6 +8,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for XMind files (.xmind)
+#[derive(Default)]
 pub struct XMindFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

@@ -6,6 +6,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for CAD formats (STEP, IGES).
+#[derive(Default)]
 pub struct CadFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

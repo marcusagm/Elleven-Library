@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use std::path::Path;
 
 /// Provider for PDF documents
+#[derive(Default)]
 pub struct PdfFormatProvider;
 
 /// Implementation of `PdfFormatProvider`.

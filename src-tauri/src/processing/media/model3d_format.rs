@@ -6,6 +6,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for 3D model formats (Blender, OBJ, GLTF, FBX, etc.)
+#[derive(Default)]
 pub struct Model3dFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

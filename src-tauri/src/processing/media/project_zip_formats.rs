@@ -9,6 +9,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for ZIP-based design projects (Krita, Sketch, etc.)
+#[derive(Default)]
 pub struct ProjectZipFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

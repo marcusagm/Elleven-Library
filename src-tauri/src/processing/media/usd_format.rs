@@ -6,6 +6,7 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for Universal Scene Description (USD) formats.
+#[derive(Default)]
 pub struct UsdFormatProvider;
 
 /// Implementação do provedor de formato de imagem.

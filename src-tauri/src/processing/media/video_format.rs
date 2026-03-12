@@ -13,6 +13,7 @@ use std::path::Path;
 use std::process::Command;
 
 /// Provedor de formato de vídeo.
+#[derive(Default)]
 pub struct VideoFormatProvider {}
 
 /// Implementação do provedor de formato de vídeo.
