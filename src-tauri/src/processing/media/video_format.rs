@@ -55,6 +55,86 @@ impl FormatProvider for VideoFormatProvider {
         VIDEO_EXTENSIONS.to_vec()
     }
 
+    fn supported_formats(&self) -> Vec<crate::core::formats::provider::SupportedFormat> {
+        use crate::core::formats::provider::SupportedFormat;
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "MPEG-4 Video",
+                vec!["mp4", "m4v"],
+                vec!["video/mp4"],
+                MediaType::Video,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::Native,
+            ),
+            SupportedFormat::with_metadata(
+                "Matroska Video",
+                vec!["mkv"],
+                vec!["video/x-matroska"],
+                MediaType::Video,
+                PreviewStrategy::Ffmpeg,
+                PlaybackStrategy::Hls,
+            ),
+            SupportedFormat::with_metadata(
+                "QuickTime Video",
+                vec!["mov"],
+                vec!["video/quicktime"],
+                MediaType::Video,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::Native,
+            ),
+            SupportedFormat::with_metadata(
+                "WebM Video",
+                vec!["webm"],
+                vec!["video/webm"],
+                MediaType::Video,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::Native,
+            ),
+            SupportedFormat::with_metadata(
+                "AVI Video",
+                vec!["avi"],
+                vec!["video/x-msvideo"],
+                MediaType::Video,
+                PreviewStrategy::Ffmpeg,
+                PlaybackStrategy::Hls,
+            ),
+            SupportedFormat::with_metadata(
+                "Windows Media Video",
+                vec!["wmv"],
+                vec!["video/x-ms-wmv"],
+                MediaType::Video,
+                PreviewStrategy::Ffmpeg,
+                PlaybackStrategy::Hls,
+            ),
+            SupportedFormat::with_metadata(
+                "Flash Video",
+                vec!["flv"],
+                vec!["video/x-flv"],
+                MediaType::Video,
+                PreviewStrategy::Ffmpeg,
+                PlaybackStrategy::Hls,
+            ),
+            SupportedFormat::with_metadata(
+                "MPEG Video",
+                vec!["mpg", "mpeg"],
+                vec!["video/mpeg"],
+                MediaType::Video,
+                PreviewStrategy::Ffmpeg,
+                PlaybackStrategy::LinearHls,
+            ),
+            SupportedFormat::with_metadata(
+                "High Efficiency Video Coding",
+                vec!["hevc", "h265"],
+                vec!["video/hevc"],
+                MediaType::Video,
+                PreviewStrategy::Ffmpeg,
+                PlaybackStrategy::Hls,
+            ),
+        ]
+    }
+
     /// Retorna o provedor de metadados.
     ///
     /// # Returns

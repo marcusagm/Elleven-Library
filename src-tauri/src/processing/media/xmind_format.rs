@@ -1,6 +1,6 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::ThumbnailCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::fs::File;
 use std::io::Read;
@@ -40,6 +40,21 @@ impl FormatProvider for XMindFormatProvider {
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["xmind"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "XMind MindMap",
+                vec!["xmind"],
+                vec!["application/x-xmind"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.

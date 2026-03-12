@@ -1,6 +1,6 @@
 use crate::core::error::{AppError, AppResult};
 use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use resvg::usvg;
 use std::path::Path;
@@ -49,6 +49,45 @@ impl FormatProvider for FontFormatProvider {
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["ttf", "otf", "woff", "woff2"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "TrueType Font",
+                vec!["ttf"],
+                vec!["font/ttf"],
+                MediaType::Font,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "OpenType Font",
+                vec!["otf"],
+                vec!["font/otf"],
+                MediaType::Font,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Web Open Font Format",
+                vec!["woff"],
+                vec!["font/woff"],
+                MediaType::Font,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Web Open Font Format 2",
+                vec!["woff2"],
+                vec!["font/woff2"],
+                MediaType::Font,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.

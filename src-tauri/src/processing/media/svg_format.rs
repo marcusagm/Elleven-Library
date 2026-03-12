@@ -1,6 +1,6 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::ThumbnailCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use resvg::usvg;
 use std::path::Path;
@@ -38,7 +38,22 @@ impl FormatProvider for SvgFormatProvider {
     ///
     /// A `Vec<&'static str>` containing the supported extensions.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["svg"]
+        vec!["svg", "svgz"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Scalable Vector Graphics",
+                vec!["svg", "svgz"],
+                vec!["image/svg+xml"],
+                MediaType::Image,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Check if the given header bytes support the format.

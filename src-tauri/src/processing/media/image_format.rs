@@ -43,6 +43,94 @@ impl FormatProvider for ImageFormatProvider {
         ]
     }
 
+    fn supported_formats(&self) -> Vec<crate::core::formats::provider::SupportedFormat> {
+        use crate::core::formats::provider::SupportedFormat;
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "JPEG Image",
+                vec!["jpg", "jpeg", "jpe", "jfif"],
+                vec!["image/jpeg"],
+                MediaType::Image,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "PNG Image",
+                vec!["png"],
+                vec!["image/png"],
+                MediaType::Image,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "WebP Image",
+                vec!["webp"],
+                vec!["image/webp"],
+                MediaType::Image,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "GIF Image",
+                vec!["gif"],
+                vec!["image/gif"],
+                MediaType::Image,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Bitmap Image",
+                vec!["bmp"],
+                vec!["image/bmp"],
+                MediaType::Image,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Windows Icon",
+                vec!["ico"],
+                vec!["image/x-icon", "image/vnd.microsoft.icon"],
+                MediaType::Image,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "TIFF Image",
+                vec!["tiff", "tif"],
+                vec!["image/tiff"],
+                MediaType::Image,
+                PreviewStrategy::Convert,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Radiance HDR",
+                vec!["hdr"],
+                vec!["image/vnd.radiance"],
+                MediaType::Image,
+                PreviewStrategy::Ffmpeg,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "DirectDraw Surface",
+                vec!["dds"],
+                vec!["image/vnd-ms.dds"],
+                MediaType::Image,
+                PreviewStrategy::Convert,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Portable AnyMap",
+                vec!["pbm", "pgm", "ppm", "pnm", "pam"],
+                vec!["image/x-portable-anymap"],
+                MediaType::Image,
+                PreviewStrategy::Convert,
+                PlaybackStrategy::None,
+            ),
+        ]
+    }
+
     /// Check if the given header bytes support the format.
     ///
     /// # Arguments

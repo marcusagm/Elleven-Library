@@ -1,6 +1,6 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::MetadataCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::path::Path;
 use tracing::instrument;
@@ -38,6 +38,29 @@ impl FormatProvider for CadFormatProvider {
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["step", "stp", "iges", "igs"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "STEP Model",
+                vec!["step", "stp"],
+                vec!["application/step"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "IGES Model",
+                vec!["iges", "igs"],
+                vec!["application/iges"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.

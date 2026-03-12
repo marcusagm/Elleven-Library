@@ -1,4 +1,4 @@
-use crate::core::formats::FormatRegistry;
+use crate::core::formats::{FormatRegistry, SupportedFormat};
 use crate::core::models::{
     Asset, AssetColor, AssetFilter, AssetSummaryDto, Folder, LibraryStats, PageParams, SmartFolder,
     Tag,
@@ -353,7 +353,7 @@ pub async fn get_library_cache_stats(handle: tauri::AppHandle) -> AppResult<serd
 #[tauri::command]
 pub fn get_library_supported_formats(
     registry: State<'_, Arc<FormatRegistry>>,
-) -> Vec<crate::core::formats::registry::SupportedFormat> {
+) -> Vec<SupportedFormat> {
     registry.get_supported_formats()
 }
 

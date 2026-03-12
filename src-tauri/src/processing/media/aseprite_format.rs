@@ -1,6 +1,7 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
+use crate::processing::media::extractors;
 use async_trait::async_trait;
 use std::path::Path;
 use tracing::instrument;
@@ -38,6 +39,21 @@ impl FormatProvider for AsepriteFormatProvider {
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["ase", "aseprite"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Aseprite Sprite",
+                vec!["ase", "aseprite"],
+                vec!["image/x-aseprite"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.
@@ -149,29 +165,12 @@ impl ThumbnailCapability for AsepriteFormatProvider {
     ///
     /// `AppResult<Vec<u8>>` - Thumbnail do arquivo.
     #[instrument(skip(self, path))]
-    async fn generate(&self, path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
+    async fn generate(&self, path: &Path, _size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let ase = asefile::AsepriteFile::read_file(&path_owned)
-                .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
-
-            // Generate image from the first frame
-            let frame_image = ase.frame(0).image();
-            let (width, height) = (frame_image.width(), frame_image.height());
-            let raw_pixels = frame_image.into_raw();
-
-            // Create image 0.25 DynamicImage from raw pixels
-            let rgba_buffer =
-                image::RgbaImage::from_raw(width, height, raw_pixels).ok_or_else(|| {
-                    crate::core::error::AppError::Generic(
-                        "Failed to create RGBA buffer from Aseprite pixels".into(),
-                    )
-                })?;
-
-            let img = image::DynamicImage::ImageRgba8(rgba_buffer);
-
-            // Use the shared helper from raw_format to resize and encode
-            super::raw_format::process_and_encode_webp(img, size_hint)
+            extractors::extract_aseprite_preview(&path_owned)
+                .map(|(d, _)| d)
+                .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

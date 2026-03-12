@@ -1,6 +1,6 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::ThumbnailCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use resvg::usvg;
 use std::path::Path;
@@ -46,6 +46,21 @@ impl FormatProvider for IconFormatProvider {
     /// A `Vec<&'static str>` containing the supported extensions.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec![] // Handled as fallback by registry
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Generic Icon",
+                vec!["generic"],
+                vec!["image/svg+xml"],
+                MediaType::Unknown,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Get the thumbnail capability for the format.

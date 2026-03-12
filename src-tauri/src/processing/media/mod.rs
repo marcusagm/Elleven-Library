@@ -1,5 +1,6 @@
 //! Módulo de processamento de mídia
 
+pub mod extractors;
 pub mod affinity_format;
 pub mod archive_format;
 pub mod audio_format;

@@ -1,6 +1,6 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::path::Path;
 use tracing::instrument;
@@ -39,6 +39,85 @@ impl FormatProvider for Model3dFormatProvider {
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec![
             "blend", "fbx", "obj", "gltf", "glb", "dae", "stl", "3ds", "3mf", "dxf", "lwo", "lws",
+        ]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Blender Project",
+                vec!["blend"],
+                vec!["application/x-blender"],
+                MediaType::Model3D,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Autodesk FBX",
+                vec!["fbx"],
+                vec!["application/x-fbx"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Wavefront OBJ",
+                vec!["obj"],
+                vec!["model/obj"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "GL Transmission Format",
+                vec!["gltf", "glb"],
+                vec!["model/gltf+json", "model/gltf-binary"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Collada Model",
+                vec!["dae"],
+                vec!["model/vnd.collada+xml"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Stereolithography",
+                vec!["stl"],
+                vec!["model/stl"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "3D Studio Model",
+                vec!["3ds"],
+                vec!["application/x-3ds"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "3D Manufacturing Format",
+                vec!["3mf"],
+                vec!["model/3mf"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "AutoCAD DXF",
+                vec!["dxf"],
+                vec!["image/vnd.dxf"],
+                MediaType::Model3D,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
         ]
     }
 

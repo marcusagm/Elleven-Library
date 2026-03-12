@@ -7,7 +7,7 @@
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::formats::capabilities::MetadataCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use serde_json::Value;
 use std::path::Path;
@@ -48,6 +48,21 @@ impl FormatProvider for GenericByteFallbackProvider {
     fn supported_extensions(&self) -> Vec<&'static str> {
         // Não possui extensões fixas, atua apenas no loop de fallback/deep check
         vec![]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Binary Fallback",
+                vec!["bin"],
+                vec!["application/octet-stream"],
+                MediaType::Unknown,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Verifica se o provedor suporta o arquivo baseado em Magic Bytes.

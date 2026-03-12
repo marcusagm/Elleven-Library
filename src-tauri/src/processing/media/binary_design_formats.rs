@@ -1,11 +1,12 @@
 use crate::core::error::AppResult;
-use crate::core::formats::capabilities::MetadataCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
+use crate::processing::media::extractors::*;
 use async_trait::async_trait;
 use std::path::Path;
 use tracing::instrument;
 
-/// Provider for proprietary binary design formats (SAI, GIMP XCF, Corel Painter RIF)
+/// Provider for proprietary binary design formats (SAI, GIMP XCF, Corel Painter RIF, CLIP Studio)
 pub struct BinaryDesignFormatProvider;
 
 /// Implementação do provedor de formato de imagem.
@@ -37,7 +38,54 @@ impl FormatProvider for BinaryDesignFormatProvider {
     ///
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["sai", "sai2", "xcf", "rif", "riff"]
+        vec!["sai", "sai2", "xcf", "rif", "riff", "clip"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "PaintTool SAI v1",
+                vec!["sai"],
+                vec!["application/x-sai"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "PaintTool SAI v2",
+                vec!["sai2"],
+                vec!["application/x-sai2"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "GIMP Image",
+                vec!["xcf"],
+                vec!["image/x-xcf"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Corel Painter Image",
+                vec!["rif", "riff"],
+                vec!["application/x-painter"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Clip Studio Paint",
+                vec!["clip"],
+                vec!["application/x-clipstudio"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.
@@ -52,7 +100,8 @@ impl FormatProvider for BinaryDesignFormatProvider {
     fn supports_magic_bytes(&self, header_bytes: &[u8]) -> bool {
         header_bytes.starts_with(b"gimp xcf") || // XCF
         header_bytes.starts_with(b"RIFF") ||     // RIFF (Painter)
-        header_bytes.starts_with(b"SAI") // SAI (hypothetical, needs verification)
+        header_bytes.starts_with(b"SAI") ||      // SAI
+        header_bytes.starts_with(b"CSFCHUNK")    // CLIP
     }
 
     /// Retorna o provedor de metadados.
@@ -64,9 +113,14 @@ impl FormatProvider for BinaryDesignFormatProvider {
         Some(self)
     }
 
-    // Thumbnails for these formats usually require complex decoders.
-    // We register the capability to allow future expansion,
-    // but return error/fallback for now if no preview is easily reachable.
+    /// Retorna o provedor de thumbnails.
+    ///
+    /// # Returns
+    ///
+    /// `Option<&dyn ThumbnailCapability>` - O provedor de thumbnails.
+    fn thumbnail(&self) -> Option<&dyn ThumbnailCapability> {
+        Some(self)
+    }
 }
 
 /// Implementação da capacidade de metadados.
@@ -88,5 +142,41 @@ impl MetadataCapability for BinaryDesignFormatProvider {
 
     async fn extract_semantic(&self, _path: &Path) -> AppResult<serde_json::Value> {
         Ok(serde_json::json!({}))
+    }
+}
+
+/// Implementação do provedor de thumbnails.
+#[async_trait]
+impl ThumbnailCapability for BinaryDesignFormatProvider {
+    /// Gera um thumbnail para o arquivo.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - O caminho para o arquivo.
+    /// * `_size_hint` - O tamanho desejado para o thumbnail (não utilizado aqui
+    ///                 pois estes formatos extraem previews embutidos).
+    ///
+    /// # Returns
+    ///
+    /// * `AppResult<Vec<u8>>` - O resultado da geração do thumbnail.
+    async fn generate(&self, path: &Path, _size_hint: u32) -> crate::core::error::AppResult<Vec<u8>> {
+        let extension = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        let result = match extension.as_str() {
+            "sai" => extract_sai_preview(path),
+            "sai2" => extract_sai2_preview(path),
+            "xcf" => extract_xcf_preview(path),
+            "clip" => extract_clip_preview(path),
+            "rif" | "riff" => extract_corel_painter_preview(path),
+            _ => Err("Unsupported extension for binary design provider".into()),
+        };
+
+        result
+            .map(|(data, _mime)| data)
+            .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
     }
 }

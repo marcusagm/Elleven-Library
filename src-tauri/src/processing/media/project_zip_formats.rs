@@ -1,6 +1,7 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::ThumbnailCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
+use crate::processing::media::extractors;
 use async_trait::async_trait;
 use std::fs::File;
 use std::io::Read;
@@ -22,47 +23,34 @@ impl ProjectZipFormatProvider {
     }
 
     /// Tenta encontrar uma prévia em um contêiner tipo ZIP.
-    ///
-    /// # Arguments
-    ///
-    /// `path` - Caminho do arquivo.
-    /// `extensions` - Extensões de arquivos suportadas.
-    ///
-    /// # Returns
-    ///
-    /// `AppResult<Vec<u8>>` - Prévia do arquivo.
-    fn extract_preview_from_zip(&self, path: &Path, _extensions: &[&str]) -> AppResult<Vec<u8>> {
+    fn extract_preview_from_zip(&self, path: &Path) -> AppResult<Vec<u8>> {
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+
+        // Use specialized extractors if available
+        match ext.as_str() {
+            "mdp" => return extractors::extract_mdp_preview(path).map(|(d, _)| d).map_err(|e| crate::core::error::AppError::Generic(e.to_string())),
+            "cdr" => return extractors::extract_coreldraw_preview(path).map(|(d, _)| d).map_err(|e| crate::core::error::AppError::Generic(e.to_string())),
+            "sketch" => return extractors::extract_sketch_preview(path).map(|(d, _)| d).map_err(|e| crate::core::error::AppError::Generic(e.to_string())),
+            "reb" => return extractors::extract_rebelle_preview(path).map(|(d, _)| d).map_err(|e| crate::core::error::AppError::Generic(e.to_string())),
+            _ => {}
+        }
+
         let file = File::open(path).map_err(crate::core::error::AppError::Io)?;
         let mut archive = zip::ZipArchive::new(file)
             .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
 
-        let ext = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-
         // Map extension to likely preview path
         let preview_paths = match ext.as_str() {
             "kra" => vec!["preview.png"],
-            "sketch" => vec!["previews/preview.png"],
-            "mdp" => vec!["thumbnail.png", "preview.png"],
             "fig" => vec!["preview.png", "thumbnail.png"],
-            "reb" => vec!["preview.png"],
             "xmind" => vec!["Thumbnails/thumbnail.png"],
-            "cdr" => vec![
-                "previews/preview.png",
-                "metadata/thumbnails/thumbnail_v1.png",
-            ],
             _ => vec!["preview.png", "thumbnail.png", "previews/preview.png"],
         };
 
         for p in preview_paths {
             if let Ok(mut zip_file) = archive.by_name(p) {
                 let mut buffer = Vec::new();
-                zip_file
-                    .read_to_end(&mut buffer)
-                    .map_err(crate::core::error::AppError::Io)?;
+                zip_file.read_to_end(&mut buffer).map_err(crate::core::error::AppError::Io)?;
                 return Ok(buffer);
             }
         }
@@ -92,6 +80,69 @@ impl FormatProvider for ProjectZipFormatProvider {
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["kra", "sketch", "mdp", "fig", "reb", "xmind", "cdr"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Krita Artwork",
+                vec!["kra"],
+                vec!["application/x-krita"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Sketch Project",
+                vec!["sketch"],
+                vec!["application/x-sketch"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "MediBang Paint / FireAlpaca",
+                vec!["mdp"],
+                vec!["application/x-medibang"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Figma Archive",
+                vec!["fig"],
+                vec!["application/x-figma"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Rebelle Artwork",
+                vec!["reb"],
+                vec!["application/x-rebelle"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "XMind Mindmap",
+                vec!["xmind"],
+                vec!["application/x-xmind"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "CorelDRAW Drawing",
+                vec!["cdr"],
+                vec!["application/x-coreldraw"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.
@@ -133,11 +184,10 @@ impl ThumbnailCapability for ProjectZipFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate(&self, path: &Path, _size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
-        let extensions = self.supported_extensions();
 
         tokio::task::spawn_blocking(move || {
             let provider = ProjectZipFormatProvider::new();
-            provider.extract_preview_from_zip(&path_owned, &extensions)
+            provider.extract_preview_from_zip(&path_owned)
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

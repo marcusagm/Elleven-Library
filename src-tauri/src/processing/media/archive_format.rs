@@ -1,6 +1,7 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::ThumbnailCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
+use crate::processing::media::extractors;
 use async_trait::async_trait;
 use std::path::Path;
 
@@ -28,7 +29,70 @@ impl FormatProvider for ArchiveFormatProvider {
     ///
     /// * `Vec<&'static str>` - The supported extensions.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["zip", "cbz", "clip"]
+        vec!["zip", "cbz", "clip", "rar", "7z", "tar", "gz"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "ZIP Archive",
+                vec!["zip"],
+                vec!["application/zip"],
+                MediaType::Archive,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Comic Book ZIP",
+                vec!["cbz"],
+                vec!["application/x-cbz"],
+                MediaType::Archive,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Clip Studio Paint",
+                vec!["clip"],
+                vec!["application/x-clipstudio"],
+                MediaType::Archive,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "RAR Archive",
+                vec!["rar"],
+                vec!["application/vnd.rar"],
+                MediaType::Archive,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "7-Zip Archive",
+                vec!["7z"],
+                vec!["application/x-7z-compressed"],
+                MediaType::Archive,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "TAR Archive",
+                vec!["tar"],
+                vec!["application/x-tar"],
+                MediaType::Archive,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "GZIP Archive",
+                vec!["gz"],
+                vec!["application/gzip"],
+                MediaType::Archive,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Returns whether the format provider supports the given magic bytes.
@@ -72,13 +136,11 @@ impl ThumbnailCapability for ArchiveFormatProvider {
         let path_owned = path.to_path_buf();
 
         tokio::task::spawn_blocking(move || {
-            let extension = path_owned
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("");
+            let extension = path_owned.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
 
             if extension == "clip" {
-                extract_clip_thumbnail(&path_owned)
+                extractors::extract_clip_preview(&path_owned).map(|(d, _)| d)
+                    .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
             } else {
                 extract_zip_thumbnail(&path_owned, size_hint)
             }
@@ -88,91 +150,6 @@ impl ThumbnailCapability for ArchiveFormatProvider {
     }
 }
 
-/// Helper: Extract thumbnail from CLIP Studio file.
-/// Based on legacy `clip.rs`.
-///
-/// # Arguments
-///
-/// * `path` - The path to the file.
-///
-/// # Returns
-///
-/// * `AppResult<Vec<u8>>` - The thumbnail of the file.
-fn extract_clip_thumbnail(path: &Path) -> AppResult<Vec<u8>> {
-    use byteorder::{BigEndian, ReadBytesExt};
-    use std::io::{Read, Seek, SeekFrom};
-
-    let mut file = std::fs::File::open(path).map_err(crate::core::error::AppError::Io)?;
-
-    let mut magic = [0u8; 8];
-    file.read_exact(&mut magic)
-        .map_err(crate::core::error::AppError::Io)?;
-    if &magic != b"CSFCHUNK" {
-        return Err(crate::core::error::AppError::Generic(
-            "Invalid CLIP header".into(),
-        ));
-    }
-
-    file.seek(SeekFrom::Current(16))
-        .map_err(crate::core::error::AppError::Io)?;
-
-    let mut sqlite_data = None;
-    loop {
-        let mut chunk_name = [0u8; 8];
-        if file.read_exact(&mut chunk_name).is_err() {
-            break;
-        }
-
-        let length = file
-            .read_u64::<BigEndian>()
-            .map_err(crate::core::error::AppError::Io)?;
-        let start = file
-            .stream_position()
-            .map_err(crate::core::error::AppError::Io)?;
-
-        if &chunk_name == b"CHNKSQLi" {
-            let mut data = vec![0u8; length as usize];
-            file.read_exact(&mut data)
-                .map_err(crate::core::error::AppError::Io)?;
-            sqlite_data = Some(data);
-            break;
-        }
-
-        if &chunk_name == b"CHNKFoot" {
-            break;
-        }
-        file.seek(SeekFrom::Start(start + length))
-            .map_err(crate::core::error::AppError::Io)?;
-    }
-
-    let db_bytes = sqlite_data
-        .ok_or_else(|| crate::core::error::AppError::Generic("CLIP missing SQL chunk".into()))?;
-
-    // SQLite extraction requires a file path for SQLx
-    let temp_path =
-        std::env::temp_dir().join(format!("mundam_clip_{}.sqlite", uuid::Uuid::new_v4()));
-    std::fs::write(&temp_path, db_bytes).map_err(crate::core::error::AppError::Io)?;
-
-    let result = tauri::async_runtime::block_on(async {
-        use sqlx::sqlite::SqlitePoolOptions;
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect(&format!("sqlite:{}", temp_path.display()))
-            .await
-            .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
-
-        let query: (Vec<u8>,) = sqlx::query_as("SELECT ImageData FROM CanvasPreview LIMIT 1")
-            .fetch_one(&pool)
-            .await
-            .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
-
-        pool.close().await;
-        Ok(query.0)
-    });
-
-    let _ = std::fs::remove_file(&temp_path);
-    result
-}
 
 /// Helper: Extract thumbnail from regular ZIP/CBZ.
 ///

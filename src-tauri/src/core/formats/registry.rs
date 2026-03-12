@@ -1,15 +1,7 @@
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use serde::Serialize;
-
-/// Represents a format supported by the application.
-#[derive(Debug, Serialize, Clone)]
-pub struct SupportedFormat {
-    pub name: String,
-    pub extensions: Vec<String>,
-}
 
 /// The central "Cartório" (Registry) for all supported file formats.
 pub struct FormatRegistry {
@@ -78,14 +70,7 @@ impl FormatRegistry {
     pub fn get_supported_formats(&self) -> Vec<SupportedFormat> {
         self.deep_checkers
             .iter()
-            .map(|provider| SupportedFormat {
-                name: provider.name().to_string(),
-                extensions: provider
-                    .supported_extensions()
-                    .into_iter()
-                    .map(|s| s.to_string())
-                    .collect(),
-            })
+            .flat_map(|provider| provider.supported_formats())
             .collect()
     }
 }

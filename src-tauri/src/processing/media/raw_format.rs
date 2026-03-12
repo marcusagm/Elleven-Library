@@ -1,6 +1,6 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::path::Path;
 use tracing::instrument;
@@ -37,9 +37,93 @@ impl FormatProvider for RawFormatProvider {
     ///
     /// * `Vec<&'static str>` - The supported extensions for the format provider.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        // Broad set of RAW extensions
+        vec!["arw", "cr2", "cr3", "dng", "nef", "nrw", "orf", "raf", "rw2", "pef", "srw", "x3f"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
         vec![
-            "arw", "cr2", "cr3", "dng", "nef", "nrw", "orf", "raf", "rw2", "pef", "srw", "x3f",
+            SupportedFormat::with_metadata(
+                "Sony RAW Image",
+                vec!["arw"],
+                vec!["image/x-sony-arw"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Canon RAW Image",
+                vec!["cr2", "cr3"],
+                vec!["image/x-canon-cr2", "image/x-canon-cr3"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Digital Negative",
+                vec!["dng"],
+                vec!["image/x-adobe-dng"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Nikon RAW Image",
+                vec!["nef", "nrw"],
+                vec!["image/x-nikon-nef", "image/x-nikon-nrw"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Olympus RAW Image",
+                vec!["orf"],
+                vec!["image/x-olympus-orf"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Fujifilm RAW Image",
+                vec!["raf"],
+                vec!["image/x-fujifilm-raf"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Panasonic RAW Image",
+                vec!["rw2"],
+                vec!["image/x-panasonic-raw"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Pentax RAW Image",
+                vec!["pef"],
+                vec!["image/x-pentax-pef"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Samsung RAW Image",
+                vec!["srw"],
+                vec!["image/x-samsung-srw"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Sigma RAW Image",
+                vec!["x3f"],
+                vec!["image/x-sigma-x3f"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
         ]
     }
 

@@ -5,7 +5,7 @@
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::formats::capabilities::MetadataCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::processing::transcoding::{resolve_transcoding_tools, run_command_with_timeout};
 use async_trait::async_trait;
 use serde_json::Value;
@@ -127,6 +127,117 @@ impl FormatProvider for AudioFormatProvider {
     /// * `Vec<&'static str>` - As extensões de arquivos suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
         AUDIO_EXTENSIONS.to_vec()
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "MP3 Audio",
+                vec!["mp3", "mp2"],
+                vec!["audio/mpeg"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::Native,
+            ),
+            SupportedFormat::with_metadata(
+                "WAV Audio",
+                vec!["wav", "bwf"],
+                vec!["audio/wav", "audio/x-wav"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::Native,
+            ),
+            SupportedFormat::with_metadata(
+                "FLAC Audio",
+                vec!["flac"],
+                vec!["audio/flac"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "OGG Audio",
+                vec!["ogg", "oga", "ogv"],
+                vec!["audio/ogg"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::Native,
+            ),
+            SupportedFormat::with_metadata(
+                "MPEG-4 Audio",
+                vec!["m4a", "m4r", "aac"],
+                vec!["audio/mp4", "audio/aac"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::Native,
+            ),
+            SupportedFormat::with_metadata(
+                "AIFF Audio",
+                vec!["aiff", "caf"],
+                vec!["audio/x-aiff"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "Windows Media Audio",
+                vec!["wma"],
+                vec!["audio/x-ms-wma"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "Opus Audio",
+                vec!["opus"],
+                vec!["audio/opus"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::Native,
+            ),
+            SupportedFormat::with_metadata(
+                "MIDI Audio",
+                vec!["mid", "midi"],
+                vec!["audio/midi"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Matroska Audio",
+                vec!["mka"],
+                vec!["audio/x-matroska"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "Speex Audio",
+                vec!["spx"],
+                vec!["audio/x-speex"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "Monkey's Audio",
+                vec!["ape"],
+                vec!["audio/x-ape"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "WavPack Audio",
+                vec!["wv"],
+                vec!["audio/x-wavpack"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+        ]
     }
 
     /// Retorna o provedor de metadados.

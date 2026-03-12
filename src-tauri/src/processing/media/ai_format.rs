@@ -1,6 +1,7 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
+use crate::processing::media::extractors;
 use async_trait::async_trait;
 use std::path::Path;
 use tracing::instrument;
@@ -37,7 +38,30 @@ impl FormatProvider for AiFormatProvider {
     ///
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["ai"]
+        vec!["ai", "eps"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Adobe Illustrator",
+                vec!["ai"],
+                vec!["application/postscript", "application/pdf"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Encapsulated PostScript",
+                vec!["eps", "ps"],
+                vec!["application/postscript"],
+                MediaType::Image,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.
@@ -121,15 +145,17 @@ impl ThumbnailCapability for AiFormatProvider {
     /// `AppResult<Vec<u8>>` - Thumbnail do arquivo.
     #[instrument(skip(self, path))]
     async fn generate(&self, path: &Path, _size_hint: u32) -> AppResult<Vec<u8>> {
-        let _path_owned = path.to_path_buf();
+        let path_owned = path.to_path_buf();
 
-        // Strategy:
-        // 1. If PDF-based, we could use a PDF renderer (not yet implemented in V2).
-        // 2. For now, we return error or icon fallback if no renderer is available.
-        // In legacy, it might have called a native macOS extractor.
-
-        Err(crate::core::error::AppError::FormatNotSupported(
-            "AI thumbnail generation requires a PDF/PostScript renderer".to_string(),
-        ))
+        tokio::task::spawn_blocking(move || {
+            let ext = path_owned.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+            match ext.as_str() {
+                "ai" => extractors::extract_ai_preview(&path_owned).map(|(d, _)| d),
+                "eps" | "ps" => extractors::extract_eps_ps_preview(&path_owned).map(|(d, _)| d),
+                _ => Err("Unsupported extension for AI provider".into())
+            }.map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
     }
 }

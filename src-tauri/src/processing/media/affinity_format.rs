@@ -1,6 +1,6 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::ThumbnailCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
@@ -114,6 +114,37 @@ impl FormatProvider for AffinityFormatProvider {
     /// A `Vec<&'static str>` containing the supported extensions.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["afphoto", "afdesign", "afpub"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Affinity Photo Image",
+                vec!["afphoto"],
+                vec!["application/vnd.serif.affinity"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Affinity Designer Image",
+                vec!["afdesign"],
+                vec!["application/vnd.serif.affinity"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Affinity Publisher Image",
+                vec!["afpub"],
+                vec!["application/vnd.serif.affinity"],
+                MediaType::Project,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Get the thumbnail capability for the format.

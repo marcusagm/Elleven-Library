@@ -1,6 +1,6 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::path::Path;
 use tracing::instrument;
@@ -34,6 +34,29 @@ impl FormatProvider for PsdFormatProvider {
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["psd", "psb"]
+    }
+
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Adobe Photoshop Image",
+                vec!["psd"],
+                vec!["image/vnd.adobe.photoshop"],
+                MediaType::Image,
+                PreviewStrategy::Convert,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Adobe Photoshop Large Image",
+                vec!["psb"],
+                vec!["image/vnd.adobe.photoshop"],
+                MediaType::Image,
+                PreviewStrategy::Convert,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.

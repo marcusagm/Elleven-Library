@@ -52,6 +52,38 @@ impl FormatProvider for ModernImageFormatProvider {
         MODERN_EXTENSIONS.to_vec()
     }
 
+    fn supported_formats(&self) -> Vec<crate::core::formats::provider::SupportedFormat> {
+        use crate::core::formats::provider::SupportedFormat;
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "High Efficiency Image",
+                vec!["heic", "heif"],
+                vec!["image/heic", "image/heif"],
+                MediaType::Image,
+                PreviewStrategy::Ffmpeg,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "AV1 Image",
+                vec!["avif"],
+                vec!["image/avif"],
+                MediaType::Image,
+                PreviewStrategy::Ffmpeg,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "JPEG XL Image",
+                vec!["jxl"],
+                vec!["image/jxl"],
+                MediaType::Image,
+                PreviewStrategy::None,
+                PlaybackStrategy::None,
+            ),
+        ]
+    }
+
     /// Retorna o provedor de metadados.
     ///
     /// # Returns

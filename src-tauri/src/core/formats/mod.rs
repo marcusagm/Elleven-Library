@@ -7,7 +7,9 @@
 pub mod capabilities;
 pub mod provider;
 pub mod registry;
+pub mod types;
 
+pub use provider::SupportedFormat;
 pub use registry::FormatRegistry;
 
 use crate::processing::media::affinity_format::AffinityFormatProvider;

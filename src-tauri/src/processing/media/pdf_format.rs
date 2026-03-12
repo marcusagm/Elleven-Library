@@ -1,6 +1,6 @@
 use crate::core::error::AppResult;
 use crate::core::formats::capabilities::MetadataCapability;
-use crate::core::formats::provider::FormatProvider;
+use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::path::Path;
 
@@ -37,6 +37,26 @@ impl FormatProvider for PdfFormatProvider {
     /// A `Vec<&'static str>` containing the supported extensions.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["pdf"]
+    }
+
+    /// Get the supported formats for the format.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<SupportedFormat>` containing the supported formats.
+    fn supported_formats(&self) -> Vec<SupportedFormat> {
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+
+        vec![
+            SupportedFormat::with_metadata(
+                "Portable Document Format",
+                vec!["pdf"],
+                vec!["application/pdf"],
+                MediaType::Image,
+                PreviewStrategy::BrowserNative,
+                PlaybackStrategy::None,
+            ),
+        ]
     }
 
     /// Check if the given header bytes support the format.
