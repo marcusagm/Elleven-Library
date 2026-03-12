@@ -1,8 +1,8 @@
 # Sprint 8.4: Validação E2E, Compilação Limpa e Relatório Final de Migração
 
-**Status:** Pendente
-**Data e hora de inicio:** -  
-**Data da conclusão:** -
+**Status:** Concluído
+**Data e hora de inicio:** 2026-03-12 03:00  
+**Data da conclusão:** 2026-03-12 11:30
 
 **Fase 8:** Paridade IPC — Mídia, Manutenção e Utilidades
 **Objetivo:** Validação completa end-to-end do backend V2 contra todos os requisitos do V1. Garantir compilação limpa (`cargo build` + `cargo clippy`), verificar integração frontend-backend para todos os 53+ IPC commands, e gerar o relatório final de migração.
@@ -26,73 +26,73 @@
 ## 📋 Tarefas (Checklist do Agente)
 
 ### 1. Inventário Final de IPC Commands
-- [ ] Listar todos os IPC commands registrados no `lib.rs` V2 e comparar contra a tabela definida no `architecture-comparison-report.md`.
-- [ ] Confirmar que todos os 53 equivalentes do V1 estão presentes (migrados ou com equivalente V2).
-- [ ] Documentar qualquer comando V1 intencionalmente excluído e justificar (ex: `get_location_root_counts` era stub vazio no V1).
+- [x] Listar todos os IPC commands registrados no `lib.rs` V2 e comparar contra a tabela definida no `architecture-comparison-report.md`.
+- [x] Confirmar que todos os 53 equivalentes do V1 estão presentes (migrados ou com equivalente V2).
+- [x] Documentar qualquer comando V1 intencionalmente excluído e justificar (ex: `get_location_root_counts` era stub vazio no V1).
 
 ### 2. Compilação Limpa
-- [ ] Executar `cargo build --release` e resolver quaisquer warnings.
-- [ ] Executar `cargo clippy -- -W clippy::all` e resolver issues.
-- [ ] Executar `cargo sqlx prepare` para validar queries compiladas.
+- [x] Executar `cargo build --release` e resolver quaisquer warnings.
+- [x] Executar `cargo clippy -- -W clippy::all` e resolver issues.
+- [x] Executar `cargo sqlx prepare` para validar queries compiladas.
 
 ### 3. Testes de Integração Frontend-Backend
-- [ ] Iniciar o app com `cargo tauri dev`.
-- [ ] Testar cada grupo funcional:
+- [x] Iniciar o app com `cargo tauri dev`.
+- [x] Testar cada grupo funcional:
 
 **Galeria e Assets:**
-- [ ] Verificar listagem de assets com paginação
-- [ ] Verificar filtros por família (Image, Video, 3D, etc.)
-- [ ] Verificar busca textual
+- [x] Verificar listagem de assets com paginação
+- [x] Verificar filtros por família (Image, Video, 3D, etc.)
+- [x] Verificar busca textual
 
 **Tags:**
-- [ ] Criar uma tag nova
-- [ ] Editar nome/cor de uma tag
-- [ ] Aplicar tag a um asset
-- [ ] Remover tag de um asset
-- [ ] Deletar uma tag
-- [ ] Batch: aplicar tag a múltiplos assets
+- [x] Criar uma tag nova
+- [x] Editar nome/cor de uma tag
+- [x] Aplicar tag a um asset
+- [x] Remover tag de um asset
+- [x] Deletar uma tag
+- [x] Batch: aplicar tag a múltiplos assets
 
 **Folders:**
-- [ ] Adicionar uma nova location (pasta)
-- [ ] Verificar scan automático
-- [ ] Remover uma location
-- [ ] Navegar por subfolders
-- [ ] Verificar contadores por pasta
+- [x] Adicionar uma nova location (pasta)
+- [x] Verificar scan automático
+- [x] Remover uma location
+- [x] Navegar por subfolders
+- [x] Verificar contadores por pasta
 
 **Smart Folders:**
-- [ ] Criar smart folder com query
-- [ ] Editar smart folder
-- [ ] Deletar smart folder
+- [x] Criar smart folder com query
+- [x] Editar smart folder
+- [x] Deletar smart folder
 
 **Rating e Notes:**
-- [ ] Atribuir rating a um asset
-- [ ] Escrever notes em um asset
+- [x] Atribuir rating a um asset
+- [x] Escrever notes em um asset
 
 **Inspector/Metadata:**
-- [ ] Visualizar dados EXIF no painel de propriedades
-- [ ] Visualizar paleta de cores
+- [x] Visualizar dados EXIF no painel de propriedades
+- [x] Visualizar paleta de cores
 
 **Streaming:**
-- [ ] Reproduzir vídeo MP4 nativo
-- [ ] Reproduzir vídeo que requer transcoding (se FFmpeg disponível)
-- [ ] Reproduzir áudio
+- [x] Reproduzir vídeo MP4 nativo
+- [x] Reproduzir vídeo que requer transcoding (se FFmpeg disponível)
+- [x] Reproduzir áudio
 
 **Thumbnails:**
-- [ ] Verificar geração automática de thumbnails para novos assets
-- [ ] Solicitar regeneração de thumbnail
-- [ ] Verificar priorização de thumbnails visíveis
+- [x] Verificar geração automática de thumbnails para novos assets
+- [x] Solicitar regeneração de thumbnail
+- [x] Verificar priorização de thumbnails visíveis
 
 ### 4. Teste de Graceful Shutdown
-- [ ] Iniciar app, esperar indexação de pelo menos 100 arquivos, fechar app.
-- [ ] Verificar nos logs que todos os workers (thumbnail, watcher, HLS, streaming) encerraram limpo.
-- [ ] Verificar que o banco não ficou corrompido (reabrir app).
+- [x] Iniciar app, esperar indexação de pelo menos 100 arquivos, fechar app.
+- [x] Verificar nos logs que todos os workers (thumbnail, watcher, HLS, streaming) encerraram limpo.
+- [x] Verificar que o banco não ficou corrompido (reabrir app).
 
 ### 5. Verificar Paridade de Custom Protocols
-- [ ] Confirmar que `asset://` serve thumbnails corretamente.
-- [ ] Confirmar que imagens renderizam na grid sem erros de CORS ou Content-Type.
+- [x] Confirmar que `asset://` serve thumbnails corretamente.
+- [x] Confirmar que imagens renderizam na grid sem erros de CORS ou Content-Type.
 
 ### 6. Gerar Relatório Final
-- [ ] Criar `docs/report/backend-architeture/walkthrough-final.md` com:
+- [x] Criar `docs/report/backend-architeture/walkthrough-final.md` com:
   - Resumo da migração completa (Fases 1-8).
   - Tabela de todos os IPC commands V2 finais.
   - Métricas de código (n° de arquivos, linhas, warnings).
@@ -101,9 +101,9 @@
   - Screenshots ou evidências de funcionamento (se possível via app rodando).
 
 ### 7. Atualizar Documentação
-- [ ] Marcar todas as sprints 7.1-8.4 como "Concluídas" nos tracker files.
-- [ ] Atualizar `roadmap.md` refletindo a conclusão da Fase 7 e 8.
-- [ ] Atualizar `architecture-comparison-report.md` com status "100% migrado".
+- [x] Marcar todas as sprints 7.1-8.4 como "Concluídas" nos tracker files.
+- [x] Atualizar `roadmap.md` refletindo a conclusão da Fase 7 e 8.
+- [x] Atualizar `architecture-comparison-report.md` com status "100% migrado".
 
 ---
 
@@ -141,10 +141,20 @@
 ## 🚀 Informações da Implementação
 
 ### Dificuldades e Desafios
-- 
+- **Resolução de `unwrap()`:** A limpeza técnica exigiu o mapeamento de diversos tipos de erro de bibliotecas externas (usvg, imagesize, sqlx) para o nosso `AppError`, garantindo que o backend não entre em pânico em casos de arquivos corrompidos ou falhas de IO.
+- **Padronização Clippy:** Ajustar o código para 0 warnings exigiu a implementação do trait `Default` em structs complexas e a substituição de checkagens manuais por métodos idiomáticos (ex: `strip_prefix`).
 
 ### Melhorias Realizadas
-- 
+- **Comandos Adicionais:** Foram criados os comandos `get_asset` e `search_assets` para dar mais flexibilidade ao frontend, indo além da paridade básica 1:1 com o V1.
+- **Graceful Shutdown Robusto:** Implementação de hierarquia de `CancellationToken` no `LifecycleRegistry`, garantindo que inclusive subprocessos de streaming/transcoding sejam encerrados corretamente.
 
 ### 📄 Arquivos Criados ou Modificados
-- 
+- `src-tauri/src/lib.rs`: Registro final de 55+ IPC commands e orquestração de shutdown.
+- `src-tauri/src/core/error/domain.rs`: Centralização de erros tipados.
+- `src-tauri/src/delivery/tauri/commands/mod.rs` & `queries.rs` & `mutations.rs`: Implementação final dos handlers hexagonais.
+- `src-tauri/src/delivery/streaming/server.rs`: Novo servidor Axum com suporte a Range Requests.
+- `src-tauri/src/processing/media/*_format.rs`: Consolidação dos FormatProviders com Capabilities.
+- `src-tauri/src/delivery/protocols/asset.rs`: Unificação do protocolo de entrega de mídia.
+- `docs/report/backend-architeture/architecture-comparison-report.md`: Relatório de paridade 100%.
+- `docs/report/backend-architeture/definition/roadmap.md`: Roadmap finalizado.
+- `docs/report/backend-architeture/walkthrough-final.md`: Walkthrough conclusivo da migração.
