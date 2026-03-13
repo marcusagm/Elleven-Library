@@ -1,5 +1,5 @@
-use crate::core::error::AppResult;
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
+use crate::core::AppResult;
+use crate::core::formats::capabilities::{MetadataCapability, PreviewCapability, ThumbnailCapability};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::path::Path;
@@ -46,7 +46,7 @@ impl FormatProvider for PsdFormatProvider {
                 vec!["psd"],
                 vec!["image/vnd.adobe.photoshop"],
                 MediaType::Image,
-                PreviewStrategy::Convert,
+                PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
             SupportedFormat::with_metadata(
@@ -54,7 +54,7 @@ impl FormatProvider for PsdFormatProvider {
                 vec!["psb"],
                 vec!["image/vnd.adobe.photoshop"],
                 MediaType::Image,
-                PreviewStrategy::Convert,
+                PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
         ]
@@ -83,11 +83,12 @@ impl FormatProvider for PsdFormatProvider {
     }
 
     /// Retorna o provedor de thumbnail.
-    ///
-    /// # Returns
-    ///
-    /// `Option<&dyn ThumbnailCapability>` - Provedor de thumbnail.
     fn thumbnail(&self) -> Option<&dyn ThumbnailCapability> {
+        Some(self)
+    }
+
+    /// Retorna o provedor de preview.
+    fn preview(&self) -> Option<&dyn PreviewCapability> {
         Some(self)
     }
 }
@@ -165,7 +166,7 @@ impl ThumbnailCapability for PsdFormatProvider {
     ///
     /// `AppResult<Vec<u8>>` - Thumbnail do arquivo.
     #[instrument(skip(self, path))]
-    async fn generate(&self, path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
+    async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
             let data = std::fs::read(&path_owned).map_err(crate::core::error::AppError::Io)?;
@@ -185,6 +186,38 @@ impl ThumbnailCapability for PsdFormatProvider {
 
             // Use the shared helper from raw_format to resize and encode
             super::raw_format::process_and_encode_webp(img, size_hint)
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
+    }
+}
+/// Implementação da capacidade de preview.
+#[async_trait]
+impl PreviewCapability for PsdFormatProvider {
+    /// Gera um preview de alta resolução do arquivo.
+    #[instrument(skip(self, path))]
+    async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
+        let path_owned = path.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            let data = std::fs::read(&path_owned).map_err(crate::core::error::AppError::Io)?;
+            let psd = psd::Psd::from_bytes(&data)
+                .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
+
+            let rgba = psd.rgba();
+            let rgba_buffer = image::RgbaImage::from_raw(psd.width(), psd.height(), rgba)
+                .ok_or_else(|| {
+                    crate::core::error::AppError::Generic(
+                        "Failed to create image buffer from PSD pixels".into(),
+                    )
+                })?;
+            let img = image::DynamicImage::ImageRgba8(rgba_buffer);
+
+            // Encode to PNG for high-res preview
+            let mut buffer = std::io::Cursor::new(Vec::new());
+            img.write_to(&mut buffer, image::ImageFormat::Png)
+                .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
+
+            Ok((buffer.into_inner(), "image/png".to_string()))
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

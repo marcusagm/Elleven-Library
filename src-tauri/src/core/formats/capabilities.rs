@@ -35,9 +35,30 @@ pub trait ThumbnailCapability: Send + Sync {
     ///
     /// # Arguments
     /// * `path` - The path to the file on disk.
+    /// * `asset_id` - The unique identifier for the asset.
     /// * `size_hint` - A hint for the requested thumbnail size (e.g., width in pixels).
     ///
     /// # Errors
     /// Returns `AppError` if generation fails.
-    async fn generate(&self, path: &Path, size_hint: u32) -> AppResult<Vec<u8>>;
+    async fn generate(&self, path: &Path, asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>>;
+}
+
+/// The Capability for high-resolution preview extraction.
+///
+/// This is used for formats that cannot be rendered natively by the browser
+/// but contain a high-res preview (e.g. RAW, Krita, PSD).
+#[async_trait]
+pub trait PreviewCapability: Send + Sync {
+    /// Generates/Extracts a high-resolution preview for the file.
+    ///
+    /// # Arguments
+    /// * `path` - The path to the file on disk.
+    /// * `asset_id` - The unique identifier for the asset.
+    ///
+    /// # Returns
+    /// A pair of (bytes, mime_type).
+    ///
+    /// # Errors
+    /// Returns `AppError` if generation fails.
+    async fn generate_preview(&self, path: &Path, asset_id: &str) -> AppResult<(Vec<u8>, String)>;
 }

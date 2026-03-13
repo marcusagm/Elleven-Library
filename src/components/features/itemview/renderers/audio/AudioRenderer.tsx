@@ -5,6 +5,8 @@ import { useAudioSource } from '../../../../../core/hooks/useAudioSource';
 import '../renderers.css';
 
 interface AudioRendererProps {
+    /** Asset ID */
+    assetId: string;
     /** Full file path */
     path: string;
 }
@@ -13,7 +15,10 @@ export const AudioRenderer: Component<AudioRendererProps> = props => {
     const viewport = useViewport();
     const lib = useLibrary();
 
-    const { audioUrl } = useAudioSource(() => props.path);
+    const { audioUrl } = useAudioSource(
+        () => props.assetId,
+        () => props.path
+    );
 
     const item = createMemo(() =>
         lib.items.find(libraryItem => libraryItem.id.toString() === viewport.activeItemId())

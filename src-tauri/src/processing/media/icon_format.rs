@@ -87,7 +87,7 @@ impl ThumbnailCapability for IconFormatProvider {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the thumbnail data.
-    async fn generate(&self, path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
+    async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let ext = path
             .extension()
             .and_then(|e| e.to_str())

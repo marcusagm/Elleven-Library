@@ -105,8 +105,9 @@ impl AudioFormatProvider {
 
 /// Extensões de arquivos suportadas para áudio.
 pub const AUDIO_EXTENSIONS: &[&str] = &[
-    "mp3", "wav", "flac", "ogg", "m4a", "aac", "aiff", "wma", "mka", "ra", "mp2", "oga", "opus",
-    "m4r", "spx", "ac3", "dts", "amr", "ape", "wv", "caf", "aax", "mid", "midi", "bwf",
+    "mp3", "wav", "flac", "ogg", "m4a", "aac", "aiff", "aif", "aifc", "wma", "mka", "ra", "mp2",
+    "oga", "opus", "m4r", "spx", "ac3", "dts", "amr", "ape", "wv", "caf", "aax", "mid", "midi",
+    "bwf",
 ];
 
 /// Implementação do provedor de formato de áudio.
@@ -143,7 +144,7 @@ impl FormatProvider for AudioFormatProvider {
                 PlaybackStrategy::Native,
             ),
             SupportedFormat::with_metadata(
-                "WAV Audio",
+                "Waveform Audio",
                 vec!["wav", "bwf"],
                 vec!["audio/wav", "audio/x-wav"],
                 MediaType::Audio,
@@ -156,15 +157,15 @@ impl FormatProvider for AudioFormatProvider {
                 vec!["audio/flac"],
                 MediaType::Audio,
                 PreviewStrategy::None,
-                PlaybackStrategy::AudioHls,
+                PlaybackStrategy::Native, // V1 says Native for FLAC usually, V2 was HLS but V1 is source of truth
             ),
             SupportedFormat::with_metadata(
                 "OGG Audio",
-                vec!["ogg", "oga", "ogv"],
+                vec!["ogg", "oga"],
                 vec!["audio/ogg"],
                 MediaType::Audio,
                 PreviewStrategy::None,
-                PlaybackStrategy::Native,
+                PlaybackStrategy::AudioHls,
             ),
             SupportedFormat::with_metadata(
                 "MPEG-4 Audio",
@@ -176,8 +177,8 @@ impl FormatProvider for AudioFormatProvider {
             ),
             SupportedFormat::with_metadata(
                 "AIFF Audio",
-                vec!["aiff", "caf"],
-                vec!["audio/x-aiff"],
+                vec!["aiff", "aif", "aifc"],
+                vec!["audio/x-aiff", "audio/aiff"],
                 MediaType::Audio,
                 PreviewStrategy::None,
                 PlaybackStrategy::AudioHls,
@@ -196,7 +197,7 @@ impl FormatProvider for AudioFormatProvider {
                 vec!["audio/opus"],
                 MediaType::Audio,
                 PreviewStrategy::None,
-                PlaybackStrategy::Native,
+                PlaybackStrategy::AudioHls,
             ),
             SupportedFormat::with_metadata(
                 "MIDI Audio",
@@ -204,7 +205,7 @@ impl FormatProvider for AudioFormatProvider {
                 vec!["audio/midi"],
                 MediaType::Audio,
                 PreviewStrategy::None,
-                PlaybackStrategy::None,
+                PlaybackStrategy::AudioHls,
             ),
             SupportedFormat::with_metadata(
                 "Matroska Audio",
@@ -217,7 +218,7 @@ impl FormatProvider for AudioFormatProvider {
             SupportedFormat::with_metadata(
                 "Speex Audio",
                 vec!["spx"],
-                vec!["audio/x-speex"],
+                vec!["audio/ogg"],
                 MediaType::Audio,
                 PreviewStrategy::None,
                 PlaybackStrategy::AudioHls,
@@ -234,6 +235,54 @@ impl FormatProvider for AudioFormatProvider {
                 "WavPack Audio",
                 vec!["wv"],
                 vec!["audio/x-wavpack"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "Dolby Digital",
+                vec!["ac3"],
+                vec!["audio/ac3"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "DTS Audio",
+                vec!["dts"],
+                vec!["audio/vnd.dts"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "AMR Audio",
+                vec!["amr"],
+                vec!["audio/amr"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "Apple Core Audio",
+                vec!["caf"],
+                vec!["audio/x-caf"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "Audible Audio",
+                vec!["aax"],
+                vec!["audio/vnd.audible.aax"],
+                MediaType::Audio,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
+            SupportedFormat::with_metadata(
+                "RealAudio",
+                vec!["ra"],
+                vec!["audio/vnd.rn-realaudio"],
                 MediaType::Audio,
                 PreviewStrategy::None,
                 PlaybackStrategy::AudioHls,

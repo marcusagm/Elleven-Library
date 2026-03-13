@@ -1,5 +1,5 @@
-use crate::core::error::AppResult;
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
+use crate::core::AppResult;
+use crate::core::formats::capabilities::{MetadataCapability, PreviewCapability, ThumbnailCapability};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::processing::media::extractors;
 use async_trait::async_trait;
@@ -50,7 +50,7 @@ impl FormatProvider for AiFormatProvider {
                 "Adobe Illustrator",
                 vec!["ai"],
                 vec!["application/postscript", "application/pdf"],
-                MediaType::Image,
+                MediaType::Vector,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -58,7 +58,7 @@ impl FormatProvider for AiFormatProvider {
                 "Encapsulated PostScript",
                 vec!["eps", "ps"],
                 vec!["application/postscript"],
-                MediaType::Image,
+                MediaType::Vector,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -89,11 +89,12 @@ impl FormatProvider for AiFormatProvider {
     }
 
     /// Retorna o provedor de thumbnail.
-    ///
-    /// # Returns
-    ///
-    /// `Option<&dyn ThumbnailCapability>` - Provedor de thumbnail.
     fn thumbnail(&self) -> Option<&dyn ThumbnailCapability> {
+        Some(self)
+    }
+
+    /// Retorna o provedor de preview.
+    fn preview(&self) -> Option<&dyn PreviewCapability> {
         Some(self)
     }
 }
@@ -145,7 +146,7 @@ impl ThumbnailCapability for AiFormatProvider {
     ///
     /// `AppResult<Vec<u8>>` - Thumbnail do arquivo.
     #[instrument(skip(self, path))]
-    async fn generate(&self, path: &Path, _size_hint: u32) -> AppResult<Vec<u8>> {
+    async fn generate(&self, path: &Path, _asset_id: &str, _size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
 
         tokio::task::spawn_blocking(move || {
@@ -155,6 +156,31 @@ impl ThumbnailCapability for AiFormatProvider {
                 "eps" | "ps" => extractors::extract_eps_ps_preview(&path_owned).map(|(d, _)| d),
                 _ => Err("Unsupported extension for AI provider".into())
             }.map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
+    }
+}
+/// Implementação da capacidade de preview.
+#[async_trait]
+impl PreviewCapability for AiFormatProvider {
+    /// Gera um preview de alta resolução para o arquivo.
+    #[instrument(skip(self, path))]
+    async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
+        let path_owned = path.to_path_buf();
+
+        tokio::task::spawn_blocking(move || {
+            let ext = path_owned
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            match ext.as_str() {
+                "ai" => extractors::extract_ai_preview(&path_owned),
+                "eps" | "ps" => extractors::extract_eps_ps_preview(&path_owned),
+                _ => Err("Unsupported extension for AI provider".into()),
+            }
+            .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

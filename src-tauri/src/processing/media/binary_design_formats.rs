@@ -160,7 +160,7 @@ impl ThumbnailCapability for BinaryDesignFormatProvider {
     /// # Returns
     ///
     /// * `AppResult<Vec<u8>>` - O resultado da geração do thumbnail.
-    async fn generate(&self, path: &Path, _size_hint: u32) -> crate::core::error::AppResult<Vec<u8>> {
+    async fn generate(&self, path: &Path, _asset_id: &str, _size_hint: u32) -> crate::core::error::AppResult<Vec<u8>> {
         let extension = path
             .extension()
             .and_then(|ext| ext.to_str())

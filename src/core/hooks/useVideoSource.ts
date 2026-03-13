@@ -19,11 +19,11 @@ export function useVideoSource(
     const [videoUrl, setVideoUrl] = createSignal('');
     const [probeError, setProbeError] = createSignal<string | null>(null);
 
-    // Probe video when path changes
+    // Probe video when assetId changes
     const [probeResult] = createResource(
-        pathAccessor,
-        async (path): Promise<VideoProbeResult | null> => {
-            if (!path) return null;
+        assetIdAccessor,
+        async (id): Promise<VideoProbeResult | null> => {
+            if (!id) return null;
 
             try {
                 // First check if HLS server is available
@@ -33,8 +33,8 @@ export function useVideoSource(
                     return null;
                 }
 
-                // Probe the video
-                const result = await probeVideo(path);
+                // Probe the video using assetId
+                const result = await probeVideo(id);
                 setProbeError(null);
                 return result;
             } catch (e) {

@@ -173,7 +173,7 @@ impl ThumbnailCapability for AffinityFormatProvider {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the thumbnail data.
-    async fn generate(&self, path: &Path, _size_hint: u32) -> AppResult<Vec<u8>> {
+    async fn generate(&self, path: &Path, _asset_id: &str, _size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         let provider = Self::new();
 

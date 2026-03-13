@@ -29,6 +29,7 @@ use tokio::io::AsyncReadExt;
 use crate::core::repository::AssetQueryHandler;
 use crate::delivery::tauri::commands::queries::StreamingSessionToken;
 use crate::feature::transcoding::hls_manager::HlsManager;
+use crate::core::formats::FormatRegistry;
 
 /// Shared server state for Axum handlers.
 #[derive(Clone)]
@@ -36,6 +37,7 @@ struct ServerState {
     app_handle: AppHandle,
     asset_query: Arc<dyn AssetQueryHandler>,
     hls_manager: Arc<HlsManager>,
+    format_registry: Arc<FormatRegistry>,
 }
 
 #[derive(Deserialize)]
@@ -50,11 +52,13 @@ pub async fn start_server(app_handle: AppHandle, port: u16) -> tauri::async_runt
         .inner()
         .clone();
     let hls_manager = app_handle.state::<Arc<HlsManager>>().inner().clone();
+    let format_registry = app_handle.state::<Arc<FormatRegistry>>().inner().clone();
 
     let state = ServerState {
         app_handle,
         asset_query,
         hls_manager,
+        format_registry,
     };
 
     let app = Router::new()
@@ -125,9 +129,33 @@ async fn probe_handler(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
-    // Logic to run ffprobe and return JSON
-    // For now, returning a placeholder
-    Ok(format!("Probe for {}", asset.path.display()).into_response())
+    // Detect format and extract metadata (V1 Parity)
+    if let Some(format) = state.format_registry.detect(&asset.path) {
+        if let Some(provider) = state.format_registry.get_provider(&format.name) {
+            if let Some(metadata_cap) = provider.metadata() {
+                let metadata: serde_json::Value = metadata_cap
+                    .extract_technical(&asset.path)
+                    .await
+                    .map_err(|e| {
+                        tracing::error!("Failed to extract technical metadata: {:?}", e);
+                        StatusCode::INTERNAL_SERVER_ERROR
+                    })?;
+
+                return Ok(Response::builder()
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                    .body(Body::from(serde_json::to_string(&metadata).unwrap_or_default()))
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?);
+            }
+        }
+    }
+
+    // Fallback or empty metadata if no specialized metadata capability exists
+    Ok(Response::builder()
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .body(Body::from(r#"{"streams":[], "format":{}}"#))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?)
 }
 
 /// Handler for direct media streaming with Range support.

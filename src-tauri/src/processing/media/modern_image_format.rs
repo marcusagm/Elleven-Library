@@ -185,7 +185,7 @@ impl ThumbnailCapability for ModernImageFormatProvider {
     /// # Returns
     ///
     /// * `AppResult<Vec<u8>>` - O resultado da geração do thumbnail.
-    async fn generate(&self, path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
+    async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let tools = resolve_transcoding_tools::<tauri::Wry>(None)?;
 
         let mut cmd = Command::new(tools.ffmpeg);

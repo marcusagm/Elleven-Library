@@ -4,6 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 /// The central "Cartório" (Registry) for all supported file formats.
+#[derive(Clone)]
 pub struct FormatRegistry {
     /// Instant routing (O(1)) for 99% of cases using normalized extensions.
     by_extension: HashMap<String, Arc<dyn FormatProvider>>,
@@ -64,6 +65,22 @@ impl FormatRegistry {
         }
 
         None
+    }
+
+    /// Detects the granular format for a given path using extension-based routing.
+    pub fn detect(&self, path: &Path) -> Option<SupportedFormat> {
+        let extension = path.extension()?.to_str()?.to_lowercase();
+        let provider = self.by_extension.get(&extension)?;
+        provider.supported_formats().into_iter().find(|sf| {
+            sf.extensions
+                .iter()
+                .any(|ext| ext.to_lowercase() == extension)
+        })
+    }
+
+    /// Returns a provider by its unique name.
+    pub fn get_provider(&self, name: &str) -> Option<Arc<dyn FormatProvider>> {
+        self.deep_checkers.iter().find(|p| p.name() == name).cloned()
     }
 
     /// Returns a list of all supported formats and their extensions.

@@ -50,7 +50,7 @@ impl FormatProvider for SvgFormatProvider {
                 "Scalable Vector Graphics",
                 vec!["svg", "svgz"],
                 vec!["image/svg+xml"],
-                MediaType::Image,
+                MediaType::Vector,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),
@@ -93,7 +93,7 @@ impl ThumbnailCapability for SvgFormatProvider {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the thumbnail data.
-    async fn generate(&self, path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
+    async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
 
         tokio::task::spawn_blocking(move || {

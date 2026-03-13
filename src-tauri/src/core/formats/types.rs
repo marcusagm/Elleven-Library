@@ -8,8 +8,9 @@ pub enum MediaType {
     Video,
     Audio,
     Project, // ex: .psd, .ai
+    Vector,  // ex: .svg, .pdf
     Archive, // ex: .zip
-    Model3D,  // ex: .blend, .fbx
+    Model3D, // ex: .blend, .fbx
     Font,
     Unknown,
 }
@@ -24,6 +25,7 @@ pub enum PlaybackStrategy {
     AudioLinearHls, // Linear HLS for audio
     Transcode,      // Legacy transcoding (kept for compatibility if needed, but HLS preferred)
     AudioTranscode, // Legacy audio transcoding
+    Conversion,     // Conversion strategy (e.g. 3D formats to GLB)
     None,           // No playback support
 }
 
@@ -35,5 +37,6 @@ pub enum PreviewStrategy {
     Ffmpeg,          // Extraction via FFmpeg (HEIC, HDR, AVIF)
     NativeExtractor, // Specialty extraction (PSD, Affinity, ZIP-based)
     Convert,         // On-the-fly conversion using 'image' crate (DDS, TGA, EXR)
+    Assimp,          // 3D Model conversion/rendering via Assimp
     None,            // No preview available
 }

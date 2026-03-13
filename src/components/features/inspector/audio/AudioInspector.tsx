@@ -11,7 +11,10 @@ interface AudioInspectorProps {
 }
 
 export const AudioInspector: Component<AudioInspectorProps> = props => {
-    const { audioUrl } = useAudioSource(() => props.item.path);
+    const { audioUrl } = useAudioSource(
+        () => props.item.id,
+        () => props.item.path
+    );
 
     return (
         <div class="inspector-content">

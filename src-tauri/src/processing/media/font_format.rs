@@ -192,7 +192,7 @@ impl ThumbnailCapability for FontFormatProvider {
     ///
     /// `AppResult<Vec<u8>>` - Thumbnail do arquivo.
     #[instrument(skip(self, path))]
-    async fn generate(&self, path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
+    async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
             // 1. Setup FontDB

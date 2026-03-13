@@ -124,27 +124,26 @@ export function isNativeFormat(path: string): boolean {
 }
 
 /**
- * Get the appropriate audio URL for a file path
+ * Get the appropriate audio URL for an asset
  */
-export function getAudioUrl(path: string, quality: TranscodeQuality = 'standard'): string {
-    const encodedPath = encodeURIComponent(path);
-
+export function getAudioUrl(
+    assetId: string,
+    path: string,
+    quality: TranscodeQuality = 'standard'
+): string {
     if (needsLinearAudio(path)) {
         // Linear HLS (Live/Async)
         const tokenSuffix = getStreamingToken() ? `&token=${getStreamingToken()}` : '';
-        return `${HLS_SERVER_URL}/hls-live/${encodedPath}/index.m3u8?quality=${quality}&mode=audio${tokenSuffix}`;
+        return `${HLS_SERVER_URL}/hls-live/${assetId}/index.m3u8?quality=${quality}&mode=audio${tokenSuffix}`;
     }
 
     if (needsStandardHlsAudio(path)) {
         // Standard HLS (Playlist/VOD)
-        return getHlsPlaylistUrl(path, quality);
+        return getHlsPlaylistUrl(assetId, quality);
     }
 
-    if (needsAudioTranscoding(path)) {
-        return `audio-stream://localhost/${encodedPath}?quality=${quality}`;
-    }
-
-    return `audio://localhost/${encodedPath}`;
+    // Default to asset protocol (direct file access)
+    return `asset://localhost/${assetId}`;
 }
 
 function requiresLinearHls(path: string, probe?: VideoProbeResult | null): boolean {
@@ -167,26 +166,19 @@ export function getVideoUrl(
     quality: TranscodeQuality = 'standard',
     probe?: VideoProbeResult | null
 ): string {
-    const encodedPath = encodeURIComponent(path);
-
     if (requiresLinearHls(path, probe)) {
         // Linear HLS (Live) - e.g. SWF or MJPEG
         const tokenSuffix = getStreamingToken() ? `&token=${getStreamingToken()}` : '';
-        return `${HLS_SERVER_URL}/hls-live/${encodedPath}/index.m3u8?quality=${quality}&mode=live${tokenSuffix}`;
+        return `${HLS_SERVER_URL}/hls-live/${assetId}/index.m3u8?quality=${quality}&mode=live${tokenSuffix}`;
     }
 
     if (requiresStandardHls(path, probe)) {
         // Standard HLS (VOD) - e.g. MKV, AVI or non-native codec found via probe
-        return getHlsPlaylistUrl(path, quality);
-    }
-
-    if (needsVideoTranscoding(path)) {
-        // Standard progressive stream (deprecated in favor of HLS but kept for fallback)
-        return `video-stream://localhost/${encodedPath}?quality=${quality}`;
+        return getHlsPlaylistUrl(assetId, quality);
     }
 
     // Native format (MP4/MOV) - Direct file access over custom protocol
-    return `asset://localhost/${encodeURIComponent(assetId)}`;
+    return `asset://localhost/${assetId}`;
 }
 
 /**
@@ -195,7 +187,7 @@ export function getVideoUrl(
  */
 export function getMediaType(
     path: string
-): 'audio' | 'video' | 'image' | 'font' | 'model3d' | 'project' | 'archive' | 'unknown' {
+): 'audio' | 'video' | 'image' | 'font' | 'model3d' | 'project' | 'vector' | 'archive' | 'unknown' {
     return formatActions.getMediaType(getExtension(path));
 }
 

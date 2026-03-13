@@ -7,10 +7,20 @@ export type MediaType =
     | 'video'
     | 'audio'
     | 'project'
+    | 'vector'
     | 'archive'
     | 'model3d'
     | 'font'
     | 'unknown';
+
+export type PreviewStrategy =
+    | 'browserNative'
+    | 'raw'
+    | 'ffmpeg'
+    | 'nativeExtractor'
+    | 'convert'
+    | 'none';
+
 export type PlaybackStrategy =
     | 'native'
     | 'hls'
@@ -27,6 +37,7 @@ export interface FileFormat {
     extensions: string[];
     mime_types: string[];
     type_category: MediaType;
+    preview_strategy: PreviewStrategy;
     playback: PlaybackStrategy;
 }
 

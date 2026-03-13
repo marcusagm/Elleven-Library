@@ -72,24 +72,22 @@ function buildTokenSuffix(): string {
 }
 
 /**
- * Get the HLS playlist URL for a video file
- * @param {string} filePath - Absolute path to the video file
+ * Get the HLS playlist URL for an asset
+ * @param {string} assetId - UUID of the asset
  * @param {string} [quality='standard'] - Quality string parameter
  * @returns {string} The M3U8 playlist URL with authentication token
  */
-export function getHlsPlaylistUrl(filePath: string, quality: string = 'standard'): string {
-    const encodedPath = encodeURIComponent(filePath);
-    return `${HLS_SERVER_URL}/playlist/${encodedPath}?quality=${quality}${buildTokenSuffix()}`;
+export function getHlsPlaylistUrl(assetId: string, quality: string = 'standard'): string {
+    return `${HLS_SERVER_URL}/playlist/${assetId}/playlist.m3u8?quality=${quality}${buildTokenSuffix()}`;
 }
 
 /**
- * Get the probe URL for a video file
- * @param {string} filePath - Absolute path to the video file
+ * Get the probe URL for an asset
+ * @param {string} assetId - UUID of the asset
  * @returns {string} The probe endpoint URL with authentication token
  */
-export function getHlsProbeUrl(filePath: string): string {
-    const encodedPath = encodeURIComponent(filePath);
-    return `${HLS_SERVER_URL}/probe/${encodedPath}?_=1${buildTokenSuffix()}`;
+export function getHlsProbeUrl(assetId: string): string {
+    return `${HLS_SERVER_URL}/probe/${assetId}?_=1${buildTokenSuffix()}`;
 }
 
 /**
@@ -106,13 +104,13 @@ export interface VideoProbeResult {
 }
 
 /**
- * Probe a video file for metadata
- * @param {string} filePath - Absolute path to the video file
+ * Probe an asset for metadata
+ * @param {string} assetId - UUID of the asset
  * @returns {Promise<VideoProbeResult>} Video metadata including duration and native format detection
  * @throws {Error} Throw if probe request fails
  */
-export async function probeVideo(filePath: string): Promise<VideoProbeResult> {
-    const url = getHlsProbeUrl(filePath);
+export async function probeVideo(assetId: string): Promise<VideoProbeResult> {
+    const url = getHlsProbeUrl(assetId);
     const response = await fetch(url);
 
     if (!response.ok) {

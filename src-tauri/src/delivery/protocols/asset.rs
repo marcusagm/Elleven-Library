@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tauri::http::{header, Request, Response, StatusCode};
 use tauri::{AppHandle, Manager};
 
+use crate::core::AppResult;
 use crate::core::repository::AssetQueryHandler;
 use percent_encoding::percent_decode_str;
 
@@ -16,6 +17,7 @@ use percent_encoding::percent_decode_str;
 /// The handler supports the following URI formats:
 /// - `asset://localhost/{asset_id}`: Serves the original file.
 /// - `asset://localhost/{asset_id}?type=thumb`: Serves the thumbnail.
+/// - `asset://localhost/{asset_id}?type=preview`: Serves a high-resolution preview.
 ///
 /// # Arguments
 /// * `app_handle`: The Tauri application handle.
@@ -44,7 +46,10 @@ pub fn handler<R: tauri::Runtime>(
 ) -> Response<Vec<u8>> {
     let uri = request.uri().to_string();
 
-    let (asset_id, is_thumb) = parse_asset_uri(&uri);
+    let (asset_id, requested_type) = parse_asset_uri(&uri);
+    let is_thumb = requested_type == Some("thumb".to_string());
+    let is_preview = requested_type == Some("preview".to_string());
+    let is_glb = requested_type == Some("glb".to_string());
 
     // 1. Fetch the Repository (AssetQueryHandler) from the DI state
     let query_handler = match app_handle.try_state::<Arc<dyn AssetQueryHandler>>() {
@@ -80,9 +85,9 @@ pub fn handler<R: tauri::Runtime>(
     };
 
     // 3. Resolve physical path based on type
-    let mut physical_path = asset.path;
+    let mut physical_path = asset.path.clone();
 
-    if is_thumb || uri.contains("type=glb") {
+    if is_thumb {
         let app_data = match app_handle.path().app_local_data_dir() {
             Ok(dir) => dir,
             Err(_) => {
@@ -92,10 +97,59 @@ pub fn handler<R: tauri::Runtime>(
                 )
             }
         };
-        let extension = if is_thumb { "webp" } else { "glb" };
         physical_path = app_data
             .join("thumbnails")
-            .join(format!("{}.{}", asset.id, extension));
+            .join(format!("{}.webp", asset.id));
+    } else if is_glb {
+        // Only use thumbnail cache if original is NOT already a GLB/GLTF
+        let path_str = physical_path.to_string_lossy().to_lowercase();
+        if !path_str.ends_with(".glb") && !path_str.ends_with(".gltf") {
+            let app_data = match app_handle.path().app_local_data_dir() {
+                Ok(dir) => dir,
+                Err(_) => {
+                    return error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        b"Data configuration path not found".to_vec(),
+                    )
+                }
+            };
+            physical_path = app_data
+                .join("thumbnails")
+                .join(format!("{}.glb", asset.id));
+        }
+    } else if is_preview {
+        // High-Resolution Preview Logic (V1 Parity)
+        let registry = match app_handle.try_state::<Arc<crate::core::formats::FormatRegistry>>() {
+            Some(r) => r,
+            None => {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    b"FormatRegistry not found".to_vec(),
+                )
+            }
+        };
+
+        if let Some(format) = registry.inner().detect(&physical_path) {
+            if let Some(provider) = registry.inner().get_provider(&format.name) {
+                if let Some(preview_cap) = provider.preview() {
+                    let preview_result: AppResult<(Vec<u8>, String)> = tauri::async_runtime::block_on(async {
+                        preview_cap.generate_preview(&physical_path, &asset.id).await
+                    });
+
+                    if let Ok((data, mime)) = preview_result {
+                        return Response::builder()
+                            .status(StatusCode::OK)
+                            .header(header::CONTENT_TYPE, mime)
+                            .header(header::CONTENT_LENGTH, data.len().to_string())
+                            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                            .header(header::CACHE_CONTROL, "public, max-age=3600")
+                            .body(data)
+                            .unwrap_or_else(|_| Response::default());
+                    }
+                }
+            }
+        }
+        // Fallback to serving original file if preview extraction fails or is not supported
     }
 
     if !physical_path.exists() {
@@ -150,17 +204,17 @@ fn error_response(status: StatusCode, body: Vec<u8>) -> Response<Vec<u8>> {
 /// * `uri`: The URI to parse.
 ///
 /// # Returns
-/// A tuple containing the asset ID and a boolean indicating if it's a thumbnail.
+/// A tuple containing the asset ID and an optional string indicating the requested type.
 ///
 /// # Examples
 /// ```no_run
 /// use crate::delivery::protocols::asset::parse_asset_uri;
 ///
-/// let (asset_id, is_thumb) = parse_asset_uri("asset://localhost/12345?type=thumb");
+/// let (asset_id, req_type) = parse_asset_uri("asset://localhost/12345?type=thumb");
 /// assert_eq!(asset_id, "12345");
-/// assert!(is_thumb);
+/// assert_eq!(req_type, Some("thumb".to_string()));
 /// ```
-fn parse_asset_uri(uri: &str) -> (String, bool) {
+fn parse_asset_uri(uri: &str) -> (String, Option<String>) {
     let prefix = "asset://localhost/";
     let fallback = "asset://";
 
@@ -181,9 +235,20 @@ fn parse_asset_uri(uri: &str) -> (String, bool) {
     let decoded_id = percent_decode_str(path_part)
         .decode_utf8_lossy()
         .into_owned();
-    let is_thumb = query_part.is_some_and(|q| q.contains("type=thumb"));
 
-    (decoded_id, is_thumb)
+    let req_type = query_part.and_then(|q| {
+        if q.contains("type=thumb") {
+            Some("thumb".to_string())
+        } else if q.contains("type=preview") {
+            Some("preview".to_string())
+        } else if q.contains("type=glb") {
+            Some("glb".to_string())
+        } else {
+            None
+        }
+    });
+
+    (decoded_id, req_type)
 }
 
 /// Async tokio file streaming and HTTP Range chunking mechanism

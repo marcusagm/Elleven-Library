@@ -77,8 +77,8 @@
 
 ### ItemInspector
 
-**Status:** Pendente
-**Data e hora de inicio:** -
+**Status:** Parcial
+**Data e hora de inicio:** 2026-03-12 18:30
 **Data e hora da conclusão:** -
 
 **Arquivos da arquitetura v1 para referência:**
@@ -88,10 +88,10 @@
 
 **Lista de problemas**
 
-- [ ] Vários formatos de assets não estão abrindo o inspector correto de acordo com o seu tipo. Por exemplo, arquivos `dts`, `aif` e `ac3` de audio deveriam carregar `src/components/features/inspector/audio`, arquivo `f4v`, `mjpeg`, `asf` de video deveriam carregar `src/components/features/inspector/video`, etc. Porem esses arquivos carregam o inspector de imagem `src/components/features/inspector/image`.
-- [ ] O player de video não está funcionando. Ao clicar para reproduzir um video, ele não inicia a reprodução `src/components/features/inspector/video`.
-- [ ] O player de audio não está funcionando. Ao clicar para reproduzir um audio, ele não inicia a reprodução `src/components/features/inspector/audio`.
-- [ ] Ao selecionar um arquivo é comum ocorrer o erro a seguir quando o tipo de asset não possui EXIF:
+- [x] Vários formatos de assets não estão abrindo o inspector correto de acordo com o seu tipo. Por exemplo, arquivos `dts`, `aif` e `ac3` de audio deveriam carregar `src/components/features/inspector/audio`, arquivo `f4v`, `mjpeg`, `asf` de video deveriam carregar `src/components/features/inspector/video`, etc. Porem esses arquivos carregam o inspector de imagem `src/components/features/inspector/image`.
+- [x] O player de video não está funcionando. Ao clicar para reproduzir um video, ele não inicia a reprodução `src/components/features/inspector/video`.
+- [x] O player de audio não está funcionando. Ao clicar para reproduzir um audio, ele não inicia a reprodução `src/components/features/inspector/audio`.
+- [x] Ao selecionar um arquivo é comum ocorrer o erro a seguir quando o tipo de asset não possui EXIF:
   ```shell
   [Error] [IPC Error: get_asset_exif] – {code: "INTERNAL_ERROR", message: 'Application error: Provider for "/Users/marcusmaia…e-Point.kra" does not support metadata extraction'}
   {code: "INTERNAL_ERROR", message: 'Application error: Provider for "/Users/marcusmaia…e-Point.kra" does not support metadata extraction'} Object
@@ -112,8 +112,8 @@
 
 ### ItemView
 
-**Status:** Pendente
-**Data e hora de inicio:** -
+**Status:** Parcial
+**Data e hora de inicio:** 2026-03-12 18:30
 **Data e hora da conclusão:** -
 
 **Arquivos da arquitetura v1 para referência:**
@@ -123,11 +123,11 @@
 
 **Lista de problemas**
 
-- [ ] Vários formatos de assets não estão abrindo o ItemView correto de acordo com o seu tipo. Por exemplo, arquivos `dts`, `aif` e `ac3` de audio deveriam carregar `src/components/features/itemview/renderers/audio`, arquivo `f4v`, `mjpeg`, `asf` de video deveriam carregar `src/components/features/itemview/renderers/video`, etc. Porem esses arquivos carregam o ItemView de imagem `src/components/features/itemview/renderers/image`.
-- [ ] O player de video não está funcionando. Ao clicar para reproduzir um video, ele não inicia a reprodução `src/components/features/itemview/renderers/video`.
-- [ ] O player de audio não está funcionando. Ao clicar para reproduzir um audio, ele não inicia a reprodução `src/components/features/itemview/renderers/audio`.
-- [ ] Ao abrir alguns arquivos para visualização, o backend v1 possuia métodos específicos para visualização em tamanho completo. Onde ele carregava um preview do arquivo original no tamanho real. Alguns arquivos não conseguem ser abertos por causa disso.
-- [ ] Agora ao tentar abrir um arquivo, ocorre o erro para alguns arquivos:
+- [x] Vários formatos de assets não estão abrindo o ItemView correto de acordo com o seu tipo. Por exemplo, arquivos `dts`, `aif` e `ac3` de audio deveriam carregar `src/components/features/itemview/renderers/audio`, arquivo `f4v`, `mjpeg`, `asf` de video deveriam carregar `src/components/features/itemview/renderers/video`, etc. Porem esses arquivos carregam o ItemView de imagem `src/components/features/itemview/renderers/image`.
+- [x] O player de video não está funcionando. Ao clicar para reproduzir um video, ele não inicia a reprodução `src/components/features/itemview/renderers/video`.
+- [x] O player de audio não está funcionando. Ao clicar para reproduzir um audio, ele não inicia a reprodução `src/components/features/itemview/renderers/audio`.
+- [x] Ao abrir alguns arquivos para visualização, o backend v1 possuia métodos específicos para visualização em tamanho completo. Onde ele carregava um preview do arquivo original no tamanho real. Alguns arquivos não conseguem ser abertos por causa disso.
+- [x] Agora ao tentar abrir um arquivo, ocorre o erro para alguns arquivos:
   ```shell
   [Error] Failed to load EXIF for asset c06d6751-0621-4dc2-8b43-765bd6919002: – {code: "INTERNAL_ERROR", message: "Application error: Provider for \"/Users/marcusmaia…r_Huion.kra\" does not support metadata extraction"}
   {code: "INTERNAL_ERROR", message: "Application error: Provider for \"/Users/marcusmaia…r_Huion.kra\" does not support metadata extraction"}Object
@@ -226,7 +226,12 @@ Além disso, houve uma regressão grave nos tipos de identificadores: IDs de tag
 
 #### ItemInspector e ItemView
 
-Adicione informações sobre os problemas encontrados no ItemInspector e ItemView.
+A migração para o V2 enfrentou uma regressão crítica no sistema de identificação de ativos: o `LibraryIndexer` estava atribuindo o formato `"unknown"` a todos os arquivos descobertos, impedindo que o frontend ativasse os renderizadores corretos. Além disso, a estabilidade foi comprometida por um erro de gerenciamento de estado no Tauri (`Arc<FormatRegistry>`), resultando em panics ao tentar acessar metadados ou previews.
+
+Outro desafio significativo foi o suporte a arquivos profissionais como PSD e Krita; sem a implementação de uma `MetadataCapability` e `PreviewCapability` específica, o backend retornava erros internos ao tentar extrair EXIF desses contêineres binários. No processamento de miniaturas, descobrimos que o `ThumbnailWorker` salvava arquivos PNG/JPEG com extensão `.webp` sem realizar a transcodificação real, o que causava falhas silenciosas de decodificação ("Invalid Chunk header") durante a análise de cores.
+
+**Correção de Playback de Mídia:**
+A maior dificuldade foi a dessincronização entre as URLs de HLS geradas pelo frontend e as rotas esperadas pelo servidor Axum. O frontend tentava usar `filePath` codificado, enquanto o backend esperava o UUID do asset. Além disso, os protocolos `audio://` e `video-stream://` do V1 foram removidos, exigindo a centralização de todas as requisições no protocolo `asset://`. Para modelos 3D, o backend estava servindo apenas miniaturas WebP quando o frontend solicitava um GLB, o que foi resolvido com um novo parâmetro `?type=glb` no protocolo de ativos, permitindo o roteamento dinâmico para o arquivo original ou cache de conversão.
 
 #### Listagem de assets e viewport
 
@@ -260,7 +265,13 @@ Adicione informações sobre os problemas encontrados na settings.
 
 #### ItemInspector e ItemView
 
-Adicione informações sobre as melhorias realizadas no ItemInspector e ItemView.
+- **Paridade com V1:** Sincronização completa do `FormatRegistry` master e dos provedores de Áudio e Vídeo, restaurando o suporte a extensões legadas (`dts`, `ac3`, `asf`, etc).
+- **Extração de Previews:** Implementação da `PreviewCapability` permitindo que arquivos PSD, Krita e SVG sejam visualizados em alta resolução através de extração on-the-fly (`?type=preview`).
+- **Novas Categorias de Mídia:** Introdução de tipos dedicados `Vector` (SVG, AI, EPS) e `Project` (PSD, Krita, Sketch) para melhor organização visual nos renderizadores.
+- **Transcodificação WebP:** Implementação de codificação real no `ThumbnailWorker` usando o crate `webp`, garantindo integridade das miniaturas para o `ColorWorker`.
+- **Estabilização de Estado:** Correção do ciclo de vida e acesso ao `FormatRegistry` via `Arc`, eliminando panics de inicialização no servidor de streaming e protocolos de ativos.
+- **URL Padronizada (UUID):** Migração de todo o sistema de URLs de media para usar UUIDs de assets em vez de paths de arquivos, eliminando problemas com caracteres especiais e melhorando a segurança.
+- **Protocolo Asset V2:** Otimização do handler `asset://` para lidar com requisições de modelos 3D nativos (`.glb`, `.gltf`) de forma transparente, caindo para o cache de conversão apenas quando necessário.
 
 #### Listagem de assets e viewport
 
@@ -302,7 +313,20 @@ Adicione informações sobre as melhorias realizadas na settings.
 
 #### ItemInspector e ItemView
 
-Adicione a lista de arquivos criados ou modificados no ItemInspector e ItemView.
+- `src-tauri/src/delivery/streaming/server.rs`: Implementação do `/probe` handler e correção de estado (`Arc`).
+- `src-tauri/src/delivery/protocols/asset.rs`: Adicionado suporte ao parâmetro `?type=preview` e roteamento dinâmico para GLB (`?type=glb`).
+- `src-tauri/src/core/formats/*`: Reestruturação completa das capacidades e tipos de mídia.
+- `src-tauri/src/formats/definitions.rs`: Sincronização do registro mestre de formatos.
+- `src-tauri/src/processing/media/*`: Implementação de provedores específicos para PSD, Krita, SVG e extensões de Áudio/Vídeo.
+- `src-tauri/src/feature/library/indexer.rs`: Implementação de detecção real de formatos durante o scan.
+- `src-tauri/src/processing/workers/thumbnail_worker.rs`: Adicionada transcodificação para WebP.
+- `src/core/store/formatStore.ts`: Alinhamento de tipos com o backend V2.
+- `src/components/features/itemview/ItemView.tsx`: Lógica para renderização de Previews, suporte a Model3D via UUID e correção de props.
+- `src/lib/hls-player.ts`: Atualização das URLs de playlist e probe para usar `assetId`.
+- `src/lib/stream-utils.ts`: Padronização de `getAudioUrl` e `getVideoUrl` usando o protocolo `asset://`.
+- `src/core/hooks/useAudioSource.ts`: Adicionado suporte a `assetId` para resolução de URL.
+- `src/components/features/itemview/renderers/audio/AudioRenderer.tsx`: Integração do `assetId` para playback estável.
+- `src/components/features/itemview/renderers/model/ModelViewer.tsx`: Implementação de carregamento direto via `asset://localhost/{id}?type=glb`.
 
 #### Listagem de assets e viewport
 

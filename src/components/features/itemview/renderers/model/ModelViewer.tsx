@@ -23,9 +23,11 @@ declare module 'solid-js' {
 }
 
 interface ModelViewerProps {
-    id: string;
-    src: string;
+    /** Asset UUID */
+    assetId: string;
+    /** File name for alt text */
     filename: string;
+    /** Optional thumbnail flag */
     thumbnail?: string | null;
 }
 
@@ -75,10 +77,17 @@ export const ModelViewer: Component<ModelViewerProps> = props => {
         }
     });
 
-    // Determine the path to the cached GLB content
+    // Build direct GLB URL via custom protocol
     const glbUrl = createMemo(() => {
-        if (!props.thumbnail) return null;
-        return `asset://localhost/${props.id}?type=glb`;
+        if (!props.assetId) return '';
+        // Signal that we want the GLB version (either original or cached conversion)
+        return `asset://localhost/${props.assetId}?type=glb`;
+    });
+
+    // Build thumbnail URL
+    const thumbUrl = createMemo(() => {
+        if (!props.assetId) return '';
+        return `asset://localhost/${props.assetId}?type=thumb`;
     });
 
     return (
@@ -98,9 +107,7 @@ export const ModelViewer: Component<ModelViewerProps> = props => {
                 <model-viewer
                     ref={viewerRef}
                     src={glbUrl()!}
-                    poster={
-                        props.thumbnail ? `asset://localhost/${props.id}?type=thumb` : undefined
-                    }
+                    poster={thumbUrl()}
                     alt={`3D model: ${props.filename}`}
                     shadow-intensity={modelSettings().backgroundColor === '#111111' ? '1' : '0.5'}
                     camera-controls

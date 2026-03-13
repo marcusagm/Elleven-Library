@@ -6,6 +6,7 @@ import { type TranscodeQuality, getAudioUrl } from '../../lib/stream-utils';
  * Consolidates streaming strategy logic used in both AudioRenderer and AudioInspector.
  */
 export function useAudioSource(
+    assetIdAccessor: () => string | undefined,
     pathAccessor: () => string | undefined,
     qualityAccessor: () => TranscodeQuality = () => 'standard'
 ) {
@@ -14,15 +15,15 @@ export function useAudioSource(
     // Update URL when path or quality changes
     createEffect(
         on(
-            () => [pathAccessor(), qualityAccessor()] as const,
-            ([path, q]) => {
-                if (!path) {
+            () => [assetIdAccessor(), pathAccessor(), qualityAccessor()] as const,
+            ([id, path, q]) => {
+                if (!id || !path) {
                     setAudioUrl('');
                     return;
                 }
 
                 // Delegate URL construction to central logic in stream-utils
-                const url = getAudioUrl(path, q);
+                const url = getAudioUrl(id, path, q);
                 setAudioUrl(url);
             }
         )

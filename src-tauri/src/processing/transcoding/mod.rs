@@ -14,6 +14,7 @@ use wait_timeout::ChildExt;
 pub struct TranscodingTools {
     pub ffmpeg: PathBuf,
     pub ffprobe: PathBuf,
+    pub assimp: Option<PathBuf>,
 }
 
 /// Resolve os caminhos para as ferramentas de transcoding.
@@ -27,7 +28,9 @@ pub fn resolve_transcoding_tools<R: tauri::Runtime>(
         .ok_or_else(|| AppError::Transcoding("FFmpeg binary not found".to_string()))?;
     let ffprobe = find_binary(app_handle, "ffprobe")
         .ok_or_else(|| AppError::Transcoding("FFprobe binary not found".to_string()))?;
-    Ok(TranscodingTools { ffmpeg, ffprobe })
+    let assimp = find_binary(app_handle, "assimp");
+    
+    Ok(TranscodingTools { ffmpeg, ffprobe, assimp })
 }
 
 /// Tenta encontrar um binário específico no sistema.

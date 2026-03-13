@@ -22,6 +22,7 @@ import { ModelViewer } from './renderers/model/ModelViewer';
 import { ModelToolbar } from './renderers/model/ModelToolbar';
 import { AudioRenderer } from './renderers/audio/AudioRenderer';
 import { Loader } from '../../ui/Loader';
+import { formatActions } from '../../../core/store/formatStore';
 import { getMediaType } from '../../../lib/stream-utils';
 import './item-view.css';
 
@@ -150,6 +151,7 @@ const ItemViewContent: Component = () => {
                             mediaType() === 'image' ||
                             mediaType() === 'unknown' ||
                             mediaType() === 'project' ||
+                            mediaType() === 'vector' ||
                             mediaType() === 'archive'
                         }
                     >
@@ -178,11 +180,24 @@ const ItemViewContent: Component = () => {
                                 getMediaType(item()!.filename) === 'image' ||
                                 getMediaType(item()!.filename) === 'unknown' ||
                                 getMediaType(item()!.filename) === 'project' ||
+                                getMediaType(item()!.filename) === 'vector' ||
                                 getMediaType(item()!.filename) === 'archive'
                             }
                         >
                             <ImageViewer
-                                src={`asset://localhost/${item()!.id}`}
+                                src={(() => {
+                                    const ext =
+                                        item()!.filename.split('.').pop()?.toLowerCase() || '';
+                                    const format = formatActions.getFormat(ext);
+                                    const needsPreview =
+                                        format?.preview_strategy &&
+                                        ['nativeExtractor', 'convert', 'ffmpeg', 'raw'].includes(
+                                            format.preview_strategy
+                                        );
+                                    return `asset://localhost/${item()!.id}${
+                                        needsPreview ? '?type=preview' : ''
+                                    }`;
+                                })()}
                                 alt={item()!.filename}
                             />
                         </Match>
@@ -190,7 +205,7 @@ const ItemViewContent: Component = () => {
                             <VideoPlayer assetId={item()!.id.toString()} path={item()!.path} />
                         </Match>
                         <Match when={getMediaType(item()!.filename) === 'audio'}>
-                            <AudioRenderer path={item()!.path} />
+                            <AudioRenderer assetId={item()!.id.toString()} path={item()!.path} />
                         </Match>
                         <Match when={mediaType() === 'font'}>
                             <FontView
@@ -200,8 +215,7 @@ const ItemViewContent: Component = () => {
                         </Match>
                         <Match when={getMediaType(item()!.filename) === 'model3d'}>
                             <ModelViewer
-                                src={`asset://localhost/${item()!.id}`}
-                                id={item()!.id}
+                                assetId={item()!.id}
                                 filename={item()!.filename}
                                 thumbnail={item()!.thumbnail_path}
                             />

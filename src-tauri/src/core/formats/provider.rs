@@ -1,4 +1,4 @@
-use super::capabilities::{MetadataCapability, ThumbnailCapability};
+use super::capabilities::{MetadataCapability, PreviewCapability, ThumbnailCapability};
 use super::types::{MediaType, PlaybackStrategy, PreviewStrategy};
 use serde::Serialize;
 
@@ -88,6 +88,11 @@ pub trait FormatProvider: Send + Sync {
 
     /// Returns an optional reference to the thumbnail generation capability.
     fn thumbnail(&self) -> Option<&dyn ThumbnailCapability> {
+        None
+    }
+
+    /// Returns an optional reference to the high-res preview extraction capability.
+    fn preview(&self) -> Option<&dyn PreviewCapability> {
         None
     }
 }

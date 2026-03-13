@@ -173,36 +173,82 @@ impl ThumbnailWorker {
         // Capture the Tokio runtime handle to use inside Rayon threads
         let handle = tokio::runtime::Handle::current();
 
-        let results: Vec<(String, AppResult<Vec<u8>>)> = pool_clone.install(|| {
+        let results: Vec<(String, AppResult<Vec<u8>>, Option<AppResult<(Vec<u8>, String)>>)> = pool_clone.install(|| {
             use rayon::prelude::*;
             tasks
                 .into_par_iter()
                 .map(|(asset, provider)| {
                     let id = asset.id.clone();
-                    let result = handle.block_on(async {
-                        if let Some(capability) = provider.thumbnail() {
-                            capability.generate(&asset.path, 300).await
+                    let (thumb_res, preview_res) = handle.block_on(async {
+                        let t = if let Some(capability) = provider.thumbnail() {
+                            capability.generate(&asset.path, &id, 300).await
                         } else {
-                            Err(AppError::Internal(
-                                "Thumbnail capability not found".to_string(),
-                            ))
-                        }
+                            Err(AppError::Internal("Thumbnail capability not found".to_string()))
+                        };
+
+                        let p = if let Some(capability) = provider.preview() {
+                            Some(capability.generate_preview(&asset.path, &id).await)
+                        } else {
+                            None
+                        };
+
+                        (t, p)
                     });
-                    (id, result)
+                    (id, thumb_res, preview_res)
                 })
                 .collect()
         });
 
         // 5. Commit Results
-        for (id, result) in results {
-            match result {
+        for (id, thumb_result, preview_result) in results {
+            // 5a. Handle Preview (e.g. converted GLB for 3D)
+            if let Some(Ok((preview_bytes, mime))) = preview_result {
+                let extension = match mime.as_str() {
+                    "model/gltf-binary" => "glb",
+                    "model/gltf+json" => "gltf",
+                    "image/png" => "png",
+                    "image/jpeg" => "jpg",
+                    _ => "bin",
+                };
+                let preview_filename = format!("{}.{}", id, extension);
+                let preview_path = thumbnails_dir.join(&preview_filename);
+                
+                if let Err(e) = std::fs::write(&preview_path, preview_bytes) {
+                    error!("ThumbnailWorker: Failed to write preview for {}: {}", id, e);
+                }
+            }
+
+            // 5b. Handle Thumbnail
+            match thumb_result {
                 Ok(bytes) => {
                     // Generate unique filename: {hash_of_id}.webp
                     let filename = format!("{}.webp", id);
                     let output_path = thumbnails_dir.join(&filename);
 
+                    // 5c. Transcode to valid WebP to ensure consistency and fix "Invalid Chunk header"
+                    let transcode_result = pool_clone.install(|| {
+                        let img = image::load_from_memory(&bytes).map_err(|e| {
+                            AppError::Internal(format!("Failed to load thumbnail for transcoding: {}", e))
+                        })?;
+                        
+                        let encoder = webp::Encoder::from_image(&img).map_err(|e| {
+                            AppError::Internal(format!("Failed to create WebP encoder: {}", e))
+                        })?;
+                        
+                        let webp_data = encoder.encode(75.0);
+                        Ok::<Vec<u8>, AppError>(webp_data.to_vec())
+                    });
+
+                    let final_bytes = match transcode_result {
+                        Ok(b) => b,
+                        Err(e) => {
+                            error!("ThumbnailWorker: Transcoding failed for {}: {}", id, e);
+                            continue;
+                        }
+                    };
+
                     // Save to disk
-                    if let Err(e) = std::fs::write(&output_path, bytes) {
+                    if let Err(e) = std::fs::write(&output_path, final_bytes) {
                         error!(
                             "ThumbnailWorker: Failed to write thumbnail for {}: {}",
                             id, e
@@ -222,7 +268,6 @@ impl ThumbnailWorker {
                 }
                 Err(e) => {
                     error!("ThumbnailWorker: Generation failed for {}: {}", id, e);
-                    // TODO: Record failure in DB to avoid retrying indefinitely
                 }
             }
         }

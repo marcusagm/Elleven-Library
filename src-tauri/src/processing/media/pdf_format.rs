@@ -53,7 +53,7 @@ impl FormatProvider for PdfFormatProvider {
                 "Portable Document Format",
                 vec!["pdf"],
                 vec!["application/pdf"],
-                MediaType::Image,
+                MediaType::Vector,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),

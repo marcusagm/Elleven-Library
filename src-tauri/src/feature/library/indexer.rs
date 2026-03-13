@@ -181,11 +181,17 @@ impl LibraryIndexer {
                     .cloned()
                     .or(current_root_id.clone());
 
+                let (format_name, family_name) = if let Some(fmt) = crate::formats::FileFormat::detect(&entry_path) {
+                    (fmt.name.to_string(), fmt.type_category.to_string())
+                } else {
+                    ("unknown".to_string(), "unknown".to_string())
+                };
+
                 let cmd = LedgerCommand::CreateAsset(CreateAssetPayload {
                     path: entry_path.clone(),
                     file_size: disk_size as u64,
-                    format_type: "unknown".to_string(),
-                    family: "unknown".to_string(),
+                    format_type: format_name,
+                    family: family_name,
                     state_init: AssetState::Indexed,
                     folder_id: asset_folder_id,
                 });
