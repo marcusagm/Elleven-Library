@@ -9,7 +9,6 @@ pub mod infra;
 pub mod lifecycle;
 pub mod processing;
 use crate::core::events::AppEventBus;
-use crate::core::settings::port::SettingsRepository;
 use crate::delivery::streaming::server::start_server;
 use crate::feature::transcoding::cache::TranscodeCache;
 use crate::infra::events::TokioEventBus;
@@ -163,9 +162,6 @@ pub fn run() {
                     server_handle,
                 );
 
-                // Load Settings from JSON
-                let settings: crate::core::settings::AppSettings =
-                    settings_adapter.load().await.unwrap_or_default();
 
                 let priority_state = std::sync::Arc::new(
                     crate::core::workflows::thumbnails::priority::ThumbnailPriorityState::default(),
@@ -181,7 +177,6 @@ pub fn run() {
                         asset_query_handler.clone(),
                         priority_state,
                         thumbnails_dir.clone(),
-                        settings.worker_threads,
                     );
                 let thumbnail_handle = thumbnail_worker.start(thumbnail_token.clone());
                 lifecycle_for_setup.register(

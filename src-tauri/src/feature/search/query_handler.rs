@@ -1,5 +1,5 @@
 use crate::core::error::AppResult;
-use crate::core::models::{AssetSummaryDto, PageParams, SearchCriteria};
+use crate::core::models::{PageParams, PaginatedAssetsDto, SearchCriteria};
 use crate::core::repository::AssetQueryHandler;
 use std::sync::Arc;
 
@@ -33,12 +33,15 @@ impl SearchQueryHandler {
     ///
     /// # Returns
     ///
-    /// * `AppResult<Vec<AssetSummaryDto>>` - The search results.
+    /// * `AppResult<PaginatedAssetsDto>` - The search results.
     pub async fn search(
         &self,
         criteria: SearchCriteria,
         page: PageParams,
-    ) -> AppResult<Vec<AssetSummaryDto>> {
-        self.repository.search_assets(criteria, page).await
+    ) -> AppResult<PaginatedAssetsDto> {
+        let items = self.repository.search_assets(criteria.clone(), page).await?;
+        let total_items = self.repository.get_search_count(criteria).await?;
+
+        Ok(PaginatedAssetsDto { items, total_items })
     }
 }

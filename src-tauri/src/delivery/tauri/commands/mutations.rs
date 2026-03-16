@@ -108,7 +108,7 @@ pub async fn create_tag(
 
     // The Ledger returns a dummy Asset with the tag_id in the id field.
     // Query the actual tag from the database to return the real Tag entity.
-    let all_tags = service.list_tags().await?;
+    let all_tags: Vec<Tag> = service.list_tags().await?;
     let created_tag = all_tags
         .into_iter()
         .find(|tag| tag.id == result.id)
@@ -258,7 +258,7 @@ pub async fn remove_location(
     watcher: State<'_, Arc<WatcherService>>,
 ) -> AppResult<()> {
     // 1. Get thumbnails before delete
-    let thumbnails = queries
+    let thumbnails: Vec<String> = queries
         .get_folder_thumbnails(&folder_id)
         .await
         .unwrap_or_default();

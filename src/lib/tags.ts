@@ -1,9 +1,9 @@
 import { invokeCommand as invoke } from './api';
 import {
-    type AssetItem,
     type SearchCriteria,
     type AssetFilter,
-    type UpdateTagsPayload
+    type UpdateTagsPayload,
+    type PaginatedAssetsDto
 } from '../types';
 
 export interface Tag {
@@ -39,7 +39,7 @@ export const tagService = {
         criteria: SearchCriteria,
         page: number = 1,
         pageSize: number = 30
-    ): Promise<AssetItem[]> => {
+    ): Promise<PaginatedAssetsDto> => {
         return await invoke('search_assets', {
             criteria,
             page: { page, pageSize }
@@ -50,7 +50,7 @@ export const tagService = {
         filter: AssetFilter,
         page: number = 1,
         pageSize: number = 30
-    ): Promise<AssetItem[]> => {
+    ): Promise<PaginatedAssetsDto> => {
         return await invoke('get_assets', {
             filter,
             page: { page, pageSize }

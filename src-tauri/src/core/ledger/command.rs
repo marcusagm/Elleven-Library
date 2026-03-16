@@ -1,4 +1,5 @@
 use crate::core::models::asset::AssetState;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -21,6 +22,10 @@ pub struct CreateAssetPayload {
     pub state_init: AssetState,
     /// Optional parent folder ID.
     pub folder_id: Option<String>,
+    /// Optional creation time (from filesystem).
+    pub created_at: Option<DateTime<Utc>>,
+    /// Optional modification time (from filesystem).
+    pub modified_at: Option<DateTime<Utc>>,
 }
 
 /// Payload for updating tags associated with an asset.
@@ -87,6 +92,18 @@ pub struct UpdateAssetNotesPayload {
     pub asset_id: String,
     /// The new notes content.
     pub notes: String,
+}
+
+/// Payload for updating an asset's technical metadata (dimensions, etc).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTechnicalMetadataPayload {
+    pub asset_id: String,
+    pub width: Option<i64>,
+    pub height: Option<i64>,
+    pub duration_secs: Option<f64>,
+    pub technical_payload: Option<serde_json::Value>,
+    pub semantic_payload: Option<serde_json::Value>,
 }
 
 /// Payload for creating a new taxonomy tag.
@@ -202,6 +219,8 @@ pub enum LedgerCommand {
     ReextractColors { asset_id: String },
     /// Regenerate thumbnails for an asset.
     RegenerateThumbnail { asset_id: String },
+    /// Update technical metadata (dimensions, etc).
+    UpdateTechnicalMetadata(UpdateTechnicalMetadataPayload),
 
     /// Create a new taxonomy tag with name, optional color and parent.
     CreateTag(CreateTagPayload),

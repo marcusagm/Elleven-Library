@@ -140,9 +140,9 @@
 
 ### Listagem de assets e viewport
 
-**Status:** Pendente
-**Data e hora de inicio:** -
-**Data e hora da conclusão:** -
+**Status:** Concluído
+**Data e hora de inicio:** 2026-03-13 14:00
+**Data e hora da conclusão:** 2026-03-13 15:30
 
 **Arquivos da arquitetura v1 para referência:**
 - `mundam-main/src-tauri/src/library/commands/tags.rs`
@@ -150,14 +150,14 @@
 
 
 **Lista de problemas**
-- [ ] A alteração da ordenação de assets não está funcionando corretamente ao acionar `src/core/store/filter/filterState.tsx`
-- [ ] Em `src/components/features/statusbar/StatusCounts.tsx`, o contador de assets total indica sempre zero, apenas o contador de itens carregados está correto.
+- [x] A alteração da ordenação de assets não está funcionando corretamente ao acionar `src/core/store/filter/filterState.tsx`
+- [x] Em `src/components/features/statusbar/StatusCounts.tsx`, o contador de assets total indica sempre zero, apenas o contador de itens carregados está correto.
 
 ### Smart Folders e advanced search
 
-**Status:** Pendente
-**Data e hora de inicio:** -
-**Data e hora da conclusão:** -
+**Status:** Concluído
+**Data e hora de inicio:** 2026-03-13 14:15
+**Data e hora da conclusão:** 2026-03-13 15:30
 
 **Arquivos da arquitetura v1 para referência:**
 - `mundam-main/src-tauri/src/library/commands/smart_folders.rs`
@@ -166,7 +166,7 @@
 - `mundam-main/src-tauri/src/db/models/smart_folder.rs`
 
 **Lista de problemas**
-- [ ] A busca por critérios não está funcionando.
+- [x] A busca por critérios não está funcionando.
   
 
 ### Settings
@@ -216,7 +216,7 @@
 
 A migração inicial para V2 não contemplava a descoberta recursiva de pastas durante o `scan_directory`, salvando todos os assets no nível raiz da localização monitorada. Além disso, o sistema de eventos do V2 (Event Bus) não estava mapeado para os eventos legados do frontend (`indexer:progress`), resultando em uma barra de status estática. Outro desafio foi a performance do contador de assets recursivo, que foi resolvido com CTEs recursivas no SQLite.
 
-Durante a implementação da descoberta da árvore de pastas, houve uma inconsistência de nomenclatura entre o comando esperado pelo frontend (`list_all_folders`) e o existente no backend (`get_all_subfolders`). Isso gerou erros de permissão no Tauri v2 que foram resolvidos através da consolidação dos comandos e ajuste nas capacidades de segurança.
+Durante a implementação da descoberta da árvore de pastas, houve uma inconsistência de nomenclatura entre o comando esperado pelo frontend (`list_all_folders`) e o existente no backend (`get_all_subfolders`). Isso gerou erros de permissão no Tauri v2 que foram resolvidos através da consolidação dos comandos e ajuste nas capacidades de segurança. Além disso, a ausência de preenchimento dos campos `added_at` e `modified_at` na indexação foi corrigida através da padronização do parsing de datas e centralização da lógica no modelo `AssetDb`.
 
 #### Tags
 
@@ -235,11 +235,11 @@ A maior dificuldade foi a dessincronização entre as URLs de HLS geradas pelo f
 
 #### Listagem de assets e viewport
 
-Adicione informações sobre os problemas encontrados na listagem de assets e viewport.
+A principal dificuldade residia na dessincronização entre a expectativa do frontend por um objeto contendo metadados de paginação (`totalItems`) e o retorno simplificado do backend V2 que entregava apenas a lista de assets. Além disso, a lógica de ordenação estava "hardcoded" na camada de banco de dados, ignorando os parâmetros de interface. A persistência de metadados técnicos (dimensões) também apresentava um gap: os dados eram extraídos mas não gravados no banco de dados. A estabilidade foi afetada por panics no `ThumbnailWorker` ("Cannot start a runtime from within a runtime") devido ao Rayon em contextos async, exigindo a transição para `JoinSet`. A solução envolveu a criação do `PaginatedAssetsDto` e a refatoração completa do motor de banco de dados para suportar joins com `asset_metadata_envelope`.
 
 #### Smart Folders e advanced search
 
-Adicione informações sobre os problemas encontrados na smart folders e advanced search.
+O desafio técnico foi restaurar a paridade de busca sem comprometer a performance do esquema normalizado do V2. Muitas chaves de busca legadas do V1 (como `creationDate`, `isFavorite` e `size`) não possuíam correspondência direta nas colunas do V2 ou exigiam mapeamentos complexos em joins (como no caso de tags e metadados). Além disso, a busca por formatos (ex: "psd") falhava por não haver mapeamento entre extensões e nomes canônicos, e erros de sintaxe SQL (operador `AND` ausente) impediam filtros complexos. O `search_builder.rs` foi expandido para atuar como uma camada de tradução robusta.
 
 #### Settings
 
@@ -252,6 +252,7 @@ Adicione informações sobre os problemas encontrados na settings.
 - **Escaneamento Hierárquico:** O `LibraryIndexer` agora detecta subpastas no disco e as cria automaticamente no banco de dados como entidades `Folder`.
 - **Eventos de Progresso:** Implementada a emissão de eventos `ScanProgress` detalhados, com bridge no `lib.rs` para compatibilidade com o frontend.
 - **Consultas Recursivas:** Adicionado suporte ao flag `recursive` no `AssetFilter` e implementação de CTEs recursivas no repositório para visualização de subpastas e contagem correta de assets.
+- **Persistência de Metadados Temporais:** Correção na lógica de inserção para garantir que `added_at` e `modified_at` sejam capturados corretamente durante o scan diferencial, com suporte centralizado no `AssetDb`.
 - **Segurança e Permissões:** Configuração granulares de permissões no Tauri v2 para os novos comandos de query, garantindo que o frontend tenha acesso apenas ao necessário.
 - **Consolidação de IPC:** Remoção de comandos duplicados e padronização de nomes entre frontend e backend para evitar regressões futuras.
 
@@ -275,11 +276,17 @@ Adicione informações sobre os problemas encontrados na settings.
 
 #### Listagem de assets e viewport
 
-Adicione informações sobre as melhorias realizadas na listagem de assets e viewport.
+- **Paginação Unificada:** Introdução do `PaginatedAssetsDto` para garantir que o frontend receba sempre o `total_items`, permitindo o funcionamento correto dos contadores na barra de status.
+- **Ordenação Dinâmica:** Implementação da função `apply_sorting` no repositório SQLite, permitindo que o usuário ordene assets por qualquer critério (nome, data, tamanho, rating) com direção ascendente ou descendente.
+- **Estabilidade de Listagem:** Adição de um critério secundário de ordenação (por nome) para garantir que assets com o mesmo timestamp não "pulem" de posição durante o scroll infinito.
+- **Metadados Técnicos em Joins:** Otimização das queries de listagem para incluir dimensões (`width`, `height`) e duração via `LEFT JOIN` com `asset_metadata_envelope`.
 
 #### Smart Folders e advanced search
 
-Adicione informações sobre as melhorias realizadas na smart folders e advanced search.
+- **Mapeamento de Chaves V1:** Restauração completa da funcionalidade de busca avançada através do mapeamento de chaves legadas para colunas V2 (`filename` -> `name`, `size` -> `file_size`, etc).
+- **Resolver de Formatos:** Implementação de mapeamento no `search_builder.rs` para que buscas por extensões (ex: "psd", "jpg") correspondam aos nomes de formato no banco.
+- **Filtros de Rating e Favoritos:** Adição de suporte nativo para filtrar assets por classificação de estrelas e status de favorito.
+- **Busca Paginada:** Assim como na listagem normal, a busca avançada agora retorna o contador total de resultados, essencial para o feedback visual de busca.
 
 #### Settings
 
@@ -330,11 +337,22 @@ Adicione informações sobre as melhorias realizadas na settings.
 
 #### Listagem de assets e viewport
 
-Adicione a lista de arquivos criados ou modificados na listagem de assets e viewport.
+- `src-tauri/src/infra/database/queries.rs`: Implementação de `apply_sorting`, contagem total e joins de metadados.
+- `src-tauri/src/infra/database/ledger.rs`: Padronização de modelos com `sqlx::query!` e implementação de `UpdateTechnicalMetadata`.
+- `src-tauri/src/feature/assets/queries.rs`: Atualização do `list_assets` para retornar DTO paginado.
+- `src-tauri/src/delivery/tauri/commands/queries.rs`: Ajuste dos comandos `get_assets` para o novo contrato.
+- `src/types/index.ts`: Adição de `sortBy`, `sortOrder` e `PaginatedAssetsDto`.
+- `src/lib/tags.ts`: Atualização das assinaturas do `tagService`.
+- `src/core/store/library/libraryActions.ts`: Atualização da lógica de fetch e refresh para suportar paginação.
 
 #### Smart Folders e advanced search
 
-Adicione a lista de arquivos criados ou modificados na smart folders e advanced search.
+- `src-tauri/src/infra/database/search_builder.rs`: Expansão do mapeamento de chaves, filtros e resolução de extensões.
+- `src-tauri/src/core/models/search.rs`: Inclusão de campos de ordenação na `SearchCriteria`.
+- `src-tauri/src/feature/search/query_handler.rs`: Implementação de busca com suporte a paginação e contagem.
+- `src-tauri/src/delivery/tauri/commands/queries.rs`: Ajuste do comando `search_assets`.
+- `src-tauri/src/processing/workers/thumbnail_worker.rs`: Refatoração para `JoinSet` e extração automática de dimensões.
+- `src-tauri/src/lib.rs`: Limpeza de dependências e correção do ciclo de vida do worker.
 
 #### Settings
 

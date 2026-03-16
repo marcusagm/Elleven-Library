@@ -173,6 +173,8 @@ export interface AssetFilter {
     recursive?: boolean;
     tags?: string[];
     untagged?: boolean;
+    sortBy?: string;
+    sortOrder?: string;
 }
 
 export type LogicalOperator = 'and' | 'or';
@@ -195,6 +197,13 @@ export type SearchItem = SearchGroup | SearchCriterion;
 export interface SearchCriteria {
     id: string;
     rootGroup: SearchGroup;
+    sortBy?: string;
+    sortOrder?: string;
+}
+
+export interface PaginatedAssetsDto {
+    items: AssetItem[];
+    total_items: number;
 }
 
 export interface UpdateTagsPayload {

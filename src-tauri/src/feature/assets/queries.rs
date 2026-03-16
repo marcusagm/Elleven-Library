@@ -1,6 +1,8 @@
-use crate::core::error::AppResult;
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
+use crate::core::models::{
+    Asset, AssetFilter, Folder, PageParams, PaginatedAssetsDto, Tag,
+};
 use crate::core::repository::AssetQueryHandler;
+use crate::core::AppResult;
 use std::sync::Arc;
 
 /// Service handler for asset-related queries.
@@ -32,14 +34,17 @@ impl AssetQueryService {
     ///
     /// # Returns
     ///
-    /// * `Ok(Vec<AssetSummaryDto>)` if the assets were found successfully.
-    /// * `Err(AppResult<AssetSummaryDto>)` if the assets could not be found.
+    /// * `Ok(PaginatedAssetsDto)` if the assets were found successfully.
+    /// * `Err(AppError)` if the assets could not be found.
     pub async fn list_assets(
         &self,
         filter: AssetFilter,
         page: PageParams,
-    ) -> AppResult<Vec<AssetSummaryDto>> {
-        self.repository.list_paginated(filter, page).await
+    ) -> AppResult<PaginatedAssetsDto> {
+        let items = self.repository.list_paginated(filter.clone(), page).await?;
+        let total_items = self.repository.get_asset_count(filter).await?;
+
+        Ok(PaginatedAssetsDto { items, total_items })
     }
 
     /// Gets a single asset with full metadata.

@@ -49,10 +49,13 @@ pub struct Asset {
     /// File size of the asset
     #[serde(rename = "size")]
     pub file_size: u64,
-    /// Timestamp of when the asset was created
+    /// Timestamp of when the file was created
     pub created_at: Option<DateTime<Utc>>,
-    /// Timestamp of when the asset was updated
-    #[serde(rename = "modified_at")]
+    /// Timestamp of when the file was last modified
+    pub modified_at: Option<DateTime<Utc>>,
+    /// Timestamp of when the asset was added to Mundam
+    pub added_at: Option<DateTime<Utc>>,
+    /// Timestamp of when the asset record was last updated in Mundam
     pub updated_at: Option<DateTime<Utc>>,
 
     /// Width of the asset
@@ -145,11 +148,12 @@ pub struct AssetSummaryDto {
     /// Family of the asset
     #[serde(rename = "media_type")]
     pub family: String,
-    /// Timestamp of when the asset was created
+    /// Timestamp of when the file was created
     pub created_at: Option<DateTime<Utc>>,
-    /// Timestamp of when the asset was updated
-    #[serde(rename = "modified_at")]
-    pub updated_at: Option<DateTime<Utc>>,
+    /// Timestamp of when the file was last modified
+    pub modified_at: Option<DateTime<Utc>>,
+    /// Timestamp of when the asset was added to Mundam
+    pub added_at: Option<DateTime<Utc>>,
     /// Parent folder ID
     pub folder_id: Option<String>,
     /// Path to the generated thumbnail file
@@ -165,6 +169,15 @@ pub struct AssetSummaryDto {
     pub rating: i32,
     /// Free-text personal notes
     pub notes: Option<String>,
+}
+
+/// A wrapper for paginated asset summaries including total count.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaginatedAssetsDto {
+    /// The batch of assets for the current page.
+    pub items: Vec<AssetSummaryDto>,
+    /// The total number of assets matching the filter across all pages.
+    pub total_items: i64,
 }
 
 /// Count of assets associated with a specific tag.
@@ -221,6 +234,10 @@ pub struct AssetFilter {
     pub untagged: Option<bool>,
     /// Whether to include assets from subfolders recursively
     pub recursive: Option<bool>,
+    /// Field to sort by (e.g., "filename", "size", "created_at")
+    pub sort_by: Option<String>,
+    /// Sort order ("asc" or "desc")
+    pub sort_order: Option<String>,
 }
 
 /// Pagination parameters for the read model.

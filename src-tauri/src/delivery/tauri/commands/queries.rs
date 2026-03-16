@@ -1,7 +1,7 @@
 use crate::core::formats::{FormatRegistry, SupportedFormat};
 use crate::core::models::{
-    Asset, AssetColor, AssetFilter, AssetSummaryDto, Folder, LibraryStats, PageParams, SmartFolder,
-    Tag,
+    Asset, AssetColor, AssetFilter, Folder, LibraryStats, PageParams,
+    PaginatedAssetsDto, SmartFolder, Tag,
 };
 use crate::feature::assets::queries::AssetQueryService;
 use std::sync::Arc;
@@ -35,7 +35,7 @@ pub async fn get_assets(
     service: State<'_, AssetQueryService>,
     filter: AssetFilter,
     page: PageParams,
-) -> AppResult<Vec<AssetSummaryDto>> {
+) -> AppResult<PaginatedAssetsDto> {
     service.list_assets(filter, page).await
 }
 
@@ -109,7 +109,7 @@ pub async fn search_assets(
     service: State<'_, crate::feature::search::SearchQueryHandler>,
     criteria: crate::core::models::SearchCriteria,
     page: PageParams,
-) -> AppResult<Vec<AssetSummaryDto>> {
+) -> AppResult<PaginatedAssetsDto> {
     service.search(criteria, page).await
 }
 
@@ -271,9 +271,10 @@ pub async fn get_asset_exif(
     path: Option<String>,
 ) -> AppResult<serde_json::Value> {
     let final_path = if let Some(id) = asset_id {
-        service.get_asset(&id).await?.ok_or_else(|| {
+        let asset: Asset = service.get_asset(&id).await?.ok_or_else(|| {
             crate::core::error::AppError::NotFound(format!("Asset {} not found", id))
-        })?.path
+        })?;
+        asset.path
     } else if let Some(p) = path {
         std::path::PathBuf::from(p)
     } else {

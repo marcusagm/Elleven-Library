@@ -165,6 +165,10 @@ impl LibraryIndexer {
                 .ok()
                 .map(|t| t.into())
                 .unwrap_or_else(Utc::now);
+            let disk_ctime: Option<DateTime<Utc>> = metadata
+                .created()
+                .ok()
+                .map(|t| t.into());
 
             // 4. Differential Check
             let needs_index = if let Some((db_size, db_mtime)) = cache.get(&path_str) {
@@ -194,6 +198,8 @@ impl LibraryIndexer {
                     family: family_name,
                     state_init: AssetState::Indexed,
                     folder_id: asset_folder_id,
+                    created_at: disk_ctime,
+                    modified_at: Some(disk_mtime),
                 });
 
                 if let Err(e) = self.ledger.execute(cmd).await {

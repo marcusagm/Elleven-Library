@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+// No imports needed here if unused
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -6,8 +6,6 @@ use sqlx::FromRow;
 ///
 /// This struct directly maps to the `assets` table in the SQLite database.
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
-
-/// Struct that represents an asset in the database.
 pub struct AssetDb {
     /// Unique identifier (UUID/ULID)
     pub id: String,
@@ -24,22 +22,26 @@ pub struct AssetDb {
     /// Size in bytes
     pub file_size: i64,
     /// File creation timestamp
-    pub created_at: Option<DateTime<Utc>>,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     /// File modification timestamp
-    pub updated_at: Option<DateTime<Utc>>,
+    pub modified_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Ingestion timestamp
+    pub added_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Database record update timestamp
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
     /// Parent folder ID
     pub folder_id: Option<String>,
     /// Path to the generated thumbnail file
     pub thumbnail_path: Option<String>,
     /// User-assigned rating (0-5 stars)
-    pub rating: Option<i32>,
+    pub rating: Option<i64>,
     /// Free-text personal notes
     pub notes: Option<String>,
 
     /// Width of the asset
-    pub width: Option<i32>,
+    pub width: Option<i64>,
     /// Height of the asset
-    pub height: Option<i32>,
+    pub height: Option<i64>,
     /// Duration of the asset in seconds
     pub duration_secs: Option<f64>,
     /// Dominant colors of the asset
@@ -63,10 +65,14 @@ pub struct AssetSummaryDb {
     pub format_type: String,
     /// Media family (e.g. IMAGE, VIDEO)
     pub family: String,
-    /// Timestamp of when the asset was created
-    pub created_at: Option<DateTime<Utc>>,
-    /// Timestamp of when the asset was updated
-    pub updated_at: Option<DateTime<Utc>>,
+    /// Timestamp of when the file was created
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Timestamp of when the file was last modified
+    pub modified_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Ingestion timestamp
+    pub added_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Timestamp of when the record was last updated
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
     /// ID of the parent folder
     pub folder_id: Option<String>,
     /// Path to the generated thumbnail file
@@ -74,28 +80,24 @@ pub struct AssetSummaryDb {
     /// File size in bytes
     pub file_size: i64,
     /// Width in pixels
-    pub width: Option<i32>,
+    pub width: Option<i64>,
     /// Height in pixels
-    pub height: Option<i32>,
+    pub height: Option<i64>,
     /// User-assigned rating (0-5 stars)
-    pub rating: Option<i32>,
+    pub rating: Option<i64>,
     /// Free-text personal notes
     pub notes: Option<String>,
 }
 
 /// Dynamic metadata envelope for specific format capabilities.
-///
-/// Complements the core asset data with format-specific properties.
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
-
-/// Struct that represents the metadata of an asset in the database.
 pub struct AssetMetadataEnvelopeDb {
     /// Unique identifier (UUID/ULID)
     pub asset_id: String,
     /// Width of the asset
-    pub width: Option<i32>,
+    pub width: Option<i64>,
     /// Height of the asset
-    pub height: Option<i32>,
+    pub height: Option<i64>,
     /// Duration of the asset in seconds
     pub duration_secs: Option<f64>,
     /// Dominant colors of the asset
@@ -105,15 +107,13 @@ pub struct AssetMetadataEnvelopeDb {
     /// Semantic payload of the asset
     pub semantic_payload: Option<serde_json::Value>,
     /// User-assigned rating (0-5 stars)
-    pub rating: Option<i32>,
+    pub rating: Option<i64>,
     /// Free-text personal notes
     pub notes: Option<String>,
 }
 
 /// Record of an operation performed on an asset, used for audit and undo.
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
-
-/// Struct that represents a record of an operation performed on an asset in the database.
 pub struct AssetOperationLogDb {
     /// Unique identifier (UUID/ULID)
     pub id: String,
@@ -128,7 +128,7 @@ pub struct AssetOperationLogDb {
     /// Error note if the operation failed
     pub error_note: Option<String>,
     /// Timestamp of when the operation was created
-    pub created_at: DateTime<Utc>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 /// Database model for asset colors.
@@ -141,43 +141,48 @@ pub struct AssetColorDb {
     pub lab_green_red: f64,
     pub lab_blue_yellow: f64,
     pub percentage: f64,
-    pub rank: i32,
+    pub rank: i64,
 }
 
 impl From<crate::core::models::asset::AssetColor> for AssetColorDb {
     fn from(color: crate::core::models::asset::AssetColor) -> Self {
         Self {
             id: color.id.unwrap_or(0),
-            asset_id: String::new(), // Will be populated during batch insert
+            asset_id: String::new(),
             hex_color: color.hex_color,
             lab_lightness: color.lab_lightness,
             lab_green_red: color.lab_green_red,
             lab_blue_yellow: color.lab_blue_yellow,
             percentage: color.percentage,
-            rank: color.rank,
+            rank: color.rank as i64,
+        }
+    }
+}
+
+/// Database model for smart folders.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct SmartFolderDb {
+    pub id: String,
+    pub name: String,
+    pub query_json: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl From<SmartFolderDb> for crate::core::models::SmartFolder {
+    fn from(row: SmartFolderDb) -> Self {
+        Self {
+            id: row.id,
+            name: row.name,
+            query_json: row.query_json,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
         }
     }
 }
 
 /// Converts an AssetDb to an Asset.
-///
-/// # Arguments
-///
-/// * `row` - The AssetDb to convert.
-///
-/// # Returns
-///
-/// An Asset.
 impl From<AssetDb> for crate::core::models::Asset {
-    /// Converts an AssetDb to an Asset.
-    ///
-    /// # Arguments
-    ///
-    /// * `row` - The AssetDb to convert.
-    ///
-    /// # Returns
-    ///
-    /// An Asset.
     fn from(row: AssetDb) -> Self {
         use crate::core::models::asset::AssetState;
         use std::str::FromStr;
@@ -190,40 +195,25 @@ impl From<AssetDb> for crate::core::models::Asset {
             family: row.family,
             file_size: row.file_size as u64,
             created_at: row.created_at,
+            modified_at: row.modified_at,
+            added_at: row.added_at,
             updated_at: row.updated_at,
             folder_id: row.folder_id,
-            width: row.width,
-            height: row.height,
+            width: row.width.map(|v| v as i32),
+            height: row.height.map(|v| v as i32),
             duration_secs: row.duration_secs,
             technical_payload: row.technical_payload,
             semantic_payload: row.semantic_payload,
             dominant_color: row.dominant_color,
             thumbnail_path: row.thumbnail_path,
-            rating: row.rating,
+            rating: row.rating.map(|v| v as i32),
             notes: row.notes,
         }
     }
 }
 
 /// Converts an AssetSummaryDb to an AssetSummaryDto.
-///
-/// # Arguments
-///
-/// * `row` - The AssetSummaryDb to convert.
-///
-/// # Returns
-///
-/// An AssetSummaryDto.
 impl From<AssetSummaryDb> for crate::core::models::AssetSummaryDto {
-    /// Converts an AssetSummaryDb to an AssetSummaryDto.
-    ///
-    /// # Arguments
-    ///
-    /// * `row` - The AssetSummaryDb to convert.
-    ///
-    /// # Returns
-    ///
-    /// An AssetSummaryDto.
     fn from(row: AssetSummaryDb) -> Self {
         use crate::core::models::asset::AssetState;
         use std::str::FromStr;
@@ -234,13 +224,14 @@ impl From<AssetSummaryDb> for crate::core::models::AssetSummaryDto {
             format_type: row.format_type,
             family: row.family,
             created_at: row.created_at,
-            updated_at: row.updated_at,
+            modified_at: row.modified_at,
+            added_at: row.added_at,
             folder_id: row.folder_id,
             thumbnail_path: row.thumbnail_path,
             file_size: row.file_size,
-            width: row.width,
-            height: row.height,
-            rating: row.rating.unwrap_or(0),
+            width: row.width.map(|v| v as i32),
+            height: row.height.map(|v| v as i32),
+            rating: row.rating.unwrap_or(0) as i32,
             notes: row.notes,
         }
     }
@@ -249,30 +240,15 @@ impl From<AssetSummaryDb> for crate::core::models::AssetSummaryDto {
 /// Database model for folders.
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct FolderDb {
-    /// Unique identifier (UUID/ULID)
     pub id: String,
-    /// ID of the parent folder
     pub parent_id: Option<String>,
-    /// Name of the folder
     pub name: String,
-    /// Path of the folder
     pub path: String,
-    /// Timestamp of when the folder was created
-    pub created_at: DateTime<Utc>,
-    /// Timestamp of when the folder was last updated
-    pub updated_at: DateTime<Utc>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl From<FolderDb> for crate::core::models::asset::Folder {
-    /// Converts a FolderDb to a Folder.
-    ///
-    /// # Arguments
-    ///
-    /// * `row` - The FolderDb to convert.
-    ///
-    /// # Returns
-    ///
-    /// A Folder.
     fn from(row: FolderDb) -> Self {
         Self {
             id: row.id,
@@ -292,19 +268,9 @@ pub struct TagDb {
     pub name: String,
     pub color: Option<String>,
     pub parent_id: Option<String>,
-    /// Sorting order index for UI display ordering.
     pub order_index: i64,
 }
 
-/// Converts a TagDb to a Tag.
-///
-/// # Arguments
-///
-/// * `row` - The TagDb to convert.
-///
-/// # Returns
-///
-/// A Tag.
 impl From<TagDb> for crate::core::models::asset::Tag {
     fn from(row: TagDb) -> Self {
         Self {

@@ -15,25 +15,22 @@ const BATCH_SIZE = APP_CONFIG.BATCH_SIZE;
 let currentOffset = 0;
 
 import { itemActions } from './itemActions';
-import type {
-    SearchGroup as V2SearchGroup,
-    SearchCriterion as V2SearchCriterion
-} from '../../../types';
+import type { SearchGroup, SearchCriterion } from '../../../types';
 import type { SearchGroup as UISearchGroup } from '../filter/schemas';
 
-const mapToV2SearchGroup = (group: UISearchGroup): V2SearchGroup => ({
+const mapToSearchGroup = (group: UISearchGroup): SearchGroup => ({
     id: group.id,
     logicalOperator: group.logicalOperator,
     items: group.items.map(item => {
         if ('items' in item) {
-            return mapToV2SearchGroup(item as UISearchGroup);
+            return mapToSearchGroup(item as UISearchGroup);
         }
         return {
             id: item.id,
             key: item.key,
             operator: item.operator,
             value: item.value
-        } as V2SearchCriterion;
+        } as SearchCriterion;
     })
 });
 
@@ -43,10 +40,14 @@ export const libraryActions = {
     fetchLibraryBatch: async (offset: number) => {
         const anyFilter = filterActions.hasActiveFilters();
 
-        let filterParams: import('../../../types').AssetFilter = {};
+        let filterParams: import('../../../types').AssetFilter = {
+            sortBy: filterState.sortBy,
+            sortOrder: filterState.sortOrder
+        };
 
         if (anyFilter) {
             filterParams = {
+                ...filterParams,
                 untagged: filterState.filterUntagged ? true : undefined,
                 folderId: filterState.selectedFolderId?.toString() || undefined,
                 recursive: filterState.folderRecursiveView,
@@ -56,7 +57,12 @@ export const libraryActions = {
 
             if (filterState.advancedSearch) {
                 return await tagService.searchAssets(
-                    { id: 'v2-search', rootGroup: mapToV2SearchGroup(filterState.advancedSearch) },
+                    {
+                        id: 'advanced-search',
+                        rootGroup: mapToSearchGroup(filterState.advancedSearch),
+                        sortBy: filterState.sortBy,
+                        sortOrder: filterState.sortOrder
+                    },
                     offset / BATCH_SIZE + 1, // converting offset to page
                     BATCH_SIZE
                 );
@@ -67,9 +73,8 @@ export const libraryActions = {
     },
 
     refreshTotalCount: () => {
-        // V2 search_assets / get_assets endpoints already return totalItems via PageInfo.
-        // We might want to remove this distinct count call, or map it properly.
-        // For now, retaining a mock compatibility using searchAssets assuming it returns a wrapper or we adjust it.
+        // Assets and search endpoints already return totalItems.
+        // Handled directly in refreshAssets and loadMore now.
     },
 
     refreshAssets: async (reset = false) => {
@@ -77,8 +82,9 @@ export const libraryActions = {
         if (reset) setLibraryState('isRefreshing', true);
 
         try {
-            const freshBatch = await libraryActions.fetchLibraryBatch(0);
-            setLibraryState('items', reconcile(freshBatch, { key: 'id' }));
+            const { items, total_items } = await libraryActions.fetchLibraryBatch(0);
+            setLibraryState('items', reconcile(items, { key: 'id' }));
+            setLibraryState('totalItems', total_items);
             currentOffset = BATCH_SIZE;
 
             libraryActions.refreshTotalCount();
@@ -92,10 +98,11 @@ export const libraryActions = {
         setLibraryState('isFetching', true);
 
         try {
-            const nextBatch = await libraryActions.fetchLibraryBatch(currentOffset);
+            const { items, total_items } = await libraryActions.fetchLibraryBatch(currentOffset);
 
-            if (nextBatch.length > 0) {
-                setLibraryState('items', prev => [...prev, ...nextBatch]);
+            if (items.length > 0) {
+                setLibraryState('items', prev => [...prev, ...items]);
+                setLibraryState('totalItems', total_items);
                 currentOffset += BATCH_SIZE;
             }
         } finally {

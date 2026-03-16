@@ -56,36 +56,57 @@ fn build_search_criterion_clause<'a>(
     query_builder: &mut QueryBuilder<'a, Sqlite>,
 ) {
     match c.key.as_str() {
-        "name" | "path" | "format_type" | "family" => {
+        "name" | "filename" | "path" | "format_type" | "format" | "extension" | "family" | "media_type" | "mediaType" | "notes" => {
+            let col = match c.key.as_str() {
+                "filename" => "name",
+                "format" | "extension" => "format_type",
+                "media_type" | "mediaType" => "family",
+                "notes" => "notes",
+                k => k,
+            };
+
+            let mut value_to_bind = c.value.as_str().unwrap_or("").to_string();
+
+            // Special case for format/extension: map extension to format name if found
+            if ["format", "extension"].contains(&c.key.as_str()) {
+                let ext_lower = value_to_bind.to_lowercase();
+                if let Some(fmt) = crate::formats::SUPPORTED_FORMATS
+                    .iter()
+                    .find(|f| f.extensions.contains(&ext_lower.as_str()))
+                {
+                    value_to_bind = fmt.name.to_string();
+                }
+            }
+
             query_builder.push(" a.");
-            query_builder.push(&c.key);
+            query_builder.push(col);
             match c.operator.as_str() {
                 "contains" => {
                     query_builder.push(" LIKE ");
-                    query_builder.push_bind(format!("%{}%", c.value.as_str().unwrap_or("")));
+                    query_builder.push_bind(format!("%{}%", value_to_bind));
                 }
                 "not_contains" => {
                     query_builder.push(" NOT LIKE ");
-                    query_builder.push_bind(format!("%{}%", c.value.as_str().unwrap_or("")));
+                    query_builder.push_bind(format!("%{}%", value_to_bind));
                 }
                 "equals" | "eq" | "exact" => {
                     query_builder.push(" = ");
-                    query_builder.push_bind(c.value.as_str().unwrap_or(""));
+                    query_builder.push_bind(value_to_bind);
                 }
                 "starts_with" => {
                     query_builder.push(" LIKE ");
-                    query_builder.push_bind(format!("{}%", c.value.as_str().unwrap_or("")));
+                    query_builder.push_bind(format!("{}%", value_to_bind));
                 }
                 "ends_with" => {
                     query_builder.push(" LIKE ");
-                    query_builder.push_bind(format!("%{}", c.value.as_str().unwrap_or("")));
+                    query_builder.push_bind(format!("%{}", value_to_bind));
                 }
                 _ => {
                     query_builder.push(" = 1 ");
                 }
             }
         }
-        "file_size" | "rating" | "width" | "height" | "duration_secs" => {
+        "file_size" | "size" | "rating" | "width" | "height" | "duration_secs" | "isFavorite" => {
             // Note: width/height/duration_secs are in v2_asset_metadata_envelope (m)
             // but we'll assume the caller joins correctly if they use these keys.
             let prefix = if ["width", "height", "duration_secs"].contains(&c.key.as_str()) {
@@ -94,8 +115,25 @@ fn build_search_criterion_clause<'a>(
                 "a."
             };
 
+            let key = match c.key.as_str() {
+                "size" => "file_size",
+                "isFavorite" => "rating",
+                k => k,
+            };
+
             query_builder.push(prefix);
-            query_builder.push(&c.key);
+            query_builder.push(key);
+
+            if c.key == "isFavorite" {
+                let is_fav = c.value.as_bool().unwrap_or(false);
+                if is_fav {
+                    query_builder.push(" > 0 ");
+                } else {
+                    query_builder.push(" = 0 ");
+                }
+                return;
+            }
+
             match c.operator.as_str() {
                 "gt" | "greater_than" => {
                     query_builder.push(" > ");
@@ -136,48 +174,111 @@ fn build_search_criterion_clause<'a>(
                 }
             }
         }
-        "tags" => {
+        "created_at" | "updated_at" | "creationDate" | "modified_at" | "modifiedDate" | "added" | "added_at" | "date_added" => {
+            let key = match c.key.as_str() {
+                "creationDate" => "created_at",
+                "modifiedDate" => "modified_at",
+                "added" | "date_added" => "added_at",
+                k => k,
+            };
+
+            query_builder.push(" a.");
+            query_builder.push(key);
+
+            match c.operator.as_str() {
+                "gt" | "after" => {
+                    query_builder.push(" > ");
+                    query_builder.push_bind(c.value.as_str().unwrap_or(""));
+                }
+                "lt" | "before" => {
+                    query_builder.push(" < ");
+                    query_builder.push_bind(c.value.as_str().unwrap_or(""));
+                }
+                "between" => {
+                    if let Some(arr) = c.value.as_array() {
+                        if arr.len() == 2 {
+                            query_builder.push(" BETWEEN ");
+                            query_builder.push_bind(arr[0].as_str().unwrap_or(""));
+                            query_builder.push(" AND ");
+                            query_builder.push_bind(arr[1].as_str().unwrap_or(""));
+                        } else {
+                            query_builder.push(" = 1 ");
+                        }
+                    } else {
+                        query_builder.push(" = 1 ");
+                    }
+                }
+                _ => {
+                    query_builder.push(" = 1 ");
+                }
+            }
+        }
+        "tags" | "tag" | "tag_id" => {
             // value can be a single tag name or an array of tag names
             match c.operator.as_str() {
                 "contains" | "in" | "contains_any" => {
-                    query_builder.push(" a.id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name ");
+                    query_builder.push(" a.id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE ");
                     if let Some(tags) = c.value.as_array() {
-                        query_builder.push(" IN (");
-                        let mut first = true;
+                        query_builder.push(" (name IN (");
+                        let mut first_name = true;
                         for tag in tags {
-                            if !first {
-                                query_builder.push(", ");
+                            if tag.as_str().is_some() {
+                                if !first_name { query_builder.push(", "); }
+                                query_builder.push_bind(tag.as_str().unwrap());
+                                first_name = false;
                             }
-                            query_builder.push_bind(tag.as_str().unwrap_or(""));
-                            first = false;
                         }
-                        query_builder.push(")) ");
+                        query_builder.push(") OR id IN (");
+                        let mut first_id = true;
+                        for tag in tags {
+                            if tag.as_str().is_some() {
+                                if !first_id { query_builder.push(", "); }
+                                query_builder.push_bind(tag.as_str().unwrap());
+                                first_id = false;
+                            }
+                        }
+                        query_builder.push("))) ");
                     } else {
-                        query_builder.push(" = ");
-                        query_builder.push_bind(c.value.as_str().unwrap_or(""));
+                        let val = c.value.as_str().unwrap_or("");
+                        query_builder.push(" (name = ");
+                        query_builder.push_bind(val);
+                        query_builder.push(" OR id = ");
+                        query_builder.push_bind(val);
                         query_builder.push(") ");
                     }
-                    query_builder.push(") ");
+                    query_builder.push(")) ");
                 }
                 "not_contains" => {
-                    query_builder.push(" a.id NOT IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name ");
+                    query_builder.push(" a.id NOT IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE ");
                     if let Some(tags) = c.value.as_array() {
-                        query_builder.push(" IN (");
-                        let mut first = true;
+                        query_builder.push(" (name IN (");
+                        let mut first_name = true;
                         for tag in tags {
-                            if !first {
-                                query_builder.push(", ");
+                            if tag.as_str().is_some() {
+                                if !first_name { query_builder.push(", "); }
+                                query_builder.push_bind(tag.as_str().unwrap());
+                                first_name = false;
                             }
-                            query_builder.push_bind(tag.as_str().unwrap_or(""));
-                            first = false;
                         }
-                        query_builder.push(")) ");
+                        query_builder.push(") OR id IN (");
+                        let mut first_id = true;
+                        for tag in tags {
+                            if tag.as_str().is_some() {
+                                if !first_id { query_builder.push(", "); }
+                                query_builder.push_bind(tag.as_str().unwrap());
+                                first_id = false;
+                            }
+                        }
+                        query_builder.push("))) ");
                     } else {
-                        query_builder.push(" = ");
-                        query_builder.push_bind(c.value.as_str().unwrap_or(""));
+                        let val = c.value.as_str().unwrap_or("");
+                        query_builder.push(" (name = ");
+                        query_builder.push_bind(val);
+                        query_builder.push(" OR id = ");
+                        query_builder.push_bind(val);
                         query_builder.push(") ");
                     }
-                    query_builder.push(") ");
+                    query_builder.push(")) ");
                 }
                 _ => {
                     query_builder.push(" 1=1 ");
@@ -185,16 +286,20 @@ fn build_search_criterion_clause<'a>(
             }
         }
         "folder" => {
-            let folder_path = c.value.as_str().unwrap_or("");
+            let val = c.value.as_str().unwrap_or("");
             match c.operator.as_str() {
                 "is" | "equals" => {
                     query_builder.push(" a.folder_id IN (SELECT id FROM folders WHERE path = ");
-                    query_builder.push_bind(folder_path);
+                    query_builder.push_bind(val);
+                    query_builder.push(" OR id = ");
+                    query_builder.push_bind(val);
                     query_builder.push(") ");
                 }
                 "in" | "recursive" => {
                     query_builder.push(" a.folder_id IN (WITH RECURSIVE subfolders AS (SELECT id FROM folders WHERE path = ");
-                    query_builder.push_bind(folder_path);
+                    query_builder.push_bind(val);
+                    query_builder.push(" OR id = ");
+                    query_builder.push_bind(val);
                     query_builder.push(" UNION ALL SELECT f.id FROM folders f JOIN subfolders s ON f.parent_id = s.id) SELECT id FROM subfolders) ");
                 }
                 _ => {

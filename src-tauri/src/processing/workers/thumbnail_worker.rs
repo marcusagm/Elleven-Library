@@ -29,8 +29,6 @@ pub struct ThumbnailWorker {
     priority_state: Arc<ThumbnailPriorityState>,
     /// Output directory for thumbnails.
     thumbnails_dir: PathBuf,
-    /// Number of concurrent extraction workers.
-    worker_threads: usize,
 }
 
 /// Implementation of the ThumbnailWorker struct.
@@ -44,7 +42,6 @@ impl ThumbnailWorker {
     /// * `query_handler` - The query handler for fetching assets waiting for thumbnails.
     /// * `priority_state` - The shared state for UI-requested priorities.
     /// * `thumbnails_dir` - The output directory for thumbnails.
-    /// * `worker_threads` - The number of concurrent extraction workers.
     ///
     /// # Returns
     ///
@@ -55,7 +52,6 @@ impl ThumbnailWorker {
         query_handler: Arc<dyn AssetQueryHandler>,
         priority_state: Arc<ThumbnailPriorityState>,
         thumbnails_dir: PathBuf,
-        worker_threads: usize,
     ) -> Self {
         Self {
             format_registry,
@@ -63,7 +59,6 @@ impl ThumbnailWorker {
             query_handler,
             priority_state,
             thumbnails_dir,
-            worker_threads,
         }
     }
 
@@ -81,26 +76,13 @@ impl ThumbnailWorker {
             info!("ThumbnailWorker: Orchestrator loop started");
             let worker_arc = Arc::new(self);
 
-            // Create a dedicated rayon thread pool for CPU-bound work
-            let pool = match rayon::ThreadPoolBuilder::new()
-                .num_threads(worker_arc.worker_threads)
-                .thread_name(|index| format!("thumb-worker-{}", index))
-                .build()
-            {
-                Ok(p) => Arc::new(p),
-                Err(e) => {
-                    error!("ThumbnailWorker: Failed to create thread pool: {}", e);
-                    return;
-                }
-            };
-
             loop {
                 if token.is_cancelled() {
                     info!("ThumbnailWorker: Shutdown requested");
                     break;
                 }
 
-                match worker_arc.process_batch(&pool).await {
+                match worker_arc.process_batch().await {
                     Ok(processed_count) => {
                         if processed_count == 0 {
                             // Empty queues: wait before next poll
@@ -121,24 +103,17 @@ impl ThumbnailWorker {
 
     /// Processes a single batch of work, prioritizing LIFO over FIFO.
     ///
-    /// # Arguments
-    ///
-    /// * `pool` - The thread pool for parallel processing.
-    ///
     /// # Returns
     ///
     /// A `Result` containing the number of processed assets or an error.
     #[instrument(skip_all)]
-    async fn process_batch(&self, pool: &Arc<rayon::ThreadPool>) -> AppResult<usize> {
+    async fn process_batch(&self) -> AppResult<usize> {
         // 1. Fetch Priority Items (LIFO)
         let mut asset_ids = self.priority_state.pop_batch(10);
         let is_priority = !asset_ids.is_empty();
 
         // 2. Fallback to Background Items (FIFO)
         if asset_ids.is_empty() {
-            // Note: The repository needs a way to query "missing thumbnails".
-            // For now, we assume the query_handler can handle an internal query or we add a specific method.
-            // Requirement from sprint: SELECT id FROM assets WHERE thumbnail_path IS NULL LIMIT 10
             asset_ids = self.query_handler.get_assets_needing_thumbnails(10).await?;
         }
 
@@ -157,52 +132,75 @@ impl ThumbnailWorker {
         for id in asset_ids {
             if let Ok(asset) = self.query_handler.get_asset_by_id(&id).await {
                 if let Some(format_provider) = self.format_registry.resolve(&asset.path, &[]) {
-                    if format_provider.thumbnail().is_some() {
-                        tasks.push((asset, format_provider));
-                    }
+                    tasks.push((asset, format_provider));
                 }
             }
         }
 
         let processed_count = tasks.len();
 
-        // 4. Parallel Generation
-        let thumbnails_dir = self.thumbnails_dir.clone();
-        let pool_clone = pool.clone();
-        
-        // Capture the Tokio runtime handle to use inside Rayon threads
-        let handle = tokio::runtime::Handle::current();
+        // 4. Parallel Generation & Extraction
+        let mut join_set = tokio::task::JoinSet::new();
 
-        let results: Vec<(String, AppResult<Vec<u8>>, Option<AppResult<(Vec<u8>, String)>>)> = pool_clone.install(|| {
-            use rayon::prelude::*;
-            tasks
-                .into_par_iter()
-                .map(|(asset, provider)| {
-                    let id = asset.id.clone();
-                    let (thumb_res, preview_res) = handle.block_on(async {
-                        let t = if let Some(capability) = provider.thumbnail() {
-                            capability.generate(&asset.path, &id, 300).await
-                        } else {
-                            Err(AppError::Internal("Thumbnail capability not found".to_string()))
-                        };
+        for (asset, provider) in tasks {
+            let id = asset.id.clone();
+            let path = asset.path.clone();
+            let provider = provider.clone();
+            let ledger = self.ledger.clone();
 
-                        let p = if let Some(capability) = provider.preview() {
-                            Some(capability.generate_preview(&asset.path, &id).await)
-                        } else {
-                            None
-                        };
+            join_set.spawn(async move {
+                // 4a. Technical Metadata Extraction
+                if let Some(meta_cap) = provider.metadata() {
+                    if let Ok(tech_meta) = meta_cap.extract_technical(&path).await {
+                        let width = tech_meta.get("width").and_then(|v| v.as_i64());
+                        let height = tech_meta.get("height").and_then(|v| v.as_i64());
+                        let duration = tech_meta.get("duration").and_then(|v| v.as_f64());
 
-                        (t, p)
-                    });
-                    (id, thumb_res, preview_res)
-                })
-                .collect()
-        });
+                        let _ = ledger
+                            .execute(LedgerCommand::UpdateTechnicalMetadata(
+                                crate::core::ledger::command::UpdateTechnicalMetadataPayload {
+                                    asset_id: id.clone(),
+                                    width,
+                                    height,
+                                    duration_secs: duration,
+                                    technical_payload: Some(tech_meta),
+                                    semantic_payload: None,
+                                },
+                            ))
+                            .await;
+                    }
+                }
+
+                // 4b. Thumbnail & Preview Generation
+                let thumb_res = if let Some(thumb_cap) = provider.thumbnail() {
+                    thumb_cap.generate(&path, &id, 300).await
+                } else {
+                    Err(AppError::Internal("Format does not support thumbnails".to_string()))
+                };
+
+                let preview_res = if let Some(preview_cap) = provider.preview() {
+                    Some(preview_cap.generate_preview(&path, &id).await)
+                } else {
+                    None
+                };
+
+                (id, thumb_res, preview_res)
+            });
+        }
 
         // 5. Commit Results
-        for (id, thumb_result, preview_result) in results {
-            // 5a. Handle Preview (e.g. converted GLB for 3D)
-            if let Some(Ok((preview_bytes, mime))) = preview_result {
+        let thumbnails_dir = self.thumbnails_dir.clone();
+        while let Some(join_res) = join_set.join_next().await {
+            let (id, thumb_res, preview_res) = match join_res {
+                Ok(r) => r,
+                Err(e) => {
+                    error!("ThumbnailWorker: Task panicked: {}", e);
+                    continue;
+                }
+            };
+
+            // 5a. Save Preview
+            if let Some(Ok((preview_bytes, mime))) = preview_res {
                 let extension = match mime.as_str() {
                     "model/gltf-binary" => "glb",
                     "model/gltf+json" => "gltf",
@@ -212,42 +210,48 @@ impl ThumbnailWorker {
                 };
                 let preview_filename = format!("{}.{}", id, extension);
                 let preview_path = thumbnails_dir.join(&preview_filename);
-                
+
                 if let Err(e) = std::fs::write(&preview_path, preview_bytes) {
                     error!("ThumbnailWorker: Failed to write preview for {}: {}", id, e);
                 }
             }
 
-            // 5b. Handle Thumbnail
-            match thumb_result {
+            // 5b. Handle Thumbnail result
+            match thumb_res {
                 Ok(bytes) => {
-                    // Generate unique filename: {hash_of_id}.webp
-                    let filename = format!("{}.webp", id);
-                    let output_path = thumbnails_dir.join(&filename);
-
-                    // 5c. Transcode to valid WebP to ensure consistency and fix "Invalid Chunk header"
-                    let transcode_result = pool_clone.install(|| {
+                    let id_for_io = id.clone();
+                    // CPU-Bound Transcoding to consistent WebP
+                    let final_bytes_res = tokio::task::spawn_blocking(move || {
                         let img = image::load_from_memory(&bytes).map_err(|e| {
-                            AppError::Internal(format!("Failed to load thumbnail for transcoding: {}", e))
+                            AppError::Internal(format!(
+                                "Failed to load thumbnail for {}: {}",
+                                id_for_io, e
+                            ))
                         })?;
-                        
+
                         let encoder = webp::Encoder::from_image(&img).map_err(|e| {
                             AppError::Internal(format!("Failed to create WebP encoder: {}", e))
                         })?;
-                        
-                        let webp_data = encoder.encode(75.0);
-                        Ok::<Vec<u8>, AppError>(webp_data.to_vec())
-                    });
 
-                    let final_bytes = match transcode_result {
-                        Ok(b) => b,
-                        Err(e) => {
+                        Ok::<Vec<u8>, AppError>(encoder.encode(75.0).to_vec())
+                    })
+                    .await;
+
+                    let final_bytes = match final_bytes_res {
+                        Ok(Ok(b)) => b,
+                        Ok(Err(e)) => {
                             error!("ThumbnailWorker: Transcoding failed for {}: {}", id, e);
+                            continue;
+                        }
+                        Err(e) => {
+                            error!("ThumbnailWorker: Transcoding task joined with error for {}: {}", id, e);
                             continue;
                         }
                     };
 
-                    // Save to disk
+                    let filename = format!("{}.webp", id);
+                    let output_path = thumbnails_dir.join(&filename);
+
                     if let Err(e) = std::fs::write(&output_path, final_bytes) {
                         error!(
                             "ThumbnailWorker: Failed to write thumbnail for {}: {}",
@@ -256,13 +260,15 @@ impl ThumbnailWorker {
                         continue;
                     }
 
-                    // Commit to Ledger
-                    let command = LedgerCommand::UpdateThumbnail {
-                        asset_id: id.clone(),
-                        thumbnail_path: filename,
-                    };
-
-                    if let Err(e) = self.ledger.execute(command).await {
+                    // Force commit entry to database
+                    if let Err(e) = self
+                        .ledger
+                        .execute(LedgerCommand::UpdateThumbnail {
+                            asset_id: id.clone(),
+                            thumbnail_path: filename.clone(),
+                        })
+                        .await
+                    {
                         error!("ThumbnailWorker: Ledger commit failed for {}: {}", id, e);
                     }
                 }

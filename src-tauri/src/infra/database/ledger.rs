@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::core::error::{AppError, AppResult};
 use crate::core::events::{AppEventBus, DomainEvent};
 use crate::core::ledger::command::{
-    LedgerCommand, UpdateAssetNotesPayload, UpdateAssetRatingPayload,
+    LedgerCommand, UpdateAssetNotesPayload, UpdateAssetRatingPayload, UpdateTechnicalMetadataPayload,
 };
 use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::core::models::asset::{Asset, AssetState};
@@ -80,6 +80,66 @@ impl SqliteAssetLedger {
         Ok(())
     }
 
+    async fn fetch_asset_by_id(
+        tx: &mut Transaction<'_, Sqlite>,
+        asset_id: &str,
+    ) -> AppResult<Asset> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                a.id as "id!", a.name as "name!", a.path as "path!", a.state as "state!",
+                a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!",
+                a.created_at as "created_at: DateTime<Utc>",
+                a.modified_at as "modified_at: DateTime<Utc>",
+                a.added_at as "added_at: DateTime<Utc>",
+                a.updated_at as "updated_at: DateTime<Utc>",
+                a.folder_id as "folder_id?",
+                a.thumbnail_path as "thumbnail_path?",
+                a.rating as "rating: i64",
+                a.notes as "notes?",
+                ame.width as "width: i64",
+                ame.height as "height: i64",
+                ame.duration_secs as "duration_secs: f64",
+                ame.technical_payload as "technical_payload: serde_json::Value",
+                ame.semantic_payload as "semantic_payload: serde_json::Value",
+                a.dominant_color as "dominant_color: serde_json::Value"
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope ame ON a.id = ame.asset_id
+            WHERE a.id = ?
+            "#,
+            asset_id
+        )
+        .fetch_optional(&mut **tx)
+        .await?
+        .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
+
+        let asset_db = crate::infra::database::models::AssetDb {
+            id: row.id,
+            name: row.name,
+            path: row.path,
+            state: row.state,
+            format_type: row.format_type,
+            family: row.family,
+            file_size: row.file_size,
+            created_at: row.created_at,
+            modified_at: row.modified_at,
+            added_at: row.added_at,
+            updated_at: row.updated_at,
+            folder_id: row.folder_id,
+            thumbnail_path: row.thumbnail_path,
+            rating: row.rating,
+            notes: row.notes,
+            width: row.width,
+            height: row.height,
+            duration_secs: row.duration_secs,
+            technical_payload: row.technical_payload,
+            semantic_payload: row.semantic_payload,
+            dominant_color: row.dominant_color,
+        };
+
+        Ok(asset_db.into())
+    }
+
     async fn handle_update_rating(
         &self,
         tx: &mut Transaction<'_, Sqlite>,
@@ -105,16 +165,7 @@ impl SqliteAssetLedger {
         )
         .await?;
 
-        let row = sqlx::query_as!(
-            crate::infra::database::models::AssetDb,
-            r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-            payload.asset_id
-        )
-        .fetch_optional(&mut **tx)
-        .await?
-        .ok_or_else(|| AppError::NotFound(payload.asset_id.to_string()))?;
-
-        Ok(row.into())
+                Self::fetch_asset_by_id(tx, &payload.asset_id).await
     }
 
     async fn handle_update_notes(
@@ -142,16 +193,7 @@ impl SqliteAssetLedger {
         )
         .await?;
 
-        let row = sqlx::query_as!(
-            crate::infra::database::models::AssetDb,
-            r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-            payload.asset_id
-        )
-        .fetch_optional(&mut **tx)
-        .await?
-        .ok_or_else(|| AppError::NotFound(payload.asset_id.to_string()))?;
-
-        Ok(row.into())
+                Self::fetch_asset_by_id(tx, &payload.asset_id).await
     }
 
     async fn handle_reextract_colors(
@@ -191,16 +233,63 @@ impl SqliteAssetLedger {
         )
         .await?;
 
-        let row = sqlx::query_as!(
-            crate::infra::database::models::AssetDb,
-            r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-            asset_id
-        )
-        .fetch_optional(&mut **tx)
-        .await?
-        .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
+                Self::fetch_asset_by_id(tx, asset_id).await
+    }
 
-        Ok(row.into())
+    async fn handle_update_technical_metadata(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        payload: UpdateTechnicalMetadataPayload,
+    ) -> AppResult<Asset> {
+        let now = Utc::now();
+
+        sqlx::query!(
+            r#"
+            INSERT INTO asset_metadata_envelope (
+                asset_id, width, height, duration_secs, 
+                technical_payload, semantic_payload, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(asset_id) DO UPDATE SET
+                width = excluded.width,
+                height = excluded.height,
+                duration_secs = excluded.duration_secs,
+                technical_payload = excluded.technical_payload,
+                semantic_payload = excluded.semantic_payload,
+                updated_at = excluded.updated_at
+            "#,
+            payload.asset_id,
+            payload.width,
+            payload.height,
+            payload.duration_secs,
+            payload.technical_payload,
+            payload.semantic_payload,
+            now,
+            now
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        // Update assets.updated_at to reflect metadata change
+        sqlx::query!(
+            "UPDATE assets SET updated_at = ? WHERE id = ?",
+            now,
+            payload.asset_id
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        Self::log_operation(
+            tx,
+            "UPDATE_TECHNICAL_METADATA",
+            &payload.asset_id,
+            serde_json::to_value(&payload).unwrap_or_default(),
+            "COMPLETED",
+            None,
+        )
+        .await?;
+
+        Self::fetch_asset_by_id(tx, &payload.asset_id).await
     }
 }
 
@@ -249,10 +338,17 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 let folder_id_ref = payload.folder_id.as_deref();
                 let asset_id_final_ref = &asset_id;
 
+                let created_at_val = payload.created_at.unwrap_or(now);
+                let modified_at_val = payload.modified_at.unwrap_or(now);
+                let added_at_val = now;
+
                 let row = sqlx::query!(
                     r#"
-                    INSERT INTO assets (id, name, path, state, format_type, family, file_size, created_at, updated_at, folder_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO assets (
+                        id, name, path, state, format_type, family, file_size, 
+                        created_at, modified_at, added_at, updated_at, folder_id
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(path) DO UPDATE SET
                         updated_at = excluded.updated_at
                     RETURNING id as "id!"
@@ -264,7 +360,9 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     format_type_ref,
                     family_ref,
                     file_size_i64,
-                    now,
+                    created_at_val,
+                    modified_at_val,
+                    added_at_val,
                     now,
                     folder_id_ref
                 )
@@ -296,7 +394,9 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     format_type: payload.format_type.clone(),
                     family: payload.family.clone(),
                     file_size: payload.file_size,
-                    created_at: Some(now),
+                    created_at: Some(created_at_val),
+                    modified_at: Some(modified_at_val),
+                    added_at: Some(added_at_val),
                     updated_at: Some(now),
                     width: None,
                     height: None,
@@ -336,11 +436,18 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     let folder_id_ref = payload.folder_id.as_deref();
                     let asset_id_ref = &asset_id;
 
+                    let created_at_val = payload.created_at.unwrap_or(now);
+                    let modified_at_val = payload.modified_at.unwrap_or(now);
+                    let added_at_val = now;
+
                     // 1. Insert Asset (Upsert)
                     let row = sqlx::query!(
                         r#"
-                        INSERT INTO assets (id, name, path, state, format_type, family, file_size, created_at, updated_at, folder_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO assets (
+                            id, name, path, state, format_type, family, file_size, 
+                            created_at, modified_at, added_at, updated_at, folder_id
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(path) DO UPDATE SET
                             updated_at = excluded.updated_at
                         RETURNING id as "id!"
@@ -352,7 +459,9 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         format_type_ref,
                         family_ref,
                         file_size_i64,
-                        now,
+                        created_at_val,
+                        modified_at_val,
+                        added_at_val,
                         now,
                         folder_id_ref
                     )
@@ -384,7 +493,9 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         format_type: payload.format_type.clone(),
                         family: payload.family.clone(),
                         file_size: payload.file_size,
-                        created_at: Some(now),
+                        created_at: Some(created_at_val),
+                        modified_at: Some(modified_at_val),
+                        added_at: Some(added_at_val),
                         updated_at: Some(now),
                         width: None,
                         height: None,
@@ -462,18 +573,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 )
                 .await?;
 
-                // 6. Fetch asset to return
-                let asset_id_ref = &payload.asset_id;
-                let row = sqlx::query_as!(
-                    crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id as "folder_id?", CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-                    asset_id_ref
-                )
-                .fetch_optional(&mut *tx)
-                .await?
-                .ok_or_else(|| AppError::NotFound(payload.asset_id.to_string()))?;
-
-                Ok(row.into())
+                Self::fetch_asset_by_id(&mut tx, &payload.asset_id).await
             }
             LedgerCommand::UpdateAsset(payload) => {
                 let now = Utc::now();
@@ -536,16 +636,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 .await?;
 
                 // 4. Fetch and return
-                let row = sqlx::query_as!(
-                    crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-                    asset_id
-                )
-                .fetch_optional(&mut *tx)
-                .await?
-                .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
-
-                Ok(row.into())
+        Self::fetch_asset_by_id(&mut tx, &asset_id).await
             }
             LedgerCommand::MarkAsStale { asset_id } => {
                 let now = Utc::now();
@@ -570,16 +661,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 )
                 .await?;
 
-                let row = sqlx::query_as!(
-                    crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-                    asset_id
-                )
-                .fetch_optional(&mut *tx)
-                .await?
-                .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
-
-                Ok(row.into())
+                Self::fetch_asset_by_id(&mut tx, asset_id).await
             }
             LedgerCommand::DeleteAsset {
                 asset_id,
@@ -634,6 +716,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "".to_string(),
                     file_size: 0,
                     created_at: None,
+                    modified_at: None,
+                    added_at: None,
                     updated_at: None,
                     width: None,
                     height: None,
@@ -695,6 +779,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "FOLDER".to_string(),
                     file_size: 0,
                     created_at: Some(now),
+                    modified_at: Some(now),
+                    added_at: Some(now),
                     updated_at: Some(now),
                     width: None,
                     height: None,
@@ -775,6 +861,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "FOLDER".to_string(),
                     file_size: 0,
                     created_at: None,
+                    modified_at: None,
+                    added_at: None,
                     updated_at: None,
                     width: None,
                     height: None,
@@ -813,16 +901,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 )
                 .await?;
 
-                let row = sqlx::query_as!(
-                    crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-                    asset_id
-                )
-                .fetch_optional(&mut *tx)
-                .await?
-                .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
-
-                Ok(row.into())
+                Self::fetch_asset_by_id(&mut tx, asset_id).await
             }
             LedgerCommand::UpdateThumbnail {
                 asset_id,
@@ -854,16 +933,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 .await?;
 
                 // 3. Fetch and return
-                let row = sqlx::query_as!(
-                    crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-                    asset_id
-                )
-                .fetch_optional(&mut *tx)
-                .await?
-                .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
-
-                Ok(row.into())
+        Self::fetch_asset_by_id(&mut tx, &asset_id).await
             }
             LedgerCommand::UpdateAssetColors(payload) => {
                 let now = Utc::now();
@@ -920,17 +990,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 )
                 .await?;
 
-                // 5. Fetch and return
-                let row = sqlx::query_as!(
-                    crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-                    asset_id_ref
-                )
-                .fetch_optional(&mut *tx)
-                .await?
-                .ok_or_else(|| AppError::NotFound(payload.asset_id.to_string()))?;
-
-                Ok(row.into())
+                Self::fetch_asset_by_id(&mut tx, &payload.asset_id).await
             }
             LedgerCommand::UpdateAssetRating(payload) => {
                 self.handle_update_rating(&mut tx, payload.clone()).await
@@ -940,6 +1000,9 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
             }
             LedgerCommand::ReextractColors { asset_id } => {
                 self.handle_reextract_colors(&mut tx, asset_id).await
+            }
+            LedgerCommand::UpdateTechnicalMetadata(payload) => {
+                self.handle_update_technical_metadata(&mut tx, payload.clone()).await
             }
 
             // ── Tag CRUD Handlers ──────────────────────────────────────────
@@ -993,6 +1056,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
+                                        modified_at: None,
+                    added_at: None,
                     updated_at: None,
                     width: None,
                     height: None,
@@ -1076,6 +1141,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
+                                        modified_at: None,
+                    added_at: None,
                     updated_at: None,
                     width: None,
                     height: None,
@@ -1119,6 +1186,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
+                                        modified_at: None,
+                    added_at: None,
                     updated_at: None,
                     width: None,
                     height: None,
@@ -1174,6 +1243,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
+                                        modified_at: None,
+                    added_at: None,
                     updated_at: None,
                     width: None,
                     height: None,
@@ -1229,6 +1300,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
+                                        modified_at: None,
+                    added_at: None,
                     updated_at: None,
                     width: None,
                     height: None,
@@ -1293,6 +1366,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
+                                        modified_at: None,
+                    added_at: None,
                     updated_at: None,
                     width: None,
                     height: None,
@@ -1344,6 +1419,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "SMART_FOLDER".to_string(),
                     file_size: 0,
                     created_at: Some(now),
+                                        modified_at: Some(now),
+                    added_at: Some(now),
                     updated_at: Some(now),
                     width: None,
                     height: None,
@@ -1393,6 +1470,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "SMART_FOLDER".to_string(),
                     file_size: 0,
                     created_at: None,
+                                        modified_at: None,
+                    added_at: None,
                     updated_at: Some(now),
                     width: None,
                     height: None,
@@ -1434,6 +1513,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     family: "SMART_FOLDER".to_string(),
                     file_size: 0,
                     created_at: None,
+                                        modified_at: None,
+                    added_at: None,
                     updated_at: None,
                     width: None,
                     height: None,
@@ -1471,16 +1552,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 .await?;
 
                 // 3. Fetch asset to return
-                let row = sqlx::query_as!(
-                    crate::infra::database::models::AssetDb,
-                    r#"SELECT id as "id!", name as "name!", path as "path!", state as "state!", format_type as "format_type!", family as "family!", file_size as "file_size!", created_at as "created_at: DateTime<Utc>", updated_at as "updated_at: DateTime<Utc>", folder_id, CAST(NULL AS INTEGER) as "width: i32", CAST(NULL AS INTEGER) as "height: i32", CAST(NULL AS REAL) as "duration_secs: f64", CAST(NULL AS TEXT) as "technical_payload: serde_json::Value", CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value", dominant_color as "dominant_color: serde_json::Value", thumbnail_path as "thumbnail_path?", rating as "rating: i32", notes as "notes: String" FROM assets WHERE id = ?"#,
-                    asset_id
-                )
-                .fetch_optional(&mut *tx)
-                .await?
-                .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
-
-                Ok(row.into())
+        Self::fetch_asset_by_id(&mut tx, &asset_id).await
             }
         };
 
@@ -1582,6 +1654,11 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         })?;
                     }
                     LedgerCommand::UpdateAssetNotes(p) => {
+                        self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
+                            asset_id: p.asset_id.clone(),
+                        })?;
+                    }
+                    LedgerCommand::UpdateTechnicalMetadata(p) => {
                         self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
                             asset_id: p.asset_id.clone(),
                         })?;

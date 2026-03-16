@@ -18,6 +18,10 @@ pub struct SearchCriteria {
     pub id: String,
     /// The root group of search items.
     pub root_group: SearchGroup,
+    /// Field to sort by.
+    pub sort_by: Option<String>,
+    /// Sort order (asc/desc).
+    pub sort_order: Option<String>,
 }
 
 /// A group of search items joined by a logical operator.

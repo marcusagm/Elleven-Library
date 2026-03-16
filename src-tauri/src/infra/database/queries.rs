@@ -1,7 +1,7 @@
 use crate::core::error::AppResult;
 use crate::core::models::{Asset, AssetColor, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
 use crate::core::repository::AssetQueryHandler;
-use crate::infra::database::models::{AssetDb, AssetSummaryDb};
+use crate::infra::database::models::AssetSummaryDb;
 use async_trait::async_trait;
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
@@ -13,17 +13,9 @@ pub struct SqliteAssetQueries {
     pool: SqlitePool,
 }
 
-/// Implementation of the SqliteAssetQueries struct.
+// Helper methods
 impl SqliteAssetQueries {
     /// Creates a new instance with the given connection pool.
-    ///
-    /// # Arguments
-    ///
-    /// * `pool` - The connection pool to use.
-    ///
-    /// # Returns
-    ///
-    /// * `SqliteAssetQueries` - The new instance.
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
@@ -32,6 +24,28 @@ impl SqliteAssetQueries {
 /// Implementation of the AssetQueryHandler port for SqliteAssetQueries.
 #[async_trait]
 impl AssetQueryHandler for SqliteAssetQueries {
+
+    /// Retrieves a list of asset IDs that are missing thumbnails.
+    ///
+    /// # Arguments
+    ///
+    /// * `limit` - The maximum number of asset IDs to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<String>)` if the asset IDs were found successfully.
+    /// * `Err(sqlx::Error)` if the asset IDs could not be found.
+    async fn get_assets_needing_thumbnails(&self, limit: u32) -> AppResult<Vec<String>> {
+        let limit_i64 = limit as i64;
+        let rows = sqlx::query!(
+            r#"SELECT id as "id!" FROM assets WHERE thumbnail_path IS NULL LIMIT ?"#,
+            limit_i64
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| r.id).collect::<Vec<String>>())
+    }
     /// Finds all assets in the database.
     ///
     /// # Returns
@@ -39,31 +53,59 @@ impl AssetQueryHandler for SqliteAssetQueries {
     /// * `Ok(Vec<Asset>)` if the assets were found successfully.
     /// * `Err(sqlx::Error)` if the assets could not be found.
     async fn find_all(&self) -> AppResult<Vec<Asset>> {
-        let rows = sqlx::query_as!(
-            AssetDb,
+        let rows = sqlx::query!(
             r#"
             SELECT
-                id as "id!", name as "name!", path as "path!", state as "state!",
-                format_type as "format_type!", family as "family!", file_size as "file_size!",
-                created_at as "created_at: DateTime<Utc>",
-                updated_at as "updated_at: DateTime<Utc>",
-                CAST(NULL AS INTEGER) as "width: i32",
-                CAST(NULL AS INTEGER) as "height: i32",
-                CAST(NULL AS REAL) as "duration_secs: f64",
-                CAST(NULL AS TEXT) as "technical_payload: serde_json::Value",
-                CAST(NULL AS TEXT) as "semantic_payload: serde_json::Value",
-                dominant_color as "dominant_color: serde_json::Value",
-                folder_id as "folder_id?",
-                thumbnail_path as "thumbnail_path?",
-                CAST(NULL AS INTEGER) as "rating: i32",
-                CAST(NULL AS TEXT) as "notes: String"
-            FROM assets
+                a.id as "id!", a.name as "name!", a.path as "path!", a.state as "state!",
+                a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!",
+                a.created_at as "created_at: DateTime<Utc>",
+                a.modified_at as "modified_at: DateTime<Utc>",
+                a.added_at as "added_at: DateTime<Utc>",
+                a.updated_at as "updated_at: DateTime<Utc>",
+                a.folder_id as "folder_id?",
+                a.thumbnail_path as "thumbnail_path?",
+                m.width as "width: i64",
+                m.height as "height: i64",
+                a.rating as "rating: i64",
+                a.notes as "notes?",
+                m.duration_secs as "duration_secs: f64",
+                m.technical_payload as "technical_payload: serde_json::Value",
+                m.semantic_payload as "semantic_payload: serde_json::Value",
+                a.dominant_color as "dominant_color: serde_json::Value"
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             "#
         )
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(Asset::from).collect::<Vec<Asset>>())
+        Ok(rows
+            .into_iter()
+            .map(|r| crate::infra::database::models::AssetDb {
+                id: r.id,
+                name: r.name,
+                path: r.path,
+                state: r.state,
+                format_type: r.format_type,
+                family: r.family,
+                file_size: r.file_size,
+                created_at: r.created_at,
+                modified_at: r.modified_at,
+                added_at: r.added_at,
+                updated_at: r.updated_at,
+                folder_id: r.folder_id,
+                thumbnail_path: r.thumbnail_path,
+                rating: r.rating,
+                notes: r.notes,
+                width: r.width,
+                height: r.height,
+                duration_secs: r.duration_secs,
+                technical_payload: r.technical_payload,
+                semantic_payload: r.semantic_payload,
+                dominant_color: r.dominant_color,
+            })
+            .map(Into::into)
+            .collect())
     }
 
     /// Gets an asset by its ID.
@@ -77,22 +119,25 @@ impl AssetQueryHandler for SqliteAssetQueries {
     /// * `Ok(Option<Asset>)` if the asset was found successfully.
     /// * `Err(sqlx::Error)` if the asset could not be found.
     async fn get_by_id(&self, id: &str) -> AppResult<Option<Asset>> {
-        let row = sqlx::query_as!(
-            AssetDb,
+        let row = sqlx::query!(
             r#"
             SELECT
                 a.id as "id!", a.name as "name!", a.path as "path!", a.state as "state!",
                 a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!",
                 a.created_at as "created_at: DateTime<Utc>",
+                a.modified_at as "modified_at: DateTime<Utc>",
+                a.added_at as "added_at: DateTime<Utc>",
                 a.updated_at as "updated_at: DateTime<Utc>",
-                m.width as "width: i32", m.height as "height: i32", m.duration_secs as "duration_secs: f64",
-                m.technical_payload as "technical_payload: serde_json::Value",
-                m.semantic_payload as "semantic_payload: serde_json::Value",
-                a.dominant_color as "dominant_color: serde_json::Value",
                 a.folder_id as "folder_id?",
                 a.thumbnail_path as "thumbnail_path?",
-                a.rating as "rating: i32",
-                a.notes as "notes: String"
+                a.rating as "rating: i64",
+                a.notes as "notes?",
+                m.width as "width: i64",
+                m.height as "height: i64",
+                m.duration_secs as "duration_secs: f64",
+                m.technical_payload as "technical_payload: serde_json::Value",
+                m.semantic_payload as "semantic_payload: serde_json::Value",
+                a.dominant_color as "dominant_color: serde_json::Value"
             FROM assets a
             LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE a.id = ?
@@ -102,7 +147,29 @@ impl AssetQueryHandler for SqliteAssetQueries {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(Asset::from))
+        Ok(row.map(|r| crate::infra::database::models::AssetDb {
+            id: r.id,
+            name: r.name,
+            path: r.path,
+            state: r.state,
+            format_type: r.format_type,
+            family: r.family,
+            file_size: r.file_size,
+            created_at: r.created_at,
+            modified_at: r.modified_at,
+            added_at: r.added_at,
+            updated_at: r.updated_at,
+            folder_id: r.folder_id,
+            thumbnail_path: r.thumbnail_path,
+            rating: r.rating,
+            notes: r.notes,
+            width: r.width,
+            height: r.height,
+            duration_secs: r.duration_secs,
+            technical_payload: r.technical_payload,
+            semantic_payload: r.semantic_payload,
+            dominant_color: r.dominant_color,
+        }).map(Into::into))
     }
 
     /// Lists assets with pagination and filtering.
@@ -124,9 +191,16 @@ impl AssetQueryHandler for SqliteAssetQueries {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
             r#"
             SELECT 
-                a.id, a.name, a.state, a.format_type, a.family, a.created_at, a.updated_at, 
-                a.folder_id, a.thumbnail_path, a.file_size, 
-                m.width, m.height, a.rating, a.notes 
+                a.id as id, a.name as name, a.state as state, 
+                a.format_type as format_type, a.family as family, 
+                a.created_at as created_at, 
+                a.modified_at as modified_at,
+                a.added_at as added_at,
+                a.updated_at as updated_at, 
+                a.folder_id as folder_id, a.thumbnail_path as thumbnail_path, 
+                a.file_size as file_size, 
+                m.width as width, m.height as height, 
+                a.rating as rating, a.notes as notes 
             FROM assets a
             LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE 1=1 
@@ -399,11 +473,19 @@ impl AssetQueryHandler for SqliteAssetQueries {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
             r#"
             SELECT DISTINCT
-                a.id, a.name, a.state, a.format_type, a.family, a.created_at, a.updated_at,
-                a.folder_id, a.thumbnail_path, a.file_size, m.width, m.height, a.rating, a.notes
+                a.id as id, a.name as name, a.state as state, 
+                a.format_type as format_type, a.family as family, 
+                a.created_at as created_at, 
+                a.modified_at as modified_at,
+                a.added_at as added_at,
+                a.updated_at as updated_at, 
+                a.folder_id as folder_id, a.thumbnail_path as thumbnail_path, 
+                a.file_size as file_size, 
+                m.width as width, m.height as height, 
+                a.rating as rating, a.notes as notes 
             FROM assets a
             LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
-            WHERE 1=1 AND
+            WHERE 1=1 AND 
             "#,
         );
 
@@ -426,27 +508,28 @@ impl AssetQueryHandler for SqliteAssetQueries {
         Ok(rows.into_iter().map(AssetSummaryDto::from).collect())
     }
 
-    /// Retrieves a list of asset IDs that are missing thumbnails.
-    ///
-    /// # Arguments
-    ///
-    /// * `limit` - The maximum number of asset IDs to retrieve.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Vec<String>)` if the asset IDs were found successfully.
-    /// * `Err(sqlx::Error)` if the asset IDs could not be found.
-    async fn get_assets_needing_thumbnails(&self, limit: u32) -> AppResult<Vec<String>> {
-        let limit_i64 = limit as i64;
-        let rows = sqlx::query!(
-            r#"SELECT id as "id!" FROM assets WHERE thumbnail_path IS NULL LIMIT ?"#,
-            limit_i64
-        )
-        .fetch_all(&self.pool)
-        .await?;
+    async fn get_search_count(
+        &self,
+        criteria: crate::core::models::SearchCriteria,
+    ) -> AppResult<i64> {
+        use crate::infra::database::search_builder::build_search_where_clause;
+ 
+        let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
+            r#"
+            SELECT COUNT(DISTINCT a.id)
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
+            WHERE 1=1 AND
+            "#
+        );
+        build_search_where_clause(&criteria.root_group, &mut query_builder);
 
-        Ok(rows.into_iter().map(|r| r.id).collect::<Vec<String>>())
+        let row = query_builder.build().fetch_one(&self.pool).await?;
+        let count: i64 = sqlx::Row::get(&row, 0);
+
+        Ok(count)
     }
+
 
     /// Retrieves a single asset by its unique ID.
     ///
@@ -459,22 +542,25 @@ impl AssetQueryHandler for SqliteAssetQueries {
     /// * `Ok(Asset)` if the asset was found successfully.
     /// * `Err(sqlx::Error)` if the asset could not be found.
     async fn get_asset_by_id(&self, id: &str) -> AppResult<Asset> {
-        let row = sqlx::query_as!(
-            AssetDb,
+        let row = sqlx::query!(
             r#"
             SELECT
                 a.id as "id!", a.name as "name!", a.path as "path!", a.state as "state!",
                 a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!",
                 a.created_at as "created_at: DateTime<Utc>",
+                a.modified_at as "modified_at: DateTime<Utc>",
+                a.added_at as "added_at: DateTime<Utc>",
                 a.updated_at as "updated_at: DateTime<Utc>",
-                m.width as "width: i32", m.height as "height: i32", m.duration_secs as "duration_secs: f64",
-                m.technical_payload as "technical_payload: serde_json::Value",
-                m.semantic_payload as "semantic_payload: serde_json::Value",
-                a.dominant_color as "dominant_color: serde_json::Value",
                 a.folder_id as "folder_id?",
                 a.thumbnail_path as "thumbnail_path?",
-                a.rating as "rating: i32",
-                a.notes as "notes: String"
+                a.rating as "rating: i64",
+                a.notes as "notes?",
+                m.width as "width: i64",
+                m.height as "height: i64",
+                m.duration_secs as "duration_secs: f64",
+                m.technical_payload as "technical_payload: serde_json::Value",
+                m.semantic_payload as "semantic_payload: serde_json::Value",
+                a.dominant_color as "dominant_color: serde_json::Value"
             FROM assets a
             LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE a.id = ?
@@ -485,7 +571,31 @@ impl AssetQueryHandler for SqliteAssetQueries {
         .await?
         .ok_or_else(|| crate::core::error::AppError::NotFound(id.to_string()))?;
 
-        Ok(row.into())
+        let asset_db = crate::infra::database::models::AssetDb {
+            id: row.id,
+            name: row.name,
+            path: row.path,
+            state: row.state,
+            format_type: row.format_type,
+            family: row.family,
+            file_size: row.file_size,
+            created_at: row.created_at,
+            modified_at: row.modified_at,
+            added_at: row.added_at,
+            updated_at: row.updated_at,
+            folder_id: row.folder_id,
+            thumbnail_path: row.thumbnail_path,
+            rating: row.rating,
+            notes: row.notes,
+            width: row.width,
+            height: row.height,
+            duration_secs: row.duration_secs,
+            technical_payload: row.technical_payload,
+            semantic_payload: row.semantic_payload,
+            dominant_color: row.dominant_color,
+        };
+
+        Ok(asset_db.into())
     }
 
     /// Retrieves a map of path -> (file_size, updated_at) for all assets under a root path.
@@ -633,9 +743,10 @@ impl AssetQueryHandler for SqliteAssetQueries {
             }
         }
 
-        let count: (i64,) = query_builder.build_query_as().fetch_one(&self.pool).await?;
+        let row = query_builder.build().fetch_one(&self.pool).await?;
+        let count: i64 = sqlx::Row::get(&row, 0);
 
-        Ok(count.0)
+        Ok(count)
     }
 
     /// Gets library statistics (total assets, folders, tags, size).

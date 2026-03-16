@@ -171,6 +171,9 @@ pub trait AssetQueryHandler: Send + Sync {
     /// Retrieves comprehensive statistics about the library.
     async fn get_library_stats(&self) -> AppResult<LibraryStats>;
 
+    /// Gets the total count of assets matching the specified search criteria.
+    async fn get_search_count(&self, criteria: crate::core::models::SearchCriteria) -> AppResult<i64>;
+
     /// Retrieves all colors extracted for a specific asset.
     async fn get_asset_colors(&self, asset_id: &str) -> AppResult<Vec<crate::core::models::AssetColor>>;
 
