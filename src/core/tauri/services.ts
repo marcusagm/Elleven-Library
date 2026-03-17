@@ -100,7 +100,17 @@ export const tauriService = {
         file_count: number;
     }> => {
         try {
-            return await invoke('get_cache_stats');
+            // V2 backend exposes this command as get_library_cache_stats
+            const response = await invoke<{
+                thumbnails: { count: number; size: number };
+                hls: { count: number; size: number };
+                total: { count: number; size: number };
+            }>('get_library_cache_stats');
+            return {
+                directory: '',
+                size_bytes: response.total.size,
+                file_count: response.total.count
+            };
         } catch (error) {
             LifecycleManager.logTelemetry(
                 'error',
@@ -111,15 +121,21 @@ export const tauriService = {
         }
     },
 
-    cleanupCache: async (maxAgeDays?: number): Promise<number> => {
+    // cleanupCache: async (_maxAgeDays?: number): Promise<number> => {
+    cleanupCache: async (): Promise<number> => {
         try {
-            const result: number = await invoke('cleanup_cache', { maxAgeDays });
+            // V2 backend cleanup_cache clears HLS cache and returns void.
+            // We capture the count before and after to compute deleted entries.
+            const statsBefore = await tauriService.getCacheStats();
+            await invoke('cleanup_cache');
+            const statsAfter = await tauriService.getCacheStats();
+            const deletedCount = Math.max(0, statsBefore.file_count - statsAfter.file_count);
             LifecycleManager.logTelemetry(
                 'info',
                 'tauriService',
-                `Cache cleaned. Cleared ${result} entries.`
+                `Cache cleaned. Cleared ${deletedCount} entries.`
             );
-            return result;
+            return deletedCount;
         } catch (error) {
             LifecycleManager.logTelemetry(
                 'error',
@@ -132,13 +148,15 @@ export const tauriService = {
 
     clearCache: async (): Promise<number> => {
         try {
-            const result: number = await invoke('clear_cache');
+            // V2 backend clear_cache clears both thumbnails and HLS and returns void.
+            const statsBefore = await tauriService.getCacheStats();
+            await invoke('clear_cache');
             LifecycleManager.logTelemetry(
                 'info',
                 'tauriService',
-                `Cache entirely cleared. Removed ${result} entries.`
+                `Cache entirely cleared. Removed ${statsBefore.file_count} entries.`
             );
-            return result;
+            return statsBefore.file_count;
         } catch (error) {
             LifecycleManager.logTelemetry(
                 'error',
