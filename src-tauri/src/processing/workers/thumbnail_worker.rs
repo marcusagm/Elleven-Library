@@ -146,36 +146,38 @@ impl ThumbnailWorker {
             let id = asset.id.clone();
             let path = asset.path.clone();
             let provider = provider.clone();
-            let ledger = self.ledger.clone();
 
             join_set.spawn(async move {
                 // 4a. Technical Metadata Extraction
-                if let Some(meta_cap) = provider.metadata() {
+                let tech_meta_cmd = if let Some(meta_cap) = provider.metadata() {
                     if let Ok(tech_meta) = meta_cap.extract_technical(&path).await {
                         let width = tech_meta.get("width").and_then(|v| v.as_i64());
                         let height = tech_meta.get("height").and_then(|v| v.as_i64());
-                        let duration = tech_meta.get("duration").and_then(|v| v.as_f64());
+                        let duration = tech_meta.get("duration_secs").and_then(|v| v.as_f64());
 
-                        let _ = ledger
-                            .execute(LedgerCommand::UpdateTechnicalMetadata(
-                                crate::core::ledger::command::UpdateTechnicalMetadataPayload {
-                                    asset_id: id.clone(),
-                                    width,
-                                    height,
-                                    duration_secs: duration,
-                                    technical_payload: Some(tech_meta),
-                                    semantic_payload: None,
-                                },
-                            ))
-                            .await;
+                        Some(LedgerCommand::UpdateTechnicalMetadata(
+                            crate::core::ledger::command::UpdateTechnicalMetadataPayload {
+                                asset_id: id.clone(),
+                                width,
+                                height,
+                                duration_secs: duration,
+                                technical_payload: Some(tech_meta),
+                                semantic_payload: None,
+                            },
+                        ))
+                    } else {
+                        None
                     }
-                }
+                } else {
+                    None
+                };
 
                 // 4b. Thumbnail & Preview Generation
                 let thumb_res = if let Some(thumb_cap) = provider.thumbnail() {
                     thumb_cap.generate(&path, &id, 300).await
                 } else {
-                    Err(AppError::Internal("Format does not support thumbnails".to_string()))
+                    // Graceful skip for formats without thumbnail support (e.g. legacy audio)
+                    Ok(Vec::new()) 
                 };
 
                 let preview_res = if let Some(preview_cap) = provider.preview() {
@@ -184,14 +186,16 @@ impl ThumbnailWorker {
                     None
                 };
 
-                (id, thumb_res, preview_res)
+                (id, tech_meta_cmd, thumb_res, preview_res)
             });
         }
 
         // 5. Commit Results
         let thumbnails_dir = self.thumbnails_dir.clone();
+        let mut batch_commands = Vec::new();
+
         while let Some(join_res) = join_set.join_next().await {
-            let (id, thumb_res, preview_res) = match join_res {
+            let (id, tech_meta_cmd, thumb_res, preview_res) = match join_res {
                 Ok(r) => r,
                 Err(e) => {
                     error!("ThumbnailWorker: Task panicked: {}", e);
@@ -199,7 +203,12 @@ impl ThumbnailWorker {
                 }
             };
 
-            // 5a. Save Preview
+            // 5a. Collect tech meta command
+            if let Some(cmd) = tech_meta_cmd {
+                batch_commands.push(cmd);
+            }
+
+            // 5b. Save Preview
             if let Some(Ok((preview_bytes, mime))) = preview_res {
                 let extension = match mime.as_str() {
                     "model/gltf-binary" => "glb",
@@ -216,9 +225,9 @@ impl ThumbnailWorker {
                 }
             }
 
-            // 5b. Handle Thumbnail result
+            // 5c. Handle Thumbnail result
             match thumb_res {
-                Ok(bytes) => {
+                Ok(bytes) if !bytes.is_empty() => {
                     let id_for_io = id.clone();
                     // CPU-Bound Transcoding to consistent WebP
                     let final_bytes_res = tokio::task::spawn_blocking(move || {
@@ -260,21 +269,29 @@ impl ThumbnailWorker {
                         continue;
                     }
 
-                    // Force commit entry to database
-                    if let Err(e) = self
-                        .ledger
-                        .execute(LedgerCommand::UpdateThumbnail {
-                            asset_id: id.clone(),
-                            thumbnail_path: filename.clone(),
-                        })
-                        .await
-                    {
-                        error!("ThumbnailWorker: Ledger commit failed for {}: {}", id, e);
-                    }
+                    batch_commands.push(LedgerCommand::UpdateThumbnail {
+                        asset_id: id.clone(),
+                        thumbnail_path: filename.clone(),
+                    });
+                }
+                Ok(_) => {
+                    // Empty bytes means processed but no thumbnail
+                    debug!("ThumbnailWorker: Format for {} does not support thumbnails, skipping database update", id);
+                    batch_commands.push(LedgerCommand::UpdateThumbnail {
+                        asset_id: id.clone(),
+                        thumbnail_path: "".to_string(), // Empty path means processed but no thumbnail
+                    });
                 }
                 Err(e) => {
                     error!("ThumbnailWorker: Generation failed for {}: {}", id, e);
                 }
+            }
+        }
+
+        // 6. Execute Batch Commit
+        if !batch_commands.is_empty() {
+            if let Err(e) = self.ledger.execute(LedgerCommand::Batch(batch_commands)).await {
+                error!("ThumbnailWorker: Batch ledger commit failed: {}", e);
             }
         }
 

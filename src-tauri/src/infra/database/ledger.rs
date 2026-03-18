@@ -233,7 +233,7 @@ impl SqliteAssetLedger {
         )
         .await?;
 
-                Self::fetch_asset_by_id(tx, asset_id).await
+        Self::fetch_asset_by_id(tx, &asset_id).await
     }
 
     async fn handle_update_technical_metadata(
@@ -307,18 +307,169 @@ impl SqliteAssetLedger {
 #[async_trait]
 impl TransactionalAssetLedger for SqliteAssetLedger {
     /// Executes a command that modifies the state of the asset ledger.
-    ///
-    /// # Arguments
-    ///
-    /// * `command` - The command to execute.
-    ///
-    /// # Returns
-    ///
-    /// A `Result` containing the updated asset or an error.
     async fn execute(&self, command: LedgerCommand) -> AppResult<Asset> {
         let mut tx = self.pool.begin().await?;
 
-        let result = match &command {
+        // 1. Recursive handling for Batch command
+        let results = if let LedgerCommand::Batch(commands) = &command {
+            let mut last_result = None;
+            for cmd in commands {
+                last_result = Some(self.execute_single(&mut tx, cmd.clone()).await?);
+            }
+            last_result.ok_or_else(|| AppError::Generic("Empty batch command".to_string()))
+        } else {
+            self.execute_single(&mut tx, command.clone()).await
+        };
+
+        match results {
+            Ok(asset) => {
+                tx.commit().await?;
+
+                // 2. Publish Domain Events only AFTER commit
+                // Handle both single and batch command events
+                let commands_to_process = if let LedgerCommand::Batch(cmds) = &command {
+                    cmds.clone()
+                } else {
+                    vec![command.clone()]
+                };
+
+                for cmd in commands_to_process {
+                    self.emit_event_for_command(&asset, &cmd)?;
+                }
+
+                Ok(asset)
+            }
+            Err(e) => {
+                // Transaction is dropped here, effecting a Rollback
+                Err(e)
+            }
+        }
+    }
+}
+
+impl SqliteAssetLedger {
+    /// Internal helper to emit domain events after a successful commit.
+    fn emit_event_for_command(&self, asset: &Asset, command: &LedgerCommand) -> AppResult<()> {
+        match command {
+            LedgerCommand::CreateAsset(_) | LedgerCommand::BatchCreate(_) => {
+                self.event_bus.publish(DomainEvent::AssetCreated {
+                    asset_id: asset.id.clone(),
+                    path: asset.path.to_string_lossy().to_string(),
+                    format: asset.format_type.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateTags(p) => {
+                self.event_bus.publish(DomainEvent::AssetTagsUpdated {
+                    asset_id: asset.id.clone(),
+                    active_tags: p.tags_to_add.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateAsset(_) => {
+                self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
+                    asset_id: asset.id.clone(),
+                })?;
+            }
+            LedgerCommand::DeleteAsset { .. } => {
+                self.event_bus.publish(DomainEvent::FsPathDeleted {
+                    path: asset.id.clone(),
+                })?;
+            }
+            LedgerCommand::CreateFolder(_) => {
+                self.event_bus.publish(DomainEvent::FolderCreated {
+                    folder_id: asset.id.clone(),
+                    parent_id: asset.folder_id.clone(),
+                    name: asset.name.clone(),
+                    path: asset.path.to_string_lossy().to_string(),
+                })?;
+            }
+            LedgerCommand::SetAssetFolder { .. } => {
+                self.event_bus.publish(DomainEvent::AssetFolderChanged {
+                    asset_id: asset.id.clone(),
+                    folder_id: asset.folder_id.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateThumbnail { thumbnail_path, .. } => {
+                self.event_bus.publish(DomainEvent::ThumbnailGenerated {
+                    asset_id: asset.id.clone(),
+                    path: thumbnail_path.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateAssetColors(_) => {
+                self.event_bus.publish(DomainEvent::ExtractionCompleted {
+                    asset_id: asset.id.clone(),
+                    capability: "COLORS".to_string(),
+                })?;
+            }
+            LedgerCommand::CreateTag(_) => {
+                self.event_bus.publish(DomainEvent::TagCreated {
+                    id: asset.id.clone(),
+                    name: asset.name.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateTag(tag_payload) => {
+                self.event_bus.publish(DomainEvent::TagUpdated {
+                    id: tag_payload.id.clone(),
+                })?;
+            }
+            LedgerCommand::DeleteTag { id } => {
+                self.event_bus
+                    .publish(DomainEvent::TagDeleted { id: id.clone() })?;
+            }
+            LedgerCommand::CreateSmartFolder(_) => {
+                self.event_bus.publish(DomainEvent::SmartFolderCreated {
+                    id: asset.id.clone(),
+                    name: asset.name.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateSmartFolder(sf_payload) => {
+                self.event_bus.publish(DomainEvent::SmartFolderUpdated {
+                    id: sf_payload.id.clone(),
+                })?;
+            }
+            LedgerCommand::DeleteSmartFolder(sf_payload) => {
+                self.event_bus.publish(DomainEvent::SmartFolderDeleted {
+                    id: sf_payload.id.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateAssetRating(p) => {
+                self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
+                    asset_id: p.asset_id.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateAssetNotes(p) => {
+                self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
+                    asset_id: p.asset_id.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateTechnicalMetadata(p) => {
+                self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
+                    asset_id: p.asset_id.clone(),
+                })?;
+            }
+            LedgerCommand::ReextractColors { asset_id } => {
+                self.event_bus.publish(DomainEvent::ReextractAssetColors {
+                    asset_id: asset_id.clone(),
+                })?;
+            }
+            LedgerCommand::RegenerateThumbnail { asset_id } => {
+                self.event_bus.publish(DomainEvent::ThumbnailInvalidated {
+                    asset_id: asset_id.clone(),
+                })?;
+            }
+            _ => {
+                // Batch associate/remove/replace tags and other commands without specific domain events
+            }
+        }
+        Ok(())
+    }
+
+    /// Optimized single command execution within an existing transaction.
+    async fn execute_single(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        command: LedgerCommand,
+    ) -> AppResult<Asset> {
+        match command {
             LedgerCommand::CreateAsset(payload) => {
                 let asset_id = Uuid::new_v4().to_string();
                 let now = Utc::now();
@@ -366,18 +517,18 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     folder_id_ref
                 )
-                .fetch_one(&mut *tx)
+                .fetch_one(&mut **tx)
                 .await?;
 
                 let asset_id_final = row.id.to_string();
 
                 // 2. Audit Log
-                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                let op_payload = serde_json::to_value(&payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "CREATE_ASSET",
                     &asset_id_final,
                     op_payload,
@@ -465,18 +616,18 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         now,
                         folder_id_ref
                     )
-                    .fetch_one(&mut *tx)
+                    .fetch_one(&mut **tx)
                     .await?;
 
                     let asset_id = row.id;
 
                     // 2. Audit Log
-                    let op_payload = serde_json::to_value(payload).map_err(|e| {
+                    let op_payload = serde_json::to_value(&payload).map_err(|e| {
                         AppError::Internal(format!("Failed to serialize payload: {}", e))
                     })?;
 
                     Self::log_operation(
-                        &mut tx,
+                        tx,
                         "CREATE_ASSET_BATCH_MEMBER",
                         &asset_id,
                         op_payload,
@@ -532,7 +683,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         payload.asset_id,
                         tag_id
                     )
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
                 }
 
@@ -546,7 +697,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         payload.asset_id,
                         tag_id
                     )
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
                 }
 
@@ -556,15 +707,15 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     payload.asset_id
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
                 // 4. Audit Log
-                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                let op_payload = serde_json::to_value(&payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "UPDATE_TAGS",
                     &payload.asset_id,
                     op_payload,
@@ -573,7 +724,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 )
                 .await?;
 
-                Self::fetch_asset_by_id(&mut tx, &payload.asset_id).await
+                Self::fetch_asset_by_id(tx, &payload.asset_id).await
             }
             LedgerCommand::UpdateAsset(payload) => {
                 let now = Utc::now();
@@ -587,7 +738,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                             r#"SELECT id as "id!" FROM assets WHERE path = ?"#,
                             old_path_str
                         )
-                        .fetch_optional(&mut *tx)
+                        .fetch_optional(&mut **tx)
                         .await?;
                         row.map(|r| r.id.to_string()).ok_or_else(|| {
                             AppError::NotFound(format!("Asset not found at path: {}", old_path_str))
@@ -617,16 +768,16 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     asset_id
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
 
                 // 3. Audit Log
-                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                let op_payload = serde_json::to_value(&payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "UPDATE_ASSET",
                     &asset_id,
                     op_payload,
@@ -636,7 +787,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 .await?;
 
                 // 4. Fetch and return
-        Self::fetch_asset_by_id(&mut tx, &asset_id).await
+        Self::fetch_asset_by_id(tx, &asset_id).await
             }
             LedgerCommand::MarkAsStale { asset_id } => {
                 let now = Utc::now();
@@ -648,20 +799,20 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     asset_id
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "MARK_STALE",
-                    asset_id,
+                    &asset_id,
                     serde_json::json!({}),
                     "COMPLETED",
                     None,
                 )
                 .await?;
 
-                Self::fetch_asset_by_id(&mut tx, asset_id).await
+                Self::fetch_asset_by_id(tx, &asset_id).await
             }
             LedgerCommand::DeleteAsset {
                 asset_id,
@@ -677,7 +828,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                             r#"SELECT id as "id!" FROM assets WHERE path = ?"#,
                             path_str
                         )
-                        .fetch_optional(&mut *tx)
+                        .fetch_optional(&mut **tx)
                         .await?;
                         row.map(|r| r.id.to_string()).ok_or_else(|| {
                             AppError::NotFound(format!("Asset not found at path: {}", path_str))
@@ -692,12 +843,12 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 // 2. Perform Delete
                 sqlx::query!("DELETE FROM assets WHERE id = ?", resolved_id)
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
 
                 // 3. Audit Log
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "DELETE_ASSET",
                     &resolved_id,
                     serde_json::json!({"physical": physical_delete}),
@@ -748,15 +899,15 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     now
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
 
-                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                let op_payload = serde_json::to_value(&payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "CREATE_FOLDER",
                     &folder_id,
                     op_payload,
@@ -802,7 +953,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     r#"SELECT path as "path!" FROM folders WHERE id = ?"#,
                     folder_id_ref
                 )
-                .fetch_optional(&mut *tx)
+                .fetch_optional(&mut **tx)
                 .await?
                 .map(|r| r.path)
                 .ok_or_else(|| {
@@ -822,27 +973,27 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     "#,
                     folder_id_ref
                 )
-                .fetch_all(&mut *tx)
+                .fetch_all(&mut **tx)
                 .await?;
 
                 for record in all_folder_ids {
                     // Manual cascade: delete assets for this specific subfolder first
                     sqlx::query!("DELETE FROM assets WHERE folder_id = ?", record.id)
-                        .execute(&mut *tx)
+                        .execute(&mut **tx)
                         .await?;
 
                     sqlx::query!("DELETE FROM folders WHERE id = ?", record.id)
-                        .execute(&mut *tx)
+                        .execute(&mut **tx)
                         .await?;
                 }
 
                 // 3. Audit Log
-                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                let op_payload = serde_json::to_value(&payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "REMOVE_FOLDER",
                     folder_id_ref,
                     op_payload,
@@ -888,20 +1039,20 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     asset_id
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "SET_ASSET_FOLDER",
-                    asset_id,
+                    &asset_id,
                     serde_json::json!({ "folder_id": folder_id }),
                     "COMPLETED",
                     None,
                 )
                 .await?;
 
-                Self::fetch_asset_by_id(&mut tx, asset_id).await
+                Self::fetch_asset_by_id(tx, &asset_id).await
             }
             LedgerCommand::UpdateThumbnail {
                 asset_id,
@@ -918,14 +1069,14 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     asset_id
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
 
                 // 2. Audit Log
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "UPDATE_THUMBNAIL",
-                    asset_id,
+                    &asset_id,
                     serde_json::json!({ "path": thumbnail_path }),
                     "COMPLETED",
                     None,
@@ -933,7 +1084,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 .await?;
 
                 // 3. Fetch and return
-        Self::fetch_asset_by_id(&mut tx, &asset_id).await
+        Self::fetch_asset_by_id(tx, &asset_id).await
             }
             LedgerCommand::UpdateAssetColors(payload) => {
                 let now = Utc::now();
@@ -941,7 +1092,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
                 // 1. Delete existing colors for this asset
                 sqlx::query!("DELETE FROM asset_colors WHERE asset_id = ?", asset_id_ref)
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
 
                 // 2. Insert new colors
@@ -959,7 +1110,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                         color.percentage,
                         color.rank
                     )
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
                 }
 
@@ -971,17 +1122,17 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     .bind(serde_json::json!(dominant.hex_color))
                     .bind(now)
                     .bind(asset_id_ref)
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
                 }
 
                 // 4. Audit Log
-                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                let op_payload = serde_json::to_value(&payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "UPDATE_ASSET_COLORS",
                     asset_id_ref,
                     op_payload,
@@ -990,19 +1141,19 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 )
                 .await?;
 
-                Self::fetch_asset_by_id(&mut tx, &payload.asset_id).await
+                Self::fetch_asset_by_id(tx, &payload.asset_id).await
             }
             LedgerCommand::UpdateAssetRating(payload) => {
-                self.handle_update_rating(&mut tx, payload.clone()).await
+                self.handle_update_rating(tx, payload.clone()).await
             }
             LedgerCommand::UpdateAssetNotes(payload) => {
-                self.handle_update_notes(&mut tx, payload.clone()).await
+                self.handle_update_notes(tx, payload.clone()).await
             }
             LedgerCommand::ReextractColors { asset_id } => {
-                self.handle_reextract_colors(&mut tx, asset_id).await
+                self.handle_reextract_colors(tx, &asset_id).await
             }
             LedgerCommand::UpdateTechnicalMetadata(payload) => {
-                self.handle_update_technical_metadata(&mut tx, payload.clone()).await
+                self.handle_update_technical_metadata(tx, payload.clone()).await
             }
 
             // ── Tag CRUD Handlers ──────────────────────────────────────────
@@ -1025,11 +1176,11 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     normalized_parent_id,
                     0 // Default order_index for new tags
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
 
                 let operation_payload =
-                    serde_json::to_value(payload).map_err(|serialization_error| {
+                    serde_json::to_value(&payload).map_err(|serialization_error| {
                         AppError::Internal(format!(
                             "Failed to serialize payload: {}",
                             serialization_error
@@ -1037,7 +1188,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "CREATE_TAG",
                     &tag_id,
                     operation_payload,
@@ -1111,11 +1262,11 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     }
 
                     query = query.bind(&payload.id);
-                    query.execute(&mut *tx).await?;
+                    query.execute(&mut **tx).await?;
                 }
 
                 let operation_payload =
-                    serde_json::to_value(payload).map_err(|serialization_error| {
+                    serde_json::to_value(&payload).map_err(|serialization_error| {
                         AppError::Internal(format!(
                             "Failed to serialize payload: {}",
                             serialization_error
@@ -1123,7 +1274,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "UPDATE_TAG",
                     &payload.id,
                     operation_payload,
@@ -1159,18 +1310,18 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
             LedgerCommand::DeleteTag { id } => {
                 // 1. Remove all asset associations first
                 sqlx::query!("DELETE FROM asset_tags WHERE tag_id = ?", id)
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
 
                 // 2. Delete the tag itself
                 sqlx::query!("DELETE FROM tags WHERE id = ?", id)
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "DELETE_TAG",
-                    id,
+                    &id,
                     serde_json::json!({ "tag_id": id }),
                     "COMPLETED",
                     None,
@@ -1210,14 +1361,14 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                                 current_asset_id,
                                 current_tag_id
                             )
-                            .execute(&mut *tx)
+                            .execute(&mut **tx)
                             .await?;
                         }
                     }
                 }
 
                 let operation_payload =
-                    serde_json::to_value(payload).map_err(|serialization_error| {
+                    serde_json::to_value(&payload).map_err(|serialization_error| {
                         AppError::Internal(format!(
                             "Failed to serialize payload: {}",
                             serialization_error
@@ -1225,7 +1376,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "ADD_TAGS_BATCH",
                     "batch",
                     operation_payload,
@@ -1267,14 +1418,14 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                                 current_asset_id,
                                 current_tag_id
                             )
-                            .execute(&mut *tx)
+                            .execute(&mut **tx)
                             .await?;
                         }
                     }
                 }
 
                 let operation_payload =
-                    serde_json::to_value(payload).map_err(|serialization_error| {
+                    serde_json::to_value(&payload).map_err(|serialization_error| {
                         AppError::Internal(format!(
                             "Failed to serialize payload: {}",
                             serialization_error
@@ -1282,7 +1433,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "REMOVE_TAGS_BATCH",
                     "batch",
                     operation_payload,
@@ -1323,7 +1474,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                             "DELETE FROM asset_tags WHERE asset_id = ?",
                             current_asset_id
                         )
-                        .execute(&mut *tx)
+                        .execute(&mut **tx)
                         .await?;
 
                         // Add the new set of tags
@@ -1333,14 +1484,14 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                                 current_asset_id,
                                 current_tag_id
                             )
-                            .execute(&mut *tx)
+                            .execute(&mut **tx)
                             .await?;
                         }
                     }
                 }
 
                 let operation_payload =
-                    serde_json::to_value(payload).map_err(|serialization_error| {
+                    serde_json::to_value(&payload).map_err(|serialization_error| {
                         AppError::Internal(format!(
                             "Failed to serialize payload: {}",
                             serialization_error
@@ -1348,7 +1499,7 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "REPLACE_TAGS_BATCH",
                     "batch",
                     operation_payload,
@@ -1393,15 +1544,15 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     now
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
 
-                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                let op_payload = serde_json::to_value(&payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "CREATE_SMART_FOLDER",
                     &sf_id,
                     op_payload,
@@ -1444,15 +1595,15 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     payload.id
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
 
-                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                let op_payload = serde_json::to_value(&payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "UPDATE_SMART_FOLDER",
                     &payload.id,
                     op_payload,
@@ -1487,15 +1638,15 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
             }
             LedgerCommand::DeleteSmartFolder(payload) => {
                 sqlx::query!("DELETE FROM smart_folders WHERE id = ?", payload.id)
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
 
-                let op_payload = serde_json::to_value(payload).map_err(|e| {
+                let op_payload = serde_json::to_value(&payload).map_err(|e| {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "DELETE_SMART_FOLDER",
                     &payload.id,
                     op_payload,
@@ -1537,14 +1688,14 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     now,
                     asset_id
                 )
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
 
                 // 2. Audit Log
                 Self::log_operation(
-                    &mut tx,
+                    tx,
                     "REGENERATE_THUMBNAIL",
-                    asset_id,
+                    &asset_id,
                     serde_json::json!({ "asset_id": asset_id }),
                     "COMPLETED",
                     None,
@@ -1552,135 +1703,10 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 .await?;
 
                 // 3. Fetch asset to return
-        Self::fetch_asset_by_id(&mut tx, &asset_id).await
+        Self::fetch_asset_by_id(tx, &asset_id).await
             }
-        };
-
-        match result {
-            Ok(asset) => {
-                tx.commit().await?;
-
-                // Publish Domain Events only AFTER commit
-                match &command {
-                    LedgerCommand::CreateAsset(_) | LedgerCommand::BatchCreate(_) => {
-                        self.event_bus.publish(DomainEvent::AssetCreated {
-                            asset_id: asset.id.clone(),
-                            path: asset.path.to_string_lossy().to_string(),
-                            format: asset.format_type.clone(),
-                        })?;
-                    }
-                    LedgerCommand::UpdateTags(p) => {
-                        self.event_bus.publish(DomainEvent::AssetTagsUpdated {
-                            asset_id: asset.id.clone(),
-                            active_tags: p.tags_to_add.clone(), // Simplified
-                        })?;
-                    }
-                    LedgerCommand::UpdateAsset(_) => {
-                        self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
-                            asset_id: asset.id.clone(),
-                        })?;
-                    }
-                    LedgerCommand::DeleteAsset { .. } => {
-                        self.event_bus.publish(DomainEvent::FsPathDeleted {
-                            path: asset.id.clone(), // Using asset.id (the resolved ID)
-                        })?;
-                    }
-                    LedgerCommand::CreateFolder(_) => {
-                        self.event_bus.publish(DomainEvent::FolderCreated {
-                            folder_id: asset.id.clone(),
-                            parent_id: asset.folder_id.clone(),
-                            name: asset.name.clone(),
-                            path: asset.path.to_string_lossy().to_string(),
-                        })?;
-                    }
-                    LedgerCommand::SetAssetFolder { .. } => {
-                        self.event_bus.publish(DomainEvent::AssetFolderChanged {
-                            asset_id: asset.id.clone(),
-                            folder_id: asset.folder_id.clone(),
-                        })?;
-                    }
-                    LedgerCommand::UpdateThumbnail { thumbnail_path, .. } => {
-                        self.event_bus.publish(DomainEvent::ThumbnailGenerated {
-                            asset_id: asset.id.clone(),
-                            path: thumbnail_path.clone(),
-                        })?;
-                    }
-                    LedgerCommand::UpdateAssetColors(_) => {
-                        self.event_bus.publish(DomainEvent::ExtractionCompleted {
-                            asset_id: asset.id.clone(),
-                            capability: "COLORS".to_string(),
-                        })?;
-                    }
-                    LedgerCommand::CreateTag(_) => {
-                        self.event_bus.publish(DomainEvent::TagCreated {
-                            id: asset.id.clone(),
-                            name: asset.name.clone(),
-                        })?;
-                    }
-                    LedgerCommand::UpdateTag(tag_payload) => {
-                        self.event_bus.publish(DomainEvent::TagUpdated {
-                            id: tag_payload.id.clone(),
-                        })?;
-                    }
-                    LedgerCommand::DeleteTag { id } => {
-                        self.event_bus
-                            .publish(DomainEvent::TagDeleted { id: id.clone() })?;
-                    }
-                    LedgerCommand::AddTagsToAssetsBatch(_)
-                    | LedgerCommand::RemoveTagsFromAssetsBatch(_)
-                    | LedgerCommand::ReplaceTagsForAssetsBatch(_) => {
-                        // Batch operations don't emit individual events
-                        // The frontend should refresh tag counts after batch ops
-                    }
-                    LedgerCommand::CreateSmartFolder(_) => {
-                        self.event_bus.publish(DomainEvent::SmartFolderCreated {
-                            id: asset.id.clone(),
-                            name: asset.name.clone(),
-                        })?;
-                    }
-                    LedgerCommand::UpdateSmartFolder(sf_payload) => {
-                        self.event_bus.publish(DomainEvent::SmartFolderUpdated {
-                            id: sf_payload.id.clone(),
-                        })?;
-                    }
-                    LedgerCommand::DeleteSmartFolder(sf_payload) => {
-                        self.event_bus.publish(DomainEvent::SmartFolderDeleted {
-                            id: sf_payload.id.clone(),
-                        })?;
-                    }
-                    LedgerCommand::UpdateAssetRating(p) => {
-                        self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
-                            asset_id: p.asset_id.clone(),
-                        })?;
-                    }
-                    LedgerCommand::UpdateAssetNotes(p) => {
-                        self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
-                            asset_id: p.asset_id.clone(),
-                        })?;
-                    }
-                    LedgerCommand::UpdateTechnicalMetadata(p) => {
-                        self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
-                            asset_id: p.asset_id.clone(),
-                        })?;
-                    }
-                    LedgerCommand::ReextractColors { asset_id } => {
-                        self.event_bus.publish(DomainEvent::ReextractAssetColors {
-                            asset_id: asset_id.clone(),
-                        })?;
-                    }
-                    LedgerCommand::RegenerateThumbnail { asset_id } => {
-                        self.event_bus.publish(DomainEvent::ThumbnailInvalidated {
-                            asset_id: asset_id.clone(),
-                        })?;
-                    }
-                    _ => {}
-                }
-
-                Ok(asset)
-            }
-            Err(e) => {
-                // Transaction is dropped here, effecting a Rollback
-                Err(e)
+            LedgerCommand::Batch(_) => {
+                return Err(AppError::Internal("Nested Batch commands are not supported".to_string()));
             }
         }
     }

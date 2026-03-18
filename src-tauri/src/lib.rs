@@ -28,6 +28,12 @@ pub fn run() {
         .register_uri_scheme_protocol("asset", move |ctx, request| {
             crate::delivery::protocols::asset::handler(ctx.app_handle(), &request)
         })
+        .register_uri_scheme_protocol("video", move |ctx, request| {
+            crate::delivery::protocols::video::handler(ctx.app_handle(), &request)
+        })
+        .register_uri_scheme_protocol("audio", move |ctx, request| {
+            crate::delivery::protocols::audio::handler(ctx.app_handle(), &request)
+        })
         .setup(|app| {
             // Resolve paths
             let app_data = app
@@ -109,7 +115,7 @@ pub fn run() {
                 // Initialize Database Infrastructure
                 let db_manager =
                     match crate::infra::database::manager::DbManager::new(&db_path).await {
-                        Ok(manager) => manager,
+                        Ok(manager) => Arc::new(manager),
                         Err(err) => {
                             tracing::error!("Failed to initialize database manager: {}", err);
                             return;
@@ -155,10 +161,11 @@ pub fn run() {
                 handle.manage(transcode_cache);
 
                 // Start Streaming Server (Axum)
-                let server_handle = start_server(handle.clone(), 9876).await;
+                let server_token = lifecycle_for_setup.child_token();
+                let server_handle = start_server(handle.clone(), 9876, server_token.clone()).await;
                 lifecycle_for_setup.register(
                     "streaming_server".to_string(),
-                    lifecycle_for_setup.child_token(),
+                    server_token,
                     server_handle,
                 );
 

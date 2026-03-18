@@ -241,4 +241,6 @@ pub enum LedgerCommand {
     UpdateSmartFolder(UpdateSmartFolderPayload),
     /// Delete a smart folder.
     DeleteSmartFolder(DeleteSmartFolderPayload),
+    /// Execute a collection of commands in a single atomic transaction.
+    Batch(Vec<LedgerCommand>),
 }

@@ -61,6 +61,10 @@ pub enum AppError {
     #[error("Validation failed: {0}")]
     ValidationFailed(String),
 
+    /// Error when access to a resource is forbidden.
+    #[error("Access forbidden: {0}")]
+    Forbidden(String),
+
     /// Error related to the internal Event Bus.
     #[error("Event Bus error: {0}")]
     EventBus(String),

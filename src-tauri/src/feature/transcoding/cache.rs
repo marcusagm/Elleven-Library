@@ -36,6 +36,11 @@ impl TranscodeCache {
         Self { cache_dir }
     }
 
+    /// Returns the internal cache directory.
+    pub fn dir(&self) -> &Path {
+        &self.cache_dir
+    }
+
     /// Generates a unique key for a source file and quality.
     fn generate_key(source: &Path, quality: TranscodeQuality) -> String {
         let mut hasher = DefaultHasher::new();

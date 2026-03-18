@@ -281,11 +281,13 @@ impl MetadataCapability for VideoFormatProvider {
         let mut width = None;
         let mut height = None;
         let mut duration_secs = 0.0;
+        let mut container = None;
 
         if let Some(format) = json.get("format") {
             if let Some(duration_str) = format.get("duration").and_then(|d| d.as_str()) {
                 duration_secs = duration_str.parse::<f64>().unwrap_or(0.0);
             }
+            container = format.get("format_name").and_then(|v| v.as_str()).map(|s| s.to_string());
         }
 
         if let Some(streams) = json.get("streams").and_then(|s| s.as_array()) {
@@ -294,12 +296,12 @@ impl MetadataCapability for VideoFormatProvider {
                 let codec_name = stream.get("codec_name").and_then(|c| c.as_str()).map(|s| s.to_string());
 
                 match codec_type {
-                    Some("video") => {
+                    Some("video") if video_codec.is_none() => {
                         video_codec = codec_name;
                         width = stream.get("width").and_then(|w| w.as_i64());
                         height = stream.get("height").and_then(|h| h.as_i64());
                     }
-                    Some("audio") => {
+                    Some("audio") if audio_codec.is_none() => {
                         audio_codec = codec_name;
                     }
                     _ => {}
@@ -307,15 +309,27 @@ impl MetadataCapability for VideoFormatProvider {
             }
         }
 
-        // Logic for is_native (simplified: h264/h265/vp8/vp9 are mostly native in modern browsers/WebView)
-        let is_native = match video_codec.as_deref() {
-            Some("h264") | Some("vp8") | Some("vp9") | Some("h265") => true,
+        // Logic for is_native (V1 Parity)
+        // Check if video and audio codecs are natively supported in modern WebView (WebKit/Blink)
+        let native_video = match video_codec.as_deref() {
+            Some("h264") | Some("avc1") | Some("avc") | Some("vp8") => true,
+            None => true, // Still or audio only
             _ => false,
         };
+
+        let native_audio = match audio_codec.as_deref() {
+            Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus") | Some("vorbis") => true,
+            Some(c) if c.starts_with("pcm_") => true,
+            None => true,
+            _ => false,
+        };
+
+        let is_native = native_video && native_audio;
 
         technical.insert("duration_secs".to_string(), serde_json::json!(duration_secs));
         technical.insert("video_codec".to_string(), serde_json::json!(video_codec));
         technical.insert("audio_codec".to_string(), serde_json::json!(audio_codec));
+        technical.insert("container".to_string(), serde_json::json!(container));
         technical.insert("width".to_string(), serde_json::json!(width));
         technical.insert("height".to_string(), serde_json::json!(height));
         technical.insert("is_native".to_string(), serde_json::json!(is_native));

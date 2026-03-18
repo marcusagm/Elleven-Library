@@ -16,6 +16,12 @@ use axum::{
     routing::get,
     Router,
 };
+use std::collections::HashMap;
+use tracing::{error, instrument, warn};
+use crate::infra::database::manager::DbManager;
+use crate::feature::transcoding::cache::TranscodeCache;
+use crate::core::error::AppError;
+use std::time::Duration;
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::Path as StdPath;
@@ -23,43 +29,115 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
+use axum::http::HeaderValue;
+use tokio_util::sync::CancellationToken;
 use tokio::io::AsyncReadExt;
 
 use crate::core::repository::AssetQueryHandler;
 use crate::delivery::tauri::commands::queries::StreamingSessionToken;
 use crate::feature::transcoding::hls_manager::HlsManager;
-use crate::core::formats::FormatRegistry;
+use crate::core::models::asset::Folder;
+use crate::delivery::streaming::{probe, playlist, segment};
+
+use tokio::sync::RwLock;
+use crate::delivery::streaming::process_manager::ProcessManager;
+use crate::delivery::streaming::linear_manager::LinearManager;
 
 /// Shared server state for Axum handlers.
 #[derive(Clone)]
-struct ServerState {
+struct AppState {
     app_handle: AppHandle,
-    asset_query: Arc<dyn AssetQueryHandler>,
+    cache: Arc<TranscodeCache>,
     hls_manager: Arc<HlsManager>,
-    format_registry: Arc<FormatRegistry>,
+    process_manager: Arc<RwLock<ProcessManager>>,
+    linear_manager: LinearManager,
+    _database: Arc<DbManager>,
+    asset_query_handler: Arc<dyn AssetQueryHandler>,
+    session_token: String,
 }
 
-#[derive(Deserialize)]
+/// Helper for Axum error responses in streaming.
+struct StreamError(AppError);
+
+impl IntoResponse for StreamError {
+    fn into_response(self) -> Response {
+        let status = match &self.0 {
+            AppError::NotFound(_) => StatusCode::NOT_FOUND,
+            AppError::Forbidden(_) => StatusCode::FORBIDDEN,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        (status, self.0.to_string()).into_response()
+    }
+}
+
+const SEGMENT_DURATION: u32 = 4;
+
+#[derive(Deserialize, Debug)]
 struct StreamQuery {
-    token: String,
+    token: Option<String>,
+    quality: Option<String>,
 }
 
 /// Initializes and starts the Axum streaming server.
-pub async fn start_server(app_handle: AppHandle, port: u16) -> tauri::async_runtime::JoinHandle<()> {
+pub async fn start_server(
+    app_handle: AppHandle,
+    port: u16,
+    shutdown_token: CancellationToken,
+) -> tauri::async_runtime::JoinHandle<()> {
     let asset_query = app_handle
         .state::<Arc<dyn AssetQueryHandler>>()
         .inner()
         .clone();
     let hls_manager = app_handle.state::<Arc<HlsManager>>().inner().clone();
-    let format_registry = app_handle.state::<Arc<FormatRegistry>>().inner().clone();
+    let database = app_handle.state::<Arc<DbManager>>().inner().clone();
+    let session_token = app_handle.state::<StreamingSessionToken>().0.clone();
+    
+    // Initialize Delivery-layer managers (Parity with V1)
+    let process_manager = Arc::new(RwLock::new(ProcessManager::new()));
+    let linear_manager = LinearManager::new(app_handle.clone());
+    let cache = app_handle.state::<Arc<TranscodeCache>>().inner().clone();
 
-    let state = ServerState {
-        app_handle,
-        asset_query,
-        hls_manager,
-        format_registry,
+    let state = AppState {
+        app_handle: app_handle.clone(),
+        cache,
+        hls_manager: hls_manager.clone(),
+        process_manager: process_manager.clone(),
+        linear_manager: linear_manager.clone(),
+        _database: database,
+        asset_query_handler: asset_query,
+        session_token,
     };
+
+    // Spawn cleanup tasks inspired by V1
+    let process_cleanup_token = shutdown_token.child_token();
+    let pm_clone = process_manager.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
+        loop {
+            tokio::select! {
+                _ = process_cleanup_token.cancelled() => break,
+                _ = interval.tick() => {
+                    let mut pm = pm_clone.write().await;
+                    pm.cleanup_stale(30);
+                }
+            }
+        }
+    });
+
+    let linear_cleanup_token = shutdown_token.child_token();
+    let lm_clone = linear_manager.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+        loop {
+            tokio::select! {
+                _ = linear_cleanup_token.cancelled() => break,
+                _ = interval.tick() => {
+                    lm_clone.cleanup(std::time::Duration::from_secs(60)).await;
+                }
+            }
+        }
+    });
 
     let app = Router::new()
         .route("/health", get(health_handler))
@@ -67,15 +145,16 @@ pub async fn start_server(app_handle: AppHandle, port: u16) -> tauri::async_runt
         .route("/stream/:asset_id", get(stream_handler))
         .route("/playlist/:asset_id/playlist.m3u8", get(playlist_handler))
         .route("/segment/:asset_id/:segment", get(segment_handler))
+        .route("/hls-live/*path", get(linear_hls_handler))
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
         ))
-        .layer(CorsLayer::permissive()) // More restrictive CORS can be added if needed
+        .layer(build_cors_layer())
         .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    tracing::info!("Streaming server listening on {}", addr);
+    tracing::info!("Streaming server listening on http://{}", addr);
 
     tauri::async_runtime::spawn(async move {
         let listener = match tokio::net::TcpListener::bind(addr).await {
@@ -85,15 +164,54 @@ pub async fn start_server(app_handle: AppHandle, port: u16) -> tauri::async_runt
                 return;
             }
         };
-        if let Err(error) = axum::serve(listener, app).await {
+        if let Err(error) = axum::serve(listener, app)
+            .with_graceful_shutdown(async move {
+                shutdown_token.cancelled().await;
+                tracing::info!("Streaming server: graceful shutdown initiated");
+            })
+            .await
+        {
             tracing::error!("Streaming server exited with error: {}", error);
         }
+        tracing::info!("Streaming server stopped");
     })
+}
+
+/// Builds a restricted CORS layer for the streaming server.
+fn build_cors_layer() -> CorsLayer {
+    let allowed_origins = [
+        "tauri://localhost",
+        "https://tauri.localhost",
+        "http://localhost:1420",
+    ]
+    .into_iter()
+    .filter_map(|origin| origin.parse::<HeaderValue>().ok())
+    .collect::<Vec<_>>();
+
+    CorsLayer::new()
+        .allow_origin(AllowOrigin::list(allowed_origins))
+        .allow_methods(AllowMethods::list([
+            axum::http::Method::GET,
+            axum::http::Method::HEAD,
+            axum::http::Method::OPTIONS,
+        ]))
+        .allow_headers(AllowHeaders::list([
+            axum::http::header::RANGE,
+            axum::http::header::CONTENT_TYPE,
+            axum::http::header::AUTHORIZATION,
+            axum::http::header::ACCEPT,
+            axum::http::header::ORIGIN,
+        ]))
+        .expose_headers([
+            axum::http::header::CONTENT_RANGE,
+            axum::http::header::CONTENT_LENGTH,
+            axum::http::header::ACCEPT_RANGES,
+        ])
 }
 
 /// Middleware to validate the session token.
 async fn auth_middleware(
-    State(state): State<ServerState>,
+    State(state): State<AppState>,
     req: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
@@ -102,140 +220,383 @@ async fn auth_middleware(
         return Ok(next.run(req).await);
     }
 
-    let query: Query<StreamQuery> = Query::try_from_uri(req.uri()).map_err(|_| StatusCode::UNAUTHORIZED)?;
-    let session_token = state.app_handle.state::<StreamingSessionToken>();
-
-    if query.token != session_token.0 {
-        tracing::warn!("Unauthorized streaming request: invalid token");
-        return Err(StatusCode::UNAUTHORIZED);
+    // CORS pre-flight requests don't need authentication
+    if req.method() == axum::http::Method::OPTIONS {
+        return Ok(next.run(req).await);
     }
 
-    Ok(next.run(req).await)
+    // Try to extract token from query parameters
+    let query_string = req.uri().query().unwrap_or("");
+    let provided_token = query_string.split('&').find_map(|pair| {
+        let mut parts = pair.splitn(2, '=');
+        match (parts.next(), parts.next()) {
+            (Some("token"), Some(value)) => Some(value),
+            _ => None,
+        }
+    });
+
+    match provided_token {
+        Some(token) if token == state.session_token => Ok(next.run(req).await),
+        _ => {
+            tracing::warn!("Unauthorized streaming request: invalid or missing token in URI: {}", req.uri());
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    }
+}
+
+fn forbidden_response(e: AppError) -> StreamError {
+    warn!("Access denied: {:?}", e);
+    StreamError(e)
+}
+
+/// Validates that the asset path is within authorized roots.
+async fn validate_path_scope(
+    asset_query_handler: &Arc<dyn AssetQueryHandler>,
+    path: &std::path::Path,
+) -> Result<(), AppError> {
+    let path_clone = path.to_path_buf();
+    
+    // Canonicalize to resolve symlinks and '..'
+    let canonical_path = tokio::task::spawn_blocking(move || {
+        path_clone.canonicalize()
+    })
+    .await
+    .map_err(|e| {
+        error!("Blocking task join error: {:?}", e);
+        AppError::Internal(format!("Blocking task join error: {:?}", e))
+    })?
+    .map_err(|e| {
+        warn!("Path scope validation: cannot resolve path {:?}: {:?}", path, e);
+        AppError::Forbidden(format!("Cannot resolve path: {:?}", e))
+    })?;
+
+    // Use AssetQueryHandler to list root locations
+    let roots: Vec<Folder> = asset_query_handler
+        .list_folders(None)
+        .await
+        .map_err(|e| {
+            error!("Failed to list root folders: {:?}", e);
+            AppError::Internal(format!("Failed to list root folders: {:?}", e))
+        })?;
+
+    let is_within_scope = roots.iter().any(|root| {
+        canonical_path.starts_with(&root.path)
+    });
+
+    if !is_within_scope {
+        warn!("Access denied: path {:?} is outside authorized roots", path);
+        return Err(AppError::Forbidden(format!("Path {:?} is outside authorized roots", path)));
+    }
+
+    Ok(())
 }
 
 async fn health_handler() -> &'static str {
     "OK"
 }
 
-/// Handler for probing media metadata.
+/// Probe endpoint - returns video metadata
+#[instrument(skip(state))]
 async fn probe_handler(
-    State(state): State<ServerState>,
+    State(state): State<AppState>,
     Path(asset_id): Path<String>,
-) -> Result<Response, StatusCode> {
-    let asset = state
-        .asset_query
-        .get_by_id(&asset_id)
+) -> Result<Response, StreamError> {
+    // Resolve asset_id to physical path
+    let asset = state.asset_query_handler.get_by_id(&asset_id).await
+        .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
+        .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
+
+    let file_path = asset.path;
+
+    // Validate path is within authorized library folders
+    validate_path_scope(&state.asset_query_handler, &file_path)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .map_err(|e| forbidden_response(e))?;
 
-    // Detect format and extract metadata (V1 Parity)
-    if let Some(format) = state.format_registry.detect(&asset.path) {
-        if let Some(provider) = state.format_registry.get_provider(&format.name) {
-            if let Some(metadata_cap) = provider.metadata() {
-                let metadata: serde_json::Value = metadata_cap
-                    .extract_technical(&asset.path)
-                    .await
-                    .map_err(|e| {
-                        tracing::error!("Failed to extract technical metadata: {:?}", e);
-                        StatusCode::INTERNAL_SERVER_ERROR
-                    })?;
-
-                return Ok(Response::builder()
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                    .body(Body::from(serde_json::to_string(&metadata).unwrap_or_default()))
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?);
-            }
+    match probe::get_video_info(&state.app_handle, &file_path).await {
+        Ok(info) => {
+            let json = serde_json::to_string(&info).unwrap_or_default();
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(json))
+                .unwrap_or_default())
+        }
+        Err(probe_error) => {
+            error!(path = ?file_path, "Probe failed: {}", probe_error);
+            Err(StreamError(AppError::Generic(format!(
+                "Probe failed: {}",
+                probe_error
+            ))))
         }
     }
-
-    // Fallback or empty metadata if no specialized metadata capability exists
-    Ok(Response::builder()
-        .header(header::CONTENT_TYPE, "application/json")
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .body(Body::from(r#"{"streams":[], "format":{}}"#))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?)
 }
 
 /// Handler for direct media streaming with Range support.
 async fn stream_handler(
     headers: HeaderMap,
-    State(state): State<ServerState>,
+    State(state): State<AppState>,
     Path(asset_id): Path<String>,
-) -> Result<Response, StatusCode> {
+) -> Result<Response, StreamError> {
     let asset = state
-        .asset_query
+        .asset_query_handler
         .get_by_id(&asset_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
+        .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
+
+    // Validate path scope
+    validate_path_scope(&state.asset_query_handler, &asset.path).await.map_err(|e| forbidden_response(e))?;
 
     let range = headers.get(header::RANGE).cloned();
     serve_file(&asset.path, range).await
+        .map_err(|s| StreamError(AppError::Generic(format!("Serve error: {}", s))))
 }
 
-/// Handler for HLS playlists.
+/// Playlist endpoint - generates M3U8 dynamically
+#[instrument(skip(state))]
 async fn playlist_handler(
-    State(state): State<ServerState>,
-    Path(asset_id): Path<String>,
-) -> Result<Response, StatusCode> {
-    let asset = state
-        .asset_query
-        .get_by_id(&asset_id)
+    State(state): State<AppState>,
+    Path(id_and_ext): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Response, StreamError> {
+    tracing::debug!("Playlist request: asset_id_or_path={}", id_and_ext);
+    // Expected format: {asset_id}/playlist.m3u8
+    let asset_id = id_and_ext.split('/').next().unwrap_or(&id_and_ext).to_string();
+
+    // Resolve asset_id to physical path
+    let asset = state.asset_query_handler.get_by_id(&asset_id).await
+        .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
+        .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
+
+    let file_path = asset.path;
+
+    // Validate path is within authorized library folders
+    validate_path_scope(&state.asset_query_handler, &file_path)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .map_err(|e| forbidden_response(e))?;
 
-    let path = asset.path;
-    let mime = mime_guess::from_path(&path).first_or_octet_stream().to_string();
+    let quality = params
+        .get("quality")
+        .map(|s| s.as_str())
+        .unwrap_or("standard");
 
-    let session_dir = state
-        .hls_manager
-        .get_or_start_stream(&asset_id, &path, Some(&mime))
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to start HLS stream: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    // Preserve the token in segment URLs so HLS.js can authenticate each segment request
+    let token_param = params
+        .get("token")
+        .map(|token| format!("&token={}", token))
+        .unwrap_or_default();
 
-    let playlist_path = session_dir.join("playlist.m3u8");
+    // First, probe the video to get duration
+    let info = match probe::get_video_info(&state.app_handle, &file_path).await {
+        Ok(video_info) => video_info,
+        Err(probe_error) => {
+            return Err(StreamError(AppError::Generic(format!(
+                "Failed to probe video: {}",
+                probe_error
+            ))));
+        }
+    };
 
-    // Poll for playlist existence (FFmpeg takes a moment to write it)
-    let mut tries = 0;
-    while !playlist_path.exists() && tries < 25 {
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-        tries += 1;
-    }
+    let m3u8 = playlist::generate_m3u8_with_token(
+        &asset.id,
+        info.duration_secs,
+        SEGMENT_DURATION as f64,
+        quality,
+        &token_param,
+    );
 
-    if !playlist_path.exists() {
-        return Err(StatusCode::GATEWAY_TIMEOUT);
-    }
-
-    let content = tokio::fs::read(&playlist_path)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    Response::builder()
+    Ok(Response::builder()
+        .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
         .header(header::CACHE_CONTROL, "no-cache")
-        .body(Body::from(content))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .body(Body::from(m3u8))
+        .unwrap_or_default())
 }
 
-/// Handler for HLS segments.
+/// Segment endpoint - transcodes and serves a video segment
+#[instrument(skip(state))]
 async fn segment_handler(
-    State(state): State<ServerState>,
+    State(state): State<AppState>,
     Path((asset_id, segment)): Path<(String, String)>,
-) -> Result<Response, StatusCode> {
-    state.hls_manager.touch_session(&asset_id);
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Response, StreamError> {
+    tracing::debug!("Segment request: asset_id={}, segment={}", asset_id, segment);
+    let quality = params
+        .get("quality")
+        .map(|s| s.as_str())
+        .unwrap_or("standard");
 
-    let segment_path = state.hls_manager.streams_dir.join(&asset_id).join(segment);
-    if !segment_path.exists() {
-        return Err(StatusCode::NOT_FOUND);
+    // Extract index from segment part
+    let index_str = segment.trim_end_matches(".ts");
+    let index = index_str.parse::<u32>().map_err(|_| {
+        StreamError(AppError::Generic("Invalid segment index".to_string()))
+    })?;
+
+    // Resolve asset_id to physical path
+    let asset = state.asset_query_handler.get_by_id(&asset_id).await
+        .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
+        .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
+
+    let file_path = asset.path;
+
+    // Validate path is within authorized library folders
+    validate_path_scope(&state.asset_query_handler, &file_path)
+        .await
+        .map_err(|e| forbidden_response(e))?;
+
+    match segment::get_segment(
+        &state.app_handle,
+        &state.cache,
+        &state.process_manager,
+        &file_path,
+        index,
+        SEGMENT_DURATION as f64,
+        quality,
+    )
+    .await
+    {
+        Ok(data) => Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "video/MP2T")
+            .header(header::CACHE_CONTROL, "max-age=3600")
+            .body(Body::from(data))
+            .unwrap_or_default()),
+        Err(segment_error) => {
+            error!("SEGMENT_ERROR: {}", segment_error);
+            Err(StreamError(AppError::Generic(format!(
+                "Segment failed: {}",
+                segment_error
+            ))))
+        }
     }
+}
 
-    serve_file(&segment_path, None).await
+/// Linear HLS Handler using /hls-live/*path
+/// Request can be:
+/// 1. .../{asset_id}/index.m3u8 -> Starts transcode, returns playlist
+/// 2. .../{asset_id}/segment_00001.ts -> Returns segment
+#[instrument(skip(state))]
+async fn linear_hls_handler(
+    State(state): State<AppState>,
+    Path(path): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Response, StreamError> {
+    // 1. Parse Asset ID from path
+    let parts: Vec<&str> = path.split('/').collect();
+    if parts.is_empty() {
+        return Err(StreamError(AppError::Generic("Invalid live path".to_string())));
+    }
+    let asset_id = parts[0].to_string();
+
+    // Resolve asset_id to physical path
+    let asset = state.asset_query_handler.get_by_id(&asset_id).await
+        .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
+        .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
+
+    let file_path = asset.path;
+
+    // Validate path is within authorized library folders
+    validate_path_scope(&state.asset_query_handler, &file_path)
+        .await
+        .map_err(|e| forbidden_response(e))?;
+
+    // 2. Handle Playlist Request
+    if path.ends_with("/index.m3u8") {
+        if !file_path.exists() {
+            return Err(StreamError(AppError::NotFound(format!(
+                "File not found: {:?}",
+                file_path
+            ))));
+        }
+
+        let quality = params
+            .get("quality")
+            .map(|s| s.as_str())
+            .unwrap_or("standard");
+
+        match state.linear_manager.get_or_start(&asset.id, &file_path, quality).await {
+            Ok(temp_dir) => {
+                let playlist_path = temp_dir.join("index.m3u8");
+
+                // Poll for playlist existence (ffmpeg might take a second to create it)
+                let mut tries = 0;
+                while !playlist_path.exists() && tries < 150 {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    tries += 1;
+                }
+
+                if playlist_path.exists() {
+                    match tokio::fs::read_to_string(&playlist_path).await {
+                        Ok(content) => {
+                            // Inject the session token into all segment URLs
+                            let tokenized_content = content
+                                .lines()
+                                .map(|line| {
+                                    if line.ends_with(".ts") {
+                                        format!("{}?token={}\n", line, state.session_token)
+                                    } else {
+                                        format!("{}\n", line)
+                                    }
+                                })
+                                .collect::<String>();
+
+                            Ok(Response::builder()
+                                .status(StatusCode::OK)
+                                .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
+                                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                                .body(Body::from(tokenized_content))
+                                .unwrap_or_default())
+                        }
+                        Err(read_error) => Err(StreamError(AppError::Generic(format!(
+                            "Failed to read playlist: {}",
+                            read_error
+                        )))),
+                    }
+                } else {
+                    Err(StreamError(AppError::Generic(
+                        "Playlist generation timed out".into(),
+                    )))
+                }
+            }
+            Err(start_error) => Err(StreamError(AppError::Generic(format!(
+                "Failed to start streaming: {}",
+                start_error
+            )))),
+        }
+    }
+    // 3. Handle Segment Request
+    else if path.ends_with(".ts") {
+        // Extract asset_id from the path (e.g., "asset_id/segment_index.ts")
+        let parts: Vec<&str> = path.split('/').collect();
+        if parts.len() < 2 {
+            return Err(StreamError(AppError::Generic("Invalid segment path".into())));
+        }
+        let asset_id = parts[0].to_string();
+        
+        let sessions = state.linear_manager.get_session(&asset_id).await
+            .ok_or_else(|| StreamError(AppError::Generic("Session not found".into())))?;
+            
+        let session = sessions.get(&asset_id)
+            .ok_or_else(|| StreamError(AppError::Generic("Session not found".into())))?;
+            
+        let segment_path = session.temp_dir.join(parts[1]);
+        
+        // Wait for segment to be ready (it might be being transcoded)
+        let mut attempts = 0;
+        while !segment_path.exists() && attempts < 50 {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            attempts += 1;
+        }
+
+        if !segment_path.exists() {
+            return Err(StreamError(AppError::Generic("Segment timed out".into())));
+        }
+
+        serve_file(&segment_path, None).await.map_err(|s| StreamError(AppError::Generic(format!("Serve error: {}", s))))
+    } else {
+        Err(StreamError(AppError::Generic("Invalid HLS path".into())))
+    }
 }
 
 /// Helper to serve a file using tokio and support Range headers.
@@ -267,7 +628,7 @@ async fn serve_file(path: &StdPath, range: Option<header::HeaderValue>) -> Resul
             file.seek(tokio::io::SeekFrom::Start(start)).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
             
             // Use explicit take from AsyncReadExt
-            let stream = ReaderStream::new(AsyncReadExt::take(file, length));
+            let stream = ReaderStream::new(tokio::io::AsyncReadExt::take(file, length));
             let body = Body::from_stream(stream);
 
             return Response::builder()

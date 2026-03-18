@@ -342,32 +342,44 @@ impl MetadataCapability for AudioFormatProvider {
             .map_err(|e| AppError::Transcoding(format!("Failed to parse FFprobe JSON: {}", e)))?;
 
         let mut technical = serde_json::Map::new();
+        let mut duration_secs = 0.0;
+        let mut audio_codec = None;
+        let mut sample_rate = None;
+        let mut channels = None;
+        let mut container = None;
 
         if let Some(format) = json.get("format") {
-            if let Some(duration) = format.get("duration").and_then(|d| d.as_str()) {
-                technical.insert("duration".to_string(), Value::String(duration.to_string()));
+            if let Some(duration_str) = format.get("duration").and_then(|d| d.as_str()) {
+                duration_secs = duration_str.parse::<f64>().unwrap_or(0.0);
             }
-            if let Some(bit_rate) = format.get("bit_rate").and_then(|b| b.as_str()) {
-                technical.insert("bit_rate".to_string(), Value::String(bit_rate.to_string()));
-            }
+            container = format.get("format_name").and_then(|v| v.as_str()).map(|s| s.to_string());
         }
 
         // Tenta pegar o codec da track de áudio
         if let Some(streams) = json.get("streams").and_then(|s| s.as_array()) {
             for stream in streams {
                 if stream.get("codec_type").and_then(|t| t.as_str()) == Some("audio") {
-                    if let Some(codec) = stream.get("codec_name") {
-                        technical.insert("codec".to_string(), codec.clone());
-                    }
-                    if let Some(sample_rate) = stream.get("sample_rate") {
-                        technical.insert("sample_rate".to_string(), sample_rate.clone());
-                    }
-                    if let Some(channels) = stream.get("channels") {
-                        technical.insert("channels".to_string(), channels.clone());
-                    }
+                    audio_codec = stream.get("codec_name").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    sample_rate = stream.get("sample_rate").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    channels = stream.get("channels").and_then(|v| v.as_i64());
+                    break;
                 }
             }
         }
+
+        // Logic for is_native (V1 Parity)
+        let is_native = match audio_codec.as_deref() {
+            Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus") | Some("vorbis") => true,
+            Some(c) if c.starts_with("pcm_") => true,
+            _ => false,
+        };
+
+        technical.insert("duration_secs".to_string(), serde_json::json!(duration_secs));
+        technical.insert("audio_codec".to_string(), serde_json::json!(audio_codec));
+        technical.insert("sample_rate".to_string(), serde_json::json!(sample_rate));
+        technical.insert("channels".to_string(), serde_json::json!(channels));
+        technical.insert("container".to_string(), serde_json::json!(container));
+        technical.insert("is_native".to_string(), serde_json::json!(is_native));
 
         Ok(Value::Object(technical))
     }

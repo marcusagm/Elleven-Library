@@ -20,3 +20,6 @@
 ///     .unwrap();
 /// ```
 pub mod asset;
+pub mod video;
+pub mod audio;
+pub mod common;

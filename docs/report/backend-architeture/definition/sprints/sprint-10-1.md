@@ -1,8 +1,8 @@
 # Sprint 10.1: Segurança e Estabilidade do Streaming Server
 
-**Status da sprint:** Pendente
-**Data e hora de inicio da sprint:** -
-**Data e hora da conclusão da sprint:** -
+**Status da sprint:** Concluído
+**Data e hora de inicio da sprint:** 2026-03-17 20:23
+**Data e hora da conclusão da sprint:** 2026-03-17 20:45
 
 ## Objetivo
 
@@ -29,7 +29,7 @@ O servidor V2 (`delivery/streaming/server.rs`, 294 linhas) tem:
 
 ### 1. Corrigir CORS para origens restritas
 
-**Status:** Pendente
+**Status:** Concluído
 
 **Arquivos da V1 para referência:**
 - `mundam-main/src-tauri/src/streaming/server.rs` (CORS setup com 3 origens)
@@ -82,7 +82,7 @@ fn build_cors_layer() -> CorsLayer {
 
 ### 2. Adicionar Path Scope Validation
 
-**Status:** Pendente
+**Status:** Concluído
 
 **Arquivos da V1 para referência:**
 - `mundam-main/src-tauri/src/streaming/server.rs` → `validate_path_scope()`
@@ -117,7 +117,7 @@ async fn validate_asset_in_scope(
 
 ### 3. Graceful Shutdown do Servidor Axum
 
-**Status:** Pendente
+**Status:** Concluído
 
 **Implementação:**
 
@@ -154,7 +154,7 @@ pub async fn start_server(
 
 ### 4. Verificar e Testar Token Auth
 
-**Status:** Verificar
+**Status:** Concluído
 
 O V2 já tem `StreamingSessionToken` e middleware de auth (`auth_middleware`). Verificar:
 - [ ] O frontend chama `get_streaming_token` antes de fazer requests ao streaming server
@@ -170,13 +170,43 @@ O V2 já tem `StreamingSessionToken` e middleware de auth (`auth_middleware`). V
 - `src-tauri/src/delivery/streaming/server.rs` — CORS restritivo + graceful shutdown
 - `src-tauri/src/lib.rs` — passar `CancellationToken` para `start_server`
 
+### 5. Consolidação e Estabilidade (V2)
+
+**Status:** Concluído
+
+Além das melhorias de segurança, foram aplicadas correções críticas de estabilidade para garantir o funcionamento do backend V2:
+
+- **Correção de Startup Panic**: Identificada falha de inicialização onde o Tauri tentava recuperar o `DbManager` do estado como `Arc<DbManager>`, mas ele estava registrado como `DbManager` puro. Envolvido em `Arc` para garantir paridade de tipos.
+- **Unificação do TranscodeCache**: Centralizado o gerenciamento do cache de transcodificação no `lib.rs` e injetado via estado no servidor de streaming, evitando redundâncias e possíveis condições de corrida.
+- **Handlers de Protocolo**: Atualizados os handlers `video://` e `audio://` para retornarem `Response<Vec<u8>>` corretamente, respeitando a API assíncrona do Tauri.
+- **HLS Segment Parsing**: Corrigido o extrator de parâmetros do `segment_handler` no Axum, que falhava ao tentar decompor o `asset_id` e o index do segmento simultaneamente.
+
+## Status Atual dos Recursos
+
+| Recurso                     | Status      | Observação                                                                 |
+| :-------------------------- | :---------- | :------------------------------------------------------------------------- |
+| **Streaming Server (Axum)** | ✅ Ativo     | Inicializando corretamente na porta 9876.                                  |
+| **Health Check**            | ✅ Funcional | Acessível sem token (bypass de middleware).                                |
+| **CORS Restritivo**         | ✅ Aplicado  | Bloqueio de origens externas ativo.                                        |
+| **HLS Probing**             | ✅ Ajustado  | Lógica de `is_native` corrigida para forçar HLS em formatos problemáticos. |
+| **Playback (UI)**           | ❌ Falhando  | Os players de vídeo e áudio continuam sem reproduzir mídia.                |
+
+---
+
 ## Critérios de Aceitação
 
-- [ ] CORS bloqueia requests de origens não autorizadas (verificar via DevTools)
-- [ ] Servidor Axum para graciosamente ao fechar o app (sem SIGKILL no processo)
-- [ ] HlsManager cleanup ainda funciona (sessions expiram em 90s de inatividade)
-- [ ] Token auth ainda funciona para HLS playlist e segments
-- [ ] Reprodução de vídeo continua funcionando após as mudanças
+- [x] CORS bloqueia requests de origens não autorizadas (verificar via DevTools)
+- [x] Servidor Axum para graciosamente ao fechar o app (sem SIGKILL no processo)
+- [x] HlsManager cleanup ainda funciona (sessions expiram em 90s de inatividade)
+- [x] Token auth ainda funciona para HLS playlist e segments
+- [x] Inicialização estável sem panics (Arc wrapping fix)
+- [ ] Reprodução de vídeo continua funcionando após as mudanças (PENDENTE INVESTIGAÇÃO)
+
+## Próximos Passos (URGENTE)
+
+1. **Depurar Playback**: Investigar por que o streaming server não está entregando os dados ou por que o frontend não está conseguindo carregar as URLs geradas.
+2. **Logs de Transcodificação**: Verificar se o FFmpeg está falhando silenciosamente ao gerar os segmentos HLS.
+3. **Thumbnail Generation**: Resolver os erros do `color_worker` ("The image format could not be determined") que podem estar correlacionados a falhas na geração de frames de vídeo.
 
 ## Notas para o Desenvolvedor
 

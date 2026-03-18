@@ -42,9 +42,9 @@ pub async fn get_stream_url(
     let media_kind = detector::get_media_kind(&asset.path);
 
     if is_native {
-        Ok(format!("http://localhost:{}/stream/{}?token={}", port, asset_id, session_token.0))
+        Ok(format!("http://localhost:{}/stream/{}?token={}", port, asset.id, session_token.0))
     } else if media_kind != MediaKind::Unknown {
-        Ok(format!("http://localhost:{}/playlist/{}/playlist.m3u8?token={}", port, asset_id, session_token.0))
+        Ok(format!("http://localhost:{}/playlist/{}/playlist.m3u8?token={}", port, asset.id, session_token.0))
     } else {
         Err(crate::core::error::AppError::UnsupportedFormat(asset.path.to_string_lossy().to_string()))
     }
