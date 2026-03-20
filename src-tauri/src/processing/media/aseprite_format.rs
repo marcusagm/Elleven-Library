@@ -43,7 +43,7 @@ impl FormatProvider for AsepriteFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -51,6 +51,7 @@ impl FormatProvider for AsepriteFormatProvider {
                 vec!["ase", "aseprite"],
                 vec!["image/x-aseprite"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),

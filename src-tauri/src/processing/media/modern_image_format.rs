@@ -54,7 +54,7 @@ impl FormatProvider for ModernImageFormatProvider {
 
     fn supported_formats(&self) -> Vec<crate::core::formats::provider::SupportedFormat> {
         use crate::core::formats::provider::SupportedFormat;
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -62,6 +62,7 @@ impl FormatProvider for ModernImageFormatProvider {
                 vec!["heic", "heif"],
                 vec!["image/heic", "image/heif"],
                 MediaType::Image,
+                ThumbnailStrategy::Ffmpeg,
                 PreviewStrategy::Ffmpeg,
                 PlaybackStrategy::None,
             ),
@@ -70,6 +71,7 @@ impl FormatProvider for ModernImageFormatProvider {
                 vec!["avif"],
                 vec!["image/avif"],
                 MediaType::Image,
+                ThumbnailStrategy::Ffmpeg,
                 PreviewStrategy::Ffmpeg,
                 PlaybackStrategy::None,
             ),
@@ -78,6 +80,7 @@ impl FormatProvider for ModernImageFormatProvider {
                 vec!["jxl"],
                 vec!["image/jxl"],
                 MediaType::Image,
+                ThumbnailStrategy::Icon, // Or Ffmpeg if supported
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),

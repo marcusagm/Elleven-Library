@@ -20,6 +20,8 @@ pub struct LibraryIndexer {
     ledger: Arc<dyn TransactionalAssetLedger>,
     /// Event bus for publishing domain events.
     event_bus: Arc<dyn AppEventBus>,
+    /// The central "Cartório" for format definitions.
+    registry: Arc<crate::core::formats::registry::FormatRegistry>,
 }
 
 /// Implementation of the LibraryIndexer struct.
@@ -38,11 +40,13 @@ impl LibraryIndexer {
         query_handler: Arc<dyn AssetQueryHandler>,
         ledger: Arc<dyn TransactionalAssetLedger>,
         event_bus: Arc<dyn AppEventBus>,
+        registry: Arc<crate::core::formats::registry::FormatRegistry>,
     ) -> Self {
         Self {
             query_handler,
             ledger,
             event_bus,
+            registry,
         }
     }
 
@@ -76,7 +80,9 @@ impl LibraryIndexer {
         let total_files = WalkDir::new(&path)
             .into_iter()
             .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file() && crate::formats::FileFormat::is_supported_extension(e.path()))
+            .filter(|e| e.file_type().is_file() && self.registry.is_supported_extension(
+                e.path().extension().and_then(|ext| ext.to_str()).unwrap_or("")
+            ))
             .count();
 
         debug!("Total files to process: {}", total_files);
@@ -136,7 +142,9 @@ impl LibraryIndexer {
             let path_str = entry_path.to_string_lossy().to_string();
 
             // Filter supported assets
-            if !crate::formats::FileFormat::is_supported_extension(&entry_path) {
+            if !self.registry.is_supported_extension(
+                entry_path.extension().and_then(|ext| ext.to_str()).unwrap_or("")
+            ) {
                 continue;
             }
 
@@ -185,8 +193,9 @@ impl LibraryIndexer {
                     .cloned()
                     .or(current_root_id.clone());
 
-                let (format_name, family_name) = if let Some(fmt) = crate::formats::FileFormat::detect(&entry_path) {
-                    (fmt.name.to_string(), fmt.type_category.to_string())
+                // Resolve granular format from registry
+                let (format_name, family_name) = if let Some(sf) = self.registry.detect(&entry_path) {
+                    (sf.name.to_string(), sf.type_category.to_string())
                 } else {
                     ("unknown".to_string(), "unknown".to_string())
                 };

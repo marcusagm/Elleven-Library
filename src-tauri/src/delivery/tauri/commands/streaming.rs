@@ -14,14 +14,20 @@ use crate::delivery::tauri::commands::queries::StreamingSessionToken;
 
 /// Checks if a file needs transcoding for playback.
 #[tauri::command]
-pub async fn needs_transcoding(path: String) -> bool {
-    detector::needs_transcoding(std::path::Path::new(&path))
+pub async fn needs_transcoding(
+    registry: State<'_, Arc<crate::core::formats::registry::FormatRegistry>>,
+    path: String,
+) -> AppResult<bool> {
+    Ok(detector::needs_transcoding(&registry, std::path::Path::new(&path)))
 }
 
 /// Checks if a file is natively supported by the webview.
 #[tauri::command]
-pub async fn is_native_format(path: String) -> bool {
-    detector::is_native_format(std::path::Path::new(&path))
+pub async fn is_native_format(
+    registry: State<'_, Arc<crate::core::formats::registry::FormatRegistry>>,
+    path: String,
+) -> AppResult<bool> {
+    Ok(detector::is_native_format(&registry, std::path::Path::new(&path)))
 }
 
 /// Generates a streaming URL for an asset.
@@ -31,6 +37,7 @@ pub async fn get_stream_url(
     asset_id: String,
 ) -> AppResult<String> {
     let session_token = app_handle.state::<StreamingSessionToken>();
+    let registry = app_handle.state::<Arc<crate::core::formats::registry::FormatRegistry>>();
     let port = 9876; // Default port
     
     // Check if it's native or needs HLS
@@ -38,8 +45,8 @@ pub async fn get_stream_url(
     let asset = query_handler.get_by_id(&asset_id).await?
         .ok_or_else(|| crate::core::error::AppError::NotFound(asset_id.clone()))?;
     
-    let is_native = detector::is_native_format(&asset.path);
-    let media_kind = detector::get_media_kind(&asset.path);
+    let is_native = detector::is_native_format(&registry, &asset.path);
+    let media_kind = detector::get_media_kind(&registry, &asset.path);
 
     if is_native {
         Ok(format!("http://localhost:{}/stream/{}?token={}", port, asset.id, session_token.0))

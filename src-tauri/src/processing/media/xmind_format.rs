@@ -44,7 +44,7 @@ impl FormatProvider for XMindFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -52,6 +52,7 @@ impl FormatProvider for XMindFormatProvider {
                 vec!["xmind"],
                 vec!["application/x-xmind"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),

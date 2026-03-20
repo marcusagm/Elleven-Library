@@ -1,5 +1,5 @@
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -8,6 +8,8 @@ use std::sync::Arc;
 pub struct FormatRegistry {
     /// Instant routing (O(1)) for 99% of cases using normalized extensions.
     by_extension: HashMap<String, Arc<dyn FormatProvider>>,
+    /// Fast set of all supported extensions for filtering.
+    supported_extensions: HashSet<String>,
     /// Passive fallback for binary formats without extensions or deep validation.
     deep_checkers: Vec<Arc<dyn FormatProvider>>,
 }
@@ -18,6 +20,7 @@ impl FormatRegistry {
     pub fn new() -> Self {
         Self {
             by_extension: HashMap::new(),
+            supported_extensions: HashSet::new(),
             deep_checkers: Vec::new(),
         }
     }
@@ -28,8 +31,9 @@ impl FormatRegistry {
     /// and add it to the deep checker fallback list.
     pub fn register(&mut self, provider: Arc<dyn FormatProvider>) {
         for extension in provider.supported_extensions() {
-            self.by_extension
-                .insert(extension.to_lowercase(), provider.clone());
+            let ext_lower = extension.to_lowercase();
+            self.by_extension.insert(ext_lower.clone(), provider.clone());
+            self.supported_extensions.insert(ext_lower);
         }
         self.deep_checkers.push(provider);
     }
@@ -46,8 +50,10 @@ impl FormatRegistry {
     /// * `header` - A buffer containing the initial bytes of the file for magic byte validation.
     pub fn resolve(&self, path: &Path, header: &[u8]) -> Option<Arc<dyn FormatProvider>> {
         // 1. FAST ATTEMPT (O(1)): Cache by Extension
-        if let Some(extension) = path.extension().and_then(|e| e.to_str()) {
-            if let Some(provider) = self.by_extension.get(&extension.to_lowercase()) {
+        let extension = path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase());
+        
+        if let Some(ref ext) = extension {
+            if let Some(provider) = self.by_extension.get(ext) {
                 // Double check magic bytes if the provider supports it and we have header content
                 if header.is_empty() || provider.supports_magic_bytes(header) {
                     return Some(provider.clone());
@@ -57,6 +63,27 @@ impl FormatRegistry {
 
         // 2. SLOW FALLBACK (O(N)): Magic Bytes inferred (For files without extension or ghost extensions)
         if !header.is_empty() {
+            // Use infer to get MIME and try to match it
+            if let Some(kind) = infer::get(header) {
+                let mime = kind.mime_type();
+
+                // CRITICAL FIX: If infer says it's a generic format like TIFF or ZIP,
+                // we prefer the extension-based provider because many pro formats use these containers.
+                if (mime == "image/tiff" || mime == "application/zip" || mime == "application/octet-stream") && extension.is_some() {
+                    if let Some(provider) = extension.as_ref().and_then(|ext| self.by_extension.get(ext)) {
+                        return Some(provider.clone());
+                    }
+                }
+
+                // Match by MIME across all providers
+                if let Some(provider) = self.deep_checkers.iter().find(|p| {
+                     p.supported_formats().iter().any(|f| f.mime_types.contains(&mime.to_string()))
+                }) {
+                    return Some(provider.clone());
+                }
+            }
+
+            // Absolute fallback: direct magic byte check
             return self
                 .deep_checkers
                 .iter()
@@ -70,12 +97,23 @@ impl FormatRegistry {
     /// Detects the granular format for a given path using extension-based routing.
     pub fn detect(&self, path: &Path) -> Option<SupportedFormat> {
         let extension = path.extension()?.to_str()?.to_lowercase();
-        let provider = self.by_extension.get(&extension)?;
+        self.detect_by_extension(&extension)
+    }
+
+    /// Detects the granular format for a given extension.
+    pub fn detect_by_extension(&self, extension: &str) -> Option<SupportedFormat> {
+        let ext_lower = extension.to_lowercase();
+        let provider = self.by_extension.get(&ext_lower)?;
         provider.supported_formats().into_iter().find(|sf| {
             sf.extensions
                 .iter()
-                .any(|ext| ext.to_lowercase() == extension)
+                .any(|ext| ext.to_lowercase() == ext_lower)
         })
+    }
+
+    /// Checks if the file extension is supported by the library.
+    pub fn is_supported_extension(&self, extension: &str) -> bool {
+        self.supported_extensions.contains(&extension.to_lowercase())
     }
 
     /// Returns a provider by its unique name.

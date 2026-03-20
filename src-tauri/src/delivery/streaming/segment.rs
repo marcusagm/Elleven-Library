@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio::sync::RwLock;
-use tracing::{error, info};
+use tracing::info;
 
 use super::process_manager::ProcessManager;
 use crate::processing::transcoding::resolve_transcoding_tools;
@@ -19,6 +19,7 @@ use crate::feature::transcoding::detector;
 /// Get or generate a video segment
 pub async fn get_segment(
     app_handle: &tauri::AppHandle,
+    registry: &Arc<crate::core::formats::registry::FormatRegistry>,
     cache: &Arc<TranscodeCache>,
     process_manager: &Arc<RwLock<ProcessManager>>,
     file_path: &Path,
@@ -47,6 +48,7 @@ pub async fn get_segment(
     // Transcode the segment
     let data = transcode_segment(
         app_handle,
+        registry,
         process_manager,
         &segment_key,
         file_path,
@@ -68,6 +70,7 @@ pub async fn get_segment(
 /// Transcode a single segment using FFmpeg
 async fn transcode_segment(
     app_handle: &tauri::AppHandle,
+    registry: &Arc<crate::core::formats::registry::FormatRegistry>,
     process_manager: &Arc<RwLock<ProcessManager>>,
     segment_key: &str,
     file_path: &Path,
@@ -81,7 +84,7 @@ async fn transcode_segment(
     let start_time = segment_index as f64 * segment_duration;
 
     // Detect media kind to adjust FFmpeg flags
-    let media_kind = detector::get_media_kind(file_path);
+    let media_kind = detector::get_media_kind(registry, file_path);
     let is_audio = media_kind == detector::MediaKind::Audio;
 
     let mut cmd = Command::new(&ffmpeg_path);

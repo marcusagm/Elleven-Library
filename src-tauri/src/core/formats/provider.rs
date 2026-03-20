@@ -1,5 +1,5 @@
 use super::capabilities::{MetadataCapability, PreviewCapability, ThumbnailCapability};
-use super::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+use super::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 use serde::Serialize;
 
 /// Represents a format supported by the application.
@@ -9,19 +9,21 @@ pub struct SupportedFormat {
     pub extensions: Vec<String>,
     pub mime_types: Vec<String>,
     pub type_category: MediaType,
+    pub thumbnail_strategy: ThumbnailStrategy,
     pub preview_strategy: PreviewStrategy,
     pub playback: PlaybackStrategy,
 }
 
 impl SupportedFormat {
     pub fn new(name: impl Into<String>, extensions: Vec<impl Into<String>>) -> Self {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         Self {
             name: name.into(),
             extensions: extensions.into_iter().map(|e| e.into()).collect(),
             mime_types: Vec::new(),
             type_category: MediaType::Unknown,
+            thumbnail_strategy: ThumbnailStrategy::None,
             preview_strategy: PreviewStrategy::None,
             playback: PlaybackStrategy::None,
         }
@@ -32,6 +34,7 @@ impl SupportedFormat {
         extensions: Vec<&str>,
         mime_types: Vec<&str>,
         type_category: MediaType,
+        thumbnail_strategy: ThumbnailStrategy,
         preview_strategy: PreviewStrategy,
         playback: PlaybackStrategy,
     ) -> Self {
@@ -40,6 +43,7 @@ impl SupportedFormat {
             extensions: extensions.into_iter().map(|s| s.to_string()).collect(),
             mime_types: mime_types.into_iter().map(|s| s.to_string()).collect(),
             type_category,
+            thumbnail_strategy,
             preview_strategy,
             playback,
         }

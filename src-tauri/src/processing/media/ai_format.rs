@@ -43,7 +43,7 @@ impl FormatProvider for AiFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -51,6 +51,7 @@ impl FormatProvider for AiFormatProvider {
                 vec!["ai"],
                 vec!["application/postscript", "application/pdf"],
                 MediaType::Vector,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -59,6 +60,7 @@ impl FormatProvider for AiFormatProvider {
                 vec!["eps", "ps"],
                 vec!["application/postscript"],
                 MediaType::Vector,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),

@@ -17,6 +17,34 @@ pub enum MediaType {
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub enum ThumbnailStrategy {
+    NativeImage,     // Rust native decoders (image-rs, zune-jpeg)
+    Ffmpeg,          // Video and complex formats
+    Webview,         // SVG, HTML
+    ZipPreview,      // Affinity, OpenOffice etc
+    NativeExtractor, // For formats where we extract a preview (Affinity, RAW, PSD)
+    Raw,             // LibRaw based extraction for difficult formats
+    Model3D,         // Uses Assimp to convert to GLB
+    Font,            // Resvg with custom font loading
+    Icon,            // Fallback for files without preview
+    None,
+}
+
+impl ThumbnailStrategy {
+    /// Determines whether the given strategy should be processed in an isolated Heavy queue.
+    pub fn is_heavy(&self) -> bool {
+        matches!(
+            self,
+            ThumbnailStrategy::Ffmpeg
+                | ThumbnailStrategy::Raw
+                | ThumbnailStrategy::NativeExtractor
+                | ThumbnailStrategy::Model3D
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub enum PlaybackStrategy {
     Native,         // Direct browser support (mp4, mp3)
     Hls,            // Standard HLS for most formats (webm, mkv, avi, etc.)

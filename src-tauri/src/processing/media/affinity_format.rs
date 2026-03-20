@@ -118,7 +118,7 @@ impl FormatProvider for AffinityFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -126,6 +126,7 @@ impl FormatProvider for AffinityFormatProvider {
                 vec!["afphoto"],
                 vec!["application/vnd.serif.affinity"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -134,6 +135,7 @@ impl FormatProvider for AffinityFormatProvider {
                 vec!["afdesign"],
                 vec!["application/vnd.serif.affinity"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -142,6 +144,7 @@ impl FormatProvider for AffinityFormatProvider {
                 vec!["afpub"],
                 vec!["application/vnd.serif.affinity"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),

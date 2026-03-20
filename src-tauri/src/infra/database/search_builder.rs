@@ -15,6 +15,7 @@ use sqlx::{QueryBuilder, Sqlite};
 pub fn build_search_where_clause<'a>(
     group: &'a SearchGroup,
     query_builder: &mut QueryBuilder<'a, Sqlite>,
+    registry: &crate::core::formats::registry::FormatRegistry,
 ) {
     query_builder.push(" (");
 
@@ -33,8 +34,8 @@ pub fn build_search_where_clause<'a>(
         first = false;
 
         match item {
-            SearchItem::Group(g) => build_search_where_clause(g, query_builder),
-            SearchItem::Criterion(c) => build_search_criterion_clause(c, query_builder),
+            SearchItem::Group(g) => build_search_where_clause(g, query_builder, registry),
+            SearchItem::Criterion(c) => build_search_criterion_clause(c, query_builder, registry),
         }
     }
 
@@ -54,6 +55,7 @@ pub fn build_search_where_clause<'a>(
 fn build_search_criterion_clause<'a>(
     c: &'a SearchCriterion,
     query_builder: &mut QueryBuilder<'a, Sqlite>,
+    registry: &crate::core::formats::registry::FormatRegistry,
 ) {
     match c.key.as_str() {
         "name" | "filename" | "path" | "format_type" | "format" | "extension" | "family" | "media_type" | "mediaType" | "notes" => {
@@ -70,11 +72,8 @@ fn build_search_criterion_clause<'a>(
             // Special case for format/extension: map extension to format name if found
             if ["format", "extension"].contains(&c.key.as_str()) {
                 let ext_lower = value_to_bind.to_lowercase();
-                if let Some(fmt) = crate::formats::SUPPORTED_FORMATS
-                    .iter()
-                    .find(|f| f.extensions.contains(&ext_lower.as_str()))
-                {
-                    value_to_bind = fmt.name.to_string();
+                if let Some(sf) = registry.detect_by_extension(&ext_lower) {
+                    value_to_bind = sf.name.to_string();
                 }
             }
 

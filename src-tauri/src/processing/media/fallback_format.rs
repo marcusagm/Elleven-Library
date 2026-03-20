@@ -51,7 +51,7 @@ impl FormatProvider for GenericByteFallbackProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -59,6 +59,7 @@ impl FormatProvider for GenericByteFallbackProvider {
                 vec!["bin"],
                 vec!["application/octet-stream"],
                 MediaType::Unknown,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),

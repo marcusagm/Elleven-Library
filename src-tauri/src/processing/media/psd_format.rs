@@ -38,7 +38,7 @@ impl FormatProvider for PsdFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -46,6 +46,7 @@ impl FormatProvider for PsdFormatProvider {
                 vec!["psd"],
                 vec!["image/vnd.adobe.photoshop"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -54,6 +55,7 @@ impl FormatProvider for PsdFormatProvider {
                 vec!["psb"],
                 vec!["image/vnd.adobe.photoshop"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),

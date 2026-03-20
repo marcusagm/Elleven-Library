@@ -42,7 +42,7 @@ impl FormatProvider for UsdFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -50,6 +50,7 @@ impl FormatProvider for UsdFormatProvider {
                 vec!["usd", "usdc"],
                 vec!["model/usd"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),
@@ -58,6 +59,7 @@ impl FormatProvider for UsdFormatProvider {
                 vec!["usda"],
                 vec!["model/usd"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),
@@ -66,6 +68,7 @@ impl FormatProvider for UsdFormatProvider {
                 vec!["usdz"],
                 vec!["model/vnd.usdz+zip"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),

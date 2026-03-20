@@ -50,7 +50,7 @@ impl FormatProvider for IconFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -58,6 +58,7 @@ impl FormatProvider for IconFormatProvider {
                 vec!["generic"],
                 vec!["image/svg+xml"],
                 MediaType::Unknown,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),

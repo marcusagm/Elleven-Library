@@ -46,7 +46,7 @@ impl FormatProvider for PdfFormatProvider {
     ///
     /// A `Vec<SupportedFormat>` containing the supported formats.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -54,6 +54,7 @@ impl FormatProvider for PdfFormatProvider {
                 vec!["pdf"],
                 vec!["application/pdf"],
                 MediaType::Vector,
+                ThumbnailStrategy::Icon,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),

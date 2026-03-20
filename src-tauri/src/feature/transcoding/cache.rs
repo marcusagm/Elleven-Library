@@ -10,7 +10,9 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use super::detector;
+use crate::core::formats::registry::FormatRegistry;
 use crate::feature::transcoding::profiles::TranscodeQuality;
+use std::sync::Arc;
 
 /// Statistics about the transcoding cache.
 #[derive(Debug, serde::Serialize)]
@@ -24,16 +26,17 @@ pub struct CacheStats {
 /// Manager for transcoded media files.
 pub struct TranscodeCache {
     cache_dir: PathBuf,
+    registry: Arc<FormatRegistry>,
 }
 
 impl TranscodeCache {
     /// Initializes the cache manager.
-    pub fn new(app_data_dir: &Path) -> Self {
+    pub fn new(app_data_dir: &Path, registry: Arc<FormatRegistry>) -> Self {
         let cache_dir = app_data_dir.join("transcoded");
         if let Err(e) = fs::create_dir_all(&cache_dir) {
             tracing::error!("Failed to initialize transcode cache directory: {}", e);
         }
-        Self { cache_dir }
+        Self { cache_dir, registry }
     }
 
     /// Returns the internal cache directory.
@@ -62,7 +65,7 @@ impl TranscodeCache {
     /// Returns the full path to a cached file.
     pub fn get_cache_path(&self, source: &Path, quality: TranscodeQuality) -> PathBuf {
         let key = Self::generate_key(source, quality);
-        let ext = detector::get_output_extension(source);
+        let ext = detector::get_output_extension(&self.registry, source);
         self.cache_dir.join(format!("{}.{}", key, ext))
     }
 

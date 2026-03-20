@@ -46,7 +46,7 @@ impl FormatProvider for ImageFormatProvider {
 
     fn supported_formats(&self) -> Vec<crate::core::formats::provider::SupportedFormat> {
         use crate::core::formats::provider::SupportedFormat;
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -54,6 +54,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["jpg", "jpeg", "jpe", "jfif"],
                 vec!["image/jpeg"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeImage,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),
@@ -62,6 +63,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["png"],
                 vec!["image/png"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeImage,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),
@@ -70,6 +72,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["webp"],
                 vec!["image/webp"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeImage,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),
@@ -78,6 +81,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["gif"],
                 vec!["image/gif"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeImage,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),
@@ -86,6 +90,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["bmp"],
                 vec!["image/bmp"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeImage,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),
@@ -94,6 +99,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["ico"],
                 vec!["image/x-icon", "image/vnd.microsoft.icon"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeImage,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),
@@ -102,6 +108,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["tiff", "tif"],
                 vec!["image/tiff"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeImage,
                 PreviewStrategy::Convert,
                 PlaybackStrategy::None,
             ),
@@ -110,6 +117,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["hdr"],
                 vec!["image/vnd.radiance"],
                 MediaType::Image,
+                ThumbnailStrategy::Ffmpeg,
                 PreviewStrategy::Ffmpeg,
                 PlaybackStrategy::None,
             ),
@@ -118,6 +126,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["dds"],
                 vec!["image/vnd-ms.dds"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::Convert,
                 PlaybackStrategy::None,
             ),
@@ -126,6 +135,7 @@ impl FormatProvider for ImageFormatProvider {
                 vec!["pbm", "pgm", "ppm", "pnm", "pam"],
                 vec!["image/x-portable-anymap"],
                 MediaType::Image,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::Convert,
                 PlaybackStrategy::None,
             ),

@@ -2,7 +2,7 @@ use std::path::Path;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tauri::http::{header, Response, StatusCode};
-use tracing::{error, warn};
+use tracing::error;
 
 /// Generic error response for protocol handlers
 pub fn error_response(status: StatusCode, body: Vec<u8>) -> Response<Vec<u8>> {

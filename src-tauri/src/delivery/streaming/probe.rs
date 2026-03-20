@@ -5,7 +5,7 @@
 use serde::Serialize;
 use std::path::Path;
 use std::process::Command;
-use tracing::{error, warn};
+use tracing::error;
 
 use crate::processing::transcoding::resolve_transcoding_tools;
 use crate::feature::transcoding::detector;
@@ -32,6 +32,7 @@ pub struct VideoInfo {
 /// Get video information using ffprobe
 pub async fn get_video_info(
     app_handle: &tauri::AppHandle,
+    registry: &crate::core::formats::registry::FormatRegistry,
     path: &Path,
 ) -> Result<VideoInfo, Box<dyn std::error::Error + Send + Sync>> {
     // Check if file exists
@@ -103,7 +104,7 @@ pub async fn get_video_info(
     }
 
     // Determine if native using existing detector
-    let is_native = detector::is_native_format(path)
+    let is_native = detector::is_native_format(registry, path)
         && is_codec_native(&video_codec, &audio_codec);
 
     Ok(VideoInfo {

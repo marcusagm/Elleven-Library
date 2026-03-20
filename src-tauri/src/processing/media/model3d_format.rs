@@ -29,7 +29,7 @@ impl FormatProvider for Model3dFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -37,6 +37,7 @@ impl FormatProvider for Model3dFormatProvider {
                 vec!["blend"],
                 vec!["application/x-blender"],
                 MediaType::Model3D,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -45,6 +46,7 @@ impl FormatProvider for Model3dFormatProvider {
                 vec!["fbx"],
                 vec!["application/x-fbx"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::Assimp,
                 PlaybackStrategy::None,
             ),
@@ -53,6 +55,7 @@ impl FormatProvider for Model3dFormatProvider {
                 vec!["obj"],
                 vec!["model/obj"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::Assimp,
                 PlaybackStrategy::None,
             ),
@@ -61,6 +64,7 @@ impl FormatProvider for Model3dFormatProvider {
                 vec!["gltf", "glb"],
                 vec!["model/gltf+json", "model/gltf-binary"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),
@@ -69,6 +73,7 @@ impl FormatProvider for Model3dFormatProvider {
                 vec!["dae"],
                 vec!["model/vnd.collada+xml"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::Assimp,
                 PlaybackStrategy::None,
             ),
@@ -77,6 +82,7 @@ impl FormatProvider for Model3dFormatProvider {
                 vec!["stl"],
                 vec!["model/stl"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::Assimp,
                 PlaybackStrategy::None,
             ),
@@ -85,6 +91,7 @@ impl FormatProvider for Model3dFormatProvider {
                 vec!["3ds"],
                 vec!["application/x-3ds"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::Assimp,
                 PlaybackStrategy::None,
             ),
@@ -93,6 +100,7 @@ impl FormatProvider for Model3dFormatProvider {
                 vec!["3mf"],
                 vec!["model/3mf"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::Assimp,
                 PlaybackStrategy::None,
             ),
@@ -101,6 +109,7 @@ impl FormatProvider for Model3dFormatProvider {
                 vec!["dxf"],
                 vec!["image/vnd.dxf"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::Assimp,
                 PlaybackStrategy::None,
             ),

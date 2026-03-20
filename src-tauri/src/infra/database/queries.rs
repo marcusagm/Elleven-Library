@@ -3,21 +3,26 @@ use crate::core::models::{Asset, AssetColor, AssetFilter, AssetSummaryDto, Folde
 use crate::core::repository::AssetQueryHandler;
 use crate::infra::database::models::AssetSummaryDb;
 use async_trait::async_trait;
-use sqlx::{QueryBuilder, Sqlite, SqlitePool};
-
 use chrono::{DateTime, Utc};
+use sqlx::{QueryBuilder, Sqlite, SqlitePool};
+use std::sync::Arc;
 
 /// SQLite implementation of the AssetQueryHandler port.
 pub struct SqliteAssetQueries {
     /// The database connection pool.
     pool: SqlitePool,
+    /// The central "Cartório" for format definitions.
+    registry: Arc<crate::core::formats::registry::FormatRegistry>,
 }
 
 // Helper methods
 impl SqliteAssetQueries {
     /// Creates a new instance with the given connection pool.
-    pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+    pub fn new(
+        pool: SqlitePool,
+        registry: Arc<crate::core::formats::registry::FormatRegistry>,
+    ) -> Self {
+        Self { pool, registry }
     }
 }
 
@@ -489,7 +494,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
             "#,
         );
 
-        build_search_where_clause(&criteria.root_group, &mut query_builder);
+        build_search_where_clause(&criteria.root_group, &mut query_builder, &self.registry);
 
         // Ordering as per project standard
         query_builder.push(" ORDER BY a.created_at DESC, a.name ASC ");
@@ -522,7 +527,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
             WHERE 1=1 AND
             "#
         );
-        build_search_where_clause(&criteria.root_group, &mut query_builder);
+        build_search_where_clause(&criteria.root_group, &mut query_builder, &self.registry);
 
         let row = query_builder.build().fetch_one(&self.pool).await?;
         let count: i64 = sqlx::Row::get(&row, 0);

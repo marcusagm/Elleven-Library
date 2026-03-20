@@ -4,7 +4,6 @@
 pub mod core;
 pub mod delivery;
 pub mod feature;
-pub mod formats;
 pub mod infra;
 pub mod lifecycle;
 pub mod processing;
@@ -127,6 +126,7 @@ pub fn run() {
                 let asset_query_handler: Arc<dyn crate::core::repository::AssetQueryHandler> =
                     Arc::new(crate::infra::database::queries::SqliteAssetQueries::new(
                         db_manager.pool().clone(),
+                        format_registry.clone(),
                     ));
                 handle.manage(asset_query_handler.clone());
 
@@ -157,7 +157,7 @@ pub fn run() {
                 );
 
                 // Initialize Transcode Cache
-                let transcode_cache = Arc::new(TranscodeCache::new(&app_data));
+                let transcode_cache = Arc::new(TranscodeCache::new(&app_data, format_registry.clone()));
                 handle.manage(transcode_cache);
 
                 // Start Streaming Server (Axum)
@@ -209,6 +209,7 @@ pub fn run() {
                         asset_query_handler.clone(),
                         asset_ledger.clone(),
                         event_bus.clone(),
+                        format_registry.clone(),
                     ));
                     handle.manage(indexer.clone());
 

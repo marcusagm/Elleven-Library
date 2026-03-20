@@ -114,7 +114,7 @@ impl FormatProvider for ProjectZipFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -122,6 +122,7 @@ impl FormatProvider for ProjectZipFormatProvider {
                 vec!["kra"],
                 vec!["application/x-krita"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -130,6 +131,7 @@ impl FormatProvider for ProjectZipFormatProvider {
                 vec!["sketch"],
                 vec!["application/x-sketch"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -138,6 +140,7 @@ impl FormatProvider for ProjectZipFormatProvider {
                 vec!["mdp"],
                 vec!["application/x-medibang"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -146,6 +149,7 @@ impl FormatProvider for ProjectZipFormatProvider {
                 vec!["fig"],
                 vec!["application/x-figma"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -154,6 +158,7 @@ impl FormatProvider for ProjectZipFormatProvider {
                 vec!["reb"],
                 vec!["application/x-rebelle"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -162,6 +167,7 @@ impl FormatProvider for ProjectZipFormatProvider {
                 vec!["xmind"],
                 vec!["application/x-xmind"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -170,6 +176,7 @@ impl FormatProvider for ProjectZipFormatProvider {
                 vec!["cdr"],
                 vec!["application/x-coreldraw"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),

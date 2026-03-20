@@ -42,7 +42,7 @@ impl FormatProvider for RawFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -50,6 +50,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["arw"],
                 vec!["image/x-sony-arw"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -58,6 +59,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["cr2", "cr3"],
                 vec!["image/x-canon-cr2", "image/x-canon-cr3"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -66,6 +68,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["dng"],
                 vec!["image/x-adobe-dng"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -74,6 +77,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["nef", "nrw"],
                 vec!["image/x-nikon-nef", "image/x-nikon-nrw"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -82,6 +86,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["orf"],
                 vec!["image/x-olympus-orf"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -90,6 +95,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["raf"],
                 vec!["image/x-fujifilm-raf"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -98,6 +104,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["rw2"],
                 vec!["image/x-panasonic-raw"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -106,6 +113,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["pef"],
                 vec!["image/x-pentax-pef"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -114,6 +122,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["srw"],
                 vec!["image/x-samsung-srw"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -122,6 +131,7 @@ impl FormatProvider for RawFormatProvider {
                 vec!["x3f"],
                 vec!["image/x-sigma-x3f"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),

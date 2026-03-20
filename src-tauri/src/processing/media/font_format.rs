@@ -53,7 +53,7 @@ impl FormatProvider for FontFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -61,6 +61,7 @@ impl FormatProvider for FontFormatProvider {
                 vec!["ttf"],
                 vec!["font/ttf"],
                 MediaType::Font,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -69,6 +70,7 @@ impl FormatProvider for FontFormatProvider {
                 vec!["otf"],
                 vec!["font/otf"],
                 MediaType::Font,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -77,6 +79,7 @@ impl FormatProvider for FontFormatProvider {
                 vec!["woff"],
                 vec!["font/woff"],
                 MediaType::Font,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -85,6 +88,7 @@ impl FormatProvider for FontFormatProvider {
                 vec!["woff2"],
                 vec!["font/woff2"],
                 MediaType::Font,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),

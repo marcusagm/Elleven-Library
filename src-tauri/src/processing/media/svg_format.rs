@@ -43,7 +43,7 @@ impl FormatProvider for SvgFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -51,6 +51,7 @@ impl FormatProvider for SvgFormatProvider {
                 vec!["svg", "svgz"],
                 vec!["image/svg+xml"],
                 MediaType::Vector,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),

@@ -32,7 +32,6 @@ use tokio_util::io::ReaderStream;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use axum::http::HeaderValue;
 use tokio_util::sync::CancellationToken;
-use tokio::io::AsyncReadExt;
 
 use crate::core::repository::AssetQueryHandler;
 use crate::delivery::tauri::commands::queries::StreamingSessionToken;
@@ -50,6 +49,7 @@ struct AppState {
     app_handle: AppHandle,
     cache: Arc<TranscodeCache>,
     hls_manager: Arc<HlsManager>,
+    registry: Arc<crate::core::formats::registry::FormatRegistry>,
     process_manager: Arc<RwLock<ProcessManager>>,
     linear_manager: LinearManager,
     _database: Arc<DbManager>,
@@ -91,6 +91,7 @@ pub async fn start_server(
         .clone();
     let hls_manager = app_handle.state::<Arc<HlsManager>>().inner().clone();
     let database = app_handle.state::<Arc<DbManager>>().inner().clone();
+    let registry = app_handle.state::<Arc<crate::core::formats::registry::FormatRegistry>>().inner().clone();
     let session_token = app_handle.state::<StreamingSessionToken>().0.clone();
     
     // Initialize Delivery-layer managers (Parity with V1)
@@ -102,6 +103,7 @@ pub async fn start_server(
         app_handle: app_handle.clone(),
         cache,
         hls_manager: hls_manager.clone(),
+        registry,
         process_manager: process_manager.clone(),
         linear_manager: linear_manager.clone(),
         _database: database,
@@ -313,7 +315,7 @@ async fn probe_handler(
         .await
         .map_err(|e| forbidden_response(e))?;
 
-    match probe::get_video_info(&state.app_handle, &file_path).await {
+    match probe::get_video_info(&state.app_handle, &state.registry, &file_path).await {
         Ok(info) => {
             let json = serde_json::to_string(&info).unwrap_or_default();
             Ok(Response::builder()
@@ -388,7 +390,7 @@ async fn playlist_handler(
         .unwrap_or_default();
 
     // First, probe the video to get duration
-    let info = match probe::get_video_info(&state.app_handle, &file_path).await {
+    let info = match probe::get_video_info(&state.app_handle, &state.registry, &file_path).await {
         Ok(video_info) => video_info,
         Err(probe_error) => {
             return Err(StreamError(AppError::Generic(format!(
@@ -447,6 +449,7 @@ async fn segment_handler(
 
     match segment::get_segment(
         &state.app_handle,
+        &state.registry,
         &state.cache,
         &state.process_manager,
         &file_path,

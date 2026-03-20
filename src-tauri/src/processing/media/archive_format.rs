@@ -34,7 +34,7 @@ impl FormatProvider for ArchiveFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -42,6 +42,7 @@ impl FormatProvider for ArchiveFormatProvider {
                 vec!["zip"],
                 vec!["application/zip"],
                 MediaType::Archive,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -50,6 +51,7 @@ impl FormatProvider for ArchiveFormatProvider {
                 vec!["cbz"],
                 vec!["application/x-cbz"],
                 MediaType::Archive,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -58,6 +60,7 @@ impl FormatProvider for ArchiveFormatProvider {
                 vec!["clip"],
                 vec!["application/x-clipstudio"],
                 MediaType::Archive,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -66,6 +69,7 @@ impl FormatProvider for ArchiveFormatProvider {
                 vec!["rar"],
                 vec!["application/vnd.rar"],
                 MediaType::Archive,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),
@@ -74,6 +78,7 @@ impl FormatProvider for ArchiveFormatProvider {
                 vec!["7z"],
                 vec!["application/x-7z-compressed"],
                 MediaType::Archive,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),
@@ -82,6 +87,7 @@ impl FormatProvider for ArchiveFormatProvider {
                 vec!["tar"],
                 vec!["application/x-tar"],
                 MediaType::Archive,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),
@@ -90,6 +96,7 @@ impl FormatProvider for ArchiveFormatProvider {
                 vec!["gz"],
                 vec!["application/gzip"],
                 MediaType::Archive,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),

@@ -42,7 +42,7 @@ impl FormatProvider for ExrFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -50,6 +50,7 @@ impl FormatProvider for ExrFormatProvider {
                 vec!["exr"],
                 vec!["image/x-exr"],
                 MediaType::Image,
+                ThumbnailStrategy::Raw,
                 PreviewStrategy::Convert,
                 PlaybackStrategy::None,
             ),

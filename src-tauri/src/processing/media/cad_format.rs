@@ -42,7 +42,7 @@ impl FormatProvider for CadFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -50,6 +50,7 @@ impl FormatProvider for CadFormatProvider {
                 vec!["step", "stp"],
                 vec!["application/step"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),
@@ -58,6 +59,7 @@ impl FormatProvider for CadFormatProvider {
                 vec!["iges", "igs"],
                 vec!["application/iges"],
                 MediaType::Model3D,
+                ThumbnailStrategy::None,
                 PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),

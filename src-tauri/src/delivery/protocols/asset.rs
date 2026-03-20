@@ -248,7 +248,6 @@ async fn serve_file_async(
     path: &Path,
     range: Option<&tauri::http::HeaderValue>,
 ) -> Result<Response<Vec<u8>>, Response<Vec<u8>>> {
-    use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
     let file = match tokio::fs::File::open(path).await {
         Ok(f) => f,

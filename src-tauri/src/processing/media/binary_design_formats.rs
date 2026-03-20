@@ -43,7 +43,7 @@ impl FormatProvider for BinaryDesignFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy};
+        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
 
         vec![
             SupportedFormat::with_metadata(
@@ -51,6 +51,7 @@ impl FormatProvider for BinaryDesignFormatProvider {
                 vec!["sai"],
                 vec!["application/x-sai"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -59,6 +60,7 @@ impl FormatProvider for BinaryDesignFormatProvider {
                 vec!["sai2"],
                 vec!["application/x-sai2"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -67,6 +69,7 @@ impl FormatProvider for BinaryDesignFormatProvider {
                 vec!["xcf"],
                 vec!["image/x-xcf"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -75,6 +78,7 @@ impl FormatProvider for BinaryDesignFormatProvider {
                 vec!["rif", "riff"],
                 vec!["application/x-painter"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
@@ -83,6 +87,7 @@ impl FormatProvider for BinaryDesignFormatProvider {
                 vec!["clip"],
                 vec!["application/x-clipstudio"],
                 MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
