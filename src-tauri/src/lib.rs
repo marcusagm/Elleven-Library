@@ -24,6 +24,9 @@ pub fn run() {
 
     let builder = tauri::Builder::default();
     builder
+        .register_uri_scheme_protocol("thumb", move |ctx, request| {
+            crate::delivery::protocols::asset::handler(ctx.app_handle(), &request)
+        })
         .register_uri_scheme_protocol("asset", move |ctx, request| {
             crate::delivery::protocols::asset::handler(ctx.app_handle(), &request)
         })
@@ -80,6 +83,17 @@ pub fn run() {
                             }
                             crate::core::events::DomainEvent::ScanCompleted { .. } => {
                                 let _ = app_handle.emit("indexer:complete", 0);
+                            }
+                            crate::core::events::DomainEvent::ThumbnailGenerated { asset_id, path, .. } => {
+                                let _ = app_handle.emit("thumbnail:ready", serde_json::json!({
+                                    "id": asset_id,
+                                    "path": path,
+                                }));
+                            }
+                            crate::core::events::DomainEvent::ExtractionCompleted { asset_id, capability } => {
+                                if capability == "COLORS" {
+                                    let _ = app_handle.emit("extraction:completed", asset_id);
+                                }
                             }
                             _ => {}
                         }
@@ -196,6 +210,7 @@ pub fn run() {
                 let color_worker = crate::processing::workers::color_worker::ColorWorker::new(
                     asset_ledger.clone(),
                     event_bus.clone(),
+                    format_registry.clone(),
                     thumbnails_dir.to_path_buf(),
                 );
                 color_worker.start();
@@ -292,6 +307,7 @@ pub fn run() {
             delivery::tauri::commands::mutations::request_thumbnail_regenerate,
             delivery::tauri::commands::mutations::run_db_maintenance,
             delivery::tauri::commands::mutations::send_telemetry_log,
+            delivery::tauri::commands::mutations::verify_thumbnails,
             delivery::tauri::commands::mutations::cleanup_cache,
             delivery::tauri::commands::mutations::clear_cache,
             delivery::tauri::commands::queries::get_library_supported_formats,

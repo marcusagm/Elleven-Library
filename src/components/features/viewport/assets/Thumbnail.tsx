@@ -220,6 +220,12 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
     };
 
     /**
+     * Number of times we have attempted to regenerate this thumbnail in the current session.
+     */
+    const [retryCount, setRetryCount] = createSignal(0);
+    const MAX_RETRIES = 2;
+
+    /**
      * Handle error for the thumbnail component.
      *
      * @returns {void}
@@ -228,15 +234,20 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
         const thumb = thumbUrl();
         if (!thumb) return;
 
-        if (localError()) return;
+        // If we've already marked an error or are at the retry limit, stop to prevent loops.
+        if (localError() || retryCount() >= MAX_RETRIES) {
+            setLocalError(true);
+            return;
+        }
 
+        // If another component already requested regeneration, we just wait.
         if (isPendingRegeneration(thumbnailProperties.id)) {
             setLocalError(true);
             return;
         }
 
         setLocalError(true);
-
+        setRetryCount(prev => prev + 1);
         markPendingRegeneration(thumbnailProperties.id);
 
         invoke('request_thumbnail_regenerate', { assetId: thumbnailProperties.id }).catch(error =>

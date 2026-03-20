@@ -14,7 +14,7 @@ pub mod raw_format;
 pub mod svg_format;
 pub mod video_format;
 
-// Final Parity Migration Modules
+pub mod image_utils;
 pub mod ai_format;
 pub mod aseprite_format;
 pub mod binary_design_formats;

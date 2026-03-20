@@ -925,7 +925,8 @@ mod tests {
                 .expect("Failed to insert mock asset");
         }
 
-        let handler = SqliteAssetQueries::new(pool);
+        let registry = std::sync::Arc::new(crate::core::formats::build_format_registry());
+        let handler = SqliteAssetQueries::new(pool, registry);
 
         // Test basic pagination
         let page = PageParams {

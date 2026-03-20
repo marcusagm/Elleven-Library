@@ -203,7 +203,7 @@ impl SqliteAssetLedger {
     ) -> AppResult<Asset> {
         // 1. Get thumbnail path
         let asset_row = sqlx::query!(
-            r#"SELECT thumbnail_path as "thumbnail_path?" FROM assets WHERE id = ?"#,
+            r#"SELECT thumbnail_path as "thumbnail_path?", format_type as "format_type!" FROM assets WHERE id = ?"#,
             asset_id
         )
         .fetch_optional(&mut **tx)
@@ -220,6 +220,7 @@ impl SqliteAssetLedger {
             self.event_bus.publish(DomainEvent::ThumbnailGenerated {
                 asset_id: asset_id.to_string(),
                 path,
+                format: asset_row.format_type,
             })?;
         }
 
@@ -310,40 +311,37 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
     async fn execute(&self, command: LedgerCommand) -> AppResult<Asset> {
         let mut tx = self.pool.begin().await?;
 
-        // 1. Recursive handling for Batch command
-        let results = if let LedgerCommand::Batch(commands) = &command {
-            let mut last_result = None;
-            for cmd in commands {
-                last_result = Some(self.execute_single(&mut tx, cmd.clone()).await?);
-            }
-            last_result.ok_or_else(|| AppError::Generic("Empty batch command".to_string()))
-        } else {
-            self.execute_single(&mut tx, command.clone()).await
+        // 1. Resolve and expand commands (Handle Batch and BatchCreate expansion)
+        let commands_to_process = match &command {
+            LedgerCommand::Batch(cmds) => cmds.clone(),
+            LedgerCommand::BatchCreate(payloads) => payloads
+                .iter()
+                .map(|p| LedgerCommand::CreateAsset(p.clone()))
+                .collect(),
+            _ => vec![command.clone()],
         };
 
-        match results {
-            Ok(asset) => {
-                tx.commit().await?;
-
-                // 2. Publish Domain Events only AFTER commit
-                // Handle both single and batch command events
-                let commands_to_process = if let LedgerCommand::Batch(cmds) = &command {
-                    cmds.clone()
-                } else {
-                    vec![command.clone()]
-                };
-
-                for cmd in commands_to_process {
-                    self.emit_event_for_command(&asset, &cmd)?;
-                }
-
-                Ok(asset)
-            }
-            Err(e) => {
-                // Transaction is dropped here, effecting a Rollback
-                Err(e)
-            }
+        // 2. Execute commands and collect results
+        let mut results = Vec::new();
+        for cmd in commands_to_process {
+            let asset = self.execute_single(&mut tx, cmd.clone()).await?;
+            results.push((asset, cmd));
         }
+
+        tx.commit().await?;
+
+        // 2. Publish Domain Events only AFTER commit
+        // Use the specific asset associated with each command
+        for (asset, cmd) in &results {
+            self.emit_event_for_command(asset, cmd)?;
+        }
+
+        // Return the last asset in the batch (or the only asset if not a batch)
+        let last_asset = results.into_iter().last().map(|(a, _)| a).ok_or_else(|| {
+            AppError::Internal("Transaction succeeded but no results were returned".to_string())
+        })?;
+
+        Ok(last_asset)
     }
 }
 
@@ -392,6 +390,7 @@ impl SqliteAssetLedger {
                 self.event_bus.publish(DomainEvent::ThumbnailGenerated {
                     asset_id: asset.id.clone(),
                     path: thumbnail_path.clone(),
+                    format: asset.format_type.clone(),
                 })?;
             }
             LedgerCommand::UpdateAssetColors(_) => {
@@ -456,8 +455,18 @@ impl SqliteAssetLedger {
                     asset_id: asset_id.clone(),
                 })?;
             }
+            LedgerCommand::AddTagsToAssetsBatch(p)
+            | LedgerCommand::RemoveTagsFromAssetsBatch(p)
+            | LedgerCommand::ReplaceTagsForAssetsBatch(p) => {
+                for asset_id in &p.asset_ids {
+                    self.event_bus.publish(DomainEvent::AssetTagsUpdated {
+                        asset_id: asset_id.clone(),
+                        active_tags: p.tag_ids.clone(),
+                    })?;
+                }
+            }
             _ => {
-                // Batch associate/remove/replace tags and other commands without specific domain events
+                // Other commands without specific domain events
             }
         }
         Ok(())

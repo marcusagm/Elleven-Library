@@ -97,5 +97,5 @@ pub enum DomainEvent {
     /// A library scan has completed.
     ScanCompleted { library_id: String },
     /// A new thumbnail has been generated and is ready at the given path.
-    ThumbnailGenerated { asset_id: String, path: String },
+    ThumbnailGenerated { asset_id: String, path: String, format: String },
 }

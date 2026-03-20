@@ -113,17 +113,22 @@ export function useVirtualViewport(
         // Debounce to prevent excessive updates during fast scrolling
         if (priorityDebounce) clearTimeout(priorityDebounce);
         priorityDebounce = setTimeout(() => {
-            // Extract IDs from visible items
-            const ids = visible.map(item => item.id);
+            const libraryItems = lib.items;
+            const visible = controller.visibleItems();
 
-            // Filter out items that already have thumbnails to reduce IPC payload
-            // But we strictly don't need to because the backend also checks.
-            // However, optimizing the payload is good.
-            // Accessing lib.items might be O(N) unless we have a Map, but here lib.items is an array.
-            // So we'll skip the frontend filtering to assume backend is fast enough with ID lookup.
-            // Actually, let's just send the visible IDs.
+            // Extract IDs from visible items that actually need a thumbnail
+            // Use find() to look into the library items (O(N * M))
+            const idsToPrioritize = visible
+                .filter(v => {
+                    const asset = libraryItems.find(i => String(i.id) === v.id);
+                    // Only prioritize if it definitely has no thumbnail metadata stored in the frontend yet
+                    return asset && !asset.thumbnail_path;
+                })
+                .map(v => v.id);
 
-            lib.setThumbnailPriority(ids);
+            if (idsToPrioritize.length > 0) {
+                lib.setThumbnailPriority(idsToPrioritize);
+            }
         }, 150); // 150ms debounce
     });
 

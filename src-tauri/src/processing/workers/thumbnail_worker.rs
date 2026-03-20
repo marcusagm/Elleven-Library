@@ -10,6 +10,7 @@ use crate::core::ledger::command::LedgerCommand;
 use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::core::repository::AssetQueryHandler;
 use crate::core::workflows::thumbnails::priority::ThumbnailPriorityState;
+use crate::processing::media::image_utils;
 
 /// Background worker that orchestrates thumbnail generation.
 ///
@@ -131,6 +132,12 @@ impl ThumbnailWorker {
         let mut tasks = Vec::new();
         for id in asset_ids {
             if let Ok(asset) = self.query_handler.get_asset_by_id(&id).await {
+                // Skip if thumbnail already exists (unless we add a "force" flag later)
+                if asset.thumbnail_path.is_some() {
+                    debug!("WORKER: Skipping thumbnail for asset {} (already exists)", id);
+                    continue;
+                }
+
                 if let Some(format_provider) = self.format_registry.resolve(&asset.path, &[]) {
                     tasks.push((asset, format_provider));
                 }
@@ -228,39 +235,66 @@ impl ThumbnailWorker {
             // 5c. Handle Thumbnail result
             match thumb_res {
                 Ok(bytes) if !bytes.is_empty() => {
+                    // VALIDATION: Ensure the provider returned actual image bytes
+                    let detected_format = image_utils::detect_image_format(&bytes);
+                    if detected_format.is_none() {
+                        error!("ThumbnailWorker: Provider for {} returned invalid image bytes (Header error)", id);
+                        continue;
+                    }
+
                     let id_for_io = id.clone();
-                    // CPU-Bound Transcoding to consistent WebP
-                    let final_bytes_res = tokio::task::spawn_blocking(move || {
-                        let img = image::load_from_memory(&bytes).map_err(|e| {
-                            AppError::Internal(format!(
-                                "Failed to load thumbnail for {}: {}",
-                                id_for_io, e
-                            ))
-                        })?;
+                    let output_path = thumbnails_dir.join(format!("{}.webp", id));
 
-                        let encoder = webp::Encoder::from_image(&img).map_err(|e| {
-                            AppError::Internal(format!("Failed to create WebP encoder: {}", e))
-                        })?;
-
-                        Ok::<Vec<u8>, AppError>(encoder.encode(75.0).to_vec())
-                    })
-                    .await;
-
-                    let final_bytes = match final_bytes_res {
-                        Ok(Ok(b)) => b,
-                        Ok(Err(e)) => {
-                            error!("ThumbnailWorker: Transcoding failed for {}: {}", id, e);
-                            continue;
+                    // OPTIMIZATION: If already WebP and correctly sized, skip transcoding
+                    let should_transcode = if detected_format == Some(image_utils::ImageFormat::Webp) {
+                        if let Some((w, h)) = image_utils::get_image_dimensions(&bytes) {
+                            // If it's already a thumbnail-sized WebP (e.g. within 10% of 300px), skip
+                            !(270..=330).contains(&w) || !(w == h || (270..=330).contains(&h))
+                        } else {
+                            true
                         }
-                        Err(e) => {
-                            error!("ThumbnailWorker: Transcoding task joined with error for {}: {}", id, e);
-                            continue;
+                    } else {
+                        true
+                    };
+
+                    let final_bytes = if should_transcode {
+                        // CPU-Bound Transcoding to consistent WebP
+                        let final_bytes_res = tokio::task::spawn_blocking(move || {
+                            let img = image::load_from_memory(&bytes).map_err(|e| {
+                                AppError::Internal(format!(
+                                    "Failed to load thumbnail for {}: {}",
+                                    id_for_io, e
+                                ))
+                            })?;
+
+                            let encoder = webp::Encoder::from_image(&img).map_err(|e| {
+                                AppError::Internal(format!("Failed to create WebP encoder: {}", e))
+                            })?;
+
+                            Ok::<Vec<u8>, AppError>(encoder.encode(75.0).to_vec())
+                        })
+                        .await;
+
+                        match final_bytes_res {
+                            Ok(Ok(b)) => b,
+                            Ok(Err(e)) => {
+                                error!("ThumbnailWorker: Transcoding failed for {}: {}", id, e);
+                                continue;
+                            }
+                            Err(e) => {
+                                error!(
+                                    "ThumbnailWorker: Transcoding task joined with error for {}: {}",
+                                    id, e
+                                );
+                                continue;
+                            }
                         }
+                    } else {
+                        debug!("ThumbnailWorker: Bypassing redundant transcoding for existing WebP thumbnail {}", id);
+                        bytes
                     };
 
                     let filename = format!("{}.webp", id);
-                    let output_path = thumbnails_dir.join(&filename);
-
                     if let Err(e) = std::fs::write(&output_path, final_bytes) {
                         error!(
                             "ThumbnailWorker: Failed to write thumbnail for {}: {}",
@@ -271,7 +305,7 @@ impl ThumbnailWorker {
 
                     batch_commands.push(LedgerCommand::UpdateThumbnail {
                         asset_id: id.clone(),
-                        thumbnail_path: filename.clone(),
+                        thumbnail_path: filename,
                     });
                 }
                 Ok(_) => {

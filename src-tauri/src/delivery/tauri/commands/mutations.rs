@@ -539,3 +539,41 @@ pub async fn clear_cache(handle: tauri::AppHandle) -> AppResult<()> {
     }
     Ok(())
 }
+
+/// RPC Command to verify all thumbnails in the cache and delete corrupted ones.
+#[tauri::command]
+pub async fn verify_thumbnails(handle: tauri::AppHandle) -> AppResult<usize> {
+    let app_data = handle
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
+
+    let thumb_dir = app_data.join("thumbnails");
+    if !thumb_dir.exists() {
+        return Ok(0);
+    }
+
+    let mut corrupted_count = 0;
+    let mut dir = tokio::fs::read_dir(thumb_dir).await.map_err(crate::core::error::AppError::Io)?;
+
+    while let Ok(Some(entry)) = dir.next_entry().await {
+        let path = entry.path();
+        if path.is_file() {
+            if let Ok(bytes) = tokio::fs::read(&path).await {
+                if !crate::processing::media::image_utils::is_valid_image(&bytes) {
+                    if let Err(e) = tokio::fs::remove_file(&path).await {
+                        tracing::error!("Failed to delete corrupted thumbnail {:?}: {}", path, e);
+                    } else {
+                        corrupted_count += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    if corrupted_count > 0 {
+        tracing::info!("Maintenance: Deleted {} corrupted thumbnails", corrupted_count);
+    }
+
+    Ok(corrupted_count)
+}

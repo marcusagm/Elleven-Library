@@ -11,6 +11,7 @@ import {
 import { ColorHarmonyBadge } from './ColorHarmonyBadge';
 import { ColorDistribution } from './ColorDistribution';
 import { ColorSwatchGrid } from './ColorSwatchGrid';
+import { LifecycleManager } from '../../../../core/utils/LifecycleManager';
 import './color-palette.css';
 
 interface ColorPaletteSectionProperties {
@@ -25,7 +26,7 @@ interface ColorPaletteSectionProperties {
  * the distribution bar and harmony badge for consistent analysis.
  */
 export const ColorPaletteSection: Component<ColorPaletteSectionProperties> = properties => {
-    const [colors] = createResource(
+    const [colors, { refetch }] = createResource(
         () => properties.item.id,
         async (assetId: string) => {
             try {
@@ -37,6 +38,13 @@ export const ColorPaletteSection: Component<ColorPaletteSectionProperties> = pro
             }
         }
     );
+
+    // Auto-refresh when background extraction completes
+    LifecycleManager.registerListener<string>('extraction:completed', assetId => {
+        if (assetId === properties.item.id) {
+            refetch();
+        }
+    });
 
     /** Shared agglomerative clusters — computed once, used by both distribution and harmony. */
     const colorClusters = createMemo(() => {

@@ -210,6 +210,8 @@ mod tests {
             family: "IMAGE".to_string(),
             state_init: AssetState::Discovered,
             folder_id: None,
+            created_at: None,
+            modified_at: None,
         };
 
         let result = ledger.execute(LedgerCommand::CreateAsset(payload)).await;

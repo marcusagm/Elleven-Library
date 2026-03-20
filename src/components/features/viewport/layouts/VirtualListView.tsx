@@ -408,8 +408,13 @@ export const VirtualListView: Component = (): JSX.Element => {
                         }));
                     }}
                     onVisibleItemsChange={(items: AssetItem[]) => {
-                        const ids = items.map((item: AssetItem) => item.id);
-                        lib.setThumbnailPriority(ids);
+                        const idsToPrioritize = items
+                            .filter(item => !item.thumbnail_path)
+                            .map((item: AssetItem) => item.id);
+
+                        if (idsToPrioritize.length > 0) {
+                            lib.setThumbnailPriority(idsToPrioritize);
+                        }
                     }}
                 />
             </Show>

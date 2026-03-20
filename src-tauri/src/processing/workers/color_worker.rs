@@ -3,10 +3,12 @@
 //! Listens for `DomainEvent::ThumbnailGenerated`, analyzes the thumbnail file,
 //! and dispatches a `LedgerCommand::UpdateAssetColors` to persist the result.
 
+use crate::core::formats::FormatRegistry;
 use crate::core::events::{AppEventBus, DomainEvent};
 use crate::core::ledger::command::{LedgerCommand, UpdateAssetColorsPayload};
 use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::feature::analysis::colors::extract_color_palette;
+use crate::processing::media::image_utils;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -16,6 +18,7 @@ use tracing::{debug, error, info};
 pub struct ColorWorker {
     ledger: Arc<dyn TransactionalAssetLedger>,
     event_bus: Arc<dyn AppEventBus>,
+    format_registry: Arc<FormatRegistry>,
     thumbnails_dir: PathBuf,
 }
 
@@ -31,11 +34,13 @@ impl ColorWorker {
     pub fn new(
         ledger: Arc<dyn TransactionalAssetLedger>,
         event_bus: Arc<dyn AppEventBus>,
+        format_registry: Arc<FormatRegistry>,
         thumbnails_dir: PathBuf,
     ) -> Self {
         Self {
             ledger,
             event_bus,
+            format_registry,
             thumbnails_dir,
         }
     }
@@ -57,6 +62,7 @@ impl ColorWorker {
         let mut subscriber = self.event_bus.subscribe();
         let ledger = self.ledger.clone();
         let thumb_dir = self.thumbnails_dir.clone();
+        let _format_registry = self.format_registry.clone();
 
         tokio::spawn(async move {
             info!("WORKER: ColorWorker started and listening for ThumbnailGenerated");
@@ -64,20 +70,41 @@ impl ColorWorker {
             loop {
                 match subscriber.recv().await {
                     Ok(event) => {
-                        if let DomainEvent::ThumbnailGenerated { asset_id, path } = event {
+                        if let DomainEvent::ThumbnailGenerated { asset_id, path, format: _ } = event {
                             let asset_id_clone = asset_id.clone();
+                            if path.is_empty() {
+                                debug!(
+                                    "WORKER: Skipping color extraction for asset {} - No thumbnail generated",
+                                    asset_id_clone
+                                );
+                                continue;
+                            }
+
+                            // STARK: Reliability Check - Thumbnails are always generated as valid WebP if successful.
+                            // We extract from the thumbnail directly to ensure compatibility across all formats.
                             let thumb_path = thumb_dir.join(&path);
                             let ledger_clone = ledger.clone();
 
-                            if !thumb_path.exists() {
+                            if !thumb_path.exists() || !thumb_path.is_file() {
                                 error!(
-                                    "WORKER: Color extraction failed - Thumbnail not found at {:?}",
+                                    "WORKER: Color extraction failed - Thumbnail not found or invalid at {:?}",
                                     thumb_path
                                 );
                                 continue;
                             }
 
-                            debug!(
+                            // VALIDATION: Check if the thumbnail has a valid header before processing
+                            if let Ok(bytes) = std::fs::read(&thumb_path) {
+                                if !image_utils::is_valid_image(&bytes) {
+                                    error!(
+                                        "WORKER: Color extraction aborted - Thumbnail {:?} has invalid magic bytes/header",
+                                        thumb_path
+                                    );
+                                    continue;
+                                }
+                            }
+
+                            info!(
                                 "WORKER: Starting color extraction for asset {}",
                                 asset_id_clone
                             );
@@ -90,9 +117,15 @@ impl ColorWorker {
 
                             match result {
                                 Ok(Ok(colors)) => {
+                                    info!(
+                                        "WORKER: Color extraction successful for asset {} (found {} colors)",
+                                        asset_id_clone,
+                                        colors.len()
+                                    );
+
                                     let command = LedgerCommand::UpdateAssetColors(
                                         UpdateAssetColorsPayload {
-                                            asset_id: asset_id_clone,
+                                            asset_id: asset_id_clone.clone(),
                                             colors,
                                         },
                                     );
@@ -100,12 +133,12 @@ impl ColorWorker {
                                     if let Err(e) = ledger_clone.execute(command).await {
                                         error!(
                                             "WORKER: Failed to persist colors for asset {}: {}",
-                                            asset_id, e
+                                            asset_id_clone, e
                                         );
                                     } else {
-                                        debug!(
+                                        info!(
                                             "WORKER: Successfully persisted colors for asset {}",
-                                            asset_id
+                                            asset_id_clone
                                         );
                                     }
                                 }

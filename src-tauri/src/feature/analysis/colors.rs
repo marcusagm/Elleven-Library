@@ -14,7 +14,7 @@ use std::path::Path;
 use tracing::debug;
 
 /// Default number of color clusters to extract from an image.
-const DEFAULT_CLUSTER_COUNT: usize = 16;
+const DEFAULT_CLUSTER_COUNT: usize = 24;
 
 /// Maximum number of k-means iterations before convergence is forced.
 const MAX_KMEANS_ITERATIONS: usize = 20;

@@ -48,7 +48,7 @@ pub fn handler<R: tauri::Runtime>(
     let uri = request.uri().to_string();
 
     let (asset_id, requested_type) = parse_asset_uri(&uri);
-    let is_thumb = requested_type == Some("thumb".to_string());
+    let is_thumb = requested_type == Some("thumb".to_string()) || uri.starts_with("thumb://");
     let is_preview = requested_type == Some("preview".to_string());
     let is_glb = requested_type == Some("glb".to_string());
 
@@ -198,6 +198,10 @@ fn parse_asset_uri(uri: &str) -> (String, Option<String>) {
         rest
     } else if let Some(rest) = uri.strip_prefix(fallback) {
         rest
+    } else if let Some(rest) = uri.strip_prefix("thumb://localhost/") {
+        rest
+    } else if let Some(rest) = uri.strip_prefix("thumb://") {
+        rest
     } else {
         uri
     };
@@ -208,9 +212,14 @@ fn parse_asset_uri(uri: &str) -> (String, Option<String>) {
         (path_with_query, None)
     };
 
-    let decoded_id = percent_decode_str(path_part)
+    let mut decoded_id = percent_decode_str(path_part)
         .decode_utf8_lossy()
         .into_owned();
+
+    // If it's a thumbnail request, the path-part might be "uuid.webp". Strip extension to get pure UUID ID.
+    if let Some(pos) = decoded_id.find('.') {
+        decoded_id = decoded_id[..pos].to_string();
+    }
 
     let req_type = query_part.and_then(|q| {
         if q.contains("type=thumb") {

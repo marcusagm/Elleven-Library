@@ -375,7 +375,8 @@ mod tests {
 
         let mut query_builder: QueryBuilder<Sqlite> =
             QueryBuilder::new("SELECT * FROM assets WHERE ");
-        build_search_where_clause(&group, &mut query_builder);
+        let registry = crate::core::formats::build_format_registry();
+        build_search_where_clause(&group, &mut query_builder, &registry);
 
         let sql = query_builder.into_sql();
         assert!(sql.contains("a.name LIKE ?"));
@@ -411,7 +412,8 @@ mod tests {
 
         let mut query_builder: QueryBuilder<Sqlite> =
             QueryBuilder::new("SELECT * FROM assets WHERE ");
-        build_search_where_clause(&root_group, &mut query_builder);
+        let registry = crate::core::formats::build_format_registry();
+        build_search_where_clause(&root_group, &mut query_builder, &registry);
 
         let sql = query_builder.into_sql();
         assert!(sql.contains("a.name LIKE ?"));
@@ -437,7 +439,8 @@ mod tests {
 
         let mut query_builder: QueryBuilder<Sqlite> =
             QueryBuilder::new("SELECT * FROM assets WHERE ");
-        build_search_where_clause(&group, &mut query_builder);
+        let registry = crate::core::formats::build_format_registry();
+        build_search_where_clause(&group, &mut query_builder, &registry);
 
         let sql = query_builder.into_sql();
         assert!(sql.contains(

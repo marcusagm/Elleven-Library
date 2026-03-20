@@ -128,6 +128,23 @@ impl FormatRegistry {
             .flat_map(|provider| provider.supported_formats())
             .collect()
     }
+
+    /// Resolves a provider primarily by its MIME type.
+    pub fn resolve_by_mime(&self, mime: &str) -> Option<Arc<dyn FormatProvider>> {
+        self.deep_checkers.iter().find(|p| {
+            p.supported_formats()
+                .iter()
+                .any(|f| f.mime_types.contains(&mime.to_string()))
+        }).cloned()
+    }
+
+    /// Resolves a provider by its human-readable format name (e.g., "JPEG Image").
+    pub fn resolve_by_format_name(&self, name: &str) -> Option<Arc<dyn FormatProvider>> {
+        self.deep_checkers
+            .iter()
+            .find(|p| p.supported_formats().iter().any(|f| f.name == name))
+            .cloned()
+    }
 }
 
 impl Default for FormatRegistry {
