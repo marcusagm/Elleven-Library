@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT thumbnail_path as \"thumbnail_path?\", format_type as \"format_type!\" FROM assets WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "thumbnail_path?",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "format_type!",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "db54c86110026cf8170b89e2fbe793f54471162a7a52cdbc5c94d7896b3875c0"
+}
