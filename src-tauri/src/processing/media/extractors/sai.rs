@@ -260,6 +260,19 @@ fn find_root_entry<R: Read + Seek>(page_reader: &mut SaiPageReader<R>, target_na
     Ok(None)
 }
 
+/// Extrai apenas as dimensões do thumbnail do arquivo SAI.
+pub fn extract_sai_dimensions(path: &Path) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+    let file = std::fs::File::open(path)?;
+    let mut reader = SaiPageReader::new(file)?;
+    let entry = find_root_entry(&mut reader, "thumbnail")?
+        .ok_or(SaiError::ThumbnailNotFound)?;
+    let raw = reader.read_file_data(entry.page_index as usize, entry.size as usize)?;
+    if raw.len() < 12 { return Err(SaiError::InvalidThumbnailMagic.into()); }
+    let width = u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]);
+    let height = u32::from_le_bytes([raw[4], raw[5], raw[6], raw[7]]);
+    Ok((width, height))
+}
+
 pub fn extract_sai_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let file = std::fs::File::open(path)?;
     let mut reader = SaiPageReader::new(file)?;

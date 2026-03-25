@@ -1,8 +1,8 @@
 # Sprint 10.3: Migração Completa — Extractor SAI (PaintTool SAI v1)
 
-**Status da sprint:** Verificação necessária
-**Data e hora de inicio da sprint:** -
-**Data e hora da conclusão da sprint:** -
+**Status da sprint:** Concluída
+**Data e hora de inicio da sprint:** 2026-03-25T08:27:00-03:00
+**Data e hora da conclusão da sprint:** 2026-03-25T11:05:51-03:00
 
 ## Objetivo
 
@@ -40,7 +40,7 @@ Verificar e garantir paridade completa do extractor de PaintTool SAI v1 (`.sai`)
 
 ### 1. Extrair Dimensões do Thumbnail SAI
 
-**Status:** Pendente
+**Status:** Concluído
 
 O thumbnail BM32 no arquivo SAI contém width e height nos primeiros 8 bytes do bloco. A V2 já lê esses dados em `extract_sai_preview()`, mas descarta os valores numéricos.
 
@@ -65,7 +65,7 @@ pub fn extract_sai_dimensions(path: &Path) -> Result<(u32, u32), Box<dyn std::er
 
 ### 2. Implementar MetadataCapability Real no BinaryDesignFormatProvider
 
-**Status:** Pendente
+**Status:** Concluído
 
 **Arquivo:** `src-tauri/src/processing/media/binary_design_formats.rs`
 
@@ -116,7 +116,7 @@ impl MetadataCapability for BinaryDesignFormatProvider {
 
 ### 3. Adicionar PreviewCapability ao BinaryDesignFormatProvider
 
-**Status:** Pendente (necessário para visualização em tamanho completo no ItemView)
+**Status:** Concluído
 
 O `asset://localhost/{id}?type=preview` chama `provider.preview().generate_preview()`. O `BinaryDesignFormatProvider` não implementa `PreviewCapability`.
 
@@ -159,17 +159,35 @@ impl PreviewCapability for BinaryDesignFormatProvider {
 }
 ```
 
+### 4. Corrigir Resolução de Provedor no Protocolo de Asset
+
+**Status:** Concluído
+
+Durante os testes de preview, foi identificado que a geração de previews na URL `asset://localhost/{id}?type=preview` falhava silenciosamente e entregava o próprio arquivo binário original (`.sai`, `.clip`, etc) para o navegador, que não é capaz de exibi-lo formatado. 
+
+Isso acontecia porque a descoberta do Capability de preview utilizava `get_provider(&format.name)`, onde `format.name` era o nome humanizado (e.g. "PaintTool SAI v1") em vez de o nome registrado do sistema (`BINARY_DESIGN_PROVIDER`).
+
+**Implementação:**
+A lógica defeituosa no `src-tauri/src/delivery/protocols/asset.rs` foi substituída para resolver de forma mais simples e garantida acionando diretamente o `registry.inner().resolve()`:
+
+```diff
+-        if let Some(format) = registry.inner().detect(&physical_path) {
+-            if let Some(provider) = registry.inner().get_provider(&format.name) {
++        if let Some(provider) = registry.inner().resolve(&physical_path, &[]) {
+```
+
 ## Arquivos a Modificar
 
 - `src-tauri/src/processing/media/extractors/sai.rs` — adicionar `extract_sai_dimensions()`
 - `src-tauri/src/processing/media/binary_design_formats.rs` — MetadataCapability + PreviewCapability reais
+- `src-tauri/src/delivery/protocols/asset.rs` — Corrigido bug de falha silenciosa na carga de dependências nativas para visualização do preview
 
 ## Critérios de Aceitação
 
-- [ ] Arquivo `.sai` gera thumbnail correto (PNG com RGBA correto)
-- [ ] Inspector mostra `width` e `height` corretos do arquivo SAI
-- [ ] ItemView no modo preview mostra a imagem do arquivo SAI em tamanho original
-- [ ] Sem erros `Provider does not support metadata extraction` para `.sai`
+- [x] Arquivo `.sai` gera thumbnail correto (PNG com RGBA correto)
+- [x] Inspector mostra `width` e `height` corretos do arquivo SAI
+- [x] ItemView no modo preview mostra a imagem do arquivo SAI em tamanho original
+- [x] Sem erros `Provider does not support metadata extraction` para `.sai`
 
 ## Referência V1
 

@@ -130,23 +130,21 @@ pub fn handler<R: tauri::Runtime>(
             }
         };
 
-        if let Some(format) = registry.inner().detect(&physical_path) {
-            if let Some(provider) = registry.inner().get_provider(&format.name) {
-                if let Some(preview_cap) = provider.preview() {
-                    let preview_result: AppResult<(Vec<u8>, String)> = tauri::async_runtime::block_on(async {
-                        preview_cap.generate_preview(&physical_path, &asset.id).await
-                    });
+        if let Some(provider) = registry.inner().resolve(&physical_path, &[]) {
+            if let Some(preview_cap) = provider.preview() {
+                let preview_result: AppResult<(Vec<u8>, String)> = tauri::async_runtime::block_on(async {
+                    preview_cap.generate_preview(&physical_path, &asset.id).await
+                });
 
-                    if let Ok((data, mime)) = preview_result {
-                        return Response::builder()
-                            .status(StatusCode::OK)
-                            .header(header::CONTENT_TYPE, mime)
-                            .header(header::CONTENT_LENGTH, data.len().to_string())
-                            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                            .header(header::CACHE_CONTROL, "public, max-age=3600")
-                            .body(data)
-                            .unwrap_or_else(|_| Response::default());
-                    }
+                if let Ok((data, mime)) = preview_result {
+                    return Response::builder()
+                        .status(StatusCode::OK)
+                        .header(header::CONTENT_TYPE, mime)
+                        .header(header::CONTENT_LENGTH, data.len().to_string())
+                        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                        .header(header::CACHE_CONTROL, "public, max-age=3600")
+                        .body(data)
+                        .unwrap_or_else(|_| Response::default());
                 }
             }
         }

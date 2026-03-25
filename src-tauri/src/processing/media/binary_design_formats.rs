@@ -1,5 +1,5 @@
 use crate::core::error::AppResult;
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
+use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability, PreviewCapability};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::processing::media::extractors::*;
 use async_trait::async_trait;
@@ -127,6 +127,15 @@ impl FormatProvider for BinaryDesignFormatProvider {
     fn thumbnail(&self) -> Option<&dyn ThumbnailCapability> {
         Some(self)
     }
+
+    /// Retorna o provedor de preview.
+    ///
+    /// # Returns
+    ///
+    /// `Option<&dyn PreviewCapability>` - O provedor de preview.
+    fn preview(&self) -> Option<&dyn PreviewCapability> {
+        Some(self)
+    }
 }
 
 /// Implementação da capacidade de metadados.
@@ -141,9 +150,29 @@ impl MetadataCapability for BinaryDesignFormatProvider {
     /// # Returns
     ///
     /// `AppResult<serde_json::Value>` - Metadados técnicos do arquivo.
-    #[instrument(skip(self, _path))]
-    async fn extract_technical(&self, _path: &Path) -> AppResult<serde_json::Value> {
-        Ok(serde_json::json!({}))
+    #[instrument(skip(self, path))]
+    async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
+        let extension = path.extension()
+            .and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+
+        let dimensions = match extension.as_str() {
+            "sai" => {
+                tokio::task::spawn_blocking({
+                    let path = path.to_path_buf();
+                    move || extract_sai_dimensions(&path).ok()
+                }).await.ok().flatten()
+            }
+            _ => None,
+        };
+
+        if let Some((width, height)) = dimensions {
+            Ok(serde_json::json!({
+                "width": width,
+                "height": height
+            }))
+        } else {
+            Ok(serde_json::json!({}))
+        }
     }
 
     async fn extract_semantic(&self, _path: &Path) -> AppResult<serde_json::Value> {
@@ -184,5 +213,40 @@ impl ThumbnailCapability for BinaryDesignFormatProvider {
         result
             .map(|(data, _mime)| data)
             .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
+    }
+}
+
+/// Implementação da capacidade de preview.
+#[async_trait]
+impl PreviewCapability for BinaryDesignFormatProvider {
+    /// Gera um preview em tamanho real para o arquivo.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - O caminho para o arquivo.
+    /// * `_asset_id` - O ID do recurso.
+    ///
+    /// # Returns
+    ///
+    /// * `AppResult<(Vec<u8>, String)>` - O bytes do preview e seu MIME type.
+    async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
+        let extension = path.extension()
+            .and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+
+        let result = tokio::task::spawn_blocking({
+            let path = path.to_path_buf();
+            let ext = extension.clone();
+            move || match ext.as_str() {
+                "sai" => extract_sai_preview(&path).map_err(|e| e.to_string()),
+                "sai2" => extract_sai2_preview(&path).map_err(|e| e.to_string()),
+                "xcf" => extract_xcf_preview(&path).map_err(|e| e.to_string()),
+                "clip" => extract_clip_preview(&path).map_err(|e| e.to_string()),
+                "rif" | "riff" => extract_corel_painter_preview(&path).map_err(|e| e.to_string()),
+                _ => Err("Unsupported extension for binary design preview".to_string()),
+            }
+        }).await.map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?
+         .map_err(|e| crate::core::error::AppError::Generic(e));
+
+        result
     }
 }

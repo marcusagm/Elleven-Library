@@ -157,9 +157,9 @@ pub async fn start_server(
 **Status:** Concluído
 
 O V2 já tem `StreamingSessionToken` e middleware de auth (`auth_middleware`). Verificar:
-- [ ] O frontend chama `get_streaming_token` antes de fazer requests ao streaming server
-- [ ] O token é passado como `?token=<uuid>` em todas as URLs
-- [ ] A rota `/health` é excluída da validação de token
+- [x] O frontend chama `get_streaming_token` antes de fazer requests ao streaming server
+- [x] O token é passado como `?token=<uuid>` em todas as URLs
+- [x] A rota `/health` é excluída da validação de token
 
 **Referência frontend:**
 - `src/lib/hls-player.ts` → como o token é usado
@@ -189,7 +189,7 @@ Além das melhorias de segurança, foram aplicadas correções críticas de esta
 | **Health Check**            | ✅ Funcional | Acessível sem token (bypass de middleware).                                |
 | **CORS Restritivo**         | ✅ Aplicado  | Bloqueio de origens externas ativo.                                        |
 | **HLS Probing**             | ✅ Ajustado  | Lógica de `is_native` corrigida para forçar HLS em formatos problemáticos. |
-| **Playback (UI)**           | ❌ Falhando  | Os players de vídeo e áudio continuam sem reproduzir mídia.                |
+| **Playback (UI)**           | ✅ Funcional | Corrigido na sprint 10.10 (campo `path` no `AssetSummaryDto`).            |
 
 ---
 
@@ -200,13 +200,13 @@ Além das melhorias de segurança, foram aplicadas correções críticas de esta
 - [x] HlsManager cleanup ainda funciona (sessions expiram em 90s de inatividade)
 - [x] Token auth ainda funciona para HLS playlist e segments
 - [x] Inicialização estável sem panics (Arc wrapping fix)
-- [ ] Reprodução de vídeo continua funcionando após as mudanças (PENDENTE INVESTIGAÇÃO)
+- [x] Reprodução de vídeo e áudio funcional após as mudanças (Resolvido na sprint 10.10)
 
-## Próximos Passos (URGENTE)
+## Próximos Passos (Resolvidos)
 
-1. **Depurar Playback**: Investigar por que o streaming server não está entregando os dados ou por que o frontend não está conseguindo carregar as URLs geradas.
-2. **Logs de Transcodificação**: Verificar se o FFmpeg está falhando silenciosamente ao gerar os segmentos HLS.
-3. **Thumbnail Generation**: Resolver os erros do `color_worker` ("The image format could not be determined") que podem estar correlacionados a falhas na geração de frames de vídeo.
+1. ~~**Depurar Playback**~~: Resolvido na sprint 10.10 — causa raiz era campo `path` ausente no `AssetSummaryDto`.
+2. ~~**Logs de Transcodificação**~~: FFmpeg funciona corretamente. Erros esperados apenas para MIDI e AIFF HLS segments.
+3. **Thumbnail Generation**: Erros do `color_worker` são independentes do streaming — pendente para sprint futura.
 
 ## Notas para o Desenvolvedor
 
