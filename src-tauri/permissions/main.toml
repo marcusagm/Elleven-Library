@@ -170,8 +170,8 @@ commands.allow = ["get_asset_count_filtered"]
 # Transcoding Commands
 [[permission]]
 identifier = "allow-get-cache-stats"
-description = "Enables get_cache_stats for transcoding cache"
-commands.allow = ["get_cache_stats"]
+description = "Enables get_library_cache_stats for library cache statistics"
+commands.allow = ["get_library_cache_stats"]
 
 [[permission]]
 identifier = "allow-cleanup-cache"
@@ -182,6 +182,26 @@ commands.allow = ["cleanup_cache"]
 identifier = "allow-clear-cache"
 description = "Enables clear_cache for removing all transcoded files"
 commands.allow = ["clear_cache"]
+
+[[permission]]
+identifier = "allow-get-streaming-cache-stats"
+description = "Enables get_streaming_cache_stats for streaming cache statistics"
+commands.allow = ["get_streaming_cache_stats"]
+
+[[permission]]
+identifier = "allow-cleanup-cache-streaming"
+description = "Enables cleanup_cache_streaming for removing old streaming cache"
+commands.allow = ["cleanup_cache_streaming"]
+
+[[permission]]
+identifier = "allow-clear-cache-streaming"
+description = "Enables clear_cache_streaming for removing all streaming cache"
+commands.allow = ["clear_cache_streaming"]
+
+[[permission]]
+identifier = "allow-verify-thumbnails"
+description = "Enables verify_thumbnails for checking and cleaning corrupted thumbnails"
+commands.allow = ["verify_thumbnails"]
 
 [[permission]]
 identifier = "allow-ffmpeg-available"

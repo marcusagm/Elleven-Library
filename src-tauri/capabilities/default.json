@@ -69,6 +69,17 @@
     "allow-prioritize-thumbnails",
     "allow-get-app-settings",
     "allow-update-app-settings",
+    "allow-needs-transcoding",
+    "allow-is-native-format",
+    "allow-get-stream-url",
+    "allow-get-quality-options",
+    "allow-transcode-file",
+    "allow-is-cached",
+    "allow-ffmpeg-available",
+    "allow-get-streaming-cache-stats",
+    "allow-cleanup-cache-streaming",
+    "allow-clear-cache-streaming",
+    "allow-verify-thumbnails",
     {
       "identifier": "http:default",
       "allow": [

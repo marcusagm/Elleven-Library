@@ -234,7 +234,7 @@ export async function isCached(path: string, quality?: TranscodeQuality): Promis
  * Get cache statistics
  */
 export async function getCacheStats(): Promise<CacheStats> {
-    return await invoke<CacheStats>('get_cache_stats');
+    return await invoke<CacheStats>('get_library_cache_stats');
 }
 
 /**
