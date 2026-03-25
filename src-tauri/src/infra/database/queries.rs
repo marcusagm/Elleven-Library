@@ -196,7 +196,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
             r#"
             SELECT 
-                a.id as id, a.name as name, a.state as state, 
+                a.id as id, a.name as name, a.path as path, a.state as state, 
                 a.format_type as format_type, a.family as family, 
                 a.created_at as created_at, 
                 a.modified_at as modified_at,
@@ -478,7 +478,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
             r#"
             SELECT DISTINCT
-                a.id as id, a.name as name, a.state as state, 
+                a.id as id, a.name as name, a.path as path, a.state as state, 
                 a.format_type as format_type, a.family as family, 
                 a.created_at as created_at, 
                 a.modified_at as modified_at,

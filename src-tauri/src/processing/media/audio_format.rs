@@ -107,7 +107,7 @@ impl AudioFormatProvider {
 pub const AUDIO_EXTENSIONS: &[&str] = &[
     "mp3", "wav", "flac", "ogg", "m4a", "aac", "aiff", "aif", "aifc", "wma", "mka", "ra", "mp2",
     "oga", "opus", "m4r", "spx", "ac3", "dts", "amr", "ape", "wv", "caf", "aax", "mid", "midi",
-    "bwf",
+    "bwf", "m4b", "mpc",
 ];
 
 /// Implementação do provedor de formato de áudio.
@@ -173,7 +173,7 @@ impl FormatProvider for AudioFormatProvider {
             ),
             SupportedFormat::with_metadata(
                 "MPEG-4 Audio",
-                vec!["m4a", "m4r", "aac"],
+                vec!["m4a", "m4r", "aac", "m4b"],
                 vec!["audio/mp4", "audio/aac"],
                 MediaType::Audio,
                 ThumbnailStrategy::Icon,
@@ -306,6 +306,15 @@ impl FormatProvider for AudioFormatProvider {
                 PreviewStrategy::None,
                 PlaybackStrategy::AudioHls,
             ),
+            SupportedFormat::with_metadata(
+                "Musepack Audio",
+                vec!["mpc"],
+                vec!["audio/x-musepack"],
+                MediaType::Audio,
+                ThumbnailStrategy::Icon,
+                PreviewStrategy::None,
+                PlaybackStrategy::AudioHls,
+            ),
         ]
     }
 
@@ -366,12 +375,18 @@ impl MetadataCapability for AudioFormatProvider {
         let mut sample_rate = None;
         let mut channels = None;
         let mut container = None;
+        let mut bitrate_kbps: Option<f64> = None;
 
         if let Some(format) = json.get("format") {
             if let Some(duration_str) = format.get("duration").and_then(|d| d.as_str()) {
                 duration_secs = duration_str.parse::<f64>().unwrap_or(0.0);
             }
             container = format.get("format_name").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+            // FFprobe retorna bit_rate como string em bps; convertemos para kbps
+            if let Some(bitrate_str) = format.get("bit_rate").and_then(|b| b.as_str()) {
+                bitrate_kbps = bitrate_str.parse::<f64>().ok().map(|bps| (bps / 1000.0).round());
+            }
         }
 
         // Tenta pegar o codec da track de áudio
@@ -389,7 +404,7 @@ impl MetadataCapability for AudioFormatProvider {
         // Logic for is_native (V1 Parity)
         let is_native = match audio_codec.as_deref() {
             Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus") | Some("vorbis") => true,
-            Some(c) if c.starts_with("pcm_") => true,
+            Some(codec) if codec.starts_with("pcm_") => true,
             _ => false,
         };
 
@@ -398,6 +413,7 @@ impl MetadataCapability for AudioFormatProvider {
         technical.insert("sample_rate".to_string(), serde_json::json!(sample_rate));
         technical.insert("channels".to_string(), serde_json::json!(channels));
         technical.insert("container".to_string(), serde_json::json!(container));
+        technical.insert("bitrate_kbps".to_string(), serde_json::json!(bitrate_kbps));
         technical.insert("is_native".to_string(), serde_json::json!(is_native));
 
         Ok(Value::Object(technical))

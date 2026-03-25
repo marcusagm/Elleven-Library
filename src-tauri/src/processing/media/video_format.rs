@@ -28,6 +28,31 @@ impl VideoFormatProvider {
     }
 }
 
+/// Parseia a fração de frame rate retornada pelo FFprobe (ex: "30000/1001").
+///
+/// FFprobe retorna `r_frame_rate` como uma fração textual. Esta função
+/// divide numerador e denominador e retorna o valor decimal em fps.
+///
+/// # Arguments
+///
+/// * `fraction_string` - A string da fração (ex: "30000/1001", "25/1", "0/0").
+///
+/// # Returns
+///
+/// * `Option<f64>` - O frame rate em fps, ou `None` se a fração for inválida.
+fn parse_frame_rate_fraction(fraction_string: &str) -> Option<f64> {
+    let parts: Vec<&str> = fraction_string.split('/').collect();
+    if parts.len() == 2 {
+        let numerator = parts[0].parse::<f64>().ok()?;
+        let denominator = parts[1].parse::<f64>().ok()?;
+        if denominator > 0.0 {
+            return Some((numerator / denominator * 100.0).round() / 100.0);
+        }
+    }
+    // Fallback: tenta parsear como número direto
+    fraction_string.parse::<f64>().ok()
+}
+
 /// Extensões de arquivos suportadas para vídeo.
 pub const VIDEO_EXTENSIONS: &[&str] = &[
     "mp4", "m4v", "webm", "mov", "qt", "mkv", "mxf", "wmv", "asf", "flv", "f4v", "swf", "mpg",
@@ -301,12 +326,19 @@ impl MetadataCapability for VideoFormatProvider {
         let mut height = None;
         let mut duration_secs = 0.0;
         let mut container = None;
+        let mut frame_rate_fps: Option<f64> = None;
+        let mut bitrate_kbps: Option<f64> = None;
 
         if let Some(format) = json.get("format") {
             if let Some(duration_str) = format.get("duration").and_then(|d| d.as_str()) {
                 duration_secs = duration_str.parse::<f64>().unwrap_or(0.0);
             }
             container = format.get("format_name").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+            // FFprobe retorna bit_rate como string em bps; convertemos para kbps
+            if let Some(bitrate_str) = format.get("bit_rate").and_then(|b| b.as_str()) {
+                bitrate_kbps = bitrate_str.parse::<f64>().ok().map(|bps| (bps / 1000.0).round());
+            }
         }
 
         if let Some(streams) = json.get("streams").and_then(|s| s.as_array()) {
@@ -319,6 +351,11 @@ impl MetadataCapability for VideoFormatProvider {
                         video_codec = codec_name;
                         width = stream.get("width").and_then(|w| w.as_i64());
                         height = stream.get("height").and_then(|h| h.as_i64());
+
+                        // FFprobe retorna r_frame_rate como fração (ex: "30000/1001")
+                        if let Some(frame_rate_str) = stream.get("r_frame_rate").and_then(|v| v.as_str()) {
+                            frame_rate_fps = parse_frame_rate_fraction(frame_rate_str);
+                        }
                     }
                     Some("audio") if audio_codec.is_none() => {
                         audio_codec = codec_name;
@@ -338,7 +375,7 @@ impl MetadataCapability for VideoFormatProvider {
 
         let native_audio = match audio_codec.as_deref() {
             Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus") | Some("vorbis") => true,
-            Some(c) if c.starts_with("pcm_") => true,
+            Some(codec) if codec.starts_with("pcm_") => true,
             None => true,
             _ => false,
         };
@@ -351,6 +388,8 @@ impl MetadataCapability for VideoFormatProvider {
         technical.insert("container".to_string(), serde_json::json!(container));
         technical.insert("width".to_string(), serde_json::json!(width));
         technical.insert("height".to_string(), serde_json::json!(height));
+        technical.insert("frame_rate_fps".to_string(), serde_json::json!(frame_rate_fps));
+        technical.insert("bitrate_kbps".to_string(), serde_json::json!(bitrate_kbps));
         technical.insert("is_native".to_string(), serde_json::json!(is_native));
 
         Ok(Value::Object(technical))

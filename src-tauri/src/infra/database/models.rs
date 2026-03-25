@@ -59,6 +59,8 @@ pub struct AssetSummaryDb {
     pub id: String,
     /// Display name of the asset
     pub name: String,
+    /// Absolute filesystem path
+    pub path: String,
     /// Current state in the lifecycle machine
     pub state: String,
     /// Detected format (e.g. image/png)
@@ -220,6 +222,7 @@ impl From<AssetSummaryDb> for crate::core::models::AssetSummaryDto {
         Self {
             id: row.id,
             name: row.name,
+            path: std::path::PathBuf::from(row.path),
             state: AssetState::from_str(&row.state).unwrap_or(AssetState::Unknown),
             format_type: row.format_type,
             family: row.family,

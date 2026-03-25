@@ -72,7 +72,7 @@ export function useAudioPlayer(props: AudioPlayerProps) {
         void (async () => {
             try {
                 const timeoutPromise = new Promise<number[]>((_, reject) => {
-                    setTimeout(() => reject(new Error('timeout')), 15000);
+                    setTimeout(() => reject(new Error('timeout')), 35000);
                 });
 
                 const data = await Promise.race([

@@ -140,6 +140,8 @@ pub struct AssetSummaryDto {
     /// Name of the asset
     #[serde(rename = "filename")]
     pub name: String,
+    /// Absolute filesystem path
+    pub path: PathBuf,
     /// State of the asset
     pub state: AssetState,
     /// Format type of the asset
