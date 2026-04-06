@@ -71,7 +71,7 @@ export const GeneralPanel: Component = () => {
     const handleCleanupCache = async () => {
         setCleaningCache(true);
         try {
-            const deleted = await system.cleanupCache(settings.cacheRetentionDays());
+            const deleted = await system.cleanupCache();
             notification.success(`Cleaned up ${deleted} old cache files.`);
             await settings.refreshCacheStats();
         } catch (error) {
@@ -112,6 +112,26 @@ export const GeneralPanel: Component = () => {
         { value: '90', label: '90 days' }
     ];
 
+    const concurrencyOptions = [
+        { value: '50', label: '50 (Safe — HDD/SD)' },
+        { value: '100', label: '100 (Balanced)' },
+        { value: '200', label: '200 (Fast — SSD, Recommended)' },
+        { value: '300', label: '300 (Aggressive)' },
+        { value: '400', label: '400 (Extreme — NVMe only)' }
+    ];
+
+    const handleConcurrencyChange = async (value: string) => {
+        const result = await settings.updateSettings({ indexerConcurrencyLimit: Number(value) });
+        if (result.success) {
+            notification.success(
+                'Settings saved.',
+                'Please restart the app for changes to take effect.'
+            );
+        } else {
+            notification.error('Failed to save settings.', result.error.message);
+        }
+    };
+
     const qualityOptions = [
         { value: 'preview', label: 'Preview (Faster, smaller files)' },
         { value: 'standard', label: 'Standard (Balanced)' },
@@ -139,6 +159,17 @@ export const GeneralPanel: Component = () => {
                             value={String(settings.thumbnailThreads())}
                             onValueChange={handleThreadChange}
                             placeholder="Select threads"
+                        />
+                    </div>
+                </div>
+                <div class="general-setting-row">
+                    <span class="setting-label">Indexer Concurrency:</span>
+                    <div style={{ width: '200px' }}>
+                        <Select
+                            options={concurrencyOptions}
+                            value={String(settings.indexerConcurrencyLimit())}
+                            onValueChange={handleConcurrencyChange}
+                            placeholder="Select limit"
                         />
                     </div>
                 </div>

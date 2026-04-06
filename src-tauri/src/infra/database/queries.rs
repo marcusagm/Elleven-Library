@@ -619,7 +619,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
     ) -> AppResult<std::collections::HashMap<String, (i64, DateTime<Utc>)>> {
         let pattern = format!("{}%", root_path);
         let rows = sqlx::query!(
-            r#"SELECT path as "path!", file_size as "file_size!", updated_at as "updated_at!: DateTime<Utc>" FROM assets WHERE path LIKE ?"#,
+            r#"SELECT path as "path!", file_size as "file_size!", modified_at as "modified_at!: DateTime<Utc>" FROM assets WHERE path LIKE ?"#,
             pattern
         )
         .fetch_all(&self.pool)
@@ -627,7 +627,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         Ok(rows
             .into_iter()
-            .map(|r| (r.path, (r.file_size, r.updated_at)))
+            .map(|r| (r.path, (r.file_size, r.modified_at)))
             .collect())
     }
 
@@ -880,7 +880,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
     async fn find_folder_by_path(&self, path: &str) -> AppResult<Option<String>> {
         let row = sqlx::query!(
-            r#"SELECT id as "id!" FROM folders WHERE path = ?"#,
+            r#"SELECT id as "id!" FROM folders WHERE path = ? COLLATE NOCASE"#,
             path
         )
         .fetch_optional(&self.pool)

@@ -1,8 +1,8 @@
 # Sprint 10.2: Indexador Paralelo — Fan-out Producer-Consumer
 
-**Status da sprint:** Pendente
-**Data e hora de inicio da sprint:** -
-**Data e hora da conclusão da sprint:** -
+**Status da sprint:** ✅ Concluído
+**Data e hora de inicio da sprint:** 2026-03-25T17:25:50Z
+**Data e hora da conclusão da sprint:** 2026-04-06T04:27:00Z
 
 ## Objetivo
 
@@ -54,7 +54,7 @@ Problema: Com 50k arquivos, cada `CreateAsset` → insert SQLite sequencial. Num
 
 ### 1. Refatorar LibraryIndexer para Fan-out
 
-**Status:** Pendente
+**Status:** ✅ Concluído
 
 **Arquivo a modificar:** `src-tauri/src/feature/library/indexer.rs`
 
@@ -131,7 +131,7 @@ impl LibraryIndexer {
 
 ### 2. Otimizar Resolução de folder_id
 
-**Status:** Pendente
+**Status:** ✅ Concluído
 
 **Problema atual:** Para cada subpasta descoberta, o indexer faz `find_folder_by_path` — uma query ao banco. Com 1000 pastas, isso é 1000 queries sequenciais.
 
@@ -152,7 +152,7 @@ let folder_id = existing_folders.get(&parent_path).cloned();
 
 ### 3. Unificar os Dois WalkDir (eliminar duplicate_walk)
 
-**Status:** Pendente
+**Status:** ✅ Concluído
 
 **Problema:** O scan faz dois `WalkDir` completos — um para contar arquivos (para progresso) e outro para processar.
 
@@ -174,7 +174,7 @@ let total_files = all_entries.len() as u64;
 
 ### 4. Watcher — Reconectar ao Heurístico de Rename da V1
 
-**Status:** Pendente
+**Status:** ✅ Concluído
 
 **Problema identificado:** O `WatcherService` V2 (`processing/watcher/sensor.rs`) publica eventos via `EventDebouncer`, mas o heurístico de pareamento de renomeações (From→To) da V1 era extremamente sofisticado:
 - Detectava renomeações rastreadas via `event.attrs.tracker()`
@@ -192,12 +192,50 @@ let total_files = all_entries.len() as u64;
 
 ## Critérios de Aceitação
 
-- [ ] Scan de 1000 arquivos: tempo < 5s (vs >30s com scan serial)
-- [ ] Scan de 50k arquivos: tempo < 30s
-- [ ] Progresso de scan mostrado no StatusBar com `processed/total` correto
-- [ ] Pastas hierárquicas detectadas corretamente
-- [ ] Rename de arquivo refletido na biblioteca em < 2s
-- [ ] Move de arquivo entre pastas refletido corretamente
+- [x] Scan de 1000 arquivos: tempo < 5s (vs >30s com scan serial)
+- [x] Scan de 50k arquivos: tempo < 30s
+- [x] Progresso de scan mostrado no StatusBar com `processed/total` correto
+- [x] Pastas hierárquicas detectadas corretamente
+- [x] Rename de arquivo refletido na biblioteca em < 2s
+- [x] Move de arquivo entre pastas refletido corretamente
+
+## Detalhes da Implementação (Problemas e Melhorias Não-Planejadas)
+
+Durante a implementação, surgiram alguns problemas graves de regressão em relação à sincronização em tempo real (Watcher) e consistência do banco de dados que fugiram do escopo inicial, mas que foram completamente corrigidos:
+
+1. **Problema de Arquivos "Fantasmas" (Ghost Files):**
+   - **Dificuldade:** Ao deletar um arquivo pelo sistema operacional (OS) com o aplicativo fechado, o registro do arquivo continuava no SQLite. Ao reabrir o app e clicar no arquivo, ocorria um erro `IO_ERROR: No such file`. O boot scan indexava perfeitamente arquivos novos, mas não expurgava os que sumiram.
+   - **Melhoria/Correção:** Foi implementada a **Phase 6: Pruning** ao final de `scan_directory` (replicando o comportamento da arquitetura V1). O sistema passa a validar os caminhos em disco; qualquer caminho existente no banco que não foi detectado no ciclo de leitura do disco sofre exclusão (`DeleteAsset` / `RemoveFolder`). Como garantia, escopamos essa limpeza estritamente para o diretório raiz analisado (`starts_with(&root_str)`) para evitar a deleção indevida de dados ao monitorar mútiplas raízes simultâneas.
+
+2. **Duplicação ao Renomear (macOS):**
+   - **Dificuldade:** O macOS não diferencia maiúsculas de minúsculas no disco (Case-Insensitive) embora retenha o Case original nas strings do Finder. Quando um usuário renomeava `imagem.jpg` para `Imagem.jpg`, o rastreador de modificações acionava os eventos mas a query SQL de `UpdateAsset` usava pesquisa rigorosa (Case-Sensitive). Ao falhar em encontrar a versão original, a biblioteca ignorava a exclusão e cadastrava um novo arquivo, gerando uma duplicata.
+   - **Melhoria/Correção:** Injetamos a cláusula `COLLATE NOCASE` nas queries críticas nos arquivos `ledger.rs` e `queries.rs`, instruindo o SQLite para ignorar caixa alta/baixa durante as verificações de `path` no disco.
+
+3. **Ciclo de Atualização Síncrono Bloqueante (Frontend API Spam):**
+   - **Dificuldade:** Mover pastas com milhares de arquivos da raiz ativava eventos singulares e o frontend atualizava todo o sistema exaustivamente, travando a renderização.
+   - **Melhoria/Correção:** Agregou-se os estados de arquivo (`BatchChangePayload`) e introduzimos um `Debounce Timer` seguro de 500ms no escopo da `libraryActions.ts`. O UI espera essa janela se fechar antes de reagir aos eventos de alteração (`needs_refresh`). Todos os tipos de "any" no timer foram banidos baseados no manifesto `frontend-solid`.
+
+4. **Eventos de Watcher Sobrescritos Silenciosamente:**
+   - **Correção:** `WatcherService::watch` resetava o processo para toda e qualquer nova pasta (matando observers antigos em sistemas multirraízes). Refatoramos o sistema inteiro com um Singleton `HashMap` global (persistindo `watch_id`) em `sensor.rs`.
+
+## Arquivos Modificados
+
+- `docs/report/backend-architeture/definition/sprints/sprint-10-2.md`
+- `src-tauri/src/core/events/payloads.rs`
+- `src-tauri/src/core/settings/model.rs`
+- `src-tauri/src/delivery/tauri/commands/mutations.rs`
+- `src-tauri/src/feature/library/indexer.rs`
+- `src-tauri/src/infra/database/ledger.rs`
+- `src-tauri/src/infra/database/queries.rs`
+- `src-tauri/src/lib.rs`
+- `src-tauri/src/processing/watcher/debouncer.rs`
+- `src-tauri/src/processing/watcher/sensor.rs`
+- `src/components/features/settings/GeneralPanel.tsx`
+- `src/core/hooks/useSettings.ts`
+- `src/core/store/library/libraryActions.ts`
+- `src/core/store/settings/schemas.ts`
+- `src/core/store/settingsStore.ts`
+- `src/core/store/systemStore.ts`
 
 ## Notas para o Desenvolvedor
 

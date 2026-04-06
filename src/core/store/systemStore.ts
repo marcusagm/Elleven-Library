@@ -171,8 +171,8 @@ export const systemActions = {
         await tauriService.runDbMaintenance();
     },
 
-    cleanupCache: async (maxAgeDays?: number) => {
-        return await tauriService.cleanupCache(maxAgeDays);
+    cleanupCache: async () => {
+        return await tauriService.cleanupCache();
     },
 
     clearCache: async () => {

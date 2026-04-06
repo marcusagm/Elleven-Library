@@ -330,10 +330,26 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
         tx.commit().await?;
 
-        // 2. Publish Domain Events only AFTER commit
-        // Use the specific asset associated with each command
-        for (asset, cmd) in &results {
-            self.emit_event_for_command(asset, cmd)?;
+        // 3. Publish Domain Events only AFTER commit
+        // For BatchCreate: emit a single summary to avoid flooding the broadcast channel.
+        // Individual AssetCreated events would overflow the 2048-capacity buffer during
+        // large scans (42k+ assets). Workers use polling, not event-driven discovery.
+        match &command {
+            LedgerCommand::BatchCreate(_) => {
+                let batch_count = results.len();
+                if batch_count > 0 {
+                    let _ = self.event_bus.publish(DomainEvent::ScanProgress {
+                        total: batch_count,
+                        processed: batch_count,
+                        current_file: format!("Batch committed: {} assets", batch_count),
+                    });
+                }
+            }
+            _ => {
+                for (asset, cmd) in &results {
+                    self.emit_event_for_command(asset, cmd)?;
+                }
+            }
         }
 
         // Return the last asset in the batch (or the only asset if not a batch)
@@ -744,7 +760,7 @@ impl SqliteAssetLedger {
                     (None, Some(old_path)) => {
                         let old_path_str = old_path.to_string_lossy().to_string();
                         let row = sqlx::query!(
-                            r#"SELECT id as "id!" FROM assets WHERE path = ?"#,
+                            r#"SELECT id as "id!" FROM assets WHERE path = ? COLLATE NOCASE"#,
                             old_path_str
                         )
                         .fetch_optional(&mut **tx)
@@ -834,7 +850,7 @@ impl SqliteAssetLedger {
                     (None, Some(p)) => {
                         let path_str = p.to_string_lossy().to_string();
                         let row = sqlx::query!(
-                            r#"SELECT id as "id!" FROM assets WHERE path = ?"#,
+                            r#"SELECT id as "id!" FROM assets WHERE path = ? COLLATE NOCASE"#,
                             path_str
                         )
                         .fetch_optional(&mut **tx)

@@ -34,6 +34,8 @@ const mapToSearchGroup = (group: UISearchGroup): SearchGroup => ({
     })
 });
 
+let refreshDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const libraryActions = {
     ...itemActions,
 
@@ -116,8 +118,14 @@ export const libraryActions = {
             setLibraryState('items', items => items.filter(item => !removedIds.has(item.id)));
         }
 
-        if (payload.added && payload.added.length > 0) {
-            libraryActions.refreshAssets(false);
+        if (payload.needs_refresh || (payload.added && payload.added.length > 0)) {
+            // Debounce the refresh to prevent spam during mass file operations
+            if (!refreshDebounceTimer) {
+                refreshDebounceTimer = setTimeout(() => {
+                    libraryActions.refreshAssets(false);
+                    refreshDebounceTimer = null;
+                }, 500);
+            }
         }
 
         if (payload.updated && payload.updated.length > 0) {

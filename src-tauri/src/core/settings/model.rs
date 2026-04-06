@@ -35,6 +35,11 @@ pub struct AppSettings {
     /// Whether to automatically scan watched directories on boot.
     pub auto_scan_enabled: bool,
 
+    /// Maximum number of concurrent file-processing tasks during indexing.
+    /// Controls the tokio::sync::Semaphore limit in the fan-out producer.
+    /// 200 is optimal for NVMe SSDs; lower values (50-100) are safer for HDDs/SD.
+    pub indexer_concurrency_limit: usize,
+
     /// Extra generic settings (e.g., appearance, shortcuts).
     #[serde(default)]
     pub extra: std::collections::HashMap<String, serde_json::Value>,
@@ -57,6 +62,7 @@ impl Default for AppSettings {
             worker_threads: std::cmp::max(1, available_parallelism / 2),
             ui_language: AppLanguage::default(),
             auto_scan_enabled: true,
+            indexer_concurrency_limit: 200,
             extra: std::collections::HashMap::new(),
         }
     }

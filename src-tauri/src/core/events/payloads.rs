@@ -68,8 +68,12 @@ pub enum DomainEvent {
     // ├─ OS Watcher Originated
     /// The Watcher detected a new file in the filesystem.
     FsFileDiscovered { path: String, size_bytes: u64 },
-    /// The Watcher detected the removal of a path in the filesystem.
+    /// The Watcher detected a new directory in the filesystem.
+    FsDirectoryDiscovered { path: String },
+    /// The Watcher detected the removal of a file path in the filesystem.
     FsPathDeleted { path: String },
+    /// The Watcher detected the removal of a directory in the filesystem.
+    FsDirectoryDeleted { path: String },
     /// The Watcher detected a rename/move operation in the filesystem.
     FsPathRenamed { from: String, to: String },
 

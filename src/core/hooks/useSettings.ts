@@ -1,6 +1,7 @@
 import {
     thumbnailThreads,
     cacheRetentionDays,
+    indexerConcurrencyLimit,
     cacheStats,
     settingsActions
 } from '../store/settingsStore';
@@ -17,6 +18,8 @@ export const useSettings = () => {
         thumbnailThreads,
         /** Number of days to keep transcoded files in cache */
         cacheRetentionDays,
+        /** Maximum concurrent tasks during indexing */
+        indexerConcurrencyLimit,
         /** Current cache usage statistics */
         cacheStats,
 

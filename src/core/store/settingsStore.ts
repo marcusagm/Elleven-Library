@@ -10,6 +10,7 @@ export interface CacheStats {
 
 const [thumbnailThreads, setThumbnailThreads] = createSignal<number>(2);
 const [cacheRetentionDays, setCacheRetentionDays] = createSignal<number>(30);
+const [indexerConcurrencyLimit, setIndexerConcurrencyLimit] = createSignal<number>(200);
 const [cacheStats, setCacheStats] = createSignal<CacheStats>({
     size_bytes: 0,
     file_count: 0
@@ -17,14 +18,16 @@ const [cacheStats, setCacheStats] = createSignal<CacheStats>({
 
 export const settingsActions = {
     initialize: async () => {
-        const [threads, retention, stats] = await Promise.all([
+        const [threads, retention, concurrency, stats] = await Promise.all([
             tauriService.getSetting('thumbnail_threads'),
             tauriService.getSetting('cache_retention_days'),
+            tauriService.getSetting('indexer_concurrency_limit'),
             tauriService.getCacheStats()
         ]);
 
         if (threads !== null) setThumbnailThreads(Number(threads));
         if (retention !== null) setCacheRetentionDays(Number(retention));
+        if (concurrency !== null) setIndexerConcurrencyLimit(Number(concurrency));
         setCacheStats({ size_bytes: stats.size_bytes, file_count: stats.file_count });
     },
 
@@ -53,6 +56,15 @@ export const settingsActions = {
                 tauriService.setSetting('cache_retention_days', String(payload.cacheRetentionDays))
             );
         }
+        if (payload.indexerConcurrencyLimit !== undefined) {
+            setIndexerConcurrencyLimit(payload.indexerConcurrencyLimit);
+            promises.push(
+                tauriService.setSetting(
+                    'indexer_concurrency_limit',
+                    String(payload.indexerConcurrencyLimit)
+                )
+            );
+        }
 
         try {
             await Promise.all(promises);
@@ -75,4 +87,4 @@ export const settingsActions = {
     }
 };
 
-export { thumbnailThreads, cacheRetentionDays, cacheStats };
+export { thumbnailThreads, cacheRetentionDays, indexerConcurrencyLimit, cacheStats };

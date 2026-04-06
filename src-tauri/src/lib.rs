@@ -74,6 +74,20 @@ pub fn run() {
 
                         // Special Mapping for Legacy Indexer Events (Frontend compatibility)
                         match event {
+                            crate::core::events::DomainEvent::AssetCreated { .. } |
+                            crate::core::events::DomainEvent::AssetMetadataUpdated { .. } |
+                            crate::core::events::DomainEvent::AssetTagsUpdated { .. } |
+                            crate::core::events::DomainEvent::AssetStateChanged { .. } |
+                            crate::core::events::DomainEvent::AssetFolderChanged { .. } |
+                            crate::core::events::DomainEvent::FsPathDeleted { .. } |
+                            crate::core::events::DomainEvent::FsPathRenamed { .. } => {
+                                let _ = app_handle.emit("library:batch-change", serde_json::json!({
+                                    "added": [],
+                                    "removed": [],
+                                    "updated": [],
+                                    "needs_refresh": true
+                                }));
+                            }
                             crate::core::events::DomainEvent::ScanProgress { total, processed, current_file } => {
                                 let _ = app_handle.emit("indexer:progress", serde_json::json!({
                                     "total": total,
@@ -215,31 +229,44 @@ pub fn run() {
                 );
                 color_worker.start();
 
-                // Start Watchers for Existing Roots
-                if let Ok(roots) = asset_query_handler.list_folders(None).await {
-                    tracing::info!("Starting watchers for {} roots", roots.len());
+                // Read concurrency limit from settings (extra map or model default)
+                let concurrency_limit = if let Some(settings_service) = handle.try_state::<crate::feature::settings::SettingsService>() {
+                    match settings_service.get_setting("indexer_concurrency_limit").await {
+                        Ok(Some(value)) => value.as_u64().unwrap_or(200) as usize,
+                        _ => 200,
+                    }
+                } else {
+                    200
+                };
 
-                    // Initialize Indexer
-                    let indexer = Arc::new(crate::feature::library::indexer::LibraryIndexer::new(
+                // Initialize Indexer (ALWAYS — independent of existing roots)
+                let indexer = Arc::new(
+                    crate::feature::library::indexer::LibraryIndexer::new(
                         asset_query_handler.clone(),
                         asset_ledger.clone(),
                         event_bus.clone(),
                         format_registry.clone(),
-                    ));
-                    handle.manage(indexer.clone());
+                    )
+                    .with_concurrency_limit(concurrency_limit),
+                );
+                handle.manage(indexer.clone());
 
-                    indexer
-                        .clone()
-                        .start_event_listener(event_bus.clone())
-                        .await;
+                indexer
+                    .clone()
+                    .start_event_listener(event_bus.clone())
+                    .await;
 
-                    // Initialize Watcher Service
-                    let watcher = Arc::new(crate::processing::watcher::WatcherService::new(
-                        event_bus.clone(),
-                    ));
-                    handle.manage(watcher.clone());
+                // Initialize Watcher Service (ALWAYS — independent of existing roots)
+                let watcher = Arc::new(crate::processing::watcher::WatcherService::new(
+                    event_bus.clone(),
+                ));
+                handle.manage(watcher.clone());
 
-                    for folder in roots {
+                // Start Watchers + Boot Scan for Existing Roots
+                if let Ok(roots) = asset_query_handler.list_folders(None).await {
+                    tracing::info!("Starting watchers for {} roots", roots.len());
+
+                    for folder in &roots {
                         let root_path = std::path::PathBuf::from(&folder.path);
 
                         let watcher_token = lifecycle_for_setup.child_token();
@@ -256,9 +283,36 @@ pub fn run() {
                             lifecycle_for_setup.register(
                                 format!("watcher:{}", root_path.display()),
                                 watcher_token,
-                                tauri::async_runtime::spawn(async {}), // Fake join handle as the watcher is self-managed
+                                tauri::async_runtime::spawn(async {}),
                             );
                         }
+                    }
+
+                    // Auto-scan on boot: runs differential scan for each root.
+                    // This handles resumability — if a previous scan was interrupted,
+                    // the differential check skips already-indexed files and processes
+                    // only new/modified ones.
+                    if !roots.is_empty() {
+                        let indexer_for_boot = indexer.clone();
+                        let roots_for_boot: Vec<_> = roots.iter().map(|folder| {
+                            (std::path::PathBuf::from(&folder.path), folder.id.clone())
+                        }).collect();
+
+                        tokio::spawn(async move {
+                            for (root_path, folder_id) in roots_for_boot {
+                                tracing::info!("Boot scan starting for: {}", root_path.display());
+                                if let Err(e) = indexer_for_boot
+                                    .scan_directory(root_path.clone(), Some(folder_id))
+                                    .await
+                                {
+                                    tracing::error!(
+                                        "Boot scan failed for {}: {}",
+                                        root_path.display(),
+                                        e
+                                    );
+                                }
+                            }
+                        });
                     }
                 }
             });

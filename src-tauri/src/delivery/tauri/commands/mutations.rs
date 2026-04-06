@@ -286,10 +286,15 @@ pub async fn remove_location(
 
 /// RPC Command to manually start indexing a location.
 ///
+/// Also registers a filesystem watcher for the path, restoring V1 behavior
+/// where `run_scan` always called `start_watcher` at the end.
+///
 /// # Arguments
 ///
 /// * `path` - The path to index.
 /// * `indexer` - The library indexer.
+/// * `watcher` - The watcher service.
+/// * `app_handle` - The Tauri app handle for lifecycle access.
 ///
 /// # Errors
 ///
@@ -299,12 +304,44 @@ pub async fn start_indexing(
     path: String,
     folder_id: Option<String>,
     indexer: State<'_, Arc<LibraryIndexer>>,
+    watcher: State<'_, Arc<WatcherService>>,
+    app_handle: tauri::AppHandle,
 ) -> AppResult<()> {
+    let path_buf = std::path::PathBuf::from(&path);
+
+    // 1. Register a filesystem watcher for this path
+    let lifecycle = app_handle
+        .try_state::<std::sync::Arc<crate::lifecycle::LifecycleRegistry>>()
+        .ok_or_else(|| {
+            crate::core::error::AppError::Internal("Lifecycle not initialized".to_string())
+        })?;
+
+    let watcher_token = lifecycle.child_token();
+    if let Err(watcher_error) = watcher.watch(path_buf.clone(), watcher_token.clone()).await {
+        tracing::error!(
+            "Failed to start watcher for {}: {}",
+            path_buf.display(),
+            watcher_error
+        );
+    } else {
+        lifecycle.register(
+            format!("watcher:{}", path_buf.display()),
+            watcher_token,
+            tauri::async_runtime::spawn(async {}),
+        );
+        tracing::info!("Watcher registered for: {}", path_buf.display());
+    }
+
+    // 2. Start indexing in background
     let indexer_ref = indexer.inner().clone();
-    let path_buf = std::path::PathBuf::from(path);
+    tracing::info!(
+        "Started indexing for: {} component=tauriService",
+        path_buf.display()
+    );
     tauri::async_runtime::spawn(async move {
         let _ = indexer_ref.scan_directory(path_buf, folder_id).await;
     });
+
     Ok(())
 }
 
