@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT path as \"path!\", file_size as \"file_size!\", updated_at as \"updated_at!: DateTime<Utc>\" FROM assets WHERE path LIKE ?",
+  "query": "SELECT path as \"path!\", file_size as \"file_size!\", modified_at as \"modified_at!: DateTime<Utc>\" FROM assets WHERE path LIKE ?",
   "describe": {
     "columns": [
       {
@@ -14,7 +14,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "modified_at!: DateTime<Utc>",
         "ordinal": 2,
         "type_info": "Datetime"
       }
@@ -28,5 +28,5 @@
       true
     ]
   },
-  "hash": "6dcb121cb77c4aa2694cddd1511d2727fa27735c98637c2cf4f49ce98c45804a"
+  "hash": "33e6e056e96ce38dedb399477361144ccd400f2bdf9e3aa31c9ad3a89190d483"
 }

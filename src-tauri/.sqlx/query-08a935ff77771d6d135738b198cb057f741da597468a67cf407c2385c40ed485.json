@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!\" FROM folders WHERE path = ?",
+  "query": "SELECT id as \"id!\" FROM folders WHERE path = ? COLLATE NOCASE",
   "describe": {
     "columns": [
       {
@@ -16,5 +16,5 @@
       true
     ]
   },
-  "hash": "f4c53398f19096e2f589b7329198bc05caa99e528ddfcfdb8bdedcb236c88839"
+  "hash": "08a935ff77771d6d135738b198cb057f741da597468a67cf407c2385c40ed485"
 }
