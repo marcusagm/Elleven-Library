@@ -313,13 +313,12 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
     async fn execute(&self, command: LedgerCommand) -> AppResult<Asset> {
         let mut tx = self.pool.begin().await?;
 
-        // 1. Resolve and expand commands (Handle Batch and BatchCreate expansion)
+        // 1. Resolve and expand commands (Handle Batch expansion but NOT BatchCreate)
         let commands_to_process = match &command {
             LedgerCommand::Batch(cmds) => cmds.clone(),
-            LedgerCommand::BatchCreate(payloads) => payloads
-                .iter()
-                .map(|p| LedgerCommand::CreateAsset(p.clone()))
-                .collect(),
+            // DO NOT MAP BatchCreate into CreateAsset!
+            // It must be passed to execute_single as a single BatchCreate
+            // so we don't trigger per-file lock-heavy checks.
             _ => vec![command.clone()],
         };
 
@@ -334,11 +333,10 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
         // 3. Publish Domain Events only AFTER commit
         // For BatchCreate: emit a single summary to avoid flooding the broadcast channel.
-        // Individual AssetCreated events would overflow the 2048-capacity buffer during
-        // large scans (42k+ assets). Workers use polling, not event-driven discovery.
+        // Individual AssetCreated events would overflow the 2048-capacity buffer.
         match &command {
-            LedgerCommand::BatchCreate(_) => {
-                let batch_count = results.len();
+            LedgerCommand::BatchCreate(payloads) => {
+                let batch_count = payloads.len();
                 if batch_count > 0 {
                     let _ = self.event_bus.publish(DomainEvent::ScanProgress {
                         total: batch_count,
