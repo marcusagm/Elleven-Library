@@ -38,6 +38,10 @@ pub enum DomainEvent {
         name: String,
         path: String,
     },
+    /// A logical folder's metadata (name/path) was changed.
+    FolderMetadataUpdated {
+        folder_id: String,
+    },
     /// A logical folder was removed.
     FolderRemoved {
         folder_id: String,

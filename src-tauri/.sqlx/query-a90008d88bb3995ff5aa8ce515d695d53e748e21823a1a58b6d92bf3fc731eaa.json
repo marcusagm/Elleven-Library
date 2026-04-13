@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    UPDATE assets \n                    SET path = ? || SUBSTR(path, LENGTH(?) + 1),\n                        updated_at = ?\n                    WHERE path LIKE ? || '%'\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "a90008d88bb3995ff5aa8ce515d695d53e748e21823a1a58b6d92bf3fc731eaa"
+}

@@ -361,19 +361,22 @@ impl AssetQueryHandler for SqliteAssetQueries {
     async fn get_subfolder_asset_counts(&self) -> AppResult<Vec<(String, i64)>> {
         let rows = sqlx::query!(
             r#"
-            WITH RECURSIVE folder_tree AS (
-                SELECT id as root_id, id as child_id
-                FROM folders
+            WITH RECURSIVE 
+              hierarchy_tree(root_id, child_id) AS (
+                SELECT id, id FROM folders
                 UNION ALL
-                SELECT ft.root_id, f.id
+                SELECT ht.root_id, f.id
                 FROM folders f
-                JOIN folder_tree ft ON f.parent_id = ft.child_id
-            )
-            SELECT ft.root_id as "folder_id!", COUNT(a.id) as "count!"
-            FROM folder_tree ft
-            LEFT JOIN assets a ON a.folder_id = ft.child_id
-            GROUP BY ft.root_id
-            "#
+                JOIN hierarchy_tree ht ON f.parent_id = ht.child_id
+              ),
+              leaf_counts AS (
+                SELECT folder_id, COUNT(*) as cnt FROM assets GROUP BY folder_id
+              )
+            SELECT ht.root_id as "folder_id!", SUM(COALESCE(lc.cnt, 0)) as "count!"
+            FROM hierarchy_tree ht
+            LEFT JOIN leaf_counts lc ON lc.folder_id = ht.child_id
+            GROUP BY ht.root_id
+            "#,
         )
         .fetch_all(&self.pool)
         .await?;
@@ -390,20 +393,22 @@ impl AssetQueryHandler for SqliteAssetQueries {
     async fn get_location_root_counts(&self) -> AppResult<Vec<(String, i64)>> {
         let rows = sqlx::query!(
             r#"
-            WITH RECURSIVE folder_tree AS (
-                SELECT id as root_id, id as child_id
-                FROM folders
-                WHERE parent_id IS NULL
+            WITH RECURSIVE 
+              hierarchy_tree(root_id, child_id) AS (
+                SELECT id, id FROM folders WHERE parent_id IS NULL
                 UNION ALL
-                SELECT ft.root_id, f.id
+                SELECT ht.root_id, f.id
                 FROM folders f
-                JOIN folder_tree ft ON f.parent_id = ft.child_id
-            )
-            SELECT ft.root_id as "folder_id!", COUNT(a.id) as "count!"
-            FROM folder_tree ft
-            LEFT JOIN assets a ON a.folder_id = ft.child_id
-            GROUP BY ft.root_id
-            "#
+                JOIN hierarchy_tree ht ON f.parent_id = ht.child_id
+              ),
+              leaf_counts AS (
+                SELECT folder_id, COUNT(*) as cnt FROM assets GROUP BY folder_id
+              )
+            SELECT ht.root_id as "folder_id!", SUM(COALESCE(lc.cnt, 0)) as "count!"
+            FROM hierarchy_tree ht
+            LEFT JOIN leaf_counts lc ON lc.folder_id = ht.child_id
+            GROUP BY ht.root_id
+            "#,
         )
         .fetch_all(&self.pool)
         .await?;
@@ -803,7 +808,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
         .fetch_all(&self.pool)
         .await?;
 
-        let folder_counts = folder_counts_rows
+        let folder_counts: Vec<crate::core::models::FolderCount> = folder_counts_rows
             .into_iter()
             .filter_map(|r| r.folder_id.map(|id| crate::core::models::FolderCount {
                 folder_id: id,
@@ -811,31 +816,34 @@ impl AssetQueryHandler for SqliteAssetQueries {
             }))
             .collect();
 
-        // Calculate recursive counts
-        let folder_counts_recursive_rows = sqlx::query!(
-            r#"
-            WITH RECURSIVE folder_hierarchy(root_id, sub_id) AS (
-                SELECT id, id FROM folders
-                UNION ALL
-                SELECT fh.root_id, f.id
-                FROM folder_hierarchy fh
-                JOIN folders f ON f.parent_id = fh.sub_id
-            )
-            SELECT fh.root_id as "folder_id!", COUNT(a.id) as "count!: i64"
-            FROM folder_hierarchy fh
-            LEFT JOIN assets a ON a.folder_id = fh.sub_id
-            GROUP BY fh.root_id
-            "#
+        // Calculate recursive counts in-memory instead of slow recursive CTE
+        let all_folders = sqlx::query!(
+            r#"SELECT id as "id!", parent_id as "parent_id?" FROM folders"#
         )
         .fetch_all(&self.pool)
         .await?;
 
-        let folder_counts_recursive = folder_counts_recursive_rows
+        let mut parent_map: std::collections::HashMap<String, Option<String>> = std::collections::HashMap::new();
+        for row in all_folders {
+            parent_map.insert(row.id, row.parent_id);
+        }
+
+        let mut recursive_counts: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+        for fc in &folder_counts {
+            // Add to itself
+            *recursive_counts.entry(fc.folder_id.clone()).or_insert(0) += fc.count;
+            
+            // Add to all parents
+            let mut current_parent = parent_map.get(&fc.folder_id).cloned().flatten();
+            while let Some(parent_id) = current_parent {
+                *recursive_counts.entry(parent_id.clone()).or_insert(0) += fc.count;
+                current_parent = parent_map.get(&parent_id).cloned().flatten();
+            }
+        }
+
+        let folder_counts_recursive = recursive_counts
             .into_iter()
-            .map(|r| crate::core::models::FolderCount {
-                folder_id: r.folder_id,
-                count: r.count,
-            })
+            .map(|(folder_id, count)| crate::core::models::FolderCount { folder_id, count })
             .collect();
 
         Ok(crate::core::models::LibraryStats {
@@ -887,6 +895,117 @@ impl AssetQueryHandler for SqliteAssetQueries {
         .await?;
 
         Ok(row.map(|r| r.id))
+    }
+
+    async fn find_asset_by_path(&self, path: &str) -> AppResult<Option<Asset>> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                a.id as "id!", a.name as "name!", a.path as "path!", a.state as "state!",
+                a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!",
+                a.created_at as "created_at: DateTime<Utc>",
+                a.modified_at as "modified_at: DateTime<Utc>",
+                a.added_at as "added_at: DateTime<Utc>",
+                a.updated_at as "updated_at: DateTime<Utc>",
+                a.folder_id as "folder_id?",
+                a.thumbnail_path as "thumbnail_path?",
+                a.rating as "rating: i64",
+                a.notes as "notes?",
+                m.width as "width: i64",
+                m.height as "height: i64",
+                m.duration_secs as "duration_secs: f64",
+                m.technical_payload as "technical_payload: serde_json::Value",
+                m.semantic_payload as "semantic_payload: serde_json::Value",
+                a.dominant_color as "dominant_color: serde_json::Value"
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
+            WHERE a.path = ? COLLATE NOCASE
+            "#,
+            path
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| crate::infra::database::models::AssetDb {
+            id: r.id,
+            name: r.name,
+            path: r.path,
+            state: r.state,
+            format_type: r.format_type,
+            family: r.family,
+            file_size: r.file_size,
+            created_at: r.created_at,
+            modified_at: r.modified_at,
+            added_at: r.added_at,
+            updated_at: r.updated_at,
+            folder_id: r.folder_id,
+            thumbnail_path: r.thumbnail_path,
+            rating: r.rating,
+            notes: r.notes,
+            width: r.width,
+            height: r.height,
+            duration_secs: r.duration_secs,
+            technical_payload: r.technical_payload,
+            semantic_payload: r.semantic_payload,
+            dominant_color: r.dominant_color,
+        }).map(Into::into))
+    }
+
+    async fn find_assets_by_size(&self, size_bytes: u64, state: Option<crate::core::models::AssetState>) -> AppResult<Vec<Asset>> {
+        let size_i64 = size_bytes as i64;
+        let state_str = state.map(|s| s.to_string());
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT 
+                a.id as "id!", a.name as "name!", a.path as "path!", a.state as "state!", 
+                a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!", 
+                a.created_at as "created_at: DateTime<Utc>", 
+                a.modified_at as "modified_at: DateTime<Utc>", 
+                a.added_at as "added_at: DateTime<Utc>", 
+                a.updated_at as "updated_at: DateTime<Utc>", 
+                a.folder_id as "folder_id?", a.thumbnail_path as "thumbnail_path?", 
+                a.rating as "rating?", a.notes as "notes?", 
+                m.width as "width?", m.height as "height?", 
+                m.duration_secs as "duration_secs: f64",
+                m.technical_payload as "technical_payload: serde_json::Value",
+                m.semantic_payload as "semantic_payload: serde_json::Value",
+                a.dominant_color as "dominant_color: serde_json::Value"
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
+            WHERE a.file_size = ? 
+              AND (? IS NULL OR a.state = ?)
+            "#,
+            size_i64,
+            state_str,
+            state_str
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| crate::infra::database::models::AssetDb {
+            id: r.id,
+            name: r.name,
+            path: r.path,
+            state: r.state,
+            format_type: r.format_type,
+            family: r.family,
+            file_size: r.file_size,
+            created_at: r.created_at,
+            modified_at: r.modified_at,
+            added_at: r.added_at,
+            updated_at: r.updated_at,
+            folder_id: r.folder_id,
+            thumbnail_path: r.thumbnail_path,
+            rating: r.rating,
+            notes: r.notes,
+            width: r.width,
+            height: r.height,
+            duration_secs: r.duration_secs,
+            technical_payload: r.technical_payload,
+            semantic_payload: r.semantic_payload,
+            dominant_color: r.dominant_color,
+        }).map(Into::into).collect())
     }
 }
 

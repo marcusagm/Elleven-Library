@@ -179,4 +179,11 @@ pub trait AssetQueryHandler: Send + Sync {
 
     /// Finds a folder ID by its physical path.
     async fn find_folder_by_path(&self, path: &str) -> AppResult<Option<String>>;
+
+    /// Finds a single asset by its physical path.
+    async fn find_asset_by_path(&self, path: &str) -> AppResult<Option<Asset>>;
+
+    /// Finds assets by their file size and state.
+    /// Useful for recovering moved files that were treated as Delete + Create.
+    async fn find_assets_by_size(&self, size_bytes: u64, state: Option<crate::core::models::AssetState>) -> AppResult<Vec<Asset>>;
 }

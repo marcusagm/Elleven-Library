@@ -9,6 +9,8 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 use tracing::{info, instrument};
 
+use unicode_normalization::UnicodeNormalization;
+
 /// Singleton service that manages active filesystem watchers.
 ///
 /// It listens for low-level OS events, debounces them, and publishes
@@ -49,7 +51,7 @@ impl WatcherService {
     ///
     /// * `AppResult<()>` - Result of the watch operation.
     #[instrument(skip_all)]
-    pub async fn watch(&self, path: PathBuf, token: CancellationToken) -> AppResult<()> {
+    pub async fn watch(&self, path: PathBuf, _token: CancellationToken) -> AppResult<()> {
         let mut guard = self.native_watcher.lock().await;
 
         if guard.is_none() {
@@ -58,7 +60,12 @@ impl WatcherService {
 
             let watcher = RecommendedWatcher::new(
                 move |res: notify::Result<Event>| {
-                    if let Ok(event) = res {
+                    if let Ok(mut event) = res {
+                        // Normalize all paths to NFC (Mac Compatibility)
+                        for p in &mut event.paths {
+                            let normalized = p.to_string_lossy().nfc().collect::<String>();
+                            *p = PathBuf::from(normalized);
+                        }
                         let _ = tx.blocking_send(event);
                     }
                 },

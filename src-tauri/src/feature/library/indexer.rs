@@ -5,11 +5,13 @@ use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::core::models::asset::AssetState;
 use crate::core::repository::AssetQueryHandler;
 use chrono::{DateTime, Utc};
+use dashmap::DashMap;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock, Semaphore};
 use tokio::task::JoinSet;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, instrument, warn};
 use walkdir::{DirEntry, WalkDir};
 
@@ -38,6 +40,12 @@ pub struct LibraryIndexer {
     registry: Arc<crate::core::formats::registry::FormatRegistry>,
     /// Maximum number of concurrent file-processing tasks.
     concurrency_limit: usize,
+
+    /// 2-second window for pending removals (prevents rename duplication on macOS).
+    pending_removals: Arc<DashMap<PathBuf, CancellationToken>>,
+    /// Cache of recently removed files metadata to support "Implicit Rename" recovery.
+    /// Tuple: (removal_timestamp, file_size, created_at_from_db)
+    recent_removals: Arc<DashMap<PathBuf, (DateTime<Utc>, u64, Option<DateTime<Utc>>)>>,
 }
 
 impl LibraryIndexer {
@@ -54,6 +62,8 @@ impl LibraryIndexer {
             event_bus,
             registry,
             concurrency_limit: 200,
+            pending_removals: Arc::new(DashMap::new()),
+            recent_removals: Arc::new(DashMap::new()),
         }
     }
 
@@ -404,269 +414,258 @@ impl LibraryIndexer {
         use crate::core::events::DomainEvent;
 
         match event {
-            // ─── New File Detected ──────────────────────────────────────
-            DomainEvent::FsFileDiscovered {
-                path,
-                size_bytes,
-            } => {
-                let entry_path = PathBuf::from(&path);
-
-                // Skip unsupported formats
-                let is_supported = entry_path
-                    .extension()
-                    .and_then(|extension| extension.to_str())
-                    .map(|extension| self.registry.is_supported_extension(extension))
-                    .unwrap_or(false);
-
-                if !is_supported {
-                    debug!("EventListener: skipping unsupported file: {}", path);
-                    return;
-                }
-
-                // Resolve format from registry
-                let (format_name, family_name) =
-                    if let Some(supported_format) = self.registry.detect(&entry_path) {
-                        (
-                            supported_format.name.to_string(),
-                            supported_format.type_category.to_string(),
-                        )
-                    } else {
-                        ("unknown".to_string(), "unknown".to_string())
-                    };
-
-                // Read filesystem timestamps
-                let (created_at, modified_at) = match std::fs::metadata(&entry_path) {
-                    Ok(metadata) => (
-                        metadata.created().ok().map(|time| {
-                            let datetime: chrono::DateTime<chrono::Utc> = time.into();
-                            datetime
-                        }),
-                        metadata.modified().ok().map(|time| {
-                            let datetime: chrono::DateTime<chrono::Utc> = time.into();
-                            datetime
-                        }),
-                    ),
-                    Err(_) => (None, None),
-                };
-
-                // Resolve folder_id from parent path
-                let folder_id = if let Some(parent) = entry_path.parent() {
-                    let parent_str = parent.to_string_lossy().to_string();
-                    match self.query_handler.find_folder_by_path(&parent_str).await {
-                        Ok(folder_id_option) => folder_id_option,
-                        Err(_) => None,
-                    }
-                } else {
-                    None
-                };
-
-                let create_payload = CreateAssetPayload {
-                    path: entry_path,
-                    file_size: size_bytes,
-                    format_type: format_name,
-                    family: family_name,
-                    state_init: crate::core::models::asset::AssetState::Indexed,
-                    folder_id,
-                    created_at,
-                    modified_at,
-                };
-
-                match self
-                    .ledger
-                    .execute(LedgerCommand::CreateAsset(create_payload))
-                    .await
-                {
-                    Ok(asset) => {
-                        info!(
-                            "EventListener: created asset {} for: {}",
-                            asset.id, path
-                        );
-                    }
-                    Err(error) => {
-                        // Duplicate path is expected if file already indexed — not an error
-                        debug!(
-                            "EventListener: create failed for {} (may already exist): {}",
-                            path, error
-                        );
-                    }
-                }
+            DomainEvent::FsFileDiscovered { path, .. } => {
+                self.handle_file_discovered(path).await;
             }
 
-            // ─── File/Asset Deleted ─────────────────────────────────────
             DomainEvent::FsPathDeleted { path } => {
-                let entry_path = PathBuf::from(&path);
-
-                match self
-                    .ledger
-                    .execute(LedgerCommand::DeleteAsset {
-                        asset_id: None,
-                        path: Some(entry_path),
-                        physical_delete: false,
-                    })
-                    .await
-                {
-                    Ok(_) => {
-                        info!("EventListener: deleted asset at: {}", path);
-                    }
-                    Err(error) => {
-                        debug!(
-                            "EventListener: delete failed for {} (may be folder or not indexed): {}",
-                            path, error
-                        );
-                    }
-                }
+                self.handle_path_deleted(path).await;
             }
 
-            // ─── File/Folder Renamed or Moved ───────────────────────────
             DomainEvent::FsPathRenamed { from, to } => {
-                let from_path = PathBuf::from(&from);
-                let to_path = PathBuf::from(&to);
-
-                if to_path.is_dir() {
-                    // Directory rename — update all assets under this subtree
-                    // by updating the folder path and re-pathing child assets
-                    let from_str = from_path.to_string_lossy().to_string();
-
-                    // Update the folder entry itself
-                    if let Ok(Some(folder_id)) =
-                        self.query_handler.find_folder_by_path(&from_str).await
-                    {
-                        let new_name = to_path
-                            .file_name()
-                            .and_then(|name| name.to_str())
-                            .unwrap_or("Unknown")
-                            .to_string();
-
-                        // Update folder name and path via a direct query approach
-                        // For now, emit a log — the full folder rename cascading
-                        // is handled by the scan_directory on next boot
-                        info!(
-                            "EventListener: folder renamed {} → {} (id: {}), name: {}",
-                            from, to, folder_id, new_name
-                        );
-                    }
-                } else {
-                    // Single file rename/move
-                    let update_payload = crate::core::ledger::command::UpdateAssetPayload {
-                        asset_id: None,
-                        old_path: Some(from_path),
-                        new_path: to_path,
-                    };
-
-                    match self
-                        .ledger
-                        .execute(LedgerCommand::UpdateAsset(update_payload))
-                        .await
-                    {
-                        Ok(asset) => {
-                            info!(
-                                "EventListener: renamed asset {} from {} → {}",
-                                asset.id, from, to
-                            );
-                        }
-                        Err(error) => {
-                            warn!(
-                                "EventListener: rename failed {} → {}: {}",
-                                from, to, error
-                            );
-                        }
-                    }
-                }
+                self.handle_path_renamed(from, to).await;
             }
 
-            // ─── New Directory Detected ─────────────────────────────────
             DomainEvent::FsDirectoryDiscovered { path } => {
                 let dir_path = PathBuf::from(&path);
                 let dir_path_str = dir_path.to_string_lossy().to_string();
 
-                // Check if folder already exists
-                if let Ok(Some(_)) = self
-                    .query_handler
-                    .find_folder_by_path(&dir_path_str)
-                    .await
-                {
-                    return; // Already exists
+                if let Ok(Some(_)) = self.query_handler.find_folder_by_path(&dir_path_str).await {
+                    return;
                 }
 
-                // Resolve parent folder
                 let parent_id = if let Some(parent) = dir_path.parent() {
                     let parent_str = parent.to_string_lossy().to_string();
-                    match self.query_handler.find_folder_by_path(&parent_str).await {
-                        Ok(folder_id_option) => folder_id_option,
-                        Err(_) => None,
-                    }
+                    self.query_handler.find_folder_by_path(&parent_str).await.unwrap_or(None)
                 } else {
                     None
                 };
 
-                let folder_name = dir_path
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("Unknown")
-                    .to_string();
-
-                match self
-                    .ledger
-                    .execute(LedgerCommand::CreateFolder(CreateFolderPayload {
-                        parent_id,
-                        name: folder_name,
-                        path: dir_path,
-                    }))
-                    .await
-                {
-                    Ok(_) => {
-                        info!("EventListener: created folder: {}", path);
-                    }
-                    Err(error) => {
-                        warn!("EventListener: create folder failed for {}: {}", path, error);
-                    }
-                }
+                let folder_name = dir_path.file_name().and_then(|name| name.to_str()).unwrap_or("Unknown").to_string();
+                let _ = self.ledger.execute(LedgerCommand::CreateFolder(CreateFolderPayload {
+                    parent_id,
+                    name: folder_name,
+                    path: dir_path,
+                })).await;
             }
 
-            // ─── Directory Deleted ──────────────────────────────────────
             DomainEvent::FsDirectoryDeleted { path } => {
-                let dir_path_str = path.clone();
-
-                match self
-                    .query_handler
-                    .find_folder_by_path(&dir_path_str)
-                    .await
-                {
-                    Ok(Some(folder_id)) => {
-                        match self
-                            .ledger
-                            .execute(LedgerCommand::RemoveFolder(
-                                crate::core::ledger::command::RemoveFolderPayload {
-                                    folder_id: folder_id.clone(),
-                                },
-                            ))
-                            .await
-                        {
-                            Ok(_) => {
-                                info!(
-                                    "EventListener: removed folder {} (id: {})",
-                                    path, folder_id
-                                );
-                            }
-                            Err(error) => {
-                                warn!(
-                                    "EventListener: remove folder failed for {}: {}",
-                                    path, error
-                                );
-                            }
-                        }
-                    }
-                    _ => {
-                        debug!(
-                            "EventListener: folder not found in DB for deletion: {}",
-                            path
-                        );
-                    }
+                if let Ok(Some(folder_id)) = self.query_handler.find_folder_by_path(&path).await {
+                    let _ = self.ledger.execute(LedgerCommand::RemoveFolder(
+                        crate::core::ledger::command::RemoveFolderPayload { folder_id },
+                    )).await;
                 }
             }
 
-            // ─── Ignore all other events ────────────────────────────────
             _ => {}
+        }
+    }
+
+    /// Handles a new file discovery event, potentially recovering a rename or move.
+    async fn handle_file_discovered(&self, path: String) {
+        let entry_path = PathBuf::from(&path);
+        
+        // 1. Strategic Delay: On macOS, a Rename is often emitted as Delete then Create.
+        // 500ms gives enough time for handle_path_deleted to populate recent_removals.
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        
+        // Try to get metadata for fingerprint matching
+        let disk_metadata = std::fs::metadata(&entry_path).ok();
+        let disk_size = disk_metadata.as_ref().map(|m| m.len() as i64).unwrap_or(0);
+        let disk_created_at: Option<DateTime<Utc>> = disk_metadata
+            .as_ref()
+            .and_then(|m| m.created().ok())
+            .map(|t| DateTime::<Utc>::from(t));
+
+        // --- STEP 1: Fast Match (Size + CreatedAt from recent_removals) ---
+        let from_path = self.recent_removals.iter()
+            .find(|entry| {
+                let (_, (_, removed_size, removed_created_at)) = entry.pair();
+                let size_matches = *removed_size as i64 == disk_size && disk_size > 0;
+                if !size_matches {
+                    return false;
+                }
+                // If both sides have created_at, require a match for precision
+                match (removed_created_at, &disk_created_at) {
+                    (Some(db_created), Some(disk_created)) => {
+                        (*db_created - *disk_created).num_seconds().abs() < 2
+                    }
+                    _ => true, // If either side lacks created_at, rely on size alone
+                }
+            })
+            .map(|entry| entry.key().clone());
+
+        if let Some(from_path) = from_path {
+            info!("Indexer: Fast Match (Size: {}) - Treating as Move: {} -> {}", 
+                disk_size, from_path.to_string_lossy(), path);
+            
+            self.recent_removals.remove(&from_path);
+            
+            // Cancel the pending delayed delete
+            if let Some((_, cancel_token)) = self.pending_removals.remove(&from_path) {
+                cancel_token.cancel();
+            }
+            
+            let update_payload = crate::core::ledger::command::UpdateAssetPayload {
+                asset_id: None,
+                old_path: Some(from_path),
+                new_path: entry_path.clone(),
+            };
+            let _ = self.ledger.execute(LedgerCommand::UpdateAsset(update_payload)).await;
+            return;
+        }
+
+        // --- STEP 3: Normal Discovery (Creation with Collision Check) ---
+        let _ = self.handle_file_discovery_event(entry_path).await;
+    }
+
+    /// Extacts metadata and persists a new file to the ledger.
+    async fn handle_file_discovery_event(&self, entry_path: PathBuf) -> AppResult<()> {
+        let path_str = entry_path.to_string_lossy().to_string();
+
+        // CRITICAL: Existence check first (Race Condition Protection)
+        // If the path already exists in the database, don't create it again.
+        // This prevents duplicates if FsFileDiscovered was already emitted or handled.
+        if let Ok(Some(_)) = self.query_handler.find_asset_by_path(&path_str).await {
+            debug!("Indexer: Asset already exists for path '{}', skipping duplicate creation", entry_path.display());
+            return Ok(());
+        }
+
+        let extension = entry_path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+        
+        if !self.registry.is_supported_extension(extension) {
+            return Ok(());
+        }
+
+        let (format_name, family_name) = self.registry.detect(&entry_path)
+            .map(|f| (f.name.to_string(), f.type_category.to_string()))
+            .unwrap_or_else(|| ("unknown".to_string(), "unknown".to_string()));
+
+        let metadata = std::fs::metadata(&entry_path).map_err(|e| crate::core::error::AppError::Io(e))?;
+        let size_bytes = metadata.len();
+        let created_at = metadata.created().ok().map(|t| DateTime::<Utc>::from(t));
+        let modified_at = metadata.modified().ok().map(|t| DateTime::<Utc>::from(t));
+
+        let folder_id = if let Some(parent) = entry_path.parent() {
+            self.query_handler.find_folder_by_path(&parent.to_string_lossy()).await?
+        } else {
+            None
+        };
+
+        let create_payload = CreateAssetPayload {
+            path: entry_path,
+            file_size: size_bytes,
+            format_type: format_name,
+            family: family_name,
+            state_init: AssetState::Indexed,
+            folder_id,
+            created_at,
+            modified_at,
+        };
+
+        self.ledger.execute(LedgerCommand::CreateAsset(create_payload)).await?;
+        Ok(())
+    }
+
+    /// Handles a path deletion event with a safety delay window.
+    async fn handle_path_deleted(&self, path: String) {
+        let entry_path = PathBuf::from(&path);
+        info!("Indexer: Scheduling DELAYED DELETE for: {}", path);
+
+        // Capture size AND created_at from DB for precise move pairing
+        let mut old_size = 0;
+        let mut old_created_at: Option<DateTime<Utc>> = None;
+        if let Ok(Some(asset)) = self.query_handler.find_asset_by_path(&path).await {
+            old_size = asset.file_size;
+            old_created_at = asset.created_at;
+        }
+
+        if let Some((_, old_token)) = self.pending_removals.remove(&entry_path) {
+            old_token.cancel();
+        }
+
+        let token = CancellationToken::new();
+        self.pending_removals.insert(entry_path.clone(), token.clone());
+        self.recent_removals.insert(entry_path.clone(), (Utc::now(), old_size, old_created_at));
+
+        let self_clone = Arc::new(self.clone_state());
+        let path_buf = entry_path.clone();
+
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = tokio::time::sleep(std::time::Duration::from_secs(2)) => {
+                    if self_clone.pending_removals.remove(&path_buf).is_some() {
+                        info!("Indexer: Safety window expired. Executing DELETE for: {}", path_buf.display());
+                        self_clone.recent_removals.remove(&path_buf);
+
+                        let delete_cmd = LedgerCommand::DeleteAsset {
+                            asset_id: None,
+                            path: Some(path_buf.clone()),
+                            physical_delete: false,
+                        };
+
+                        let _ = self_clone.ledger.execute(delete_cmd).await;
+                    }
+                }
+                _ = token.cancelled() => {
+                    info!("Indexer: Pending delete CANCELLED for: {} (Rename detected)", path_buf.display());
+                }
+            }
+        });
+    }
+
+    /// Handles an explicit path rename, cancelling any pending deletes for the source.
+    async fn handle_path_renamed(&self, from: String, to: String) {
+        let from_path = PathBuf::from(&from);
+        let to_path = PathBuf::from(&to);
+
+        if let Some((_, token)) = self.pending_removals.remove(&from_path) {
+            token.cancel();
+        }
+        self.recent_removals.remove(&from_path);
+
+        if to_path.is_dir() {
+            if let Ok(Some(folder_id)) = self.query_handler.find_folder_by_path(&from_path.to_string_lossy()).await {
+                let _ = self.ledger.execute(LedgerCommand::RenameFolder(crate::core::ledger::command::RenameFolderPayload {
+                    folder_id,
+                    old_path: from_path,
+                    new_path: to_path,
+                })).await;
+            }
+        } else {
+            // CRITICAL: Collision Detection for Fast renames
+            // If the destination 'to' already exists in the database (likely because 
+            // handle_file_discovered was already processed), we must delete the 
+            // "new" (blank) record and UPDATE the original one to stay with 'to'.
+            // This preserves all metadata (labels, tags, etc) of the original asset.
+            if let Ok(Some(collision_asset)) = self.query_handler.find_asset_by_path(&to).await {
+                info!("Indexer: Collision detected on rename! Destination '{}' already has a record. Clearing it to preserve original metadata.", to);
+                let delete_cmd = LedgerCommand::DeleteAsset {
+                    asset_id: Some(collision_asset.id),
+                    path: None,
+                    physical_delete: false,
+                };
+                let _ = self.ledger.execute(delete_cmd).await;
+            }
+
+            let _ = self.ledger.execute(LedgerCommand::UpdateAsset(crate::core::ledger::command::UpdateAssetPayload {
+                asset_id: None,
+                old_path: Some(from_path),
+                new_path: to_path,
+            })).await;
+        }
+    }
+
+    /// Helper to clone the necessary Arc components for background tasks.
+    fn clone_state(&self) -> LibraryIndexer {
+        LibraryIndexer {
+            query_handler: self.query_handler.clone(),
+            ledger: self.ledger.clone(),
+            event_bus: self.event_bus.clone(),
+            registry: self.registry.clone(),
+            concurrency_limit: self.concurrency_limit,
+            pending_removals: self.pending_removals.clone(),
+            recent_removals: self.recent_removals.clone(),
         }
     }
 }

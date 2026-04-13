@@ -64,6 +64,15 @@ pub struct RemoveFolderPayload {
     pub folder_id: String,
 }
 
+/// Payload for renaming/moving a folder and its contents.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameFolderPayload {
+    pub folder_id: String,
+    pub old_path: PathBuf,
+    pub new_path: PathBuf,
+}
+
 /// Payload for updating an asset's color palette.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -199,6 +208,8 @@ pub enum LedgerCommand {
     CreateFolder(CreateFolderPayload),
     /// Removes a logical folder and all its contents.
     RemoveFolder(RemoveFolderPayload),
+    /// Renames a folder and recursively updates all child paths.
+    RenameFolder(RenameFolderPayload),
     /// Assign an asset to a folder.
     SetAssetFolder {
         asset_id: String,

@@ -218,12 +218,34 @@ Durante a implementação, surgiram alguns problemas graves de regressão em rel
 4. **Eventos de Watcher Sobrescritos Silenciosamente:**
    - **Correção:** `WatcherService::watch` resetava o processo para toda e qualquer nova pasta (matando observers antigos em sistemas multirraízes). Refatoramos o sistema inteiro com um Singleton `HashMap` global (persistindo `watch_id`) em `sensor.rs`.
 
+5. **Duplicação no Rename (Concorrência de Eventos):**
+   - **Dificuldade:** Renomear arquivos (`teste.jpg` → `teste2.jpg`) ocasionalmente gerava duplicatas no banco de dados. Isso acontecia quando o evento de "Criação" para o novo nome era processado pelo indexador antes do comando "Rename" oficial, resultando em um erro de restrição de unicidade (`UNIQUE path`) que impedia a atualização do registro original.
+   - **Correção Inicial:** Implementamos uma lógica de "Merge/Delete" preventivo no `LedgerCommand::UpdateAsset`. Se o caminho de destino já existir no banco (como um registro placeholder recém-criado), ele é automaticamente removido para permitir que o registro original (que contém metadados como tags e notas) assuma o novo caminho.
+
+6. Refinamento Final do Heurístico de Rename e Resolução Robusta (V1-Inspired):
+   - **Dificuldade:** Identificamos que no macOS, eventos de renomeação rápidos resultam em sequências de "Delete + Create" que o debouncer não conseguia parear perfeitamente devido à perda de metadados durante a transição. Além disso, a normalização Unicode (NFD vs NFC) causava falhas silenciosas na localização de registros existentes.
+   - **Melhoria Final (Concluída):** 
+     - **Delayed Deletion Window (2.0s):** O indexador agora implementa uma janela de segurança de 2 segundos para eventos de exclusão. Em vez de deletar imediatamente do banco, o sistema agenda a remoção e aguarda. Se um novo arquivo aparecer na mesma pasta com a mesma extensão nesse intervalo, o sistema cancela a deleção e executa um `Update` (Rename), preservando tags e metadados.
+     - **Unicode Normalization Enforcement (NFC):** Forçamos a normalização Unicode NFC em todos os caminhos vindos do `notify` (no `sensor.rs`) antes de qualquer processamento. Isso garante que o banco de dados e o sistema de arquivos falem a mesma "língua", eliminando duplicatas causadas por diferentes representações de caracteres acentuados.
+     - **Implicit Rename Recovery:** Se um arquivo novo é detectado, o indexador verifica o histórico de "Recent Removals" (últimos 5 segundos). Se houver um match de diretório e extensão, ele recupera o registro original automaticamente.
+
+7. **Definitivo: Pareamento e Evidência de "Mover/Renomear" entre Pastas Diferentes (Cross-Directory Move):**
+   - **Dificuldade:** Mover um arquivo de uma pasta para outra com o Mac Finder gerava rapidamente eventos "Delete + Create" em partições separadas da árvore do OS, em que o debouncer, restrito ao diretório raiz inicial, perdia o rastreamento. As lógicas antigas inseriam o novo arquivo sem nenhum conhecimento do anterior, resultando em dados perdidos (Tags, Color Palettes, Ratings deletados 2 segundos depois após o atraso defensivo do OS expirar). Durante testes estendidos (Sessão c75eb3fb-c765-43e3-b97a-f54c4e981005), os eventos paralelos também travavam o SQLite (`database is locked` error code 5) se fossemos muito rigorosos durante scans sequenciais (`BatchCreate`).
+   - **Melhoria/Correção Final:** Restaurou-se perfeitamente e portou-se o fluxo de "Signature-based Move Recovery" exato que a V1 implementava:
+     - **Ledger In-Place Recovery (`CreateAsset`):** Alterado o handler de criação pontual para que, ANTES de qualquer injeção (`INSERT`), consulte o SQLite buscando se já existe algum Asset com o exato binário `file_size` e `created_at` e cujo caminho original (old_path) *já não exista mais ativamente no File System*. Existindo esse "registro irmão órfão", ocorre em tempo real um `UPDATE` injetando a localização correta (`new_path`) sem perder os marcadores lógicos do arquivo original.
+     - **Indexer Context Precision:** O `handle_file_discovered` no Indexer foi atrasado de 200ms para 500ms, propiciando timing suficiente para a deleção anterior ser catalogada. Agora buscamos a dupla `{file_size, created_at}` usando `recent_removals` como buffer inteligente.
+     - **Lock Mitigation:** Com sabedoria, essa "busca assinada" foi **excluída do `BatchCreate`** (Scan de boot). Como o boot scan realiza inserções em massa (milhares de registros), realizar filechecks no HDD simultaneamente provocava `Database is locked`. O boot usa naturalmente prune e upserting `ON CONFLICT` tradicionais, deixando o `CreateAsset` do Watcher com o poder pontual e cirúrgico de "Signature-based Recovery". Isso solucionou definitivamente os clones e logs perigosos do projeto.
+
 ## Arquivos Modificados
 
 - `docs/report/backend-architeture/definition/sprints/sprint-10-2.md`
+- `src-tauri/Cargo.toml` (Adicionado `unicode-normalization`)
+- `src-tauri/src/feature/library/indexer.rs` (Delayed Deletion & Recovery)
+- `src-tauri/src/processing/watcher/sensor.rs` (Unicode NFC Normalization)
 - `src-tauri/src/core/events/payloads.rs`
 - `src-tauri/src/core/settings/model.rs`
 - `src-tauri/src/delivery/tauri/commands/mutations.rs`
+- `src-tauri/src/core/ledger/command.rs`
 - `src-tauri/src/feature/library/indexer.rs`
 - `src-tauri/src/infra/database/ledger.rs`
 - `src-tauri/src/infra/database/queries.rs`
@@ -235,7 +257,10 @@ Durante a implementação, surgiram alguns problemas graves de regressão em rel
 - `src/core/store/library/libraryActions.ts`
 - `src/core/store/settings/schemas.ts`
 - `src/core/store/settingsStore.ts`
+- `src/core/store/library/itemActions.ts`
+- `src/core/store/library/schemas.ts`
 - `src/core/store/systemStore.ts`
+- `src/core/store/library/libraryState.ts`
 
 ## Notas para o Desenvolvedor
 

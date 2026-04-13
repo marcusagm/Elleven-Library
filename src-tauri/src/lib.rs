@@ -79,6 +79,7 @@ pub fn run() {
                             crate::core::events::DomainEvent::AssetTagsUpdated { .. } |
                             crate::core::events::DomainEvent::AssetStateChanged { .. } |
                             crate::core::events::DomainEvent::AssetFolderChanged { .. } |
+                            crate::core::events::DomainEvent::FolderMetadataUpdated { .. } |
                             crate::core::events::DomainEvent::FsPathDeleted { .. } |
                             crate::core::events::DomainEvent::FsPathRenamed { .. } => {
                                 let _ = app_handle.emit("library:batch-change", serde_json::json!({
@@ -158,12 +159,20 @@ pub fn run() {
                     ));
                 handle.manage(asset_query_handler.clone());
 
-                // Initialize Asset Ledger (Real SQLx Adapter)
-                let asset_ledger: Arc<dyn crate::core::ledger::port::TransactionalAssetLedger> =
-                    Arc::new(crate::infra::database::ledger::SqliteAssetLedger::new(
-                        db_manager.pool().clone(),
-                        event_bus.clone(),
-                    ));
+                let asset_ledger_impl = Arc::new(crate::infra::database::ledger::SqliteAssetLedger::new(
+                    db_manager.pool().clone(),
+                    event_bus.clone(),
+                ));
+
+                // Run database path normalization cleanup (one-time logic)
+                let ledger_for_cleanup = asset_ledger_impl.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = ledger_for_cleanup.normalize_database_paths().await {
+                        tracing::error!("Failed to normalize database paths: {}", e);
+                    }
+                });
+
+                let asset_ledger: Arc<dyn crate::core::ledger::port::TransactionalAssetLedger> = asset_ledger_impl;
                 handle.manage(asset_ledger.clone());
 
                 // Initialize High-level query/search services

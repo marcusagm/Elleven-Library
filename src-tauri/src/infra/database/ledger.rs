@@ -2,7 +2,9 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sqlx::{Sqlite, SqlitePool, Transaction};
 use std::sync::Arc;
+use tracing::{error, info, warn};
 use uuid::Uuid;
+use unicode_normalization::UnicodeNormalization;
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::events::{AppEventBus, DomainEvent};
@@ -402,6 +404,11 @@ impl SqliteAssetLedger {
                     folder_id: asset.folder_id.clone(),
                 })?;
             }
+            LedgerCommand::RenameFolder(payload) => {
+                self.event_bus.publish(DomainEvent::FolderMetadataUpdated {
+                    folder_id: payload.folder_id.clone(),
+                })?;
+            }
             LedgerCommand::UpdateThumbnail { thumbnail_path, .. } => {
                 self.event_bus.publish(DomainEvent::ThumbnailGenerated {
                     asset_id: asset.id.clone(),
@@ -507,16 +514,71 @@ impl SqliteAssetLedger {
                 let state_str = payload.state_init.to_string();
                 let file_size_i64 = payload.file_size as i64;
 
+                let created_at_val = payload.created_at.unwrap_or(now);
+                let modified_at_val = payload.modified_at.unwrap_or(now);
+                let added_at_val = now;
+
+                // ─── V1 Signature-Based Move Recovery ────────────────────────
+                // Before inserting, check if an existing asset with the same
+                // file_size + created_at has a stale path (file no longer on disk).
+                // If found, UPDATE that record instead of creating a duplicate.
+                // This preserves tags, rating, notes, thumbnail, and colors.
+                if let Some(filesystem_created_at) = payload.created_at {
+                    let move_candidates: Vec<(String, String, String)> = sqlx::query_as(
+                        "SELECT id, folder_id, path FROM assets WHERE file_size = ? AND created_at = ?"
+                    )
+                    .bind(file_size_i64)
+                    .bind(filesystem_created_at)
+                    .fetch_all(&mut **tx)
+                    .await?;
+
+                    for (existing_asset_id, _old_folder_id, old_path_str) in &move_candidates {
+                        if !std::path::Path::new(old_path_str).exists() && old_path_str != &path_str {
+                            info!(
+                                "Ledger: MOVE DETECTED (V1 recovery). Updating asset {} from '{}' to '{}'",
+                                existing_asset_id, old_path_str, path_str
+                            );
+
+                            let folder_id_for_update = payload.folder_id.as_deref();
+                            sqlx::query!(
+                                "UPDATE assets SET path = ?, name = ?, folder_id = ?, modified_at = ?, updated_at = ?, state = ? WHERE id = ?",
+                                path_str,
+                                name,
+                                folder_id_for_update,
+                                modified_at_val,
+                                now,
+                                state_str,
+                                existing_asset_id
+                            )
+                            .execute(&mut **tx)
+                            .await?;
+
+                            Self::log_operation(
+                                tx,
+                                "CREATE_ASSET_MOVE_RECOVERY",
+                                existing_asset_id,
+                                serde_json::json!({
+                                    "old_path": old_path_str,
+                                    "new_path": path_str,
+                                    "recovery_type": "signature_match"
+                                }),
+                                "COMPLETED",
+                                None,
+                            )
+                            .await?;
+
+                            return Self::fetch_asset_by_id(tx, existing_asset_id).await;
+                        }
+                    }
+                }
+                // ─── End Move Recovery ────────────────────────────────────────
+
                 let path_ref = &path_str;
                 let state_ref = &state_str;
                 let format_type_ref = &payload.format_type;
                 let family_ref = &payload.family;
                 let folder_id_ref = payload.folder_id.as_deref();
                 let asset_id_final_ref = &asset_id;
-
-                let created_at_val = payload.created_at.unwrap_or(now);
-                let modified_at_val = payload.modified_at.unwrap_or(now);
-                let added_at_val = now;
 
                 let row = sqlx::query!(
                     r#"
@@ -605,16 +667,26 @@ impl SqliteAssetLedger {
                     let path_str = payload.path.to_string_lossy().to_string();
                     let file_size_i64 = payload.file_size as i64;
 
+                    let created_at_val = payload.created_at.unwrap_or(now);
+                    let modified_at_val = payload.modified_at.unwrap_or(now);
+                    let added_at_val = now;
+
+                    // NOTE: Signature-based move recovery is intentionally NOT applied
+                    // in BatchCreate (scan path). Per-item SELECT + filesystem exists()
+                    // inside the write transaction causes SQLite BUSY errors (code: 5)
+                    // due to lock contention with concurrent workers (color, thumbnail).
+                    // Move detection for the scan path is handled by:
+                    // 1. ON CONFLICT(path) upsert for same-path changes
+                    // 2. Phase 6 pruning for stale records
+                    // 3. CreateAsset (watcher) has the full V1 recovery for real-time moves
+
+
                     let path_ref = &path_str;
                     let state_ref = &state_str;
                     let format_type_ref = &payload.format_type;
                     let family_ref = &payload.family;
                     let folder_id_ref = payload.folder_id.as_deref();
                     let asset_id_ref = &asset_id;
-
-                    let created_at_val = payload.created_at.unwrap_or(now);
-                    let modified_at_val = payload.modified_at.unwrap_or(now);
-                    let added_at_val = now;
 
                     // 1. Insert Asset (Upsert)
                     let row = sqlx::query!(
@@ -753,21 +825,28 @@ impl SqliteAssetLedger {
             }
             LedgerCommand::UpdateAsset(payload) => {
                 let now = Utc::now();
+                let old_p = payload.old_path.as_ref().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| "None".to_string());
+                let new_p = payload.new_path.to_string_lossy().to_string();
+                
+                info!("Ledger: UpdateAsset START. old: {}, new: {}", old_p, new_p);
 
-                // 1. Resolve Asset ID
+                // 1. Resolve Asset ID (Using robust fallback for macOS Unicode consistency)
                 let asset_id: String = match (&payload.asset_id, &payload.old_path) {
-                    (Some(id), _) => id.clone(),
+                    (Some(id), _) => {
+                        info!("Ledger: UpdateAsset resolved by ID: {}", id);
+                        id.clone()
+                    },
                     (None, Some(old_path)) => {
-                        let old_path_str = old_path.to_string_lossy().to_string();
-                        let row = sqlx::query!(
-                            r#"SELECT id as "id!" FROM assets WHERE path = ? COLLATE NOCASE"#,
-                            old_path_str
-                        )
-                        .fetch_optional(&mut **tx)
-                        .await?;
-                        row.map(|r| r.id.to_string()).ok_or_else(|| {
-                            AppError::NotFound(format!("Asset not found at path: {}", old_path_str))
-                        })?
+                        match Self::resolve_asset_id_robust(tx, old_path).await? {
+                            Some(id) => {
+                                info!("Ledger: UpdateAsset resolved old_path '{}' to ID: {}", old_path.display(), id);
+                                id
+                            },
+                            None => {
+                                warn!("Ledger: UpdateAsset IGNORED - old_path '{}' not found in DB (even after robust fallback)", old_path.display());
+                                return Err(AppError::NotFound(format!("Asset not found at path: {}", old_path.display())));
+                            }
+                        }
                     }
                     _ => {
                         return Err(AppError::ValidationFailed(
@@ -785,7 +864,22 @@ impl SqliteAssetLedger {
                     })?;
                 let new_path_str = payload.new_path.to_string_lossy().to_string();
 
-                // 2. Update Asset
+                // 2. Safety DELETE (Avoid Unique Constraint Violation on Rename)
+                info!("Ledger: UpdateAsset safety DELETE checking for '{}' (collision prevention)", new_path_str);
+                let delete_res = sqlx::query!(
+                    "DELETE FROM assets WHERE path = ? AND id != ?",
+                    new_path_str,
+                    asset_id
+                )
+                .execute(&mut **tx)
+                .await?;
+                
+                if delete_res.rows_affected() > 0 {
+                    info!("Ledger: UpdateAsset collision DETECTED. Pruned {} record(s) for '{}'", delete_res.rows_affected(), new_path_str);
+                }
+
+                // 3. Update Asset
+                info!("Ledger: UpdateAsset executing UPDATE for ID {} to NEW path '{}'", asset_id, new_path_str);
                 sqlx::query!(
                     "UPDATE assets SET path = ?, name = ?, updated_at = ? WHERE id = ?",
                     new_path_str,
@@ -811,8 +905,8 @@ impl SqliteAssetLedger {
                 )
                 .await?;
 
-                // 4. Fetch and return
-        Self::fetch_asset_by_id(tx, &asset_id).await
+                info!("Ledger: UpdateAsset SUCCESS for ID {}", asset_id);
+                Self::fetch_asset_by_id(tx, &asset_id).await
             }
             LedgerCommand::MarkAsStale { asset_id } => {
                 let now = Utc::now();
@@ -844,22 +938,29 @@ impl SqliteAssetLedger {
                 path,
                 physical_delete,
             } => {
-                // 1. Resolve Asset ID
+                let p_str = path.as_ref().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| "None".to_string());
+                info!("Ledger: DeleteAsset START. asset_id: {:?}, path: {}", asset_id, p_str);
+
+                // 1. Resolve Asset ID (Using robust fallback for macOS Unicode consistency)
                 let resolved_id: String = match (asset_id, path) {
-                    (Some(id), _) => id.clone(),
+                    (Some(id), _) => {
+                        info!("Ledger: DeleteAsset resolved by ID: {}", id);
+                        id.clone()
+                    },
                     (None, Some(p)) => {
-                        let path_str = p.to_string_lossy().to_string();
-                        let row = sqlx::query!(
-                            r#"SELECT id as "id!" FROM assets WHERE path = ? COLLATE NOCASE"#,
-                            path_str
-                        )
-                        .fetch_optional(&mut **tx)
-                        .await?;
-                        row.map(|r| r.id.to_string()).ok_or_else(|| {
-                            AppError::NotFound(format!("Asset not found at path: {}", path_str))
-                        })?
+                        match Self::resolve_asset_id_robust(tx, &p).await? {
+                            Some(id) => {
+                                info!("Ledger: DeleteAsset resolved path '{}' to ID: {}", p.display(), id);
+                                id
+                            },
+                            None => {
+                                warn!("Ledger: DeleteAsset IGNORED - path '{}' not found in DB (even after robust fallback)", p.display());
+                                return Err(AppError::NotFound(format!("Asset not found at path: {}", p.display())));
+                            }
+                        }
                     }
                     _ => {
+                        error!("Ledger: DeleteAsset FAILED - missing ID and path");
                         return Err(AppError::ValidationFailed(
                             "DeleteAsset requires either asset_id or path".to_string(),
                         ))
@@ -867,6 +968,7 @@ impl SqliteAssetLedger {
                 };
 
                 // 2. Perform Delete
+                info!("Ledger: DeleteAsset executing DELETE for ID {}", resolved_id);
                 sqlx::query!("DELETE FROM assets WHERE id = ?", resolved_id)
                     .execute(&mut **tx)
                     .await?;
@@ -882,6 +984,7 @@ impl SqliteAssetLedger {
                 )
                 .await?;
 
+                info!("Ledger: DeleteAsset SUCCESS for ID {}", resolved_id);
                 // 4. Return Tombstone
                 Ok(Asset {
                     id: resolved_id,
@@ -1731,8 +1834,253 @@ impl SqliteAssetLedger {
         Self::fetch_asset_by_id(tx, &asset_id).await
             }
             LedgerCommand::Batch(_) => {
-                return Err(AppError::Internal("Nested Batch commands are not supported".to_string()));
+                return Err(AppError::Internal(
+                    "Nested Batch commands are not supported".to_string(),
+                ));
+            }
+            LedgerCommand::RenameFolder(payload) => {
+                let old_path_str = payload.old_path.to_string_lossy().to_string();
+                let new_path_str = payload.new_path.to_string_lossy().to_string();
+                let now = Utc::now();
+
+                // 1. Update the target folder name and path
+                let folder_name = payload
+                    .new_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("Unknown")
+                    .to_string();
+
+                sqlx::query!(
+                    "UPDATE folders SET name = ?, path = ?, updated_at = ? WHERE id = ?",
+                    folder_name,
+                    new_path_str,
+                    now,
+                    payload.folder_id
+                )
+                .execute(&mut **tx)
+                .await?;
+
+                // 2. Recursively update all subfolder paths
+                sqlx::query!(
+                    r#"
+                    UPDATE folders 
+                    SET path = ? || SUBSTR(path, LENGTH(?) + 1),
+                        updated_at = ?
+                    WHERE path LIKE ? || '/%'
+                    "#,
+                    new_path_str,
+                    old_path_str,
+                    now,
+                    old_path_str
+                )
+                .execute(&mut **tx)
+                .await?;
+
+                // 3. Recursively update all asset paths
+                sqlx::query!(
+                    r#"
+                    UPDATE assets 
+                    SET path = ? || SUBSTR(path, LENGTH(?) + 1),
+                        updated_at = ?
+                    WHERE path LIKE ? || '%'
+                    "#,
+                    new_path_str,
+                    old_path_str,
+                    now,
+                    old_path_str
+                )
+                .execute(&mut **tx)
+                .await?;
+
+                // 4. Audit Log
+                Self::log_operation(
+                    tx,
+                    "RENAME_FOLDER",
+                    &payload.folder_id,
+                    serde_json::to_value(&payload).unwrap_or_default(),
+                    "COMPLETED",
+                    None,
+                )
+                .await?;
+
+                Ok(Asset {
+                    id: payload.folder_id,
+                    name: folder_name,
+                    path: payload.new_path,
+                    state: AssetState::Idle,
+                    format_type: "folder".to_string(),
+                    family: "FOLDER".to_string(),
+                    file_size: 0,
+                    created_at: None,
+                    modified_at: None,
+                    added_at: None,
+                    updated_at: Some(now),
+                    width: None,
+                    height: None,
+                    duration_secs: None,
+                    technical_payload: None,
+                    semantic_payload: None,
+                    dominant_color: None,
+                    folder_id: None,
+                    thumbnail_path: None,
+                    rating: None,
+                    notes: None,
+                })
             }
         }
+    }
+
+    /// Robustly resolves an asset ID from a path.
+    async fn resolve_asset_id_robust(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        path: &std::path::Path,
+    ) -> AppResult<Option<String>> {
+        let path_str = path.to_string_lossy().to_string();
+        
+        // 1. Direct Match (NFC/NFD sensitive)
+        let row = sqlx::query!(
+            r#"SELECT id as "id!" FROM assets WHERE path = ? COLLATE NOCASE"#,
+            path_str
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
+
+        if let Some(r) = row {
+            return Ok(Some(r.id));
+        }
+
+        info!("Ledger: Direct path match FAILED for '{}'. Attempting robust folder+name resolution...", path_str);
+
+        // 2. Fallback: Resolve Folder first, then Name
+        if let (Some(parent_path), Some(name)) = (path.parent(), path.file_name()) {
+            let name_str = name.to_string_lossy().to_string();
+
+            if let Some(folder_id) = Self::resolve_folder_id_robust(tx, parent_path).await? {
+                // Now find the asset by name in this folder
+                let asset_row = sqlx::query!(
+                    r#"SELECT id as "id!" FROM assets WHERE folder_id = ? AND name = ? COLLATE NOCASE"#,
+                    folder_id,
+                    name_str
+                )
+                .fetch_optional(&mut **tx)
+                .await?;
+
+                if let Some(a) = asset_row {
+                    info!("Ledger: Robust resolution SUCCESS. Found asset ID {} via folder {} + name '{}'", a.id, folder_id, name_str);
+                    return Ok(Some(a.id));
+                } else {
+                    warn!("Ledger: Robust resolution FAILED: Asset '{}' not found in folder ID {} (Normalization mismatch?)", name_str, folder_id);
+                }
+            } else {
+                warn!("Ledger: Robust resolution FAILED: Could not resolve folder ID for path '{}'", parent_path.display());
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Robustly resolves a folder ID by path, handling normalization issues.
+    async fn resolve_folder_id_robust(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        path: &std::path::Path,
+    ) -> AppResult<Option<String>> {
+        let path_str = path.to_string_lossy().to_string();
+
+        // 1. Direct match
+        let row = sqlx::query!(
+            r#"SELECT id as "id!" FROM folders WHERE path = ? COLLATE NOCASE"#,
+            path_str
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
+
+        if let Some(r) = row {
+            return Ok(Some(r.id));
+        }
+
+        // 2. Fallback: Parent ID + Name match
+        if let (Some(parent_p), Some(name)) = (path.parent(), path.file_name()) {
+            let name_str = name.to_string_lossy().to_string();
+            
+            // Recurse to find parent ID
+            if let Some(parent_id) = Box::pin(Self::resolve_folder_id_robust(tx, parent_p)).await? {
+                let folder_row = sqlx::query!(
+                    r#"SELECT id as "id!" FROM folders WHERE parent_id = ? AND name = ? COLLATE NOCASE"#,
+                    parent_id,
+                    name_str
+                )
+                .fetch_optional(&mut **tx)
+                .await?;
+
+                if let Some(f) = folder_row {
+                    info!("Ledger: Robust folder resolution SUCCESS. Resolved '{}' -> ID {}", path_str, f.id);
+                    return Ok(Some(f.id));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Performs a one-time database-wide path normalization to NFC.
+    /// This resolves legacy "ghost records" on macOS where paths were stored in NFD.
+    pub async fn normalize_database_paths(&self) -> AppResult<()> {
+        let mut tx = self.pool.begin().await?;
+        let now = Utc::now();
+        
+        info!("Ledger: Starting database path normalization (NFC)...");
+
+        // 1. Normalize Assets
+        let asset_rows = sqlx::query!(r#"SELECT id, path FROM assets"#)
+            .fetch_all(&mut *tx)
+            .await?;
+
+        let mut asset_fix_count = 0;
+        for row in asset_rows {
+            let nfc_path = row.path.nfc().collect::<String>();
+            if nfc_path != row.path {
+                sqlx::query!(
+                    "UPDATE assets SET path = ?, updated_at = ? WHERE id = ?",
+                    nfc_path,
+                    now,
+                    row.id
+                )
+                .execute(&mut *tx)
+                .await?;
+                asset_fix_count += 1;
+            }
+        }
+
+        // 2. Normalize Folders
+        let folder_rows = sqlx::query!(r#"SELECT id, path FROM folders"#)
+            .fetch_all(&mut *tx)
+            .await?;
+
+        let mut folder_fix_count = 0;
+        for row in folder_rows {
+            let nfc_path = row.path.nfc().collect::<String>();
+            if nfc_path != row.path {
+                sqlx::query!(
+                    "UPDATE folders SET path = ?, updated_at = ? WHERE id = ?",
+                    nfc_path,
+                    now,
+                    row.id
+                )
+                .execute(&mut *tx)
+                .await?;
+                folder_fix_count += 1;
+            }
+        }
+
+        tx.commit().await?;
+        
+        if asset_fix_count > 0 || folder_fix_count > 0 {
+            info!("Ledger: Path normalization COMPLETED. Fixed {} assets and {} folders.", asset_fix_count, folder_fix_count);
+        } else {
+            info!("Ledger: Database is already normalized.");
+        }
+
+        Ok(())
     }
 }

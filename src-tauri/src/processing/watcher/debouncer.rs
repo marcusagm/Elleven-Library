@@ -1,3 +1,4 @@
+use tracing::info;
 use crate::core::events::payloads::DomainEvent;
 use notify::{Event, EventKind};
 use std::collections::HashMap;
@@ -48,6 +49,9 @@ pub struct EventDebouncer {
     /// Untracked removes waiting for potential rename pairing.
     /// These have an extra grace period before being emitted as `FsPathDeleted`.
     pending_untracked_removes: HashMap<PathBuf, (Instant, Option<FileMetadataSnapshot>)>,
+    /// History of recently emitted `FsFileDiscovered` events (path -> snapshot).
+    /// Used for "late pairing" if a Remove event arrives after its Create counterpart was already emitted.
+    recent_emitted_creates: HashMap<PathBuf, (Instant, FileMetadataSnapshot)>,
 }
 
 impl EventDebouncer {
@@ -58,6 +62,7 @@ impl EventDebouncer {
             buffer: HashMap::new(),
             pending_tracked_renames: HashMap::new(),
             pending_untracked_removes: HashMap::new(),
+            recent_emitted_creates: HashMap::new(),
         }
     }
 
@@ -181,7 +186,7 @@ impl EventDebouncer {
     /// It also handles the delayed deletion guard.
     pub async fn tick(&mut self, debounce_window: Duration) {
         let now = Instant::now();
-        let deletion_guard_duration = Duration::from_secs(2);
+        let deletion_guard_duration = Duration::from_secs(3);
 
         // ─── Gap 2 Fix: Heuristic pairing for untracked renames ─────────
         // Before processing deletions, try to pair removes with creates
@@ -203,6 +208,9 @@ impl EventDebouncer {
                     .insert(from_path, (now, metadata_snapshot));
             }
         }
+
+        // 6. Prune recent emitted creates history (5s expiry to cover late renames)
+        self.recent_emitted_creates.retain(|_, (instant, _)| instant.elapsed() < Duration::from_secs(5));
 
         // ─── Gap 3 Fix: Delayed deletion guard ─────────────────────────
         let mut confirmed_deletions: Vec<PathBuf> = Vec::new();
@@ -262,6 +270,12 @@ impl EventDebouncer {
                             let size = std::fs::metadata(&path)
                                 .map(|metadata| metadata.len())
                                 .unwrap_or(0);
+                            
+                            // Record in recent emitted creates for late pairing fallback
+                            if let Some(meta) = read_metadata_snapshot(&path) {
+                                self.recent_emitted_creates.insert(path.clone(), (Instant::now(), meta));
+                            }
+
                             DomainEvent::FsFileDiscovered {
                                 path: path_str,
                                 size_bytes: size,
@@ -285,7 +299,7 @@ impl EventDebouncer {
     /// For each pending untracked remove, look for a newly Created file with
     /// matching `size + created_at` → treat as rename pair.
     async fn apply_rename_heuristics(&mut self) {
-        let mut rename_pairs: Vec<(PathBuf, PathBuf)> = Vec::new();
+        let mut renames_found: Vec<(PathBuf, PathBuf)> = Vec::new();
 
         let remove_paths: Vec<PathBuf> = self
             .pending_untracked_removes
@@ -294,50 +308,67 @@ impl EventDebouncer {
             .collect();
 
         for from_path in remove_paths {
-            let from_metadata = match self.pending_untracked_removes.get(&from_path) {
-                Some((_, Some(metadata_snapshot))) => metadata_snapshot.clone(),
-                _ => continue,
-            };
+            let from_meta = self.pending_untracked_removes.get(&from_path).and_then(|(_, m)| m.clone());
+            let mut matched_to_path = None;
 
-            // Search the buffer for a matching Created entry with same size + created_at
-            let matching_to_path = self
-                .buffer
-                .iter()
-                .find(|(_, event)| {
+            // 1. Try strict matching (Size + CreatedAt) if metadata is available
+            // ALLOW cross-folder matches if it's a direct metadata hit
+            if let Some(meta) = &from_meta {
+                matched_to_path = self.buffer.iter().find(|(_, event)| {
                     if let BufferedEvent::Created(_, Some(created_snapshot)) = event {
-                        created_snapshot.size_bytes == from_metadata.size_bytes
-                            && created_snapshot.created_at == from_metadata.created_at
+                        created_snapshot.size_bytes == meta.size_bytes
+                            && created_snapshot.created_at == meta.created_at
                     } else {
                         false
                     }
-                })
-                .map(|(path, _)| path.clone());
+                }).map(|(path, _)| path.clone());
+            }
 
-            // Directory heuristic: same parent directory
-            let directory_match = if matching_to_path.is_none() {
-                self.buffer
-                    .iter()
-                    .find(|(to_path, event)| {
-                        matches!(event, BufferedEvent::Created(_, _))
-                            && to_path.parent() == from_path.parent()
-                            && (to_path.is_dir() || is_likely_directory(to_path))
-                            && (from_path.extension().is_none()) // Likely was a directory
-                    })
-                    .map(|(path, _)| path.clone())
-            } else {
-                None
-            };
+            // 2. Fallback matching (Buffer): Same Parent + Same Extension
+            if matched_to_path.is_none() {
+                matched_to_path = self.buffer.iter().find(|(to_path, event)| {
+                    matches!(event, BufferedEvent::Created(_, _)) &&
+                    to_path.parent() == from_path.parent() &&
+                    to_path.extension() == from_path.extension() &&
+                    !to_path.is_dir()
+                }).map(|(path, _)| path.clone());
+            }
 
-            if let Some(to_path) = matching_to_path.or(directory_match) {
-                rename_pairs.push((from_path, to_path));
+            // 3. Fallback matching (Recent Emitted): Same Parent + Same Extension 
+            // (Crucial for macOS where Metadata might be missing for the "from" path)
+            if matched_to_path.is_none() {
+                for (to_path, (_instant, to_meta)) in &self.recent_emitted_creates {
+                    let parent_match = from_path.parent() == to_path.parent();
+                    let ext_match = from_path.extension() == to_path.extension();
+                    
+                    if ext_match {
+                        // If we have metadata, use it to confirm
+                        if let (Some(f_meta), t_meta) = (&from_meta, to_meta) {
+                            if f_meta.size_bytes == t_meta.size_bytes {
+                                info!("Debouncer: Late Heuristic MATCH (Meta): {} -> {}", from_path.display(), to_path.display());
+                                matched_to_path = Some(to_path.clone());
+                                break;
+                            }
+                        } else if from_path.parent() == to_path.parent() {
+                            // No metadata for 'from', but path looks like a rename candidate in same folder
+                            info!("Debouncer: Late Heuristic MATCH (Path-only): {} -> {}", from_path.display(), to_path.display());
+                            matched_to_path = Some(to_path.clone());
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if let Some(to_path) = matched_to_path {
+                info!("Debouncer: Heuristic MATCH found: {} -> {}", from_path.display(), to_path.display());
+                self.buffer.remove(&to_path);
+                renames_found.push((from_path, to_path));
             }
         }
 
         // Emit rename events and clean up buffers
-        for (from_path, to_path) in rename_pairs {
+        for (from_path, to_path) in renames_found {
             self.pending_untracked_removes.remove(&from_path);
-            self.buffer.remove(&to_path);
-
             let _ = self
                 .output_sender
                 .send(DomainEvent::FsPathRenamed {
