@@ -139,42 +139,42 @@ Total registered formats: 138 extensions
 *   **Testing Base**: 209 formats monitored for future expansion.
 
 ### 🖼️ Images
-| Category | Formats | Status | Notes |
-| :--- | :--- | :---: | :--- |
-| **Standards** | `jpg`, `jpeg`, `jpe`, `jfif`, `webp`, `png`, `tiff`, `gif`, `bmp`, `ico`, `tga` | ✅ | Full support (Thumb + View). |
-| **Design & Paint** | `psd`, `psb`, `ai`, `afdesign`, `afphoto`, `afpub`, `xmind`, `aseprite`, `kra`, `xcf`, `clip`, `fig`, `sketch`, `mdp`, `sai`, `reb`, `cdr` | ✅ | Full support (Thumb + View). Some formats (e.g. SAI, MDP, CDR) might have low-res embedded thumbs. |
-| **Vectors & Publishing** | `svg`, `pdf`, `eps`, `ps` | ✅ | Full support (Thumb + View). |
-| **RAW** | `cr2`, `cr3`, `crw`, `nef`, `nrw`, `arw`, `srf`, `sr2`, `dng`, `raf`, `orf`, `rw2`, `pef`, `erf`, `3fr`, `fff`, `dcr`, `kdc`, `srw`, `x3f`, `iiq`, `mos`, `rwl`, `mrw`, `gpr` | ✅ | Full support (Thumb + View). |
-| **Specialized** | `avif`, `heic`, `heif`, `cur`, `dds`, `exr`, `hdr`, `pam`, `pbm`, `pgm`, `pnm`, `ppm` | ✅ | Full support (Thumb + View). |
-| **Image Projects (Stubs)** | `indd`, `idml`, `sai2`, `jxl`, `icns` | 🚧 | Basic icon/thumb, inspection/view works partially or is pending. |
+| Category                   | Formats                                                                                                                                                                       | Status | Notes                                                                                              |
+| :------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----: | :------------------------------------------------------------------------------------------------- |
+| **Standards**              | `jpg`, `jpeg`, `jpe`, `jfif`, `webp`, `png`, `tiff`, `gif`, `bmp`, `ico`, `tga`                                                                                               |   ✅    | Full support (Thumb + View).                                                                       |
+| **Design & Paint**         | `psd`, `psb`, `ai`, `afdesign`, `afphoto`, `afpub`, `xmind`, `aseprite`, `kra`, `xcf`, `clip`, `fig`, `sketch`, `mdp`, `sai`, `sai2`, `reb`, `cdr`                            |   ✅    | Full support (Thumb + View). Some formats (e.g. SAI, MDP, CDR) might have low-res embedded thumbs. |
+| **Vectors & Publishing**   | `svg`, `pdf`, `eps`, `ps`                                                                                                                                                     |   ✅    | Full support (Thumb + View).                                                                       |
+| **RAW**                    | `cr2`, `cr3`, `crw`, `nef`, `nrw`, `arw`, `srf`, `sr2`, `dng`, `raf`, `orf`, `rw2`, `pef`, `erf`, `3fr`, `fff`, `dcr`, `kdc`, `srw`, `x3f`, `iiq`, `mos`, `rwl`, `mrw`, `gpr` |   ✅    | Full support (Thumb + View).                                                                       |
+| **Specialized**            | `avif`, `heic`, `heif`, `cur`, `dds`, `exr`, `hdr`, `pam`, `pbm`, `pgm`, `pnm`, `ppm`                                                                                         |   ✅    | Full support (Thumb + View).                                                                       |
+| **Image Projects (Stubs)** | `indd`, `idml`, `jxl`, `icns`                                                                                                                                                 |   🚧    | Basic icon/thumb, inspection/view works partially or is pending.                                   |
 
 ### 🧊 3D Models
-| Category | Formats | Status | Notes |
-| :--- | :--- | :---: | :--- |
-| **Standard 3D** | `glb`, `gltf`, `obj`, `fbx`, `stl`, `dae`, `3ds`, `dxf`, `lws`, `lwo` | 👁️ | View only (Interactive 3D viewport, thumbnails pending). |
-| **Project** | `blend` | �️ | Thumbnail/Preview extracted via internal render. |
-| **USD / CAD / Sculpt** | `usdz`, `usd`, `usda`, `usdc`, `step`, `stp`, `iges`, `igs`, `zpr`, `ztl`, `sculpt` | 🚧 | Planned support (Current stub shows generic icon). |
+| Category               | Formats                                                                             | Status | Notes                                                    |
+| :--------------------- | :---------------------------------------------------------------------------------- | :----: | :------------------------------------------------------- |
+| **Standard 3D**        | `glb`, `gltf`, `obj`, `fbx`, `stl`, `dae`, `3ds`, `dxf`, `lws`, `lwo`               |   👁️    | View only (Interactive 3D viewport, thumbnails pending). |
+| **Project**            | `blend`                                                                             |   �️    | Thumbnail/Preview extracted via internal render.         |
+| **USD / CAD / Sculpt** | `usdz`, `usd`, `usda`, `usdc`, `step`, `stp`, `iges`, `igs`, `zpr`, `ztl`, `sculpt` |   🚧    | Planned support (Current stub shows generic icon).       |
 
 ### 🔡 Fonts
-| Formats | Status | Notes |
-| :--- | :---: | :--- |
-| `ttf`, `otf`, `ttc`, `woff`, `woff2` | ✅ | Full support (Extracted glyph thumb + Specimen view). |
-| `eof` | 🚧 | Planned support. |
+| Formats                              | Status | Notes                                                 |
+| :----------------------------------- | :----: | :---------------------------------------------------- |
+| `ttf`, `otf`, `ttc`, `woff`, `woff2` |   ✅    | Full support (Extracted glyph thumb + Specimen view). |
+| `eof`                                |   🚧    | Planned support.                                      |
 
 ### 🎬 Video & Audio
-| Category | Formats | Status | Method |
-| :--- | :--- | :---: | :--- |
-| **Native Video** | `mp4`, `m4v`, `mov`, `qt` | ✅ | Native browser playback. |
-| **Transcoded Video** | `webm`, `wmv`, `asf`, `mkv`, `flv`, `f4v`, `avi`, `divx`, `mxf`, `ts`, `mts`, `vob`, `m2ts`, `3gp`, `3g2`, `wtv`, `rm`, `rmvb`, `ogv` | ✅ | HLS Streaming via background transcode. |
-| **Linear Video** | `swf`, `mpg`, `mpeg`, `m2v`, `mjpeg`, `mjpg`, `hevc`, `h264`, `h265`, `y4m` | ✅ | Linear/On-the-fly HLS for raw/legacy streams. |
-| **Video Projects** | `aep`, `prproj`, `fcpxml`, `drp`, `braw`, `r3d`, `ari` | 🚧 | Planned support (Stub shows generic icon). |
-| **Native Audio** | `mp3`, `wav`, `aac`, `m4a`, `m4r`, `flac`, `mp2` | ✅* | Native playback with audio visualization. |
-| **Transcoded/HLS Audio** | `ogg`, `oga`, `opus`, `wma`, `ac3`, `dts`, `wv`, `aiff`, `aif`, `aifc`, `spx`, `ra`, `mka`, `amr`, `ape`, `caf`, `aax`, `mid`, `midi`, `bwf` | ✅* | Transcoded playback with audio visualization. |
+| Category                 | Formats                                                                                                                                      | Status | Method                                        |
+| :----------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- | :----: | :-------------------------------------------- |
+| **Native Video**         | `mp4`, `m4v`, `mov`, `qt`                                                                                                                    |   ✅    | Native browser playback.                      |
+| **Transcoded Video**     | `webm`, `wmv`, `asf`, `mkv`, `flv`, `f4v`, `avi`, `divx`, `mxf`, `ts`, `mts`, `vob`, `m2ts`, `3gp`, `3g2`, `wtv`, `rm`, `rmvb`, `ogv`        |   ✅    | HLS Streaming via background transcode.       |
+| **Linear Video**         | `swf`, `mpg`, `mpeg`, `m2v`, `mjpeg`, `mjpg`, `hevc`, `h264`, `h265`, `y4m`                                                                  |   ✅    | Linear/On-the-fly HLS for raw/legacy streams. |
+| **Video Projects**       | `aep`, `prproj`, `fcpxml`, `drp`, `braw`, `r3d`, `ari`                                                                                       |   🚧    | Planned support (Stub shows generic icon).    |
+| **Native Audio**         | `mp3`, `wav`, `aac`, `m4a`, `m4r`, `flac`, `mp2`                                                                                             |   ✅*   | Native playback with audio visualization.     |
+| **Transcoded/HLS Audio** | `ogg`, `oga`, `opus`, `wma`, `ac3`, `dts`, `wv`, `aiff`, `aif`, `aifc`, `spx`, `ra`, `mka`, `amr`, `ape`, `caf`, `aax`, `mid`, `midi`, `bwf` |   ✅*   | Transcoded playback with audio visualization. |
 
 ### 📄 Documents (Planned)
-| Formats | Status | Notes |
-| :--- | :---: | :--- |
-| `txt`, `md`, `doc`, `docx`, `xls`, `xlsx` | ❌ | Future expansion to index reference plaintexts/docs. |
+| Formats                                   | Status | Notes                                                |
+| :---------------------------------------- | :----: | :--------------------------------------------------- |
+| `txt`, `md`, `doc`, `docx`, `xls`, `xlsx` |   ❌    | Future expansion to index reference plaintexts/docs. |
 
  ---
  

@@ -162,6 +162,12 @@ impl MetadataCapability for BinaryDesignFormatProvider {
                     move || extract_sai_dimensions(&path).ok()
                 }).await.ok().flatten()
             }
+            "sai2" => {
+                tokio::task::spawn_blocking({
+                    let path = path.to_path_buf();
+                    move || extract_sai2_dimensions(&path).ok()
+                }).await.ok().flatten()
+            }
             _ => None,
         };
 
@@ -201,18 +207,24 @@ impl ThumbnailCapability for BinaryDesignFormatProvider {
             .unwrap_or("")
             .to_lowercase();
 
-        let result = match extension.as_str() {
-            "sai" => extract_sai_preview(path),
-            "sai2" => extract_sai2_preview(path),
-            "xcf" => extract_xcf_preview(path),
-            "clip" => extract_clip_preview(path),
-            "rif" | "riff" => extract_corel_painter_preview(path),
-            _ => Err("Unsupported extension for binary design provider".into()),
-        };
+        let result = tokio::task::spawn_blocking({
+            let path = path.to_path_buf();
+            let ext = extension.clone();
+            move || {
+                let res = match ext.as_str() {
+                    "sai" => extract_sai_preview(&path),
+                    "sai2" => extract_sai2_preview(&path),
+                    "xcf" => extract_xcf_preview(&path),
+                    "clip" => extract_clip_preview(&path),
+                    "rif" | "riff" => extract_corel_painter_preview(&path),
+                    _ => Err("Unsupported extension for binary design provider".into()),
+                };
+                res.map_err(|e| e.to_string())
+            }
+        }).await.map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?
+        .map_err(|e| crate::core::error::AppError::Generic(e))?;
 
-        result
-            .map(|(data, _mime)| data)
-            .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
+        Ok(result.0)
     }
 }
 

@@ -2,7 +2,7 @@
 
 **Status da sprint:** ✅ Concluído
 **Data e hora de inicio da sprint:** 2026-03-25T17:25:50Z
-**Data e hora da conclusão da sprint:** 2026-04-06T04:27:00Z
+**Data e hora da conclusão da sprint:** 2026-04-13T15:49:17Z
 
 ## Objetivo
 

@@ -27,6 +27,6 @@ pub use mdp::extract_mdp_preview;
 pub use penpot::extract_penpot_preview;
 pub use rebelle::extract_rebelle_preview;
 pub use sai::{extract_sai_preview, extract_sai_dimensions};
-pub use sai2::extract_sai2_preview;
+pub use sai2::{extract_sai2_preview, extract_sai2_dimensions};
 pub use sketch::extract_sketch_preview;
 pub use xcf::extract_xcf_preview;
