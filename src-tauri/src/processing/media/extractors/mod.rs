@@ -21,7 +21,7 @@ pub use aseprite::extract_aseprite_preview;
 pub use binary_jpeg::extract_any_embedded;
 pub use clip::extract_clip_preview;
 pub use corel_painter::extract_corel_painter_preview;
-pub use coreldraw::extract_coreldraw_preview;
+pub use coreldraw::{extract_coreldraw_preview, extract_coreldraw_dimensions};
 pub use eps::extract_eps_ps_preview;
 pub use mdp::extract_mdp_preview;
 pub use penpot::extract_penpot_preview;

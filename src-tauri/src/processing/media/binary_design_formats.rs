@@ -39,7 +39,7 @@ impl FormatProvider for BinaryDesignFormatProvider {
     ///
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["sai", "sai2", "xcf", "rif", "riff", "clip"]
+        vec!["sai", "sai2", "xcf", "rif", "riff", "clip", "cdr"]
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
@@ -91,6 +91,15 @@ impl FormatProvider for BinaryDesignFormatProvider {
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
+            SupportedFormat::with_metadata(
+                "CorelDRAW Image",
+                vec!["cdr"],
+                vec!["application/x-coreldraw"],
+                MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
         ]
     }
 
@@ -104,10 +113,12 @@ impl FormatProvider for BinaryDesignFormatProvider {
     ///
     /// `bool` - True se o provedor suporta os magic bytes, false caso contrário.
     fn supports_magic_bytes(&self, header_bytes: &[u8]) -> bool {
-        header_bytes.starts_with(b"gimp xcf") || // XCF
-        header_bytes.starts_with(b"RIFF") ||     // RIFF (Painter)
-        header_bytes.starts_with(b"SAI") ||      // SAI
-        header_bytes.starts_with(b"CSFCHUNK")    // CLIP
+        header_bytes.starts_with(b"gimp xcf") ||                    // XCF
+        header_bytes.starts_with(b"RIFF") ||                        // RIFF (Painter / CDR legacy)
+        header_bytes.starts_with(b"SAI") ||                         // SAI
+        header_bytes.starts_with(b"CSFCHUNK") ||                    // CLIP
+        header_bytes.starts_with(&[0x50, 0x4B, 0x03, 0x04]) ||     // CDR modern (ZIP)
+        (header_bytes.len() >= 2 && header_bytes[0] == 0x57 && header_bytes[1] == 0x4C) // CDR legacy (WL)
     }
 
     /// Retorna o provedor de metadados.
@@ -168,6 +179,12 @@ impl MetadataCapability for BinaryDesignFormatProvider {
                     move || extract_sai2_dimensions(&path).ok()
                 }).await.ok().flatten()
             }
+            "cdr" => {
+                tokio::task::spawn_blocking({
+                    let path = path.to_path_buf();
+                    move || extract_coreldraw_dimensions(&path).ok()
+                }).await.ok().flatten()
+            }
             _ => None,
         };
 
@@ -217,6 +234,7 @@ impl ThumbnailCapability for BinaryDesignFormatProvider {
                     "xcf" => extract_xcf_preview(&path),
                     "clip" => extract_clip_preview(&path),
                     "rif" | "riff" => extract_corel_painter_preview(&path),
+                    "cdr" => extract_coreldraw_preview(&path),
                     _ => Err("Unsupported extension for binary design provider".into()),
                 };
                 res.map_err(|e| e.to_string())
@@ -254,6 +272,7 @@ impl PreviewCapability for BinaryDesignFormatProvider {
                 "xcf" => extract_xcf_preview(&path).map_err(|e| e.to_string()),
                 "clip" => extract_clip_preview(&path).map_err(|e| e.to_string()),
                 "rif" | "riff" => extract_corel_painter_preview(&path).map_err(|e| e.to_string()),
+                "cdr" => extract_coreldraw_preview(&path).map_err(|e| e.to_string()),
                 _ => Err("Unsupported extension for binary design preview".to_string()),
             }
         }).await.map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?
