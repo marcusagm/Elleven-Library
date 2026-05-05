@@ -180,21 +180,47 @@ impl MetadataCapability for BinaryDesignFormatProvider {
                 }).await.ok().flatten()
             }
             "cdr" => {
+                let path_clone = path.to_path_buf();
                 tokio::task::spawn_blocking({
-                    let path = path.to_path_buf();
+                    let path = path_clone.clone();
                     move || extract_coreldraw_dimensions(&path).ok()
                 }).await.ok().flatten()
             }
             _ => None,
         };
 
+        // CDR-specific enrichment: version and container type
+        let cdr_version = if extension == "cdr" {
+            tokio::task::spawn_blocking({
+                let path = path.to_path_buf();
+                move || get_cdr_version_string(&path)
+            }).await.ok().flatten()
+        } else {
+            None
+        };
+
         if let Some((width, height)) = dimensions {
-            Ok(serde_json::json!({
+            let mut metadata = serde_json::json!({
                 "width": width,
                 "height": height
-            }))
+            });
+
+            // For CDR files, dimensions are in mm (from mcfg), add unit info
+            if extension == "cdr" {
+                metadata["dimension_unit"] = serde_json::json!("mm");
+            }
+
+            if let Some(version_string) = cdr_version {
+                metadata["cdr_version"] = serde_json::json!(version_string);
+            }
+
+            Ok(metadata)
         } else {
-            Ok(serde_json::json!({}))
+            let mut metadata = serde_json::json!({});
+            if let Some(version_string) = cdr_version {
+                metadata["cdr_version"] = serde_json::json!(version_string);
+            }
+            Ok(metadata)
         }
     }
 
@@ -272,7 +298,7 @@ impl PreviewCapability for BinaryDesignFormatProvider {
                 "xcf" => extract_xcf_preview(&path).map_err(|e| e.to_string()),
                 "clip" => extract_clip_preview(&path).map_err(|e| e.to_string()),
                 "rif" | "riff" => extract_corel_painter_preview(&path).map_err(|e| e.to_string()),
-                "cdr" => extract_coreldraw_preview(&path).map_err(|e| e.to_string()),
+                "cdr" => extract_coreldraw_preview_highres(&path, 1024).map_err(|e| e.to_string()),
                 _ => Err("Unsupported extension for binary design preview".to_string()),
             }
         }).await.map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?

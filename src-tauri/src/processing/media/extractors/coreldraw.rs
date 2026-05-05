@@ -71,6 +71,63 @@ pub fn extract_coreldraw_preview(
     Err("No valid preview found in CorelDRAW file".into())
 }
 
+/// Extracts a high-resolution preview for the preview modal.
+///
+/// CDR embedded previews are typically small (88-256px). This function
+/// extracts the best available source and upscales it to `target_size`
+/// using Lanczos3 interpolation for smooth results in the UI.
+///
+/// # Errors
+/// Returns error if no preview can be extracted or upscaling fails.
+pub fn extract_coreldraw_preview_highres(
+    path: &Path,
+    target_size: u32,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+    let (source_data, _source_mime) = extract_coreldraw_preview(path)?;
+
+    let source_image = image::load_from_memory(&source_data)
+        .map_err(|error| format!("CDR: Failed to decode source for upscale: {}", error))?;
+
+    let source_width = source_image.width();
+    let source_height = source_image.height();
+
+    // Skip upscale if source is already large enough
+    if source_width >= target_size || source_height >= target_size {
+        tracing::debug!(
+            "CDR: Source {}x{} already meets target {}px, skipping upscale",
+            source_width, source_height, target_size
+        );
+        return Ok((source_data, "image/png".to_string()));
+    }
+
+    let aspect_ratio = source_width as f64 / source_height as f64;
+    let (target_width, target_height) = if aspect_ratio > 1.0 {
+        (target_size, (target_size as f64 / aspect_ratio).max(1.0) as u32)
+    } else {
+        ((target_size as f64 * aspect_ratio).max(1.0) as u32, target_size)
+    };
+
+    tracing::debug!(
+        "CDR: Upscaling preview {}x{} -> {}x{} with Lanczos3",
+        source_width, source_height, target_width, target_height
+    );
+
+    let upscaled_image = source_image.resize(
+        target_width,
+        target_height,
+        image::imageops::FilterType::Lanczos3,
+    );
+
+    let mut png_buffer = Vec::new();
+    let mut cursor = Cursor::new(&mut png_buffer);
+    upscaled_image
+        .write_to(&mut cursor, image::ImageFormat::Png)
+        .map_err(|error| format!("CDR: Failed to encode upscaled PNG: {}", error))?;
+
+    tracing::debug!("CDR: Upscaled preview: {} bytes", png_buffer.len());
+    Ok((png_buffer, "image/png".to_string()))
+}
+
 /// Normalizes image data to a format the V2 thumbnail pipeline accepts.
 ///
 /// The thumbnail worker (`image_utils::detect_image_format`) only recognizes
@@ -104,31 +161,315 @@ fn normalize_to_pipeline_format(
     }
 }
 
-/// Extracts document dimensions from a CorelDRAW file.
+/// Extracts **real document dimensions** from a CorelDRAW file.
 ///
-/// For RIFF-based CDR files, attempts to read the BMP dimensions from the
-/// embedded DISP thumbnail. For ZIP-based files, reads the preview image header.
+/// For RIFF-based CDR files, reads the `mcfg` chunk which contains the actual
+/// page size in CDR internal units (converted to millimeters).
+/// For ZIP-based CDR files, extracts the internal `content/riffData.cdr` RIFF
+/// and parses its `mcfg` chunk. Falls back to preview image dimensions.
 ///
 /// # Returns
-/// Tuple of (width, height) in pixels.
+/// Tuple of (width, height) in millimeters as u32.
 ///
 /// # Errors
 /// Returns error if no dimension information can be extracted.
 pub fn extract_coreldraw_dimensions(
     path: &Path,
 ) -> Result<(u32, u32), Box<dyn std::error::Error>> {
-    if let Ok((preview_data, mime_type)) = extract_coreldraw_preview(path) {
-        if mime_type.contains("png") || mime_type.contains("jpeg") || mime_type.contains("bmp") {
-            if let Ok(reader) = image::io::Reader::new(Cursor::new(&preview_data))
-                .with_guessed_format()
-            {
-                if let Ok((width, height)) = reader.into_dimensions() {
-                    return Ok((width, height));
-                }
+    let mut file = File::open(path)?;
+    let mut magic_bytes = [0u8; 4];
+    file.read_exact(&mut magic_bytes)?;
+
+    // Try mcfg-based extraction first (real document dimensions)
+    if magic_bytes == [0x50, 0x4B, 0x03, 0x04] {
+        // ZIP CDR: extract internal RIFF and parse mcfg
+        if let Ok(dimensions) = extract_zip_riff_dimensions(path) {
+            return Ok(dimensions);
+        }
+    } else if magic_bytes == *b"RIFF" {
+        // RIFF CDR: parse mcfg directly
+        if let Ok(dimensions) = extract_riff_mcfg_dimensions(path) {
+            return Ok(dimensions);
+        }
+    }
+
+    // Fallback: extract from preview image header
+    if let Ok((preview_data, _mime_type)) = extract_coreldraw_preview(path) {
+        if let Ok(reader) = image::io::Reader::new(Cursor::new(&preview_data))
+            .with_guessed_format()
+        {
+            if let Ok((width, height)) = reader.into_dimensions() {
+                return Ok((width, height));
             }
         }
     }
     Err("Could not extract CDR dimensions".into())
+}
+
+/// Detects the CDR version from the RIFF header signature.
+///
+/// The 4th byte of the CDR signature (bytes 8-11 after "RIFF" + size)
+/// encodes the version: '5'=v500, '6'=v600, ... 'A'=v1000, 'B'=v1100, etc.
+///
+/// Returns version as integer (e.g., 500, 600, 700, ..., 1800).
+fn parse_cdr_version(signature: &[u8; 4]) -> u32 {
+    if signature[0..3] != *b"CDR" && signature[0..3] != *b"cdr" {
+        return 0;
+    }
+    let version_byte = signature[3];
+    // Special case: "cdr8" (bidi) = v801
+    if signature[0..3] == *b"cdr" && version_byte == 0x38 {
+        return 801;
+    }
+    match version_byte {
+        0x20 => 300,                             // space = v3.0
+        0x31..=0x39 => 100 * (version_byte as u32 - 0x30), // '1'-'9' = v100-v900
+        0x41..=0x48 => 100 * (version_byte as u32 - 0x37), // 'A'-'H' = v1000-v1800
+        _ => 0,
+    }
+}
+
+/// Extracts the CDR version string for metadata display.
+///
+/// Converts the internal version number to a human-readable format string.
+pub fn get_cdr_version_string(path: &Path) -> Option<String> {
+    let mut file = File::open(path).ok()?;
+    let mut magic_bytes = [0u8; 4];
+    file.read_exact(&mut magic_bytes).ok()?;
+
+    if magic_bytes == [0x50, 0x4B, 0x03, 0x04] {
+        // ZIP CDR: modern format (v16+)
+        return Some("ZIP (v16+)".to_string());
+    }
+
+    if magic_bytes == *b"RIFF" {
+        file.seek(SeekFrom::Start(8)).ok()?;
+        let mut signature = [0u8; 4];
+        file.read_exact(&mut signature).ok()?;
+        let version = parse_cdr_version(&signature);
+        if version > 0 {
+            return Some(format!("RIFF v{}.0", version / 100));
+        }
+    }
+
+    if magic_bytes[0] == 0x57 && magic_bytes[1] == 0x4C {
+        return Some("WL (v3-v5)".to_string());
+    }
+
+    None
+}
+
+/// Extracts document dimensions from the `mcfg` chunk in a RIFF CDR file.
+///
+/// The mcfg chunk stores real page size in CDR internal units.
+/// Conversion: CDR units → mm = value / 10000.0
+///
+/// Offsets before page_size vary by CDR version:
+/// - v≥1300: 12 bytes
+/// - v≥900: 4 bytes
+/// - v600-699: 0x1c bytes
+/// - v<600: 0 bytes
+fn extract_riff_mcfg_dimensions(
+    path: &Path,
+) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+    let mut file = File::open(path)?;
+    let mut riff_header = [0u8; 12];
+    file.read_exact(&mut riff_header)?;
+
+    if &riff_header[0..4] != b"RIFF" {
+        return Err("Not a RIFF file".into());
+    }
+
+    let mut signature = [0u8; 4];
+    signature.copy_from_slice(&riff_header[8..12]);
+    let version = parse_cdr_version(&signature);
+
+    let file_length = file.metadata()?.len();
+    let mut mcfg_data: Option<Vec<u8>> = None;
+    walk_riff_for_chunk(&mut file, 12, file_length, b"mcfg", &mut mcfg_data)?;
+
+    if let Some(data) = mcfg_data {
+        return parse_mcfg_dimensions(&data, version);
+    }
+
+    Err("mcfg chunk not found".into())
+}
+
+/// Extracts document dimensions from the internal RIFF in a ZIP CDR file.
+///
+/// ZIP-based CDR files (v16+) contain `content/riffData.cdr` which holds
+/// the complete RIFF structure with mcfg and other metadata chunks.
+fn extract_zip_riff_dimensions(
+    path: &Path,
+) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+    let file = File::open(path)?;
+    let mut archive = zip::ZipArchive::new(file)?;
+
+    // Try to extract the internal RIFF data
+    let riff_entry_name = if archive.by_name("content/riffData.cdr").is_ok() {
+        "content/riffData.cdr"
+    } else if archive.by_name("content/root.dat").is_ok() {
+        "content/root.dat"
+    } else {
+        return Err("No internal RIFF found in ZIP CDR".into());
+    };
+
+    let mut entry = archive.by_name(riff_entry_name)?;
+    let mut riff_data = Vec::new();
+    entry.read_to_end(&mut riff_data)?;
+
+    // Parse the RIFF structure from the extracted data
+    if riff_data.len() < 12 || &riff_data[0..4] != b"RIFF" {
+        return Err("Invalid RIFF data in ZIP CDR".into());
+    }
+
+    let mut signature = [0u8; 4];
+    signature.copy_from_slice(&riff_data[8..12]);
+    let version = parse_cdr_version(&signature);
+
+    let mut cursor = Cursor::new(riff_data);
+    let riff_length = cursor.get_ref().len() as u64;
+    let mut mcfg_data: Option<Vec<u8>> = None;
+    walk_riff_for_chunk(&mut cursor, 12, riff_length, b"mcfg", &mut mcfg_data)?;
+
+    if let Some(data) = mcfg_data {
+        return parse_mcfg_dimensions(&data, version);
+    }
+
+    Err("mcfg chunk not found in ZIP CDR RIFF".into())
+}
+
+/// Walks RIFF chunks searching for a specific chunk by identifier.
+///
+/// Traverses LIST containers (including compressed cmpr blocks) to find
+/// the target chunk. Stores the first match found.
+fn walk_riff_for_chunk<R: Read + Seek>(
+    reader: &mut R,
+    start_position: u64,
+    end_position: u64,
+    target_chunk_id: &[u8; 4],
+    result: &mut Option<Vec<u8>>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    reader.seek(SeekFrom::Start(start_position))?;
+
+    while reader.stream_position()? + 8 <= end_position && result.is_none() {
+        let mut chunk_identifier = [0u8; 4];
+        if reader.read_exact(&mut chunk_identifier).is_err() {
+            break;
+        }
+
+        let chunk_size = reader.read_u32::<LittleEndian>()?;
+        if chunk_size > 100_000_000 {
+            break;
+        }
+
+        let next_chunk_position =
+            reader.stream_position()? + chunk_size as u64 + (chunk_size % 2) as u64;
+
+        if &chunk_identifier == target_chunk_id {
+            let mut chunk_data = vec![0u8; chunk_size as usize];
+            reader.read_exact(&mut chunk_data)?;
+            *result = Some(chunk_data);
+            return Ok(());
+        }
+
+        if chunk_identifier == *b"LIST" {
+            let mut list_type = [0u8; 4];
+            reader.read_exact(&mut list_type)?;
+
+            if list_type == *b"cmpr" && chunk_size > 40 {
+                let mut compressed_data = vec![0u8; (chunk_size - 4) as usize];
+                reader.read_exact(&mut compressed_data)?;
+                if compressed_data.len() > 32 {
+                    let zlib_offset = 24;
+                    if zlib_offset < compressed_data.len() {
+                        let zlib_stream = &compressed_data[zlib_offset..];
+                        let mut decoder = ZlibDecoder::new(zlib_stream);
+                        let mut decompressed_data = Vec::new();
+                        if decoder.read_to_end(&mut decompressed_data).is_ok() {
+                            let mut decompressed_cursor = Cursor::new(decompressed_data);
+                            let decompressed_length = decompressed_cursor.get_ref().len() as u64;
+                            let _ = walk_riff_for_chunk(
+                                &mut decompressed_cursor,
+                                0,
+                                decompressed_length,
+                                target_chunk_id,
+                                result,
+                            );
+                        }
+                    }
+                }
+            } else {
+                let list_content_start = reader.stream_position()?;
+                let _ = walk_riff_for_chunk(
+                    reader,
+                    list_content_start,
+                    next_chunk_position,
+                    target_chunk_id,
+                    result,
+                );
+            }
+        }
+
+        reader.seek(SeekFrom::Start(next_chunk_position))?;
+    }
+
+    Ok(())
+}
+
+/// Parses the mcfg chunk data to extract page width and height.
+///
+/// CDR internal units are in 1/10000 mm. The offset before the page_size
+/// data depends on the CDR version.
+fn parse_mcfg_dimensions(
+    mcfg_data: &[u8],
+    version: u32,
+) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+    let skip_offset: usize = if version >= 1300 {
+        12
+    } else if version >= 900 {
+        4
+    } else if version >= 600 && version < 700 {
+        0x1c
+    } else {
+        0
+    };
+
+    if version < 400 {
+        // Old format: bounding box with x0, y0, x1, y1 (each coord is 4 bytes)
+        // Skip 2 bytes of unknown, then read x0, y0, x1, y1
+        let data_offset = skip_offset + 2;
+        if mcfg_data.len() < data_offset + 16 {
+            return Err("mcfg data too short for old format".into());
+        }
+        let mut cursor = Cursor::new(&mcfg_data[data_offset..]);
+        let x0 = cursor.read_i32::<LittleEndian>()? as f64;
+        let y0 = cursor.read_i32::<LittleEndian>()? as f64;
+        let x1 = cursor.read_i32::<LittleEndian>()? as f64;
+        let y1 = cursor.read_i32::<LittleEndian>()? as f64;
+        let width_mm = ((x1 - x0).abs() / 10000.0).round() as u32;
+        let height_mm = ((y1 - y0).abs() / 10000.0).round() as u32;
+        if width_mm > 0 && height_mm > 0 && width_mm < 100000 && height_mm < 100000 {
+            tracing::debug!("CDR: mcfg old format dimensions: {}x{} mm", width_mm, height_mm);
+            return Ok((width_mm, height_mm));
+        }
+    } else {
+        // New format: width, height (each coord is 4 bytes signed i32)
+        if mcfg_data.len() < skip_offset + 8 {
+            return Err("mcfg data too short for new format".into());
+        }
+        let mut cursor = Cursor::new(&mcfg_data[skip_offset..]);
+        let raw_width = cursor.read_i32::<LittleEndian>()? as f64;
+        let raw_height = cursor.read_i32::<LittleEndian>()? as f64;
+        let width_mm = (raw_width.abs() / 10000.0).round() as u32;
+        let height_mm = (raw_height.abs() / 10000.0).round() as u32;
+        if width_mm > 0 && height_mm > 0 && width_mm < 100000 && height_mm < 100000 {
+            tracing::debug!("CDR: mcfg dimensions: {}x{} mm (v{})", width_mm, height_mm, version);
+            return Ok((width_mm, height_mm));
+        }
+    }
+
+    Err("Invalid mcfg dimensions".into())
 }
 
 /// Checks whether a file is a legacy (non-ZIP) format.
@@ -160,52 +501,69 @@ fn extract_zip_best_quality(
         "previews/thumbnail.png",
     ];
 
-    let mut best_candidate: Option<(Vec<u8>, String)> = None;
-    let mut maximum_size: u64 = 0;
+    // Collect all known preview candidates and select by pixel resolution
+    let mut all_candidates: Vec<(Vec<u8>, String, u32)> = Vec::new();
 
     for candidate_path in known_paths {
         if let Ok(mut entry) = archive.by_name(candidate_path) {
-            let entry_size = entry.size();
-            tracing::debug!("CDR: Found candidate '{}' size: {} bytes", candidate_path, entry_size);
-            if entry_size > maximum_size {
+            let mut buffer = Vec::new();
+            if entry.read_to_end(&mut buffer).is_ok() && buffer.len() > 100 {
+                let pixel_count = get_pixel_count(&buffer);
+                tracing::debug!(
+                    "CDR: ZIP candidate '{}' size={} bytes, pixels={}",
+                    candidate_path, buffer.len(), pixel_count
+                );
+                all_candidates.push((buffer, "image/png".to_string(), pixel_count));
+            }
+        }
+    }
+
+    // Fallback: scan all entries for image files
+    if all_candidates.is_empty() {
+        let mut candidate_indices: Vec<usize> = Vec::new();
+        for entry_index in 0..archive.len() {
+            if let Ok(entry) = archive.by_index(entry_index) {
+                let entry_name = entry.name().to_lowercase();
+                if entry_name.ends_with(".png")
+                    && (entry_name.contains("preview")
+                        || entry_name.contains("page")
+                        || entry_name.contains("thumb"))
+                {
+                    candidate_indices.push(entry_index);
+                }
+            }
+        }
+        for entry_index in candidate_indices {
+            if let Ok(mut entry) = archive.by_index(entry_index) {
                 let mut buffer = Vec::new();
-                entry.read_to_end(&mut buffer)?;
-                maximum_size = entry_size;
-                best_candidate = Some((buffer, "image/png".to_string()));
+                if entry.read_to_end(&mut buffer).is_ok() && buffer.len() > 100 {
+                    let pixel_count = get_pixel_count(&buffer);
+                    all_candidates.push((buffer, "image/png".to_string(), pixel_count));
+                }
             }
         }
     }
 
-    if let Some(candidate_data) = best_candidate {
-        return Ok(candidate_data);
-    }
-
-    let mut best_entry_index: Option<usize> = None;
-    let mut maximum_fallback_size: u64 = 0;
-
-    for entry_index in 0..archive.len() {
-        if let Ok(entry) = archive.by_index(entry_index) {
-            let entry_name = entry.name().to_lowercase();
-            if entry_name.ends_with(".png")
-                && (entry_name.contains("preview")
-                    || entry_name.contains("page")
-                    || entry_name.contains("thumb"))
-                && entry.size() > maximum_fallback_size
-            {
-                maximum_fallback_size = entry.size();
-                best_entry_index = Some(entry_index);
-            }
-        }
-    }
-
-    if let Some(index) = best_entry_index {
-        let mut entry = archive.by_index(index)?;
-        let mut buffer = Vec::new();
-        entry.read_to_end(&mut buffer)?;
-        return Ok((buffer, "image/png".to_string()));
+    // Select candidate with highest pixel count (best resolution)
+    if let Some((best_data, best_mime, best_pixels)) = all_candidates
+        .into_iter()
+        .max_by_key(|(_, _, pixel_count)| *pixel_count)
+    {
+        tracing::debug!("CDR: Selected ZIP preview with {} pixels", best_pixels);
+        return Ok((best_data, best_mime));
     }
 
     Err("No preview found in CorelDRAW ZIP container".into())
+}
+
+/// Calculates total pixel count from image data for resolution-based selection.
+fn get_pixel_count(image_data: &[u8]) -> u32 {
+    if let Ok(reader) = image::io::Reader::new(Cursor::new(image_data)).with_guessed_format() {
+        if let Ok((width, height)) = reader.into_dimensions() {
+            return width * height;
+        }
+    }
+    0
 }
 
 // ─── Legacy RIFF Strategy ────────────────────────────────────────────
