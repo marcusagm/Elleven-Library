@@ -186,6 +186,12 @@ impl MetadataCapability for BinaryDesignFormatProvider {
                     move || extract_coreldraw_dimensions(&path).ok()
                 }).await.ok().flatten()
             }
+            "xcf" => {
+                tokio::task::spawn_blocking({
+                    let path = path.to_path_buf();
+                    move || extract_xcf_dimensions(&path).ok()
+                }).await.ok().flatten()
+            }
             _ => None,
         };
 
