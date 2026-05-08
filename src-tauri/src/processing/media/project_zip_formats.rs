@@ -50,6 +50,10 @@ impl ProjectZipFormatProvider {
                 return extractors::extract_rebelle_preview(path)
                     .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
             }
+            "penpot" => {
+                return extractors::extract_penpot_preview(path)
+                    .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
+            }
             _ => {}
         }
 
@@ -110,7 +114,7 @@ impl FormatProvider for ProjectZipFormatProvider {
     ///
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["kra", "sketch", "mdp", "fig", "reb", "xmind", "cdr"]
+        vec!["kra", "sketch", "mdp", "fig", "reb", "xmind", "cdr", "penpot"]
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
@@ -180,12 +184,21 @@ impl FormatProvider for ProjectZipFormatProvider {
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
+            SupportedFormat::with_metadata(
+                "Penpot Project",
+                vec!["penpot"],
+                vec!["application/x-penpot"],
+                MediaType::Project,
+                ThumbnailStrategy::NativeExtractor,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
         ]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.
     fn supports_magic_bytes(&self, header_bytes: &[u8]) -> bool {
-        header_bytes.starts_with(b"PK\x03\x04")
+        header_bytes.starts_with(b"PK\x03\x04") || header_bytes.starts_with(&[0x01, 0x0B, 0x1A, 0x86])
     }
 
     /// Retorna o provedor de metadados.
@@ -240,10 +253,54 @@ impl PreviewCapability for ProjectZipFormatProvider {
 /// Implementação da capacidade de Metadados.
 #[async_trait]
 impl MetadataCapability for ProjectZipFormatProvider {
-    async fn extract_technical(&self, _path: &Path) -> AppResult<Value> {
-        // Basic metadata to avoid errors. Can be expanded if we have a zip/project-specific metadata logic.
+    async fn extract_technical(&self, path: &Path) -> AppResult<Value> {
+        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+
+        if extension == "penpot" {
+             let path_owned = path.to_path_buf();
+             let metadata = tokio::task::spawn_blocking(move || -> Option<Value> {
+                 let mut file = File::open(&path_owned).ok()?;
+                 let mut header = [0u8; 4];
+                 if file.read(&mut header).ok()? < 4 { return None; }
+
+                 // Only ZIP V1 has manifest.json easily accessible for dimensions
+                 if header == [0x50, 0x4B, 0x03, 0x04] {
+                     let mut archive = zip::ZipArchive::new(file).ok()?;
+                     let mut manifest_entry = archive.by_name("manifest.json").ok()?;
+                     let mut manifest_content = String::new();
+                     manifest_entry.read_to_string(&mut manifest_content).ok()?;
+                     let manifest_json: Value = serde_json::from_str(&manifest_content).ok()?;
+
+                     let width = manifest_json["width"].as_f64().unwrap_or(0.0) as u32;
+                     let height = manifest_json["height"].as_f64().unwrap_or(0.0) as u32;
+
+                     return Some(serde_json::json!({
+                         "container": "ZIP (Penpot V1)",
+                         "width": width,
+                         "height": height,
+                         "metadata_source": "manifest.json"
+                     }));
+                 }
+
+                 // V2 (Zstd)
+                 if header == [0x01, 0x0B, 0x1A, 0x86] {
+                     return Some(serde_json::json!({
+                         "container": "Zstd (Penpot V2)",
+                         "metadata_support": "Thumbnail Only"
+                     }));
+                 }
+
+                 None
+             }).await.map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?;
+
+             if let Some(data) = metadata {
+                 return Ok(data);
+             }
+        }
+
+        // Basic metadata fallback
         Ok(serde_json::json!({
-            "container": "ZIP",
+            "container": "ZIP / Project Archive",
             "metadata_support": "Limited (V2)"
         }))
     }
