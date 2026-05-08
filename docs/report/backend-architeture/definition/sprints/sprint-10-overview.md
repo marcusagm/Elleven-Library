@@ -49,7 +49,7 @@ Esta wave consolida as últimas tarefas para que a V2 seja completa e **superior
 6. Sprint 10.2  → Indexer paralelo (performance em bibliotecas grandes) ✅
 7. Formatos restantes:
  - Sprint 10.4 (SAI 2) ✅
- - Sprint 10.5 (CorelDRAW)
+ - Sprint 10.5 (CorelDRAW) ✅
  - Sprint 10.6 (GIMP XCF)
  - Sprint 10.8 (Rebelle + Penpot) 
 8. Sprint 10.12 → Features exclusivas V2 (polimento final)
