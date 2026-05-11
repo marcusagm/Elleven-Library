@@ -238,6 +238,15 @@ pub fn run() {
                 );
                 color_worker.start();
 
+                // FFmpeg Health Check
+                if !crate::processing::transcoding::check_transcoding_availability() {
+                    tracing::warn!("FFmpeg not found. Video transcoding unavailable.");
+                    let _ = event_bus.publish(crate::core::events::DomainEvent::SystemHealthIssue {
+                        component: "ffmpeg".to_string(),
+                        message: "FFmpeg not found. Video transcoding unavailable.".to_string(),
+                    });
+                }
+
                 // Read concurrency limit from settings (extra map or model default)
                 let concurrency_limit = if let Some(settings_service) = handle.try_state::<crate::feature::settings::SettingsService>() {
                     match settings_service.get_setting("indexer_concurrency_limit").await {

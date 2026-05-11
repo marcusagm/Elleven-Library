@@ -22,7 +22,7 @@ use crate::infra::database::manager::DbManager;
 use crate::feature::transcoding::cache::TranscodeCache;
 use crate::core::error::AppError;
 use std::time::Duration;
-use serde::Deserialize;
+
 use std::net::SocketAddr;
 use std::path::Path as StdPath;
 use std::sync::Arc;
@@ -35,7 +35,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::core::repository::AssetQueryHandler;
 use crate::delivery::tauri::commands::queries::StreamingSessionToken;
-use crate::feature::transcoding::hls_manager::HlsManager;
+
 use crate::core::models::asset::Folder;
 use crate::delivery::streaming::{probe, playlist, segment};
 
@@ -48,7 +48,7 @@ use crate::delivery::streaming::linear_manager::LinearManager;
 struct AppState {
     app_handle: AppHandle,
     cache: Arc<TranscodeCache>,
-    hls_manager: Arc<HlsManager>,
+
     registry: Arc<crate::core::formats::registry::FormatRegistry>,
     process_manager: Arc<RwLock<ProcessManager>>,
     linear_manager: LinearManager,
@@ -73,11 +73,7 @@ impl IntoResponse for StreamError {
 
 const SEGMENT_DURATION: u32 = 4;
 
-#[derive(Deserialize, Debug)]
-struct StreamQuery {
-    token: Option<String>,
-    quality: Option<String>,
-}
+
 
 /// Initializes and starts the Axum streaming server.
 pub async fn start_server(
@@ -89,7 +85,7 @@ pub async fn start_server(
         .state::<Arc<dyn AssetQueryHandler>>()
         .inner()
         .clone();
-    let hls_manager = app_handle.state::<Arc<HlsManager>>().inner().clone();
+
     let database = app_handle.state::<Arc<DbManager>>().inner().clone();
     let registry = app_handle.state::<Arc<crate::core::formats::registry::FormatRegistry>>().inner().clone();
     let session_token = app_handle.state::<StreamingSessionToken>().0.clone();
@@ -102,7 +98,7 @@ pub async fn start_server(
     let state = AppState {
         app_handle: app_handle.clone(),
         cache,
-        hls_manager: hls_manager.clone(),
+
         registry,
         process_manager: process_manager.clone(),
         linear_manager: linear_manager.clone(),

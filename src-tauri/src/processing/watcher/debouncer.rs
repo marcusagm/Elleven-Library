@@ -338,7 +338,6 @@ impl EventDebouncer {
             // (Crucial for macOS where Metadata might be missing for the "from" path)
             if matched_to_path.is_none() {
                 for (to_path, (_instant, to_meta)) in &self.recent_emitted_creates {
-                    let parent_match = from_path.parent() == to_path.parent();
                     let ext_match = from_path.extension() == to_path.extension();
                     
                     if ext_match {

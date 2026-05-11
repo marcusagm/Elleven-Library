@@ -14,6 +14,7 @@ use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, instrument, warn};
 use walkdir::{DirEntry, WalkDir};
+use async_recursion::async_recursion;
 
 /// Intermediate result produced by each fan-out producer task.
 enum AssetDiscoveryResult {
@@ -547,7 +548,7 @@ impl LibraryIndexer {
         let modified_at = metadata.modified().ok().map(|t| DateTime::<Utc>::from(t));
 
         let folder_id = if let Some(parent) = entry_path.parent() {
-            self.query_handler.find_folder_by_path(&parent.to_string_lossy()).await?
+            self.ensure_folder_hierarchy(parent).await?
         } else {
             None
         };
@@ -653,6 +654,78 @@ impl LibraryIndexer {
                 old_path: Some(from_path),
                 new_path: to_path,
             })).await;
+        }
+    }
+
+    /// Performs a differential repair of the library index.
+    /// Finds assets with missing formats or thumbnails and updates them based on the registry.
+    pub async fn repair_library(&self) -> AppResult<()> {
+        info!("▶ Repair STARTED");
+
+        let assets_needing_repair = self.query_handler.get_assets_needing_repair().await?;
+        let count = assets_needing_repair.len();
+
+        if count == 0 {
+            info!("Repair COMPLETED: 0 assets needed repair.");
+            return Ok(());
+        }
+
+        info!("Found {} assets needing repair.", count);
+
+        for asset in assets_needing_repair {
+            if asset.format_type == "unknown" {
+                if let Some(supported_format) = self.registry.detect(&asset.path) {
+                    let format_name = supported_format.name.to_string();
+                    let _ = self.ledger.execute(LedgerCommand::UpdateFormat {
+                        asset_id: asset.id.clone(),
+                        format: format_name,
+                    }).await;
+                }
+            }
+
+            if asset.thumbnail_path.is_none() {
+                let _ = self.ledger.execute(LedgerCommand::RegenerateThumbnail {
+                    asset_id: asset.id.clone(),
+                }).await;
+            }
+        }
+
+        info!("Repair COMPLETED: {} assets processed.", count);
+        Ok(())
+    }
+
+    /// Ensures that the complete folder hierarchy for a given path exists in the database.
+    /// Returns the ID of the leaf folder.
+    #[async_recursion]
+    async fn ensure_folder_hierarchy(&self, path: &std::path::Path) -> AppResult<Option<String>> {
+        // 1. Check if it's already in the DB
+        let path_str = path.to_string_lossy().to_string();
+        if let Some(id) = self.query_handler.find_folder_by_path(&path_str).await? {
+            return Ok(Some(id));
+        }
+
+        // 2. Resolve parent
+        let parent_id = if let Some(parent) = path.parent() {
+            // Check if parent exists, recursively
+            self.ensure_folder_hierarchy(parent).await?
+        } else {
+            None
+        };
+
+        // 3. Create this folder (this will also trigger orphan adoption)
+        let folder_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
+        let create_folder_command = LedgerCommand::CreateFolder(CreateFolderPayload {
+            parent_id,
+            name: folder_name,
+            path: path.to_path_buf(),
+        });
+
+        match self.ledger.execute(create_folder_command).await {
+            Ok(folder_asset) => Ok(Some(folder_asset.id)),
+            Err(e) => {
+                warn!("Failed to ensure folder hierarchy for {:?}: {}", path, e);
+                Ok(None)
+            }
         }
     }
 

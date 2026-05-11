@@ -106,4 +106,9 @@ pub enum DomainEvent {
     ScanCompleted { library_id: String },
     /// A new thumbnail has been generated and is ready at the given path.
     ThumbnailGenerated { asset_id: String, path: String, format: String },
+    /// System health alert, used to notify the UI about critical dependency failures.
+    SystemHealthIssue {
+        component: String,
+        message: String,
+    },
 }

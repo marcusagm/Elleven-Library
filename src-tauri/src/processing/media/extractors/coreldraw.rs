@@ -195,7 +195,7 @@ pub fn extract_coreldraw_dimensions(
 
     // Fallback: extract from preview image header
     if let Ok((preview_data, _mime_type)) = extract_coreldraw_preview(path) {
-        if let Ok(reader) = image::io::Reader::new(Cursor::new(&preview_data))
+        if let Ok(reader) = image::ImageReader::new(Cursor::new(&preview_data))
             .with_guessed_format()
         {
             if let Ok((width, height)) = reader.into_dimensions() {
@@ -558,7 +558,7 @@ fn extract_zip_best_quality(
 
 /// Calculates total pixel count from image data for resolution-based selection.
 fn get_pixel_count(image_data: &[u8]) -> u32 {
-    if let Ok(reader) = image::io::Reader::new(Cursor::new(image_data)).with_guessed_format() {
+    if let Ok(reader) = image::ImageReader::new(Cursor::new(image_data)).with_guessed_format() {
         if let Ok((width, height)) = reader.into_dimensions() {
             return width * height;
         }

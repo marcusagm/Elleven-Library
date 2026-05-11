@@ -511,7 +511,7 @@ pub async fn request_thumbnail_regenerate(
 /// An empty result.
 #[tauri::command]
 pub async fn run_db_maintenance(
-    pool_manager: State<'_, crate::infra::database::manager::DbManager>,
+    pool_manager: State<'_, Arc<crate::infra::database::manager::DbManager>>,
 ) -> AppResult<()> {
     pool_manager.run_maintenance().await
 }

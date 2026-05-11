@@ -1007,6 +1007,88 @@ impl AssetQueryHandler for SqliteAssetQueries {
             dominant_color: r.dominant_color,
         }).map(Into::into).collect())
     }
+
+    async fn get_assets_needing_repair(&self) -> AppResult<Vec<Asset>> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                a.id as "id!", a.name as "name!", a.path as "path!", a.state as "state!",
+                a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!",
+                a.created_at as "created_at: DateTime<Utc>",
+                a.modified_at as "modified_at: DateTime<Utc>",
+                a.added_at as "added_at: DateTime<Utc>",
+                a.updated_at as "updated_at: DateTime<Utc>",
+                a.folder_id as "folder_id?",
+                a.thumbnail_path as "thumbnail_path?",
+                a.rating as "rating: i64",
+                a.notes as "notes?",
+                m.width as "width: i64",
+                m.height as "height: i64",
+                m.duration_secs as "duration_secs: f64",
+                m.technical_payload as "technical_payload: serde_json::Value",
+                m.semantic_payload as "semantic_payload: serde_json::Value",
+                a.dominant_color as "dominant_color: serde_json::Value"
+            FROM assets a
+            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
+            WHERE a.format_type = 'unknown' OR a.thumbnail_path IS NULL
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| crate::infra::database::models::AssetDb {
+                id: r.id,
+                name: r.name,
+                path: r.path,
+                state: r.state,
+                format_type: r.format_type,
+                family: r.family,
+                file_size: r.file_size,
+                created_at: r.created_at,
+                modified_at: r.modified_at,
+                added_at: r.added_at,
+                updated_at: r.updated_at,
+                folder_id: r.folder_id,
+                thumbnail_path: r.thumbnail_path,
+                rating: r.rating,
+                notes: r.notes,
+                width: r.width,
+                height: r.height,
+                duration_secs: r.duration_secs,
+                technical_payload: r.technical_payload,
+                semantic_payload: r.semantic_payload,
+                dominant_color: r.dominant_color,
+            })
+            .map(Into::into)
+            .collect())
+    }
+
+    async fn adopt_orphaned_children(&self, parent_id: &str, parent_path: &str) -> AppResult<()> {
+        let pattern = format!("{}/%", parent_path.trim_end_matches('/'));
+        
+        // Update all folders that:
+        // 1. Are currently roots (parent_id IS NULL)
+        // 2. Are not the parent itself
+        // 3. Are physically inside the parent folder path
+        sqlx::query!(
+            r#"
+            UPDATE folders 
+            SET parent_id = ? 
+            WHERE parent_id IS NULL 
+              AND id != ?
+              AND path LIKE ?
+            "#,
+            parent_id,
+            parent_id,
+            pattern
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
 }
 
 /// Tests for the SqliteAssetQueries struct.

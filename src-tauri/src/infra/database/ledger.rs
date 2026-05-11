@@ -239,6 +239,35 @@ impl SqliteAssetLedger {
         Self::fetch_asset_by_id(tx, &asset_id).await
     }
 
+    async fn handle_update_format(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        asset_id: &str,
+        format: &str,
+    ) -> AppResult<Asset> {
+        let now = Utc::now();
+        sqlx::query!(
+            "UPDATE assets SET format_type = ?, updated_at = ? WHERE id = ?",
+            format,
+            now,
+            asset_id
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        Self::log_operation(
+            tx,
+            "UPDATE_FORMAT",
+            asset_id,
+            serde_json::json!({ "format": format }),
+            "COMPLETED",
+            None,
+        )
+        .await?;
+
+        Self::fetch_asset_by_id(tx, asset_id).await
+    }
+
     async fn handle_update_technical_metadata(
         &self,
         tx: &mut Transaction<'_, Sqlite>,
@@ -459,6 +488,11 @@ impl SqliteAssetLedger {
             LedgerCommand::UpdateAssetNotes(p) => {
                 self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
                     asset_id: p.asset_id.clone(),
+                })?;
+            }
+            LedgerCommand::UpdateFormat { asset_id, .. } => {
+                self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
+                    asset_id: asset_id.clone(),
                 })?;
             }
             LedgerCommand::UpdateTechnicalMetadata(p) => {
@@ -1013,10 +1047,15 @@ impl SqliteAssetLedger {
                 let now = Utc::now();
                 let path_str = payload.path.to_string_lossy().to_string();
 
-                sqlx::query!(
+                // UPSERT pattern for folders to handle existing paths and update hierarchy
+                let result = sqlx::query!(
                     r#"
                     INSERT INTO folders (id, parent_id, name, path, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(path) DO UPDATE SET 
+                        parent_id = COALESCE(excluded.parent_id, folders.parent_id),
+                        updated_at = excluded.updated_at
+                    RETURNING id as "id!"
                     "#,
                     folder_id,
                     payload.parent_id,
@@ -1024,6 +1063,26 @@ impl SqliteAssetLedger {
                     path_str,
                     now,
                     now
+                )
+                .fetch_one(&mut **tx)
+                .await?;
+
+                let actual_id = result.id;
+
+                // After creating or updating a folder, check if it should adopt any existing roots
+                // that are physically its children.
+                let pattern = format!("{}/%", path_str.trim_end_matches('/'));
+                sqlx::query!(
+                    r#"
+                    UPDATE folders 
+                    SET parent_id = ? 
+                    WHERE parent_id IS NULL 
+                      AND id != ?
+                      AND path LIKE ?
+                    "#,
+                    actual_id,
+                    actual_id,
+                    pattern
                 )
                 .execute(&mut **tx)
                 .await?;
@@ -1035,20 +1094,16 @@ impl SqliteAssetLedger {
                 Self::log_operation(
                     tx,
                     "CREATE_FOLDER",
-                    &folder_id,
+                    &actual_id,
                     op_payload,
                     "COMPLETED",
                     None,
                 )
                 .await?;
 
-                // Return a dummy asset or update trait to handle Folder return
-                // Since TransactionalAssetLedger::execute returns AppResult<Asset>,
-                // we return a "Virtual Asset" representing the folder or just a tombstone.
-                // Re-evaluating: In a proper CQRS, CreateFolder might return a different type,
-                // but let's stick to the trait and return a dummy for now.
+                // Return a dummy asset with the folder info
                 Ok(Asset {
-                    id: folder_id,
+                    id: actual_id,
                     name: payload.name.clone(),
                     path: payload.path.clone(),
                     state: AssetState::Idle,
@@ -1280,6 +1335,9 @@ impl SqliteAssetLedger {
             }
             LedgerCommand::UpdateTechnicalMetadata(payload) => {
                 self.handle_update_technical_metadata(tx, payload.clone()).await
+            }
+            LedgerCommand::UpdateFormat { asset_id, format } => {
+                self.handle_update_format(tx, &asset_id, &format).await
             }
 
             // ── Tag CRUD Handlers ──────────────────────────────────────────

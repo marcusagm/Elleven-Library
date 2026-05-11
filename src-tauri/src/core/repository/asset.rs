@@ -61,6 +61,15 @@ pub trait AssetQueryHandler: Send + Sync {
     /// * `Err(AppError)` if the folders could not be found.
     async fn list_folders(&self, parent_id: Option<String>) -> AppResult<Vec<Folder>>;
 
+    /// Finds unlinked root folders that should be children of a newly added parent folder
+    /// and updates their parent_id relationship.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent_id` - The ID of the newly added parent folder.
+    /// * `parent_path` - The absolute path of the parent folder.
+    async fn adopt_orphaned_children(&self, parent_id: &str, parent_path: &str) -> AppResult<()>;
+
     /// Gets a folder by ID.
     ///
     /// # Arguments
@@ -186,4 +195,7 @@ pub trait AssetQueryHandler: Send + Sync {
     /// Finds assets by their file size and state.
     /// Useful for recovering moved files that were treated as Delete + Create.
     async fn find_assets_by_size(&self, size_bytes: u64, state: Option<crate::core::models::AssetState>) -> AppResult<Vec<Asset>>;
+
+    /// Retrieves assets that need repair (e.g. missing format or thumbnail)
+    async fn get_assets_needing_repair(&self) -> AppResult<Vec<Asset>>;
 }

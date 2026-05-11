@@ -130,6 +130,8 @@ impl ThumbnailWorker {
 
         // 3. Resolve Assets
         let mut tasks = Vec::new();
+        let mut batch_commands = Vec::new();
+
         for id in asset_ids {
             if let Ok(asset) = self.query_handler.get_asset_by_id(&id).await {
                 // Skip if thumbnail already exists (unless we add a "force" flag later)
@@ -140,6 +142,12 @@ impl ThumbnailWorker {
 
                 if let Some(format_provider) = self.format_registry.resolve(&asset.path, &[]) {
                     tasks.push((asset, format_provider));
+                } else {
+                    debug!("WORKER: No provider found for asset {}. Marking as processed without thumbnail.", id);
+                    batch_commands.push(LedgerCommand::UpdateThumbnail {
+                        asset_id: id.clone(),
+                        thumbnail_path: "".to_string(),
+                    });
                 }
             }
         }
@@ -199,7 +207,6 @@ impl ThumbnailWorker {
 
         // 5. Commit Results
         let thumbnails_dir = self.thumbnails_dir.clone();
-        let mut batch_commands = Vec::new();
 
         while let Some(join_res) = join_set.join_next().await {
             let (id, tech_meta_cmd, thumb_res, preview_res) = match join_res {
@@ -239,6 +246,10 @@ impl ThumbnailWorker {
                     let detected_format = image_utils::detect_image_format(&bytes);
                     if detected_format.is_none() {
                         error!("ThumbnailWorker: Provider for {} returned invalid image bytes (Header error)", id);
+                        batch_commands.push(LedgerCommand::UpdateThumbnail {
+                            asset_id: id.clone(),
+                            thumbnail_path: "".to_string(),
+                        });
                         continue;
                     }
 
@@ -318,6 +329,10 @@ impl ThumbnailWorker {
                 }
                 Err(e) => {
                     error!("ThumbnailWorker: Generation failed for {}: {}", id, e);
+                    batch_commands.push(LedgerCommand::UpdateThumbnail {
+                        asset_id: id.clone(),
+                        thumbnail_path: "".to_string(),
+                    });
                 }
             }
         }

@@ -21,6 +21,8 @@ export function initLocationRefs(
     searchRefs = searches;
 }
 
+let refreshDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const locationActions = {
     loadLocations: async () => {
         try {
@@ -91,7 +93,13 @@ export const locationActions = {
         });
 
         if (needsRefresh) {
-            locationActions.refreshAll();
+            if (refreshDebounceTimer) {
+                clearTimeout(refreshDebounceTimer);
+            }
+            refreshDebounceTimer = setTimeout(() => {
+                locationActions.refreshAll();
+                refreshDebounceTimer = null;
+            }, 500);
         }
     }
 };

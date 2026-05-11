@@ -145,32 +145,4 @@ fn is_codec_native(video_codec: &Option<String>, audio_codec: &Option<String>) -
     native_video && native_audio
 }
 
-/// Check if a format has issues with HLS streaming and should use fallback
-fn is_hls_problematic(path: &Path, container: &Option<String>) -> bool {
-    // Check by extension
-    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-        let ext_lower = ext.to_lowercase();
-        if ext_lower == "swf"
-            || ext_lower == "m2v"
-            || ext_lower == "mpv"
-            || ext_lower == "mpg"
-            || ext_lower == "mpeg"
-        {
-            return true;
-        }
-    }
 
-    // Check by container format from ffprobe
-    if let Some(fmt) = container {
-        if fmt == "swf"
-            || fmt == "mpeg1video"
-            || fmt == "mpegvideo"
-            || fmt == "m2v"
-            || fmt == "mpegps"
-        {
-            return true;
-        }
-    }
-
-    false
-}

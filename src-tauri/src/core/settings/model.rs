@@ -40,6 +40,12 @@ pub struct AppSettings {
     /// 200 is optimal for NVMe SSDs; lower values (50-100) are safer for HDDs/SD.
     pub indexer_concurrency_limit: usize,
 
+    /// Number of threads used for thumbnail generation.
+    pub thumbnail_threads: usize,
+
+    /// Number of days to retain cached transcoded files and thumbnails.
+    pub cache_retention_days: u32,
+
     /// Extra generic settings (e.g., appearance, shortcuts).
     #[serde(default)]
     pub extra: std::collections::HashMap<String, serde_json::Value>,
@@ -63,6 +69,8 @@ impl Default for AppSettings {
             ui_language: AppLanguage::default(),
             auto_scan_enabled: true,
             indexer_concurrency_limit: 200,
+            thumbnail_threads: std::cmp::max(1, available_parallelism / 2),
+            cache_retention_days: 30,
             extra: std::collections::HashMap::new(),
         }
     }

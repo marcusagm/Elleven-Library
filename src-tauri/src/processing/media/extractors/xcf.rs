@@ -339,18 +339,7 @@ fn find_embedded_thumbnail<R: Read + Seek>(reader: &mut R) -> Result<Option<Vec<
     Ok(None)
 }
 
-/// Skips properties in a property list until the terminator (type 0) is found.
-fn skip_properties<R: Read + Seek>(reader: &mut R) -> Result<(), std::io::Error> {
-    loop {
-        let property_type = reader.read_u32::<BigEndian>()?;
-        let property_length = reader.read_u32::<BigEndian>()?;
-        if property_type == 0 {
-            break;
-        }
-        reader.seek(SeekFrom::Current(property_length as i64))?;
-    }
-    Ok(())
-}
+
 
 /// Reads a GIMP-style Pascal string (UInt32 length + bytes + potential null).
 fn read_gimp_string<R: Read>(reader: &mut R) -> Result<String, Box<dyn std::error::Error>> {
