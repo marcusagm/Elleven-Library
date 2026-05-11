@@ -52,14 +52,14 @@ Esta wave consolida as últimas tarefas para que a V2 seja completa e **superior
  - Sprint 10.5 (CorelDRAW) ✅
  - Sprint 10.6 (GIMP XCF) ✅
  - Sprint 10.8 (Rebelle + Penpot) ✅
-8. Sprint 10.12 → Features exclusivas V2 (polimento final)
+8. Sprint 10.12 → Features exclusivas V2 (polimento final) ✅
 ```
 
 ## Como Medir Sucesso
 
-- [ ] Zero erros no console ao usar o app com uma biblioteca real de 10k+ assets
-- [ ] Todos os 23 FormatProviders geram thumbnails válidos (zero `Invalid Chunk header`)
-- [ ] Scan de 10k arquivos completa em < 30s (vs minutos com scan serial)
-- [ ] CORS bloqueia requests de origens não autorizadas
-- [ ] Settings página funciona completamente sem erros
-- [ ] V2 passa em todos os testes que a V1 passou (regressão zero)
+- [x] Zero erros no console ao usar o app com uma biblioteca real de 10k+ assets
+- [x] Todos os 23 FormatProviders geram thumbnails válidos (zero `Invalid Chunk header`)
+- [x] Scan de 10k arquivos completa em < 30s (vs minutos com scan serial)
+- [x] CORS bloqueia requests de origens não autorizadas
+- [x] Settings página funciona completamente sem erros
+- [x] V2 passa em todos os testes que a V1 passou (regressão zero)
