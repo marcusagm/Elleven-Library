@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    INSERT INTO folders (id, parent_id, name, path, created_at, updated_at)\n                    VALUES (?, ?, ?, ?, ?, ?)\n                    ON CONFLICT(path) DO UPDATE SET \n                        parent_id = COALESCE(excluded.parent_id, folders.parent_id),\n                        updated_at = excluded.updated_at\n                    RETURNING id as \"id!\"\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f7f95a877c2aec91d6daaa5a02e19cafda2bccf41cde63f1c1a5f7a637be2e1b"
+}
