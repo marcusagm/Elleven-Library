@@ -63,12 +63,7 @@ export const AssetCardOverlay: Component<AssetMetadataViewProperties> = properti
                 {field => (
                     <Show when={getFieldRenderValue(field, properties.item)}>
                         {value => (
-                            <span class={`item-metadata-field field-${field}`}>
-                                {field === 'filename' && (
-                                    <span class="item-id-prefix">#{properties.item.id} - </span>
-                                )}
-                                {value()}
-                            </span>
+                            <span class={`item-metadata-field field-${field}`}>{value()}</span>
                         )}
                     </Show>
                 )}

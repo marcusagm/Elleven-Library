@@ -29,7 +29,7 @@ export const locationActions = {
             const locations = await getLocations();
             setMetadataState(
                 'locations',
-                locations.map(l => ({ ...l, is_root: !!l.is_root }))
+                locations.map(l => ({ ...l, is_root: l.parent_id === null }))
             );
         } catch (error) {
             console.error('Failed to load locations:', error);

@@ -13,14 +13,7 @@ export const AssetCardStacked: Component<AssetMetadataViewProperties> = properti
             <For each={properties.visibleFields}>
                 {field => (
                     <Show when={getFieldRenderValue(field, properties.item)}>
-                        {value => (
-                            <div class={`item-metadata-field field-${field}`}>
-                                {field === 'filename' && (
-                                    <span class="item-id-prefix">#{properties.item.id} - </span>
-                                )}
-                                {value()}
-                            </div>
-                        )}
+                        {value => <div class={`item-metadata-field field-${field}`}>{value()}</div>}
                     </Show>
                 )}
             </For>

@@ -243,7 +243,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         if let Some(tags) = filter.tags {
             if !tags.is_empty() {
-                query_builder.push(" AND a.id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name IN (");
+                query_builder.push(" AND a.id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (");
                 let mut first = true;
                 for tag in tags {
                     if !first {
@@ -252,7 +252,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
                     query_builder.push_bind(tag);
                     first = false;
                 }
-                query_builder.push(")))");
+                query_builder.push("))");
             }
         }
 
@@ -734,7 +734,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         if let Some(tags) = filter.tags {
             if !tags.is_empty() {
-                query_builder.push(" AND id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (SELECT id FROM tags WHERE name IN (");
+                query_builder.push(" AND id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (");
                 let mut first = true;
                 for tag in tags {
                     if !first {
@@ -743,7 +743,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
                     query_builder.push_bind(tag);
                     first = false;
                 }
-                query_builder.push(")))");
+                query_builder.push("))");
             }
         }
 
