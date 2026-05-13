@@ -108,6 +108,13 @@ export interface AssetItem {
     folder_id: string;
 
     /**
+     * Asset lifecycle state (Discovered, Probing, Indexed, Thumbnailed, Idle, Stale, Offline, Unknown)
+     *
+     * @type {string}
+     */
+    state: string;
+
+    /**
      * Most prominent extracted color hex value (e.g., "#FF5733")
      *
      * @type {string | null}

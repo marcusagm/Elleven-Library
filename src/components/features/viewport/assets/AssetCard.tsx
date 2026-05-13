@@ -102,6 +102,8 @@ export const AssetCard: Component<AssetCardProps> = (props: AssetCardProps): JSX
                             alt={props.item.filename}
                             width={props.item.width}
                             height={props.item.height}
+                            mediaType={props.item.media_type}
+                            state={props.item.state}
                         />
 
                         {/* Metadata Overlay Component */}

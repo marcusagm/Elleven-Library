@@ -43,7 +43,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
     async fn get_assets_needing_thumbnails(&self, limit: u32) -> AppResult<Vec<String>> {
         let limit_i64 = limit as i64;
         let rows = sqlx::query!(
-            r#"SELECT id as "id!" FROM assets WHERE thumbnail_path IS NULL LIMIT ?"#,
+            r#"SELECT id as "id!" FROM assets WHERE thumbnail_path IS NULL AND state != 'Thumbnailed' LIMIT ?"#,
             limit_i64
         )
         .fetch_all(&self.pool)

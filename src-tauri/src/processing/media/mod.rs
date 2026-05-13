@@ -25,3 +25,4 @@ pub mod project_zip_formats;
 pub mod psd_format;
 pub mod usd_format;
 pub mod xmind_format;
+pub mod text_format;

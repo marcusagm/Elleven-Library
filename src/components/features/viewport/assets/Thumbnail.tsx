@@ -1,6 +1,7 @@
 import { createSignal, createMemo, Show, onMount, onCleanup } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { Loader } from '../../../ui/Loader';
+import { FileIcon } from './FileIcon';
 import {
     isPendingRegeneration,
     markPendingRegeneration,
@@ -9,6 +10,7 @@ import {
     subscribeThumbnailReady
 } from '../../../../core/store/thumbnailStore';
 import './thumbnail.css';
+import './file-icon.css';
 
 /**
  * Tracks which thumbnail URLs have been successfully loaded.
@@ -33,6 +35,18 @@ function markThumbnailLoaded(url: string) {
  */
 function isThumbnailLoaded(url: string | undefined): boolean {
     return url ? loadedThumbnails.has(url) : false;
+}
+
+/**
+ * Extracts the file extension from a filename or path.
+ *
+ * @param {string} filename - The filename or path to extract extension from.
+ * @returns {string} The extension including the dot (e.g. ".psd").
+ */
+function extractFileExtension(filename: string): string {
+    const lastDot = filename.lastIndexOf('.');
+    if (lastDot === -1 || lastDot === filename.length - 1) return '';
+    return filename.substring(lastDot).toLowerCase();
 }
 
 /**
@@ -63,18 +77,28 @@ export interface ThumbnailProperties {
      * The optional height of the thumbnail.
      */
     height?: number | null;
+    /**
+     * The media type category (e.g. "Image", "Video", "Audio").
+     */
+    mediaType?: string;
+    /**
+     * The lifecycle state of the asset (e.g. "Discovered", "Indexed", "Thumbnailed", "Idle").
+     * Used to distinguish between "still in queue" and "processed but no thumbnail".
+     */
+    state?: string;
 }
 
 /**
  * Renders an optimized asset thumbnail with loading states, lazy loading cache, and regeneration routines.
+ * Falls back to a FileIcon when no thumbnail is available or when loading fails.
  *
  * @param {ThumbnailProperties} thumbnailProperties - Properties for the thumbnail display.
- * @returns {JSX.Element} The rendered image or a loading placeholder.
+ * @returns {JSX.Element} The rendered image, file icon fallback, or a loading placeholder.
  *
  * @example
  * ```tsx
  * import { Thumbnail } from '@/components/features/viewport/Thumbnail';
- * <Thumbnail id={1} src="/path/to/img.png" thumbnail="/path/to/thumb" alt="My image" width={200} height={200} />
+ * <Thumbnail id={1} src="/path/to/img.png" thumbnail="/path/to/thumb" alt="My image" width={200} height={200} mediaType="Image" />
  * ```
  */
 export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
@@ -256,13 +280,59 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
     };
 
     /**
-     * Show placeholder for the thumbnail component.
-     *
-     * @returns {boolean} True if the placeholder should be shown, otherwise false.
+     * Whether this asset has no thumbnail at all (not just loading — truly absent).
+     * This determines whether to show the FileIcon fallback vs the spinner.
      */
-    const showPlaceholder = createMemo(() => {
-        if (!displaySrc()) return true;
-        if (localError()) return true;
+    const hasNoThumbnail = createMemo(() => {
+        const thumb = effectiveThumbnail();
+        return !thumb || thumb === '';
+    });
+
+    /**
+     * File extension extracted from the filename.
+     */
+    const fileExtension = createMemo(() => extractFileExtension(thumbnailProperties.alt));
+
+    /**
+     * Whether the thumbnail worker has already processed this asset.
+     * States like Thumbnailed, Idle, Stale, Offline, and Unknown indicate
+     * the asset has passed through the processing pipeline.
+     * Discovered, Probing, and Indexed mean it's still in the queue.
+     */
+    const isAlreadyProcessed = createMemo(() => {
+        const assetState = thumbnailProperties.state;
+        if (!assetState) return false;
+        const processedStates = ['Thumbnailed', 'Idle', 'Stale', 'Offline', 'Unknown'];
+        return processedStates.includes(assetState);
+    });
+
+    /**
+     * Show the file icon fallback when:
+     * - The asset was already processed AND has no thumbnail (format has no support or extraction failed)
+     * - There was a loading error and retries are exhausted
+     */
+    const showFileIcon = createMemo(() => {
+        if (
+            hasNoThumbnail() &&
+            isAlreadyProcessed() &&
+            !isPendingRegeneration(thumbnailProperties.id)
+        )
+            return true;
+        if (localError() && retryCount() >= MAX_RETRIES) return true;
+        return false;
+    });
+
+    /**
+     * Show loading spinner when:
+     * - The asset is still in the processing queue (not yet processed) and has no thumbnail
+     * - A thumbnail path exists but the image hasn't loaded yet
+     * - Regeneration is pending
+     */
+    const showSpinner = createMemo(() => {
+        if (showFileIcon()) return false;
+        // Asset is still in queue — show spinner
+        if (hasNoThumbnail() && !isAlreadyProcessed()) return true;
+        if (!displaySrc()) return !hasNoThumbnail();
         if (isAlreadyLoaded()) return false;
         if (!loaded()) return true;
         return false;
@@ -274,12 +344,22 @@ export function Thumbnail(thumbnailProperties: ThumbnailProperties) {
             style={{ 'aspect-ratio': aspectRatio() }}
             data-id={thumbnailProperties.id}
         >
-            <Show when={showPlaceholder()}>
+            {/* File icon fallback for assets without thumbnails */}
+            <Show when={showFileIcon()}>
+                <FileIcon
+                    extension={fileExtension()}
+                    mediaType={thumbnailProperties.mediaType || 'Unknown'}
+                />
+            </Show>
+
+            {/* Loading spinner while thumbnail is being fetched */}
+            <Show when={showSpinner()}>
                 <div class="asset-placeholder">
                     <Loader size="sm" />
                 </div>
             </Show>
 
+            {/* Actual thumbnail image */}
             <Show when={displaySrc() && !localError()}>
                 <img
                     src={displaySrc()}

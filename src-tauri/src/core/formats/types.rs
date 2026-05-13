@@ -12,6 +12,7 @@ pub enum MediaType {
     Archive, // ex: .zip
     Model3D, // ex: .blend, .fbx
     Font,
+    Document, // ex: .txt, .md, .doc
     Unknown,
 }
 

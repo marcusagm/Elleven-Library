@@ -49,7 +49,7 @@ impl FormatProvider for FontFormatProvider {
     ///
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["ttf", "otf", "woff", "woff2"]
+        vec!["ttf", "otf", "ttc", "woff", "woff2"]
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
@@ -69,6 +69,15 @@ impl FormatProvider for FontFormatProvider {
                 "OpenType Font",
                 vec!["otf"],
                 vec!["font/otf"],
+                MediaType::Font,
+                ThumbnailStrategy::NativeExtractor,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "TrueType Collection",
+                vec!["ttc"],
+                vec!["font/collection", "font/ttc"],
                 MediaType::Font,
                 ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,

@@ -29,7 +29,7 @@ impl ModernImageFormatProvider {
 }
 
 /// Extensões suportadas para formatos modernos de imagem.
-pub const MODERN_EXTENSIONS: &[&str] = &["heic", "heif", "avif", "jxl"];
+pub const MODERN_EXTENSIONS: &[&str] = &["heic", "heif", "heifs", "avif", "avifs", "jxl"];
 
 /// Implementação do provedor de formatos modernos de imagem.
 #[async_trait]
@@ -59,8 +59,8 @@ impl FormatProvider for ModernImageFormatProvider {
         vec![
             SupportedFormat::with_metadata(
                 "High Efficiency Image",
-                vec!["heic", "heif"],
-                vec!["image/heic", "image/heif"],
+                vec!["heic", "heif", "heifs"],
+                vec!["image/heic", "image/heif", "image/heic-sequence"],
                 MediaType::Image,
                 ThumbnailStrategy::Ffmpeg,
                 PreviewStrategy::Ffmpeg,
@@ -68,8 +68,8 @@ impl FormatProvider for ModernImageFormatProvider {
             ),
             SupportedFormat::with_metadata(
                 "AV1 Image",
-                vec!["avif"],
-                vec!["image/avif"],
+                vec!["avif", "avifs"],
+                vec!["image/avif", "image/avif-sequence"],
                 MediaType::Image,
                 ThumbnailStrategy::Ffmpeg,
                 PreviewStrategy::Ffmpeg,

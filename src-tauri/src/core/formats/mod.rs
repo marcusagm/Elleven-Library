@@ -36,6 +36,7 @@ use crate::processing::media::project_zip_formats::ProjectZipFormatProvider;
 use crate::processing::media::psd_format::PsdFormatProvider;
 use crate::processing::media::usd_format::UsdFormatProvider;
 use crate::processing::media::xmind_format::XMindFormatProvider;
+use crate::processing::media::text_format::TextFormatProvider;
 
 use std::sync::Arc;
 
@@ -56,6 +57,7 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(SvgFormatProvider::new()));
     registry.register(Arc::new(PdfFormatProvider::new()));
     registry.register(Arc::new(FontFormatProvider::new()));
+    registry.register(Arc::new(TextFormatProvider::new()));
 
     // Register Final Parity Providers
     registry.register(Arc::new(PsdFormatProvider::new()));

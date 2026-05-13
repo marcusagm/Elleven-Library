@@ -24,7 +24,7 @@ impl FormatProvider for Model3dFormatProvider {
 
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec![
-            "blend", "fbx", "obj", "gltf", "glb", "dae", "stl", "3ds", "3mf", "dxf", "lwo", "lws",
+            "blend", "fbx", "obj", "gltf", "glb", "dae", "stl", "3ds", "3mf", "dxf", "dwg", "lwo", "lws",
         ]
     }
 
@@ -105,9 +105,9 @@ impl FormatProvider for Model3dFormatProvider {
                 PlaybackStrategy::None,
             ),
             SupportedFormat::with_metadata(
-                "AutoCAD DXF",
-                vec!["dxf"],
-                vec!["image/vnd.dxf"],
+                "AutoCAD Drawing",
+                vec!["dwg", "dxf"],
+                vec!["image/vnd.dwg", "image/vnd.dxf"],
                 MediaType::Model3D,
                 ThumbnailStrategy::None,
                 PreviewStrategy::Assimp,

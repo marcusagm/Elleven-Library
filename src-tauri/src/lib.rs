@@ -74,10 +74,11 @@ pub fn run() {
 
                         // Special Mapping for Legacy Indexer Events (Frontend compatibility)
                         match event {
+                            // Only structural changes trigger batch-change.
+                            // AssetMetadataUpdated, AssetStateChanged, and AssetTagsUpdated
+                            // are handled granularly by thumbnail:ready and extraction:completed,
+                            // so they are excluded to prevent redundant full-list refreshes (flicker).
                             crate::core::events::DomainEvent::AssetCreated { .. } |
-                            crate::core::events::DomainEvent::AssetMetadataUpdated { .. } |
-                            crate::core::events::DomainEvent::AssetTagsUpdated { .. } |
-                            crate::core::events::DomainEvent::AssetStateChanged { .. } |
                             crate::core::events::DomainEvent::AssetFolderChanged { .. } |
                             crate::core::events::DomainEvent::FolderMetadataUpdated { .. } |
                             crate::core::events::DomainEvent::FsPathDeleted { .. } |
@@ -342,7 +343,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_mcp_bridge::init())
+
         .invoke_handler(tauri::generate_handler![
             // IPC Commands
             delivery::tauri::commands::queries::get_assets,

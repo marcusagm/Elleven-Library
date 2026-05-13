@@ -124,7 +124,7 @@ export const libraryActions = {
                 refreshDebounceTimer = setTimeout(() => {
                     libraryActions.refreshAssets(false);
                     refreshDebounceTimer = null;
-                }, 500);
+                }, 1500);
             }
         }
 

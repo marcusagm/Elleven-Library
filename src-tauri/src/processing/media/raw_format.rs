@@ -38,7 +38,11 @@ impl FormatProvider for RawFormatProvider {
     ///
     /// * `Vec<&'static str>` - The supported extensions for the format provider.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["arw", "cr2", "cr3", "dng", "nef", "nrw", "orf", "raf", "rw2", "pef", "srw", "x3f"]
+        vec![
+            "arw", "cr2", "cr3", "crw", "dng", "nef", "nrw", "orf", "raf", "rw2", "pef", "srw",
+            "x3f", "srf", "sr2", "3fr", "fff", "kdc", "iiq", "mos", "rwl", "mrw", "raw", "mef",
+            "gpr", "erf",
+        ]
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
@@ -47,8 +51,8 @@ impl FormatProvider for RawFormatProvider {
         vec![
             SupportedFormat::with_metadata(
                 "Sony RAW Image",
-                vec!["arw"],
-                vec!["image/x-sony-arw"],
+                vec!["arw", "srf", "sr2"],
+                vec!["image/x-sony-arw", "image/x-sony-srf", "image/x-sony-sr2"],
                 MediaType::Image,
                 ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
@@ -56,8 +60,8 @@ impl FormatProvider for RawFormatProvider {
             ),
             SupportedFormat::with_metadata(
                 "Canon RAW Image",
-                vec!["cr2", "cr3"],
-                vec!["image/x-canon-cr2", "image/x-canon-cr3"],
+                vec!["cr2", "cr3", "crw"],
+                vec!["image/x-canon-cr2", "image/x-canon-cr3", "image/x-canon-crw"],
                 MediaType::Image,
                 ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,
@@ -130,6 +134,96 @@ impl FormatProvider for RawFormatProvider {
                 "Sigma RAW Image",
                 vec!["x3f"],
                 vec!["image/x-sigma-x3f"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Hasselblad RAW Image",
+                vec!["3fr", "fff"],
+                vec!["image/x-hasselblad-3fr", "image/x-hasselblad-fff"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Kodak RAW Image",
+                vec!["kdc"],
+                vec!["image/x-kodak-kdc"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Phase One RAW Image",
+                vec!["iiq"],
+                vec!["image/x-phaseone-iiq"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Leaf RAW Image",
+                vec!["mos"],
+                vec!["image/x-leaf-mos"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Leica RAW Image",
+                vec!["rwl"],
+                vec!["image/x-leica-rwl"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Minolta RAW Image",
+                vec!["mrw"],
+                vec!["image/x-minolta-mrw"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Generic RAW Image",
+                vec!["raw"],
+                vec!["image/x-raw"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Mamiya RAW Image",
+                vec!["mef"],
+                vec!["image/x-mamiya-mef"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "GoPro RAW Image",
+                vec!["gpr"],
+                vec!["image/x-gpr"],
+                MediaType::Image,
+                ThumbnailStrategy::Raw,
+                PreviewStrategy::NativeExtractor,
+                PlaybackStrategy::None,
+            ),
+            SupportedFormat::with_metadata(
+                "Epson RAW Image",
+                vec!["erf"],
+                vec!["image/x-epson-erf"],
                 MediaType::Image,
                 ThumbnailStrategy::Raw,
                 PreviewStrategy::NativeExtractor,

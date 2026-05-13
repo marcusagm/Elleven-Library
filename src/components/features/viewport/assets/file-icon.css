@@ -1,0 +1,27 @@
+/* FileIcon fallback container */
+.file-icon-container {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    /* background: var(--surface-secondary, #1a1a2e); */
+}
+
+.file-icon-svg {
+    width: 65%;
+    height: 65%;
+    max-width: 160px;
+    max-height: 200px;
+    border-radius: 6px;
+    overflow: hidden;
+    opacity: 0.85;
+    filter: saturate(0.9);
+    transition: opacity 0.3s ease;
+}
+
+.thumbnail-container:hover .file-icon-svg {
+    opacity: 1;
+    filter: saturate(1);
+}

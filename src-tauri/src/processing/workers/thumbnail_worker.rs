@@ -290,6 +290,10 @@ impl ThumbnailWorker {
                             Ok(Ok(b)) => b,
                             Ok(Err(e)) => {
                                 error!("ThumbnailWorker: Transcoding failed for {}: {}", id, e);
+                                batch_commands.push(LedgerCommand::UpdateThumbnail {
+                                    asset_id: id.clone(),
+                                    thumbnail_path: "".to_string(),
+                                });
                                 continue;
                             }
                             Err(e) => {
@@ -297,6 +301,10 @@ impl ThumbnailWorker {
                                     "ThumbnailWorker: Transcoding task joined with error for {}: {}",
                                     id, e
                                 );
+                                batch_commands.push(LedgerCommand::UpdateThumbnail {
+                                    asset_id: id.clone(),
+                                    thumbnail_path: "".to_string(),
+                                });
                                 continue;
                             }
                         }
@@ -311,6 +319,10 @@ impl ThumbnailWorker {
                             "ThumbnailWorker: Failed to write thumbnail for {}: {}",
                             id, e
                         );
+                        batch_commands.push(LedgerCommand::UpdateThumbnail {
+                            asset_id: id.clone(),
+                            thumbnail_path: "".to_string(),
+                        });
                         continue;
                     }
 
