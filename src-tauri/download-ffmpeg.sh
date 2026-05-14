@@ -7,7 +7,7 @@ set -e
 FFMPEG_DIR="$(dirname "$0")/ffmpeg"
 mkdir -p "$FFMPEG_DIR"
 
-echo "=== FFmpeg Download Script for Elleven Library ==="
+echo "=== FFmpeg Download Script for Mundam ==="
 echo ""
 
 # Detect OS
@@ -16,12 +16,12 @@ case "$(uname -s)" in
         OS="macos"
         BINARY_NAME="ffmpeg"
         echo "Detected: macOS"
-        
+
         # Check if Homebrew FFmpeg exists
         if command -v ffmpeg &> /dev/null; then
             FFMPEG_PATH=$(which ffmpeg)
             echo "Found system FFmpeg at: $FFMPEG_PATH"
-            
+
             # Copy to bundle directory
             cp "$FFMPEG_PATH" "$FFMPEG_DIR/$BINARY_NAME"
             chmod +x "$FFMPEG_DIR/$BINARY_NAME"
@@ -36,7 +36,7 @@ case "$(uname -s)" in
             exit 1
         fi
         ;;
-        
+
     MINGW*|MSYS*|CYGWIN*|Windows_NT)
         OS="windows"
         BINARY_NAME="ffmpeg.exe"
@@ -49,24 +49,24 @@ case "$(uname -s)" in
         echo "  $FFMPEG_DIR/$BINARY_NAME"
         exit 1
         ;;
-        
+
     Linux)
         OS="linux"
         BINARY_NAME="ffmpeg"
         echo "Detected: Linux"
-        
+
         # Check if system FFmpeg exists
         if command -v ffmpeg &> /dev/null; then
             FFMPEG_PATH=$(which ffmpeg)
             echo "Found system FFmpeg at: $FFMPEG_PATH"
-            
+
             # For Linux, we need a static build for portability
             echo ""
             echo "Note: System FFmpeg may not be portable."
             echo "For production, download static build from:"
             echo "  https://johnvansickle.com/ffmpeg/"
             echo ""
-            
+
             # Copy anyway for development
             cp "$FFMPEG_PATH" "$FFMPEG_DIR/$BINARY_NAME"
             chmod +x "$FFMPEG_DIR/$BINARY_NAME"
@@ -81,7 +81,7 @@ case "$(uname -s)" in
             exit 1
         fi
         ;;
-        
+
     *)
         echo "Unknown OS: $(uname -s)"
         exit 1

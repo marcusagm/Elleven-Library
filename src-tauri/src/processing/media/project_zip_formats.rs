@@ -36,10 +36,6 @@ impl ProjectZipFormatProvider {
 
         // Use specialized extractors if available (V1 Parity)
         match ext.as_str() {
-            "sketch" => {
-                return extractors::extract_sketch_preview(path)
-                    .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
-            }
             "penpot" => {
                 return extractors::extract_penpot_preview(path)
                     .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
@@ -91,7 +87,7 @@ impl FormatProvider for ProjectZipFormatProvider {
     ///
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["sketch", "fig", "penpot"]
+        vec!["fig", "penpot"]
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
@@ -100,15 +96,7 @@ impl FormatProvider for ProjectZipFormatProvider {
         };
 
         vec![
-            SupportedFormat::with_metadata(
-                "Sketch Project",
-                vec!["sketch"],
-                vec!["application/x-sketch"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
+
             SupportedFormat::with_metadata(
                 "Figma Archive",
                 vec!["fig"],

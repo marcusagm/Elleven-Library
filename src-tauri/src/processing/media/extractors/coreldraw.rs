@@ -61,7 +61,11 @@ pub fn extract_coreldraw_preview(
     }
 
     if let Some(best) = candidates.into_iter().max_by_key(|(data, _)| data.len()) {
-        tracing::debug!("CDR: Best preview found. Size: {} bytes, mime: {}", best.0.len(), best.1);
+        tracing::debug!(
+            "CDR: Best preview found. Size: {} bytes, mime: {}",
+            best.0.len(),
+            best.1
+        );
         if best.0.len() < 100 {
             return Err("Preview too small to be valid".into());
         }
@@ -96,21 +100,32 @@ pub fn extract_coreldraw_preview_highres(
     if source_width >= target_size || source_height >= target_size {
         tracing::debug!(
             "CDR: Source {}x{} already meets target {}px, skipping upscale",
-            source_width, source_height, target_size
+            source_width,
+            source_height,
+            target_size
         );
         return Ok((source_data, "image/png".to_string()));
     }
 
     let aspect_ratio = source_width as f64 / source_height as f64;
     let (target_width, target_height) = if aspect_ratio > 1.0 {
-        (target_size, (target_size as f64 / aspect_ratio).max(1.0) as u32)
+        (
+            target_size,
+            (target_size as f64 / aspect_ratio).max(1.0) as u32,
+        )
     } else {
-        ((target_size as f64 * aspect_ratio).max(1.0) as u32, target_size)
+        (
+            (target_size as f64 * aspect_ratio).max(1.0) as u32,
+            target_size,
+        )
     };
 
     tracing::debug!(
         "CDR: Upscaling preview {}x{} -> {}x{} with Lanczos3",
-        source_width, source_height, target_width, target_height
+        source_width,
+        source_height,
+        target_width,
+        target_height
     );
 
     let upscaled_image = source_image.resize(
@@ -144,18 +159,27 @@ fn normalize_to_pipeline_format(
             // Already a pipeline-compatible format
             Ok((image_data, mime_type))
         }
-        "image/bmp" | "image/tiff" | "image/gif" | _ if mime_type != "image/png"
-            && mime_type != "image/jpeg"
-            && mime_type != "image/webp" =>
+        "image/bmp" | "image/tiff" | "image/gif" | _
+            if mime_type != "image/png"
+                && mime_type != "image/jpeg"
+                && mime_type != "image/webp" =>
         {
-            tracing::debug!("CDR: Transcoding {} to PNG for pipeline compatibility", mime_type);
+            tracing::debug!(
+                "CDR: Transcoding {} to PNG for pipeline compatibility",
+                mime_type
+            );
             let decoded_image = image::load_from_memory(&image_data)
                 .map_err(|error| format!("CDR: Failed to decode {} image: {}", mime_type, error))?;
             let mut png_buffer = Vec::new();
             let mut cursor = Cursor::new(&mut png_buffer);
-            decoded_image.write_to(&mut cursor, image::ImageFormat::Png)
+            decoded_image
+                .write_to(&mut cursor, image::ImageFormat::Png)
                 .map_err(|error| format!("CDR: Failed to encode PNG: {}", error))?;
-            tracing::debug!("CDR: Transcoded {} -> PNG ({} bytes)", mime_type, png_buffer.len());
+            tracing::debug!(
+                "CDR: Transcoded {} -> PNG ({} bytes)",
+                mime_type,
+                png_buffer.len()
+            );
             Ok((png_buffer, "image/png".to_string()))
         }
         _ => Ok((image_data, mime_type)),
@@ -174,9 +198,7 @@ fn normalize_to_pipeline_format(
 ///
 /// # Errors
 /// Returns error if no dimension information can be extracted.
-pub fn extract_coreldraw_dimensions(
-    path: &Path,
-) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+pub fn extract_coreldraw_dimensions(path: &Path) -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let mut file = File::open(path)?;
     let mut magic_bytes = [0u8; 4];
     file.read_exact(&mut magic_bytes)?;
@@ -196,8 +218,8 @@ pub fn extract_coreldraw_dimensions(
 
     // Fallback: extract from preview image header
     if let Ok((preview_data, _mime_type)) = extract_coreldraw_preview(path) {
-        if let Ok(reader) = image::ImageReader::new(Cursor::new(&preview_data))
-            .with_guessed_format()
+        if let Ok(reader) =
+            image::ImageReader::new(Cursor::new(&preview_data)).with_guessed_format()
         {
             if let Ok((width, height)) = reader.into_dimensions() {
                 return Ok((width, height));
@@ -236,9 +258,11 @@ pub fn extract_coreldraw_metadata(
 
     // Try to get resolution from preview if available
     if let Ok((preview_data, _)) = extract_coreldraw_preview(path) {
-        if let Ok(reader) = image::ImageReader::new(Cursor::new(&preview_data)).with_guessed_format() {
-             // image crate doesn't easily expose DPI without diving into specific decoders
-             // for now we'll stick to dimensions.
+        if let Ok(_reader) =
+            image::ImageReader::new(Cursor::new(&preview_data)).with_guessed_format()
+        {
+            // image crate doesn't easily expose DPI without diving into specific decoders
+            // for now we'll stick to dimensions.
         }
     }
 
@@ -264,7 +288,7 @@ fn parse_cdr_version(signature: &[u8; 4]) -> u32 {
         return 801;
     }
     match version_byte {
-        0x20 => 300,                             // space = v3.0
+        0x20 => 300,                                       // space = v3.0
         0x31..=0x39 => 100 * (version_byte as u32 - 0x30), // '1'-'9' = v100-v900
         0x41..=0x48 => 100 * (version_byte as u32 - 0x37), // 'A'-'H' = v1000-v1800
         _ => 0,
@@ -311,9 +335,7 @@ pub fn get_cdr_version_string(path: &Path) -> Option<String> {
 /// - v≥900: 4 bytes
 /// - v600-699: 0x1c bytes
 /// - v<600: 0 bytes
-fn extract_riff_mcfg_dimensions(
-    path: &Path,
-) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+fn extract_riff_mcfg_dimensions(path: &Path) -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let mut file = File::open(path)?;
     let mut riff_header = [0u8; 12];
     file.read_exact(&mut riff_header)?;
@@ -341,9 +363,7 @@ fn extract_riff_mcfg_dimensions(
 ///
 /// ZIP-based CDR files (v16+) contain `content/riffData.cdr` which holds
 /// the complete RIFF structure with mcfg and other metadata chunks.
-fn extract_zip_riff_dimensions(
-    path: &Path,
-) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+fn extract_zip_riff_dimensions(path: &Path) -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
 
@@ -492,7 +512,11 @@ fn parse_mcfg_dimensions(
         let width_mm = ((x1 - x0).abs() / 10000.0).round() as u32;
         let height_mm = ((y1 - y0).abs() / 10000.0).round() as u32;
         if width_mm > 0 && height_mm > 0 && width_mm < 100000 && height_mm < 100000 {
-            tracing::debug!("CDR: mcfg old format dimensions: {}x{} mm", width_mm, height_mm);
+            tracing::debug!(
+                "CDR: mcfg old format dimensions: {}x{} mm",
+                width_mm,
+                height_mm
+            );
             return Ok((width_mm, height_mm));
         }
     } else {
@@ -506,7 +530,12 @@ fn parse_mcfg_dimensions(
         let width_mm = (raw_width.abs() / 10000.0).round() as u32;
         let height_mm = (raw_height.abs() / 10000.0).round() as u32;
         if width_mm > 0 && height_mm > 0 && width_mm < 100000 && height_mm < 100000 {
-            tracing::debug!("CDR: mcfg dimensions: {}x{} mm (v{})", width_mm, height_mm, version);
+            tracing::debug!(
+                "CDR: mcfg dimensions: {}x{} mm (v{})",
+                width_mm,
+                height_mm,
+                version
+            );
             return Ok((width_mm, height_mm));
         }
     }
@@ -532,9 +561,7 @@ fn is_legacy_format(path: &Path) -> bool {
 /// Checks known preview paths in priority order, selecting the largest
 /// candidate by decompressed size. Falls back to scanning all entries
 /// for PNG files matching preview/page/thumb patterns.
-fn extract_zip_best_quality(
-    path: &Path,
-) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+fn extract_zip_best_quality(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
     let known_paths = [
@@ -553,7 +580,9 @@ fn extract_zip_best_quality(
                 let pixel_count = get_pixel_count(&buffer);
                 tracing::debug!(
                     "CDR: ZIP candidate '{}' size={} bytes, pixels={}",
-                    candidate_path, buffer.len(), pixel_count
+                    candidate_path,
+                    buffer.len(),
+                    pixel_count
                 );
                 all_candidates.push((buffer, "image/png".to_string(), pixel_count));
             }
@@ -693,12 +722,8 @@ fn walk_riff_generic<R: Read + Seek>(
                         if decoder.read_to_end(&mut decompressed_data).is_ok() {
                             let mut cursor = Cursor::new(decompressed_data);
                             let decompressed_length = cursor.get_ref().len() as u64;
-                            let _ = walk_riff_generic(
-                                &mut cursor,
-                                0,
-                                decompressed_length,
-                                candidates,
-                            );
+                            let _ =
+                                walk_riff_generic(&mut cursor, 0, decompressed_length, candidates);
                         }
                     }
                 }
@@ -725,10 +750,7 @@ fn walk_riff_generic<R: Read + Seek>(
                     candidates.push((chunk_data.clone(), "image/bmp".to_string()));
                 }
                 // BMP variant 2: "BM" at offset 4 (4-byte prefix)
-                else if chunk_data.len() > 6
-                    && chunk_data[4] == b'B'
-                    && chunk_data[5] == b'M'
-                {
+                else if chunk_data.len() > 6 && chunk_data[4] == b'B' && chunk_data[5] == b'M' {
                     candidates.push((chunk_data[4..].to_vec(), "image/bmp".to_string()));
                 }
                 // DIB variant 1: BITMAPINFOHEADER (0x28) at offset 4
@@ -776,13 +798,9 @@ fn walk_riff_generic<R: Read + Seek>(
 /// embedded inside RIFF chunk data.
 ///
 /// Returns `true` if a recognized image was found and added to candidates.
-fn check_and_extract_image(
-    data: &[u8],
-    candidates: &mut Vec<(Vec<u8>, String)>,
-) -> bool {
+fn check_and_extract_image(data: &[u8], candidates: &mut Vec<(Vec<u8>, String)>) -> bool {
     // PNG: 89 50 4E 47
-    if data.len() > 8 && data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47
-    {
+    if data.len() > 8 && data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 {
         candidates.push((data.to_vec(), "image/png".to_string()));
         return true;
     }
@@ -814,9 +832,7 @@ fn check_and_extract_image(
 ///
 /// # Errors
 /// Returns error if DIB data is too short or header size is invalid.
-fn construct_bmp_from_dib(
-    dib_data: &[u8],
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn construct_bmp_from_dib(dib_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     if dib_data.len() < 4 {
         return Err("Too short".into());
     }
@@ -835,12 +851,8 @@ fn construct_bmp_from_dib(
         if bits_per_pixel <= 8 {
             let mut colors_used: u32 = 0;
             if header_size >= 36 && dib_data.len() >= 36 {
-                colors_used = u32::from_le_bytes([
-                    dib_data[32],
-                    dib_data[33],
-                    dib_data[34],
-                    dib_data[35],
-                ]);
+                colors_used =
+                    u32::from_le_bytes([dib_data[32], dib_data[33], dib_data[34], dib_data[35]]);
             }
             palette_size = if colors_used > 0 {
                 colors_used * 4
@@ -868,9 +880,7 @@ fn construct_bmp_from_dib(
 ///
 /// These ancient CorelDRAW files (v3–v5) store a small bitmap at a fixed
 /// offset (0x56) with dimensions at offsets 0x48–0x4B.
-fn extract_wl_thumbnail(
-    path: &Path,
-) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+fn extract_wl_thumbnail(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let mut file = File::open(path)?;
     let mut header_buffer = [0u8; 1024];
     file.read_exact(&mut header_buffer)?;
@@ -992,7 +1002,8 @@ fn scan_for_embedded_images(
                 if buffer[search_position] == 0x49      // I
                     && buffer[search_position + 1] == 0x45  // E
                     && buffer[search_position + 2] == 0x4E  // N
-                    && buffer[search_position + 3] == 0x44  // D
+                    && buffer[search_position + 3] == 0x44
+                // D
                 {
                     iend_position = search_position + 8; // IEND tag(4) + CRC(4)
                     break;

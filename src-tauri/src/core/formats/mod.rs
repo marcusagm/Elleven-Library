@@ -43,6 +43,7 @@ use crate::processing::media::providers::project::krita::KritaFormatProvider;
 use crate::processing::media::providers::project::medibang::MedibangFormatProvider;
 use crate::processing::media::providers::project::photoshop::PhotoshopFormatProvider;
 use crate::processing::media::providers::project::rebelle::RebelleFormatProvider;
+use crate::processing::media::providers::project::sketch::SketchFormatProvider;
 use crate::processing::media::providers::project::xmind::XMindFormatProvider;
 
 use std::sync::Arc;
@@ -82,6 +83,7 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(MedibangFormatProvider::new()));
     registry.register(Arc::new(PhotoshopFormatProvider::new()));
     registry.register(Arc::new(RebelleFormatProvider::new()));
+    registry.register(Arc::new(SketchFormatProvider::new()));
     registry.register(Arc::new(XMindFormatProvider::new()));
 
     // Register generic fallbacks

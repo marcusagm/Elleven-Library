@@ -43,28 +43,65 @@ fn find_binary<R: tauri::Runtime>(
     } else {
         name.to_string()
     };
+
+    let platform_dir = if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(target_os = "windows") {
+        "windows-x64" // Default para x64, pode ser refinado
+    } else {
+        "linux"
+    };
+
     // 1. Tenta via Tauri Resource Dir (Bundled)
     if let Some(handle) = app_handle {
         if let Ok(resource_dir) = handle.path().resource_dir() {
-            let bundled_path = resource_dir.join("ffmpeg").join(&binary_name);
-            if bundled_path.exists() {
-                return Some(bundled_path);
+            // Tenta caminho direto: resource/name/binary
+            let direct_path = resource_dir.join(name).join(&binary_name);
+            if direct_path.exists() {
+                return Some(direct_path);
+            }
+
+            // Tenta caminho por plataforma: resource/name/platform/binary
+            let platform_path = resource_dir.join(name).join(platform_dir).join(&binary_name);
+            if platform_path.exists() {
+                return Some(platform_path);
+            }
+
+            // Tenta caminho por plataforma com bin/ (comum em assimp macos): resource/name/platform/bin/binary
+            let bin_path = resource_dir.join(name).join(platform_dir).join("bin").join(&binary_name);
+            if bin_path.exists() {
+                return Some(bin_path);
             }
         }
     }
-    // 2. Tenta via caminhos relativos de desenvolvimento (src-tauri/ffmpeg)
+
+    // 2. Tenta via caminhos relativos de desenvolvimento (src-tauri/...)
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(target_dir) = exe_path.parent() {
             if let Some(debug_dir) = target_dir.parent() {
                 if let Some(src_tauri) = debug_dir.parent() {
-                    let bundled_path = src_tauri.join("ffmpeg").join(&binary_name);
-                    if bundled_path.exists() {
-                        return Some(bundled_path);
+                    // Tenta caminho direto
+                    let direct_path = src_tauri.join(name).join(&binary_name);
+                    if direct_path.exists() {
+                        return Some(direct_path);
+                    }
+
+                    // Tenta caminho por plataforma
+                    let platform_path = src_tauri.join(name).join(platform_dir).join(&binary_name);
+                    if platform_path.exists() {
+                        return Some(platform_path);
+                    }
+
+                    // Tenta caminho por plataforma com bin/
+                    let bin_path = src_tauri.join(name).join(platform_dir).join("bin").join(&binary_name);
+                    if bin_path.exists() {
+                        return Some(bin_path);
                     }
                 }
             }
         }
     }
+
     // 3. Tenta via PATH global do sistema
     if Command::new(name)
         .arg("-version")

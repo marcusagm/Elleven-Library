@@ -34,10 +34,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "ffmpeg/*": "ffmpeg/",
-      "assimp/*": "assimp/",
-      "binaries/pdfium/*": "binaries/pdfium/"
-    }
+    "resources": [
+      "ffmpeg/*",
+      "binaries/pdfium/*",
+      "assimp/**/*"
+    ]
   }
 }
