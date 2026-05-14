@@ -1,6 +1,8 @@
 //! Módulo de processamento de mídia
 
 pub mod extractors;
+pub mod providers;
+
 pub mod affinity_format;
 pub mod archive_format;
 pub mod audio_format;
@@ -14,15 +16,13 @@ pub mod raw_format;
 pub mod svg_format;
 pub mod video_format;
 
-pub mod image_utils;
 pub mod ai_format;
-pub mod aseprite_format;
+// pub mod aseprite_format; // Decommissioned
 pub mod binary_design_formats;
 pub mod cad_format;
 pub mod exr_format;
+pub mod image_utils;
 pub mod model3d_format;
 pub mod project_zip_formats;
-pub mod psd_format;
-pub mod usd_format;
-pub mod xmind_format;
 pub mod text_format;
+pub mod usd_format;

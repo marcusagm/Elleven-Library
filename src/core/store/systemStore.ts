@@ -80,6 +80,12 @@ export const systemActions = {
                 });
             });
 
+            listen<{ id: string }>('metadata:ready', e => {
+                import('./library').then(({ libraryActions }) => {
+                    libraryActions.refreshItem(e.payload.id);
+                });
+            });
+
             listen<ProgressPayload>('thumbnail:queue-status', e => {
                 systemActions.updateThumbnailProgress(e.payload);
             });

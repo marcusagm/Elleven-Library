@@ -12,6 +12,7 @@ pub enum ImageFormat {
     Png,
     Jpeg,
     Webp,
+    Gif,
 }
 
 impl ImageFormat {
@@ -21,6 +22,7 @@ impl ImageFormat {
             ImageFormat::Png => "image/png",
             ImageFormat::Jpeg => "image/jpeg",
             ImageFormat::Webp => "image/webp",
+            ImageFormat::Gif => "image/gif",
         }
     }
 }
@@ -44,8 +46,13 @@ pub fn detect_image_format(bytes: &[u8]) -> Option<ImageFormat> {
     }
 
     // WebP: RIFF ???? WEBP
-    if bytes.starts_with(b"RIFF") && &bytes[8..12] == b"WEBP" {
+    if bytes.starts_with(b"RIFF") && bytes.len() >= 12 && &bytes[8..12] == b"WEBP" {
         return Some(ImageFormat::Webp);
+    }
+    
+    // GIF: GIF87a or GIF89a
+    if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        return Some(ImageFormat::Gif);
     }
 
     None
@@ -120,6 +127,14 @@ pub fn get_image_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
                 }
                 _ => None
             }
+        }
+        ImageFormat::Gif => {
+            // GIF dimensions are at offset 6 (2 bytes width, 2 bytes height, little-endian)
+            if bytes.len() < 10 { return None; }
+            let mut gif_cursor = Cursor::new(&bytes[6..10]);
+            let w = gif_cursor.read_u16::<LittleEndian>().ok()?;
+            let h = gif_cursor.read_u16::<LittleEndian>().ok()?;
+            Some((w as u32, h as u32))
         }
     }
 }

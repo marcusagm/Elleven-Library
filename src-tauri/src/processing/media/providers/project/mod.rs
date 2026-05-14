@@ -1,0 +1,16 @@
+pub mod affinity;
+pub mod aseprite;
+pub mod clipstudio;
+pub mod coreldraw;
+pub mod corelpainter;
+pub mod figma;
+pub mod gimp;
+pub mod illustrator;
+pub mod krita;
+pub mod medibang;
+pub mod painttoolsai;
+pub mod penpot;
+pub mod photoshop;
+pub mod rebelle;
+pub mod sketch;
+pub mod xmind;

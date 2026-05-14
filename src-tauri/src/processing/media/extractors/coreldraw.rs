@@ -12,6 +12,7 @@
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::ZlibDecoder;
+use serde_json::json;
 use std::fs::File;
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use std::path::Path;
@@ -204,6 +205,47 @@ pub fn extract_coreldraw_dimensions(
         }
     }
     Err("Could not extract CDR dimensions".into())
+}
+
+/// Extracts technical and semantic metadata from a CorelDRAW file.
+///
+/// Combines version detection, document dimensions, and preview analysis.
+///
+/// # Arguments
+///
+/// * `path` - Path to the CDR file.
+///
+/// # Returns
+///
+/// `Result<serde_json::Value, Box<dyn std::error::Error>>` - JSON containing technical data.
+pub fn extract_coreldraw_metadata(
+    path: &Path,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let version_string = get_cdr_version_string(path).unwrap_or_else(|| "Unknown".to_string());
+    let dimensions = extract_coreldraw_dimensions(path).ok();
+
+    let mut technical_metadata = json!({
+        "version": version_string,
+    });
+
+    if let Some((width, height)) = dimensions {
+        technical_metadata["width"] = width.into();
+        technical_metadata["height"] = height.into();
+        technical_metadata["unit"] = "mm".into();
+    }
+
+    // Try to get resolution from preview if available
+    if let Ok((preview_data, _)) = extract_coreldraw_preview(path) {
+        if let Ok(reader) = image::ImageReader::new(Cursor::new(&preview_data)).with_guessed_format() {
+             // image crate doesn't easily expose DPI without diving into specific decoders
+             // for now we'll stick to dimensions.
+        }
+    }
+
+    Ok(json!({
+        "technical": technical_metadata,
+        "semantic": {}
+    }))
 }
 
 /// Detects the CDR version from the RIFF header signature.

@@ -68,6 +68,10 @@ Com base na verificação manual (`task-list-end-new-backend.md`), foram identif
 - [ ] **Serialização de EXIF**: Ajustar a estrutura do retorno JSON para que o frontend receba uma lista de chave-valor em vez de um objeto nested que causa o erro `[object Object]`.
 - [ ] **Deduplicação**: Remover campos de largura/altura da extração técnica se eles já existirem no core do `Asset`.
 
+### 6. Icones genericos de Fallback
+- [ ] Todos os formatos que utilizam ThumbnailStrategy::Icon deve apenas registrar no banco de dados que não possuem thumbnail, pois o frontend agora que é reponsável por gerar icones genericos para quando um formato não possui thumbnail ou ocorreu algum erro na geração. O arquivo do frontend que gera esses icones é o `src/components/features/viewport/assets/FileIcon.tsx` utilizado por arquivos como `src/components/features/viewport/assets/Thumbnail.tsx` para garantir que os assets que precisam de icones, os mostrem. Talvez criar um `ThumbnailStrategy::Fallback` ou `ThumbnailStrategy::None` para que o `Thumbnail` do frontend saiba que deve gerar um icone generico?
+- [ ] ThumbnailStrategy::Icon deve passar a trabalhar exclusivamente formatos de icones como `icns`, `ico` e `cur` e `ani`.
+
 ---
 
 ## Critérios de Aceitação

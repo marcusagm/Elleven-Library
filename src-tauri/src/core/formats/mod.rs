@@ -27,16 +27,23 @@ use crate::processing::media::video_format::VideoFormatProvider;
 
 // Final Parity Imports
 use crate::processing::media::ai_format::AiFormatProvider;
-use crate::processing::media::aseprite_format::AsepriteFormatProvider;
+// use crate::processing::media::aseprite_format::AsepriteFormatProvider; // Removed legacy provider
 use crate::processing::media::binary_design_formats::BinaryDesignFormatProvider;
 use crate::processing::media::cad_format::CadFormatProvider;
 use crate::processing::media::exr_format::ExrFormatProvider;
 use crate::processing::media::model3d_format::Model3dFormatProvider;
 use crate::processing::media::project_zip_formats::ProjectZipFormatProvider;
-use crate::processing::media::psd_format::PsdFormatProvider;
-use crate::processing::media::usd_format::UsdFormatProvider;
-use crate::processing::media::xmind_format::XMindFormatProvider;
 use crate::processing::media::text_format::TextFormatProvider;
+use crate::processing::media::usd_format::UsdFormatProvider;
+
+// Project Providers
+use crate::processing::media::providers::project::aseprite::AsepriteFormatProvider;
+use crate::processing::media::providers::project::coreldraw::CoreldrawFormatProvider;
+use crate::processing::media::providers::project::krita::KritaFormatProvider;
+use crate::processing::media::providers::project::medibang::MedibangFormatProvider;
+use crate::processing::media::providers::project::photoshop::PhotoshopFormatProvider;
+use crate::processing::media::providers::project::rebelle::RebelleFormatProvider;
+use crate::processing::media::providers::project::xmind::XMindFormatProvider;
 
 use std::sync::Arc;
 
@@ -60,15 +67,21 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(TextFormatProvider::new()));
 
     // Register Final Parity Providers
-    registry.register(Arc::new(PsdFormatProvider::new()));
     registry.register(Arc::new(AiFormatProvider::new()));
-    registry.register(Arc::new(AsepriteFormatProvider::new()));
     registry.register(Arc::new(ExrFormatProvider::new()));
     registry.register(Arc::new(ProjectZipFormatProvider::new()));
     registry.register(Arc::new(BinaryDesignFormatProvider::new()));
     registry.register(Arc::new(Model3dFormatProvider::new()));
     registry.register(Arc::new(UsdFormatProvider::new()));
     registry.register(Arc::new(CadFormatProvider::new()));
+
+    //Register Project Providers
+    registry.register(Arc::new(AsepriteFormatProvider::new()));
+    registry.register(Arc::new(CoreldrawFormatProvider::new()));
+    registry.register(Arc::new(KritaFormatProvider::new()));
+    registry.register(Arc::new(MedibangFormatProvider::new()));
+    registry.register(Arc::new(PhotoshopFormatProvider::new()));
+    registry.register(Arc::new(RebelleFormatProvider::new()));
     registry.register(Arc::new(XMindFormatProvider::new()));
 
     // Register generic fallbacks

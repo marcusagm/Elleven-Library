@@ -1,6 +1,8 @@
-use crate::core::AppResult;
-use crate::core::formats::capabilities::{MetadataCapability, PreviewCapability, ThumbnailCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
+use crate::core::AppResult;
 use crate::processing::media::extractors;
 use async_trait::async_trait;
 use serde_json::Value;
@@ -34,20 +36,8 @@ impl ProjectZipFormatProvider {
 
         // Use specialized extractors if available (V1 Parity)
         match ext.as_str() {
-            "mdp" => {
-                return extractors::extract_mdp_preview(path)
-                    .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
-            }
-            "cdr" => {
-                return extractors::extract_coreldraw_preview(path)
-                    .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
-            }
             "sketch" => {
                 return extractors::extract_sketch_preview(path)
-                    .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
-            }
-            "reb" => {
-                return extractors::extract_rebelle_preview(path)
                     .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
             }
             "penpot" => {
@@ -61,22 +51,9 @@ impl ProjectZipFormatProvider {
         let mut archive = zip::ZipArchive::new(file)
             .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
 
-        // V1 Parity logic for Krita: mergedimage.png is the high-res render
-        if ext == "kra" {
-            if let Ok(mut zip_file) = archive.by_name("mergedimage.png") {
-                let mut buffer = Vec::new();
-                zip_file
-                    .read_to_end(&mut buffer)
-                    .map_err(crate::core::error::AppError::Io)?;
-                return Ok((buffer, "image/png".to_string()));
-            }
-        }
-
         // Map extension to likely preview path
         let preview_paths = match ext.as_str() {
-            "kra" => vec!["preview.png"],
             "fig" => vec!["preview.png", "thumbnail.png"],
-            "xmind" => vec!["Thumbnails/thumbnail.png"],
             _ => vec!["preview.png", "thumbnail.png", "previews/preview.png"],
         };
 
@@ -114,35 +91,19 @@ impl FormatProvider for ProjectZipFormatProvider {
     ///
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["kra", "sketch", "mdp", "fig", "reb", "xmind", "cdr", "penpot"]
+        vec!["sketch", "fig", "penpot"]
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
         vec![
-            SupportedFormat::with_metadata(
-                "Krita Artwork",
-                vec!["kra"],
-                vec!["application/x-krita"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
             SupportedFormat::with_metadata(
                 "Sketch Project",
                 vec!["sketch"],
                 vec!["application/x-sketch"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
-            SupportedFormat::with_metadata(
-                "MediBang Paint / FireAlpaca",
-                vec!["mdp"],
-                vec!["application/x-medibang"],
                 MediaType::Project,
                 ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::NativeExtractor,
@@ -157,33 +118,7 @@ impl FormatProvider for ProjectZipFormatProvider {
                 PreviewStrategy::NativeExtractor,
                 PlaybackStrategy::None,
             ),
-            SupportedFormat::with_metadata(
-                "Rebelle Artwork",
-                vec!["reb"],
-                vec!["application/x-rebelle"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
-            SupportedFormat::with_metadata(
-                "XMind Mindmap",
-                vec!["xmind"],
-                vec!["application/x-xmind"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
-            SupportedFormat::with_metadata(
-                "CorelDRAW Drawing",
-                vec!["cdr"],
-                vec!["application/x-coreldraw"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
+
             SupportedFormat::with_metadata(
                 "Penpot Project",
                 vec!["penpot"],
@@ -198,7 +133,8 @@ impl FormatProvider for ProjectZipFormatProvider {
 
     /// Verifica se o provedor suporta magic bytes específicos.
     fn supports_magic_bytes(&self, header_bytes: &[u8]) -> bool {
-        header_bytes.starts_with(b"PK\x03\x04") || header_bytes.starts_with(&[0x01, 0x0B, 0x1A, 0x86])
+        header_bytes.starts_with(b"PK\x03\x04")
+            || header_bytes.starts_with(&[0x01, 0x0B, 0x1A, 0x86])
     }
 
     /// Retorna o provedor de metadados.
@@ -226,7 +162,9 @@ impl ThumbnailCapability for ProjectZipFormatProvider {
 
         tokio::task::spawn_blocking(move || -> AppResult<Vec<u8>> {
             let provider = ProjectZipFormatProvider::new();
-            provider.extract_preview_from_zip(&path_owned).map(|(d, _)| d)
+            provider
+                .extract_preview_from_zip(&path_owned)
+                .map(|(d, _)| d)
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
@@ -254,48 +192,56 @@ impl PreviewCapability for ProjectZipFormatProvider {
 #[async_trait]
 impl MetadataCapability for ProjectZipFormatProvider {
     async fn extract_technical(&self, path: &Path) -> AppResult<Value> {
-        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
 
         if extension == "penpot" {
-             let path_owned = path.to_path_buf();
-             let metadata = tokio::task::spawn_blocking(move || -> Option<Value> {
-                 let mut file = File::open(&path_owned).ok()?;
-                 let mut header = [0u8; 4];
-                 if file.read(&mut header).ok()? < 4 { return None; }
+            let path_owned = path.to_path_buf();
+            let metadata = tokio::task::spawn_blocking(move || -> Option<Value> {
+                let mut file = File::open(&path_owned).ok()?;
+                let mut header = [0u8; 4];
+                if file.read(&mut header).ok()? < 4 {
+                    return None;
+                }
 
-                 // Only ZIP V1 has manifest.json easily accessible for dimensions
-                 if header == [0x50, 0x4B, 0x03, 0x04] {
-                     let mut archive = zip::ZipArchive::new(file).ok()?;
-                     let mut manifest_entry = archive.by_name("manifest.json").ok()?;
-                     let mut manifest_content = String::new();
-                     manifest_entry.read_to_string(&mut manifest_content).ok()?;
-                     let manifest_json: Value = serde_json::from_str(&manifest_content).ok()?;
+                // Only ZIP V1 has manifest.json easily accessible for dimensions
+                if header == [0x50, 0x4B, 0x03, 0x04] {
+                    let mut archive = zip::ZipArchive::new(file).ok()?;
+                    let mut manifest_entry = archive.by_name("manifest.json").ok()?;
+                    let mut manifest_content = String::new();
+                    manifest_entry.read_to_string(&mut manifest_content).ok()?;
+                    let manifest_json: Value = serde_json::from_str(&manifest_content).ok()?;
 
-                     let width = manifest_json["width"].as_f64().unwrap_or(0.0) as u32;
-                     let height = manifest_json["height"].as_f64().unwrap_or(0.0) as u32;
+                    let width = manifest_json["width"].as_f64().unwrap_or(0.0) as u32;
+                    let height = manifest_json["height"].as_f64().unwrap_or(0.0) as u32;
 
-                     return Some(serde_json::json!({
-                         "container": "ZIP (Penpot V1)",
-                         "width": width,
-                         "height": height,
-                         "metadata_source": "manifest.json"
-                     }));
-                 }
+                    return Some(serde_json::json!({
+                        "container": "ZIP (Penpot V1)",
+                        "width": width,
+                        "height": height,
+                        "metadata_source": "manifest.json"
+                    }));
+                }
 
-                 // V2 (Zstd)
-                 if header == [0x01, 0x0B, 0x1A, 0x86] {
-                     return Some(serde_json::json!({
-                         "container": "Zstd (Penpot V2)",
-                         "metadata_support": "Thumbnail Only"
-                     }));
-                 }
+                // V2 (Zstd)
+                if header == [0x01, 0x0B, 0x1A, 0x86] {
+                    return Some(serde_json::json!({
+                        "container": "Zstd (Penpot V2)",
+                        "metadata_support": "Thumbnail Only"
+                    }));
+                }
 
-                 None
-             }).await.map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?;
+                None
+            })
+            .await
+            .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?;
 
-             if let Some(data) = metadata {
-                 return Ok(data);
-             }
+            if let Some(data) = metadata {
+                return Ok(data);
+            }
         }
 
         // Basic metadata fallback

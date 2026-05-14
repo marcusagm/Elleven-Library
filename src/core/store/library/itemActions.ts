@@ -1,3 +1,4 @@
+import { reconcile } from 'solid-js/store';
 import { invokeCommand as invoke } from '../../../lib/api';
 import { tagService } from '../../../lib/tags';
 import { libraryStateInternal } from './libraryState';
@@ -25,6 +26,17 @@ export const itemActions = {
 
     updateThumbnail: (id: string, path: string) => {
         setLibraryState('items', item => item.id === id, 'thumbnail_path', path);
+    },
+
+    refreshItem: async (id: string) => {
+        try {
+            const asset = await invoke<import('../../../types').AssetItem>('get_asset', { id });
+            if (asset) {
+                setLibraryState('items', item => item.id === id, reconcile(asset));
+            }
+        } catch (err) {
+            console.error(`Failed to refresh item ${id}:`, err);
+        }
     },
 
     setThumbnailPriority: async (ids: string[]) => {

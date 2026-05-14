@@ -106,6 +106,11 @@ pub fn run() {
                                     "path": path,
                                 }));
                             }
+                            crate::core::events::DomainEvent::AssetMetadataUpdated { asset_id } => {
+                                let _ = app_handle.emit("metadata:ready", serde_json::json!({
+                                    "id": asset_id,
+                                }));
+                            }
                             crate::core::events::DomainEvent::ExtractionCompleted { asset_id, capability } => {
                                 if capability == "COLORS" {
                                     let _ = app_handle.emit("extraction:completed", asset_id);
