@@ -48,10 +48,7 @@ impl ProjectZipFormatProvider {
             .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
 
         // Map extension to likely preview path
-        let preview_paths = match ext.as_str() {
-            "fig" => vec!["preview.png", "thumbnail.png"],
-            _ => vec!["preview.png", "thumbnail.png", "previews/preview.png"],
-        };
+        let preview_paths = vec!["preview.png", "thumbnail.png", "previews/preview.png"];
 
         for p in preview_paths {
             if let Ok(mut zip_file) = archive.by_name(p) {
@@ -87,7 +84,7 @@ impl FormatProvider for ProjectZipFormatProvider {
     ///
     /// `Vec<&'static str>` - Vetor de extensões suportadas.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec!["fig", "penpot"]
+        vec!["penpot"]
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
@@ -95,28 +92,15 @@ impl FormatProvider for ProjectZipFormatProvider {
             MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
         };
 
-        vec![
-
-            SupportedFormat::with_metadata(
-                "Figma Archive",
-                vec!["fig"],
-                vec!["application/x-figma"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
-
-            SupportedFormat::with_metadata(
-                "Penpot Project",
-                vec!["penpot"],
-                vec!["application/x-penpot"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
-        ]
+        vec![SupportedFormat::with_metadata(
+            "Penpot Project",
+            vec!["penpot"],
+            vec!["application/x-penpot"],
+            MediaType::Project,
+            ThumbnailStrategy::NativeExtractor,
+            PreviewStrategy::NativeExtractor,
+            PlaybackStrategy::None,
+        )]
     }
 
     /// Verifica se o provedor suporta magic bytes específicos.

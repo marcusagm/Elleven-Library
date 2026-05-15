@@ -39,6 +39,7 @@ use crate::processing::media::usd_format::UsdFormatProvider;
 // Project Providers
 use crate::processing::media::providers::project::aseprite::AsepriteFormatProvider;
 use crate::processing::media::providers::project::coreldraw::CoreldrawFormatProvider;
+use crate::processing::media::providers::project::figma::FigmaFormatProvider;
 use crate::processing::media::providers::project::krita::KritaFormatProvider;
 use crate::processing::media::providers::project::medibang::MedibangFormatProvider;
 use crate::processing::media::providers::project::photoshop::PhotoshopFormatProvider;
@@ -79,6 +80,7 @@ pub fn build_format_registry() -> FormatRegistry {
     //Register Project Providers
     registry.register(Arc::new(AsepriteFormatProvider::new()));
     registry.register(Arc::new(CoreldrawFormatProvider::new()));
+    registry.register(Arc::new(FigmaFormatProvider::new()));
     registry.register(Arc::new(KritaFormatProvider::new()));
     registry.register(Arc::new(MedibangFormatProvider::new()));
     registry.register(Arc::new(PhotoshopFormatProvider::new()));
