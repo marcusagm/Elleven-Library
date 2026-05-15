@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    WITH RECURSIVE family AS (\n                        SELECT id FROM folders WHERE id = ?\n                        UNION ALL\n                        SELECT f.id FROM folders f JOIN family ON f.parent_id = family.id\n                    )\n                    SELECT id as \"id!\" FROM family\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "53caa9161b1a36b0816993cb76c235e9b7ac7b04a8c195df8d7a7982bc5eabf9"
+}

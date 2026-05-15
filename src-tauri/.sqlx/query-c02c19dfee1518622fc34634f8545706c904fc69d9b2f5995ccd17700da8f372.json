@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT t.id as \"id!\", t.name as \"name!\", t.color, t.parent_id, t.order_index as \"order_index!\"\n               FROM tags t\n               JOIN asset_tags at ON t.id = at.tag_id\n               WHERE at.asset_id = ?\n               ORDER BY t.order_index ASC, t.name ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "color",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "parent_id",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "order_index!",
+        "ordinal": 4,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "c02c19dfee1518622fc34634f8545706c904fc69d9b2f5995ccd17700da8f372"
+}
