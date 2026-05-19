@@ -113,11 +113,16 @@ impl MetadataCapability for PostscriptFormatProvider {
     /// # Returns
     ///
     /// `AppResult<Value>` - Technical metadata.
-    #[instrument(skip(self, _path))]
-    async fn extract_technical(&self, _path: &Path) -> AppResult<serde_json::Value> {
-        Ok(serde_json::json!({
-            "format": "PostScript"
-        }))
+    #[instrument(skip(self, path))]
+    async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
+        let path_owned = path.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            let metadata = extractors::extract_eps_metadata(&path_owned)
+                .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
+            Ok(metadata["technical"].clone())
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
     }
 
     /// Extracts semantic metadata from the PostScript file.
@@ -169,7 +174,7 @@ impl ThumbnailCapability for PostscriptFormatProvider {
             .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
 
             if mime_type == "application/pdf" {
-                crate::processing::media::pdf_render::render_pdf_to_png(&preview_data, size_hint)
+                extractors::render_pdf_to_png(&preview_data, size_hint)
                     .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))
             } else {
                 Ok(preview_data)

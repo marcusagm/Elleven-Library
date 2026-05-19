@@ -20,9 +20,9 @@ use crate::processing::media::font_format::FontFormatProvider;
 use crate::processing::media::icon_format::IconFormatProvider;
 use crate::processing::media::image_format::ImageFormatProvider;
 use crate::processing::media::modern_image_format::ModernImageFormatProvider;
-use crate::processing::media::pdf_format::PdfFormatProvider;
+use crate::processing::media::providers::document::pdf_format::PdfFormatProvider;
 use crate::processing::media::raw_format::RawFormatProvider;
-use crate::processing::media::svg_format::SvgFormatProvider;
+use crate::processing::media::providers::vector::svg_format::SvgFormatProvider;
 use crate::processing::media::video_format::VideoFormatProvider;
 
 // Final Parity Imports

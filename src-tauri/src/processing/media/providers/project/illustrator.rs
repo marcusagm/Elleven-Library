@@ -157,7 +157,7 @@ impl ThumbnailCapability for IllustratorFormatProvider {
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
             
             if mime_type == "application/pdf" {
-                crate::processing::media::pdf_render::render_pdf_to_png(&preview_data, size_hint)
+                extractors::render_pdf_to_png(&preview_data, size_hint)
                     .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))
             } else {
                 Ok(preview_data)

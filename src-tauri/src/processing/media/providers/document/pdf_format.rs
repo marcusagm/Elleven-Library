@@ -1,10 +1,11 @@
 use crate::core::error::AppResult;
-use crate::core::formats::capabilities::MetadataCapability;
+use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
+use crate::processing::media::extractors;
 use async_trait::async_trait;
 use std::path::Path;
 
-/// Provider for PDF documents
+/// Provider for PDF documents.
 #[derive(Default)]
 pub struct PdfFormatProvider;
 
@@ -53,8 +54,8 @@ impl FormatProvider for PdfFormatProvider {
                 "Portable Document Format",
                 vec!["pdf"],
                 vec!["application/pdf"],
-                MediaType::Vector,
-                ThumbnailStrategy::Icon,
+                MediaType::Document,
+                ThumbnailStrategy::NativeExtractor,
                 PreviewStrategy::BrowserNative,
                 PlaybackStrategy::None,
             ),
@@ -82,6 +83,15 @@ impl FormatProvider for PdfFormatProvider {
     fn metadata(&self) -> Option<&dyn MetadataCapability> {
         Some(self)
     }
+
+    /// Get the thumbnail capability for the format.
+    ///
+    /// # Returns
+    ///
+    /// An `Option<&dyn ThumbnailCapability>` containing the thumbnail capability.
+    fn thumbnail(&self) -> Option<&dyn ThumbnailCapability> {
+        Some(self)
+    }
 }
 
 /// Trait for metadata capability.
@@ -96,11 +106,17 @@ impl MetadataCapability for PdfFormatProvider {
     /// # Returns
     ///
     /// A `serde_json::Value` containing the technical metadata.
-    async fn extract_technical(&self, _path: &Path) -> AppResult<serde_json::Value> {
-        // Basic PDF metadata extraction (could use lopdf or pdf-extract later)
-        Ok(serde_json::json!({
-            "format": "PDF"
-        }))
+    async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
+        let path_owned = path.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            let pdf_data = std::fs::read(&path_owned)
+                .map_err(crate::core::error::AppError::Io)?;
+            let metadata = extractors::extract_pdf_metadata(&pdf_data)
+                .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
+            Ok(metadata["technical"].clone())
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
     }
 
     /// Extract semantic metadata from the given PDF file.
@@ -112,7 +128,43 @@ impl MetadataCapability for PdfFormatProvider {
     /// # Returns
     ///
     /// A `serde_json::Value` containing the semantic metadata.
-    async fn extract_semantic(&self, _path: &Path) -> AppResult<serde_json::Value> {
-        Ok(serde_json::json!({}))
+    async fn extract_semantic(&self, path: &Path) -> AppResult<serde_json::Value> {
+        let path_owned = path.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            let pdf_data = std::fs::read(&path_owned)
+                .map_err(crate::core::error::AppError::Io)?;
+            let metadata = extractors::extract_pdf_metadata(&pdf_data)
+                .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
+            Ok(metadata["semantic"].clone())
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
+    }
+}
+
+/// Trait for thumbnail capability.
+#[async_trait]
+impl ThumbnailCapability for PdfFormatProvider {
+    /// Generate a thumbnail for the given path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path to the file.
+    /// * `asset_id` - The unique asset identifier.
+    /// * `size_hint` - The desired size of the thumbnail.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<u8>` containing the thumbnail data.
+    async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
+        let path_owned = path.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            let pdf_data = std::fs::read(&path_owned)
+                .map_err(crate::core::error::AppError::Io)?;
+            extractors::render_pdf_to_png(&pdf_data, size_hint)
+                .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
     }
 }

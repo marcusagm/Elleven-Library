@@ -14,6 +14,7 @@ pub mod rebelle;
 pub mod sai;
 pub mod sai2;
 pub mod sketch;
+pub mod pdf;
 pub mod xcf;
 
 // Convenience re-exports
@@ -26,9 +27,10 @@ pub use coreldraw::{
     extract_coreldraw_dimensions, extract_coreldraw_metadata, extract_coreldraw_preview,
     extract_coreldraw_preview_highres, get_cdr_version_string,
 };
-pub use eps::extract_eps_ps_preview;
+pub use eps::{extract_eps_ps_preview, extract_eps_metadata};
 pub use figma::{extract_figma_metadata, extract_figma_preview};
 pub use mdp::{extract_mdp_metadata, extract_mdp_preview};
+pub use pdf::{render_pdf_to_png, extract_pdf_metadata};
 pub use penpot::{extract_penpot_metadata, extract_penpot_preview};
 pub use rebelle::extract_rebelle_preview;
 pub use sai::{extract_sai_dimensions, extract_sai_metadata, extract_sai_preview};
