@@ -26,7 +26,7 @@ use crate::processing::media::svg_format::SvgFormatProvider;
 use crate::processing::media::video_format::VideoFormatProvider;
 
 // Final Parity Imports
-use crate::processing::media::ai_format::AiFormatProvider;
+use crate::processing::media::providers::vector::postscript_format::PostscriptFormatProvider;
 // use crate::processing::media::aseprite_format::AsepriteFormatProvider; // Removed legacy provider
 use crate::processing::media::cad_format::CadFormatProvider;
 use crate::processing::media::exr_format::ExrFormatProvider;
@@ -46,6 +46,7 @@ use crate::processing::media::providers::project::medibang::MedibangFormatProvid
 use crate::processing::media::providers::project::painttoolsai::PaintToolSaiFormatProvider;
 use crate::processing::media::providers::project::penpot::PenpotFormatProvider;
 use crate::processing::media::providers::project::photoshop::PhotoshopFormatProvider;
+use crate::processing::media::providers::project::illustrator::IllustratorFormatProvider;
 use crate::processing::media::providers::project::rebelle::RebelleFormatProvider;
 use crate::processing::media::providers::project::sketch::SketchFormatProvider;
 use crate::processing::media::providers::project::xmind::XMindFormatProvider;
@@ -72,7 +73,7 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(TextFormatProvider::new()));
 
     // Register Final Parity Providers
-    registry.register(Arc::new(AiFormatProvider::new()));
+    registry.register(Arc::new(PostscriptFormatProvider::new()));
     registry.register(Arc::new(ExrFormatProvider::new()));
     registry.register(Arc::new(Model3dFormatProvider::new()));
     registry.register(Arc::new(UsdFormatProvider::new()));
@@ -89,6 +90,7 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(MedibangFormatProvider::new()));
     registry.register(Arc::new(PaintToolSaiFormatProvider::new()));
     registry.register(Arc::new(PenpotFormatProvider::new()));
+    registry.register(Arc::new(IllustratorFormatProvider::new()));
     registry.register(Arc::new(PhotoshopFormatProvider::new()));
     registry.register(Arc::new(RebelleFormatProvider::new()));
     registry.register(Arc::new(SketchFormatProvider::new()));

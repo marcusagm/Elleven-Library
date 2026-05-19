@@ -12,11 +12,11 @@ pub mod icon_format;
 pub mod image_format;
 pub mod modern_image_format;
 pub mod pdf_format;
+pub mod pdf_render;
 pub mod raw_format;
 pub mod svg_format;
 pub mod video_format;
 
-pub mod ai_format;
 // pub mod aseprite_format; // Decommissioned
 pub mod cad_format;
 pub mod exr_format;
