@@ -17,6 +17,32 @@ use tracing::instrument;
 /// It extracts technical metadata from `artwork.xml`, including canvas dimensions,
 /// layers, and reference images. Previews are extracted from `canvas.png` or other
 /// fallback candidates within the archive.
+///
+/// # Technical Details
+///
+/// ## File Format
+///
+/// The Rebelle file format is a proprietary binary format used by Rebelle.
+/// It consists of a binary header followed by a series of data blocks.
+///
+/// ## Magic Bytes
+///
+/// The magic bytes for the Rebelle file format are "reb"
+///
+///
+/// # Examples
+///
+/// ```no_run
+/// use mundam_lib::processing::media::providers::project::rebelle::RebelleFormatProvider;
+/// use mundam_lib::core::formats::provider::FormatProvider;
+///
+/// let provider = RebelleFormatProvider::new();
+/// let supported_formats = provider.supported_formats();
+///
+/// assert!(!supported_formats.is_empty());
+/// assert_eq!(provider.name(), "REBELLE_PROVIDER");
+/// assert_eq!(provider.supported_extensions(), vec!["reb"]);
+/// ```
 #[derive(Default)]
 pub struct RebelleFormatProvider;
 

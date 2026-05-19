@@ -48,7 +48,7 @@ struct LayerInfo {
 ///
 /// # Errors
 /// Returns `XcfError::Io` if file cannot be read, or `XcfError::InvalidFormat` if header is invalid.
-pub fn extract_xcf_dimensions(path: &Path) -> Result<(u32, u32), XcfError> {
+pub fn extract_xcf_metadata(path: &Path) -> Result<serde_json::Value, XcfError> {
     let file = std::fs::File::open(path)?;
     let mut reader = BufReader::new(file);
 
@@ -62,6 +62,14 @@ pub fn extract_xcf_dimensions(path: &Path) -> Result<(u32, u32), XcfError> {
     // 2. Read Version (vXXX)
     let mut version_bytes = [0u8; 4];
     reader.read_exact(&mut version_bytes)?;
+    let version_str = std::str::from_utf8(&version_bytes).unwrap_or("file");
+    let version = if version_str == "file" {
+        0
+    } else if version_bytes[0] == b'v' {
+        version_str[1..].parse::<u16>().unwrap_or(0)
+    } else {
+        0
+    };
     
     // 3. Skip Null Terminator
     let mut null_byte = [0u8; 1];
@@ -70,8 +78,53 @@ pub fn extract_xcf_dimensions(path: &Path) -> Result<(u32, u32), XcfError> {
     // 4. Read Canvas Dimensions (Big Endian)
     let canvas_width = reader.read_u32::<BigEndian>()?;
     let canvas_height = reader.read_u32::<BigEndian>()?;
+    let _base_type = reader.read_u32::<BigEndian>()?;
 
-    Ok((canvas_width, canvas_height))
+    if version >= 4 {
+        let _precision = reader.read_u32::<BigEndian>()?;
+    }
+
+    let mut dpi_x = 72.0;
+    let mut dpi_y = 72.0;
+
+    // 5. Read Properties for Resolution
+    loop {
+        let property_type = reader.read_u32::<BigEndian>().unwrap_or(0);
+        if property_type == 0 {
+            break;
+        }
+        let property_length = reader.read_u32::<BigEndian>().unwrap_or(0);
+        
+        let start_pos = reader.stream_position().unwrap_or(0);
+        if property_type == 19 && property_length == 8 {
+            // PROP_RESOLUTION
+            if let Ok(x_res) = reader.read_f32::<BigEndian>() {
+                if let Ok(y_res) = reader.read_f32::<BigEndian>() {
+                    dpi_x = x_res;
+                    dpi_y = y_res;
+                }
+            }
+        }
+        
+        // Seek to next property
+        let _ = reader.seek(SeekFrom::Start(start_pos + property_length as u64));
+    }
+
+    let mut technical = serde_json::json!({
+        "container": "GIMP XCF",
+        "metadata_support": "Full"
+    });
+    
+    technical["width"] = serde_json::json!(canvas_width);
+    technical["height"] = serde_json::json!(canvas_height);
+    technical["dpi"] = serde_json::json!(dpi_x as u32);
+    technical["dpi_y"] = serde_json::json!(dpi_y as u32);
+    technical["version"] = serde_json::json!(version);
+
+    Ok(serde_json::json!({
+        "technical": technical,
+        "semantic": {}
+    }))
 }
 
 /// Main entry point for extracting a preview/thumbnail from an XCF file.

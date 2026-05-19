@@ -13,6 +13,25 @@ use tracing::instrument;
 /// This provider uses the `asefile` crate to parse Aseprite's proprietary binary format,
 /// extracting technical metadata (width, height, frames, layers) and semantic data
 /// (layer names). Preview generation is handled by a specialized internal extractor.
+///
+/// # Technical Details
+///
+/// - **File Format**: Aseprite
+/// - **Preview Format**: PNG or GIF (animated)
+/// - **Metadata**: JSON data containing design information
+///
+/// # Examples
+///
+/// ```no_run
+/// use mundam_lib::processing::media::providers::project::aseprite::AsepriteFormatProvider;
+///
+/// let provider = AsepriteFormatProvider::new();
+/// let formats = provider.supported_formats();
+///
+/// assert_eq!(formats.len(), 1);
+/// assert_eq!(formats[0].name, "Aseprite Sprite");
+/// assert_eq!(formats[0].extensions, vec!["ase", "aseprite"]);
+/// ```
 #[derive(Default)]
 pub struct AsepriteFormatProvider;
 

@@ -16,6 +16,25 @@ use tracing::instrument;
 /// It extracts technical metadata from `maindoc.xml` and semantic metadata from
 /// `documentinfo.xml`. Previews are extracted from `mergedimage.png` (high-res)
 /// or `preview.png` (standard).
+///
+/// # Technical Details
+///
+/// - **File Format**: ZIP archive
+/// - **Preview Format**: PNG image
+/// - **Metadata**: JSON data containing design information
+///
+/// # Examples
+///
+/// ```no_run
+/// use mundam_lib::processing::media::providers::project::krita::KritaFormatProvider;
+///
+/// let provider = KritaFormatProvider::new();
+/// let formats = provider.supported_formats();
+///
+/// assert_eq!(formats.len(), 1);
+/// assert_eq!(formats[0].name, "Krita Document");
+/// assert_eq!(formats[0].extensions, vec!["kra"]);
+/// ```
 #[derive(Default)]
 pub struct KritaFormatProvider;
 

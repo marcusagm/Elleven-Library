@@ -1038,6 +1038,25 @@ pub fn extract_sai2_dimensions(
     Ok((header.canvas_width, header.canvas_height))
 }
 
+pub fn extract_sai2_metadata(
+    path: &Path,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let mut technical_metadata = serde_json::json!({
+        "container": "SAI v2",
+        "metadata_support": "Limited"
+    });
+
+    if let Ok((width, height)) = extract_sai2_dimensions(path) {
+        technical_metadata["width"] = serde_json::json!(width);
+        technical_metadata["height"] = serde_json::json!(height);
+        technical_metadata["metadata_source"] = serde_json::json!("header");
+    }
+
+    Ok(serde_json::json!({
+        "technical": technical_metadata,
+        "semantic": {}
+    }))
+}
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------

@@ -15,6 +15,25 @@ use tracing::instrument;
 /// This provider supports both modern XMind (ZEN/Pro) which uses JSON-based content,
 /// and legacy XMind Classic which uses XML-based content. It extracts technical
 /// details like topic and sheet counts, as well as semantic data like mind map titles.
+///
+/// # Technical Details
+///
+/// - **File Format**: ZIP archive
+/// - **Preview Format**: PNG image (first sheet)
+/// - **Metadata**: JSON data containing design information
+///
+/// # Examples
+///
+/// ```no_run
+/// use mundam_lib::processing::media::providers::project::xmind::XMindFormatProvider;
+///
+/// let provider = XMindFormatProvider::new();
+/// let formats = provider.supported_formats();
+///
+/// assert_eq!(formats.len(), 1);
+/// assert_eq!(formats[0].name, "XMind Map");
+/// assert_eq!(formats[0].extensions, vec!["xmind"]);
+/// ```
 #[derive(Default)]
 pub struct XMindFormatProvider;
 

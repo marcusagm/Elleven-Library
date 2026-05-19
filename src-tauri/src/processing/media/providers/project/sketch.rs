@@ -21,6 +21,25 @@ use tracing::instrument;
 ///
 /// Provides metadata, thumbnail, and preview extraction for Sketch files.
 /// Leverages the internal ZIP structure and `meta.json`.
+///
+/// # Technical Details
+///
+/// - **File Format**: ZIP archive
+/// - **Preview Format**: PNG image (first page)
+/// - **Metadata**: JSON data containing design information
+///
+/// # Examples
+///
+/// ```no_run
+/// use mundam_lib::processing::media::providers::project::sketch::SketchFormatProvider;
+///
+/// let provider = SketchFormatProvider::new();
+/// let formats = provider.supported_formats();
+///
+/// assert_eq!(formats.len(), 1);
+/// assert_eq!(formats[0].name, "Sketch Project");
+/// assert_eq!(formats[0].extensions, vec!["sketch"]);
+/// ```
 #[derive(Default)]
 pub struct SketchFormatProvider;
 

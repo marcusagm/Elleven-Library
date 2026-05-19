@@ -18,6 +18,28 @@ use std::path::Path;
 use tracing::instrument;
 
 /// Provider for Figma (.fig) project files.
+///
+/// This provider uses the `extract-figma` crate to extract metadata, thumbnails, and previews
+/// from Figma files. Figma files are ZIP archives containing JSON data and previews.
+///
+/// ## Technical Details
+///
+/// - **File Format**: ZIP archive
+/// - **Preview Format**: PNG image
+/// - **Metadata**: JSON data containing design information
+///
+/// ## Examples
+///
+/// ```no_run
+/// use mundam_lib::processing::media::providers::project::figma::FigmaFormatProvider;
+///
+/// let provider = FigmaFormatProvider::new();
+/// let formats = provider.supported_formats();
+///
+/// assert_eq!(formats.len(), 1);
+/// assert_eq!(formats[0].name, "Figma Archive");
+/// assert_eq!(formats[0].extensions, vec!["fig"]);
+/// ```
 #[derive(Default)]
 pub struct FigmaFormatProvider;
 

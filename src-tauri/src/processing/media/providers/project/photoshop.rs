@@ -12,6 +12,27 @@ use tracing::instrument;
 /// This provider handles both standard PSD files and Large Document Format (PSB) files,
 /// extracting technical metadata like dimensions and color mode, as well as semantic
 /// data like layer names.
+///
+/// # Technical Details
+///
+/// - **File Format**: PSD or PSB
+/// - **Preview Format**: PNG image
+/// - **Metadata**: JSON data containing design information
+///
+/// # Examples
+///
+/// ```no_run
+/// use mundam_lib::processing::media::providers::project::photoshop::PhotoshopFormatProvider;
+///
+/// let provider = PhotoshopFormatProvider::new();
+/// let formats = provider.supported_formats();
+///
+/// assert_eq!(formats.len(), 2);
+/// assert_eq!(formats[0].name, "Adobe Photoshop Image");
+/// assert_eq!(formats[0].extensions, vec!["psd"]);
+/// assert_eq!(formats[1].name, "Adobe Photoshop Large Image");
+/// assert_eq!(formats[1].extensions, vec!["psb"]);
+/// ```
 #[derive(Default)]
 pub struct PhotoshopFormatProvider;
 

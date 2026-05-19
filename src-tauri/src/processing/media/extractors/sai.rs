@@ -260,6 +260,25 @@ fn find_root_entry<R: Read + Seek>(page_reader: &mut SaiPageReader<R>, target_na
     Ok(None)
 }
 
+/// Extrai metadados de arquivos SAI v1.
+pub fn extract_sai_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let mut technical_metadata = serde_json::json!({
+        "container": "SAI v1",
+        "metadata_support": "Limited"
+    });
+
+    if let Ok((width, height)) = extract_sai_dimensions(path) {
+        technical_metadata["width"] = serde_json::json!(width);
+        technical_metadata["height"] = serde_json::json!(height);
+        technical_metadata["metadata_source"] = serde_json::json!("thumbnail");
+    }
+
+    Ok(serde_json::json!({
+        "technical": technical_metadata,
+        "semantic": {}
+    }))
+}
+
 /// Extrai apenas as dimensões do thumbnail do arquivo SAI.
 pub fn extract_sai_dimensions(path: &Path) -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let file = std::fs::File::open(path)?;

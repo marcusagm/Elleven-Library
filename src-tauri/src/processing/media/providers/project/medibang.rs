@@ -14,6 +14,69 @@ use tracing::instrument;
 /// and FireAlpaca. It extracts technical metadata (dimensions, resolution) and
 /// semantic data (layer names) via a specialized internal extractor that parses
 /// the embedded XML header and binary PAC blocks.
+///
+/// # Technical Details
+///
+/// ## File Format
+///
+/// The MDP file format is a proprietary binary format used by MediBang Paint and FireAlpaca.
+/// It consists of a binary header followed by a series of data blocks. The header contains
+/// information about the file, such as the file size, version, and canvas size. The data
+/// blocks contain information about the layers, such as the layer name, layer type, and
+/// layer data.
+///
+/// ## Magic Bytes
+///
+/// The magic bytes for the MDP file format are "mdipack".
+///
+/// ## File Structure
+///
+/// The MDP file format has the following structure:
+///
+/// ```text
+/// +-----------------+
+/// | Magic Bytes     |
+/// +-----------------+
+/// | Header          |
+/// +-----------------+
+/// | Data Blocks     |
+/// +-----------------+
+/// ```
+///
+/// ## Data Blocks
+///
+/// The data blocks are stored in the file in the following order:
+///
+/// ```text
+/// +-----------------+
+/// | Layer Data      |
+/// +-----------------+
+/// | Layer Data      |
+/// +-----------------+
+/// | Layer Data      |
+/// +-----------------+
+/// ```
+///
+/// ## File Extraction
+///
+/// The MDP file format is a proprietary format, so it requires a specialized
+/// extractor to parse the file. The extractor parses the file and extracts the
+/// technical metadata, such as the dimensions and resolution, and the semantic
+/// data, such as the layer names and layer data.
+///
+/// # Examples
+///
+/// ```no_run
+/// use mundam_lib::processing::media::providers::project::medibang::MedibangFormatProvider;
+/// use mundam_lib::core::formats::provider::FormatProvider;
+///
+/// let provider = MedibangFormatProvider::new();
+/// let supported_formats = provider.supported_formats();
+///
+/// assert!(!supported_formats.is_empty());
+/// assert_eq!(provider.name(), "MEDIBANG_PROVIDER");
+/// assert_eq!(provider.supported_extensions(), vec!["mdp"]);
+/// ```
 #[derive(Default)]
 pub struct MedibangFormatProvider;
 
@@ -93,10 +156,11 @@ impl MetadataCapability for MedibangFormatProvider {
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let metadata = extractors::extract_mdp_metadata(&path_owned)
-                .map_err(|error: Box<dyn std::error::Error>| {
+            let metadata = extractors::extract_mdp_metadata(&path_owned).map_err(
+                |error: Box<dyn std::error::Error>| {
                     crate::core::error::AppError::Generic(error.to_string())
-                })?;
+                },
+            )?;
 
             Ok(metadata["technical"].clone())
         })
@@ -118,10 +182,11 @@ impl MetadataCapability for MedibangFormatProvider {
     async fn extract_semantic(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let metadata = extractors::extract_mdp_metadata(&path_owned)
-                .map_err(|error: Box<dyn std::error::Error>| {
+            let metadata = extractors::extract_mdp_metadata(&path_owned).map_err(
+                |error: Box<dyn std::error::Error>| {
                     crate::core::error::AppError::Generic(error.to_string())
-                })?;
+                },
+            )?;
 
             Ok(metadata["semantic"].clone())
         })
@@ -176,9 +241,11 @@ impl PreviewCapability for MedibangFormatProvider {
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            extractors::extract_mdp_preview(&path_owned).map_err(|error: Box<dyn std::error::Error>| {
-                crate::core::error::AppError::Generic(error.to_string())
-            })
+            extractors::extract_mdp_preview(&path_owned).map_err(
+                |error: Box<dyn std::error::Error>| {
+                    crate::core::error::AppError::Generic(error.to_string())
+                },
+            )
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
