@@ -12,7 +12,7 @@ pub mod types;
 pub use provider::SupportedFormat;
 pub use registry::FormatRegistry;
 
-use crate::processing::media::affinity_format::AffinityFormatProvider;
+use crate::processing::media::providers::project::affinity::AffinityFormatProvider;
 use crate::processing::media::archive_format::ArchiveFormatProvider;
 use crate::processing::media::audio_format::AudioFormatProvider;
 use crate::processing::media::fallback_format::GenericByteFallbackProvider;

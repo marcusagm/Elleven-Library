@@ -3,7 +3,6 @@
 pub mod extractors;
 pub mod providers;
 
-pub mod affinity_format;
 pub mod archive_format;
 pub mod audio_format;
 pub mod fallback_format;
