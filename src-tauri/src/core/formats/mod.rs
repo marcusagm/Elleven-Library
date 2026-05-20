@@ -16,7 +16,11 @@ use crate::processing::media::providers::project::affinity::AffinityFormatProvid
 use crate::processing::media::archive_format::ArchiveFormatProvider;
 use crate::processing::media::audio_format::AudioFormatProvider;
 use crate::processing::media::fallback_format::GenericByteFallbackProvider;
-use crate::processing::media::font_format::FontFormatProvider;
+use crate::processing::media::providers::font::otf::OpenTypeFontProvider;
+use crate::processing::media::providers::font::ttc::TrueTypeCollectionProvider;
+use crate::processing::media::providers::font::ttf::TrueTypeFontProvider;
+use crate::processing::media::providers::font::woff::WoffFontProvider;
+use crate::processing::media::providers::font::woff2::Woff2FontProvider;
 use crate::processing::media::icon_format::IconFormatProvider;
 use crate::processing::media::image_format::ImageFormatProvider;
 use crate::processing::media::modern_image_format::ModernImageFormatProvider;
@@ -66,10 +70,8 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(ModernImageFormatProvider::new()));
     registry.register(Arc::new(RawFormatProvider::new()));
     registry.register(Arc::new(ArchiveFormatProvider::new()));
-    registry.register(Arc::new(AffinityFormatProvider::new()));
     registry.register(Arc::new(SvgFormatProvider::new()));
     registry.register(Arc::new(PdfFormatProvider::new()));
-    registry.register(Arc::new(FontFormatProvider::new()));
     registry.register(Arc::new(TextFormatProvider::new()));
 
     // Register Final Parity Providers
@@ -79,18 +81,26 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(UsdFormatProvider::new()));
     registry.register(Arc::new(CadFormatProvider::new()));
 
+    // Register Font Providers
+    registry.register(Arc::new(OpenTypeFontProvider::new()));
+    registry.register(Arc::new(TrueTypeFontProvider::new()));
+    registry.register(Arc::new(TrueTypeCollectionProvider::new()));
+    registry.register(Arc::new(WoffFontProvider::new()));
+    registry.register(Arc::new(Woff2FontProvider::new()));
+
     //Register Project Providers
+    registry.register(Arc::new(AffinityFormatProvider::new()));
     registry.register(Arc::new(AsepriteFormatProvider::new()));
     registry.register(Arc::new(ClipStudioFormatProvider::new()));
     registry.register(Arc::new(CoreldrawFormatProvider::new()));
     registry.register(Arc::new(CorelPainterFormatProvider::new()));
     registry.register(Arc::new(FigmaFormatProvider::new()));
+    registry.register(Arc::new(IllustratorFormatProvider::new()));
     registry.register(Arc::new(GimpFormatProvider::new()));
     registry.register(Arc::new(KritaFormatProvider::new()));
     registry.register(Arc::new(MedibangFormatProvider::new()));
     registry.register(Arc::new(PaintToolSaiFormatProvider::new()));
     registry.register(Arc::new(PenpotFormatProvider::new()));
-    registry.register(Arc::new(IllustratorFormatProvider::new()));
     registry.register(Arc::new(PhotoshopFormatProvider::new()));
     registry.register(Arc::new(RebelleFormatProvider::new()));
     registry.register(Arc::new(SketchFormatProvider::new()));

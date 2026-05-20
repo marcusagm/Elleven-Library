@@ -16,9 +16,11 @@ pub mod sai2;
 pub mod sketch;
 pub mod pdf;
 pub mod xcf;
+pub mod font;
 
 // Convenience re-exports
 pub use ai::{extract_ai_preview, extract_ai_metadata};
+pub use font::{extract_font_metadata, generate_font_thumbnail};
 pub use aseprite::extract_aseprite_preview;
 pub use binary_jpeg::extract_any_embedded;
 pub use clip::{extract_clip_metadata, extract_clip_preview};

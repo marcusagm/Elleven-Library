@@ -6,7 +6,6 @@ pub mod providers;
 pub mod archive_format;
 pub mod audio_format;
 pub mod fallback_format;
-pub mod font_format;
 pub mod icon_format;
 pub mod image_format;
 pub mod modern_image_format;
