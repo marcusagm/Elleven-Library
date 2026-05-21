@@ -7,6 +7,30 @@ use std::path::Path;
 use tiny_skia::Pixmap;
 
 /// Provider for generic file icons as a fallback
+///
+/// This provider is used as a fallback for formats that do not have a specific
+/// provider.
+///
+/// # Technical Details
+///
+/// - **File Format**: ICNS
+/// - **Preview Format**: PNG image
+/// - **Thumbnail Format**: PNG image
+///
+/// # Example
+///
+/// ```no_run
+/// use mundam::core::formats::provider::FormatProvider;
+/// use mundam::core::formats::types::PreviewStrategy;
+/// use mundam::processing::media::providers::image::IcoFormatProvider;
+/// use mundam::core::formats::capabilities::PreviewCapability;
+/// use std::path::Path;
+///
+/// async fn generate_ico_preview(path: &Path) -> mundam::core::AppResult<(Vec<u8>, String)> {
+///     let provider = IcoFormatProvider;
+///     provider.generate_preview(path, "asset_id").await
+/// }
+/// ```
 #[derive(Default)]
 pub struct IconFormatProvider;
 
@@ -46,7 +70,7 @@ impl FormatProvider for IconFormatProvider {
     ///
     /// A `Vec<&'static str>` containing the supported extensions.
     fn supported_extensions(&self) -> Vec<&'static str> {
-        vec![] // Handled as fallback by registry
+        vec!["icns"]
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
@@ -54,15 +78,20 @@ impl FormatProvider for IconFormatProvider {
 
         vec![
             SupportedFormat::with_metadata(
-                "Generic Icon",
-                vec!["generic"],
-                vec!["image/svg+xml"],
-                MediaType::Unknown,
+                "Apple Icon Image",
+                vec!["icns"],
+                vec!["image/x-icns"],
+                MediaType::Image,
                 ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::BrowserNative,
+                PreviewStrategy::None,
                 PlaybackStrategy::None,
             ),
         ]
+    }
+
+    /// Checks if the header bytes match the ICNS format.
+    fn supports_magic_bytes(&self, header_bytes: &[u8]) -> bool {
+        header_bytes.starts_with(b"icns")
     }
 
     /// Get the thumbnail capability for the format.

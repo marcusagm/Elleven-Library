@@ -13,7 +13,7 @@ use pdfium_render::prelude::*;
 /// `Result<Vec<u8>, Box<dyn std::error::Error>>` - The PNG formatted image bytes on success.
 pub fn render_pdf_to_png(pdf_data: &[u8], size_hint: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let library_path = find_pdfium_library_path()
-        .ok_or_else(|| "Could not locate libpdfium binary")?;
+        .ok_or("Could not locate libpdfium binary")?;
 
     let pdfium = Pdfium::new(
         Pdfium::bind_to_library(library_path)
@@ -53,7 +53,7 @@ pub fn render_pdf_to_png(pdf_data: &[u8], size_hint: u32) -> Result<Vec<u8>, Box
 /// A `Result` wrapping a `serde_json::Value` with technical and semantic metadata.
 pub fn extract_pdf_metadata(pdf_data: &[u8]) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let library_path = find_pdfium_library_path()
-        .ok_or_else(|| "Could not locate libpdfium binary")?;
+        .ok_or("Could not locate libpdfium binary")?;
 
     let pdfium = Pdfium::new(
         Pdfium::bind_to_library(library_path)

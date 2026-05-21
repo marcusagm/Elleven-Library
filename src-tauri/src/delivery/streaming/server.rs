@@ -309,7 +309,7 @@ async fn probe_handler(
     // Validate path is within authorized library folders
     validate_path_scope(&state.asset_query_handler, &file_path)
         .await
-        .map_err(|e| forbidden_response(e))?;
+        .map_err(forbidden_response)?;
 
     match probe::get_video_info(&state.app_handle, &state.registry, &file_path).await {
         Ok(info) => {
@@ -344,7 +344,7 @@ async fn stream_handler(
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
     // Validate path scope
-    validate_path_scope(&state.asset_query_handler, &asset.path).await.map_err(|e| forbidden_response(e))?;
+    validate_path_scope(&state.asset_query_handler, &asset.path).await.map_err(forbidden_response)?;
 
     let range = headers.get(header::RANGE).cloned();
     serve_file(&asset.path, range).await
@@ -372,7 +372,7 @@ async fn playlist_handler(
     // Validate path is within authorized library folders
     validate_path_scope(&state.asset_query_handler, &file_path)
         .await
-        .map_err(|e| forbidden_response(e))?;
+        .map_err(forbidden_response)?;
 
     let quality = params
         .get("quality")
@@ -441,7 +441,7 @@ async fn segment_handler(
     // Validate path is within authorized library folders
     validate_path_scope(&state.asset_query_handler, &file_path)
         .await
-        .map_err(|e| forbidden_response(e))?;
+        .map_err(forbidden_response)?;
 
     match segment::get_segment(
         &state.app_handle,
@@ -498,7 +498,7 @@ async fn linear_hls_handler(
     // Validate path is within authorized library folders
     validate_path_scope(&state.asset_query_handler, &file_path)
         .await
-        .map_err(|e| forbidden_response(e))?;
+        .map_err(forbidden_response)?;
 
     // 2. Handle Playlist Request
     if path.ends_with("/index.m3u8") {

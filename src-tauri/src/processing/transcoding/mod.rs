@@ -119,42 +119,65 @@ fn find_binary<R: tauri::Runtime>(
 /// Executa um comando com um timeout rigoroso.
 ///
 /// # Arguments
-/// * `cmd` - O comando pronto para execução.
-/// * `timeout_secs` - Tempo máximo de execução em segundos.
+/// * `command` - O comando pronto para execução.
+/// * `timeout_seconds` - Tempo máximo de execução em segundos.
 ///
 /// # Errors
 /// Retorna `AppError::Transcoding` se o comando falhar, expirar ou emitir erro.
 pub fn run_command_with_timeout(
     mut command: Command,
-    timeout_secs: u64,
+    timeout_seconds: u64,
 ) -> AppResult<std::process::Output> {
-    let mut child = command
+    let mut child_process = command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| AppError::Transcoding(format!("Failed to spawn process: {}", e)))?;
-    match child.wait_timeout(Duration::from_secs(timeout_secs))? {
-        Some(status) => {
-            let mut stdout = Vec::new();
-            let mut stderr = Vec::new();
-            if let Some(mut s) = child.stdout {
-                s.read_to_end(&mut stdout).ok();
-            }
-            if let Some(mut s) = child.stderr {
-                s.read_to_end(&mut stderr).ok();
-            }
+        .map_err(|error| AppError::Transcoding(format!("Failed to spawn process: {}", error)))?;
+
+    let mut stdout_pipe = child_process
+        .stdout
+        .take()
+        .ok_or_else(|| AppError::Transcoding("Failed to open stdout pipe".to_string()))?;
+    let mut stderr_pipe = child_process
+        .stderr
+        .take()
+        .ok_or_else(|| AppError::Transcoding("Failed to open stderr pipe".to_string()))?;
+
+    let stdout_join_handle = std::thread::spawn(move || {
+        let mut stdout_buffer = Vec::new();
+        stdout_pipe.read_to_end(&mut stdout_buffer).map(|_| stdout_buffer)
+    });
+
+    let stderr_join_handle = std::thread::spawn(move || {
+        let mut stderr_buffer = Vec::new();
+        stderr_pipe.read_to_end(&mut stderr_buffer).map(|_| stderr_buffer)
+    });
+
+    match child_process.wait_timeout(Duration::from_secs(timeout_seconds))? {
+        Some(exit_status) => {
+            let stdout_data = stdout_join_handle
+                .join()
+                .map_err(|_| AppError::Transcoding("Stdout reader thread panicked".to_string()))?
+                .map_err(|error| AppError::Transcoding(format!("Failed to read stdout: {}", error)))?;
+            let stderr_data = stderr_join_handle
+                .join()
+                .map_err(|_| AppError::Transcoding("Stderr reader thread panicked".to_string()))?
+                .map_err(|error| AppError::Transcoding(format!("Failed to read stderr: {}", error)))?;
+
             Ok(std::process::Output {
-                status,
-                stdout,
-                stderr,
+                status: exit_status,
+                stdout: stdout_data,
+                stderr: stderr_data,
             })
         }
         None => {
-            // Processo expirou. Matamos para evitar zumbis.
-            child.kill().ok();
+            // Process timed out. Kill it to prevent zombies.
+            child_process.kill().ok();
+            let _ = stdout_join_handle.join();
+            let _ = stderr_join_handle.join();
             Err(AppError::Transcoding(format!(
                 "Process execution timed out after {}s",
-                timeout_secs
+                timeout_seconds
             )))
         }
     }

@@ -228,7 +228,8 @@ impl ThumbnailWorker {
                     "model/gltf-binary" => "glb",
                     "model/gltf+json" => "gltf",
                     "image/png" => "png",
-                    "image/jpeg" => "jpg",
+                    "image/jpeg" | "image/jpg" => "jpg",
+                    "image/webp" => "webp",
                     _ => "bin",
                 };
                 let preview_filename = format!("{}.{}", id, extension);

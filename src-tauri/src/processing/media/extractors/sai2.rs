@@ -356,7 +356,7 @@ fn convert_jssf_to_jpeg(
     // DRI - Define Restart Interval
     push_u16_be(&mut jpeg_output, 0xFFDD);
     push_u16_be(&mut jpeg_output, 0x0004); // Length
-    push_u16_be(&mut jpeg_output, (jssf_width + 7) / 8); // MCUs per row
+    push_u16_be(&mut jpeg_output, jssf_width.div_ceil(8)); // MCUs per row
 
     // SOS - Start of Scan
     push_u16_be(&mut jpeg_output, 0xFFDA);
@@ -374,7 +374,7 @@ fn convert_jssf_to_jpeg(
     push_u8(&mut jpeg_output, 0x00); // Successive approximation
 
     // MCU rows — each prefixed with u16 LE size
-    let mcu_row_count = ((jssf_height as usize) + 7) / 8;
+    let mcu_row_count = (jssf_height as usize).div_ceil(8);
     for mcu_row_index in 0..mcu_row_count {
         if cursor + 2 > data.len() {
             break;
@@ -720,8 +720,8 @@ fn decode_dpcm_thumbnail(
 ) -> Result<Vec<u8>, Sai2Error> {
     const TILE_SIZE: u32 = 256;
 
-    let tiles_x = (canvas_width + TILE_SIZE - 1) / TILE_SIZE;
-    let tiles_y = (canvas_height + TILE_SIZE - 1) / TILE_SIZE;
+    let tiles_x = canvas_width.div_ceil(TILE_SIZE);
+    let tiles_y = canvas_height.div_ceil(TILE_SIZE);
     let tiles_count = (tiles_x * tiles_y) as usize;
 
     let mut cursor = 0usize;

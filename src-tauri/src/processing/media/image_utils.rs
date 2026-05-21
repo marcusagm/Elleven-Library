@@ -121,8 +121,8 @@ pub fn get_image_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
                 }
                 b"VP8X" => {
                     // VP8X (Extended): 24 bits width, 24 bits height
-                    let w = (u32::from_le_bytes([bytes[24], bytes[25], bytes[26], 0]) >> 0) + 1;
-                    let h = (u32::from_le_bytes([bytes[27], bytes[28], bytes[29], 0]) >> 0) + 1;
+                    let w = u32::from_le_bytes([bytes[24], bytes[25], bytes[26], 0]) + 1;
+                    let h = u32::from_le_bytes([bytes[27], bytes[28], bytes[29], 0]) + 1;
                     Some((w, h))
                 }
                 _ => None

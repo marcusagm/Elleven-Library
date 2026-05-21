@@ -389,10 +389,11 @@ fn read_metadata_snapshot(path: &PathBuf) -> Option<FileMetadataSnapshot> {
     })
 }
 
-/// Heuristic to detect if a non-existing path was likely a directory.
-/// Since the path no longer exists at the time of deletion, we use naming heuristics.
-fn is_likely_directory(path: &PathBuf) -> bool {
-    // If the path has no extension, it's more likely a directory
+/// Fallback function to determine if a path is likely a directory.
+fn is_likely_directory(path: &std::path::Path) -> bool {
+    if let Ok(metadata) = std::fs::metadata(path) {
+        return metadata.is_dir();
+    }
     path.extension().is_none()
 }
 

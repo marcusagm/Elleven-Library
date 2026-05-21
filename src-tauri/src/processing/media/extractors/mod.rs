@@ -1,6 +1,7 @@
 //! Extractors for media files
 
 pub mod ai;
+pub mod image;
 pub mod aseprite;
 pub mod binary_jpeg;
 pub mod clip;
@@ -39,3 +40,18 @@ pub use sai::{extract_sai_dimensions, extract_sai_metadata, extract_sai_preview}
 pub use sai2::{extract_sai2_dimensions, extract_sai2_metadata, extract_sai2_preview};
 pub use sketch::{extract_sketch_metadata, extract_sketch_preview};
 pub use xcf::{extract_xcf_metadata, extract_xcf_preview};
+pub use image::{
+    extract_raster_metadata,
+    generate_raster_thumbnail,
+    generate_raster_preview,
+    extract_raw_metadata,
+    generate_raw_thumbnail,
+    extract_raw_preview,
+    extract_ffmpeg_image_metadata,
+    generate_ffmpeg_image_thumbnail,
+    generate_ffmpeg_image_preview,
+    extract_exr_metadata,
+    process_and_encode_webp,
+    generate_hdr_exr_dds_thumbnail,
+    generate_hdr_exr_dds_preview,
+};

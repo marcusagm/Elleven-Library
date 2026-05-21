@@ -193,7 +193,7 @@ fn extract_zip_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
 
             let img = image::load_from_memory(&buf)
                 .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
-            return super::raw_format::process_and_encode_webp(img, size_hint);
+            return crate::processing::media::extractors::image::process_and_encode_webp(img, size_hint);
         }
     }
 

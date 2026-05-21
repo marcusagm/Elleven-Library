@@ -305,7 +305,7 @@ impl LibraryIndexer {
             }
 
             // Emit progress periodically
-            if processed_count % 100 == 0 || processed_count == total_files as u64 {
+            if processed_count.is_multiple_of(100) || processed_count == total_files as u64 {
                 let _ = self.event_bus.publish(crate::core::events::DomainEvent::ScanProgress {
                     total: total_files,
                     processed: processed_count as usize,
@@ -476,7 +476,7 @@ impl LibraryIndexer {
         let disk_created_at: Option<DateTime<Utc>> = disk_metadata
             .as_ref()
             .and_then(|m| m.created().ok())
-            .map(|t| DateTime::<Utc>::from(t));
+            .map(DateTime::<Utc>::from);
 
         // --- STEP 1: Fast Match (Size + CreatedAt from recent_removals) ---
         let from_path = self.recent_removals.iter()
@@ -542,10 +542,10 @@ impl LibraryIndexer {
             .map(|f| (f.name.to_string(), f.type_category.to_string()))
             .unwrap_or_else(|| ("unknown".to_string(), "unknown".to_string()));
 
-        let metadata = std::fs::metadata(&entry_path).map_err(|e| crate::core::error::AppError::Io(e))?;
+        let metadata = std::fs::metadata(&entry_path).map_err(crate::core::error::AppError::Io)?;
         let size_bytes = metadata.len();
-        let created_at = metadata.created().ok().map(|t| DateTime::<Utc>::from(t));
-        let modified_at = metadata.modified().ok().map(|t| DateTime::<Utc>::from(t));
+        let created_at = metadata.created().ok().map(DateTime::<Utc>::from);
+        let modified_at = metadata.modified().ok().map(DateTime::<Utc>::from);
 
         let folder_id = if let Some(parent) = entry_path.parent() {
             self.ensure_folder_hierarchy(parent).await?

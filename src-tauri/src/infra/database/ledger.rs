@@ -236,7 +236,7 @@ impl SqliteAssetLedger {
         )
         .await?;
 
-        Self::fetch_asset_by_id(tx, &asset_id).await
+        Self::fetch_asset_by_id(tx, asset_id).await
     }
 
     async fn handle_update_format(
@@ -1890,9 +1890,9 @@ impl SqliteAssetLedger {
         Self::fetch_asset_by_id(tx, &asset_id).await
             }
             LedgerCommand::Batch(_) => {
-                return Err(AppError::Internal(
+                Err(AppError::Internal(
                     "Nested Batch commands are not supported".to_string(),
-                ));
+                ))
             }
             LedgerCommand::RenameFolder(payload) => {
                 let old_path_str = payload.old_path.to_string_lossy().to_string();

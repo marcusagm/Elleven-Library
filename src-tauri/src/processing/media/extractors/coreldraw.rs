@@ -159,7 +159,7 @@ fn normalize_to_pipeline_format(
             // Already a pipeline-compatible format
             Ok((image_data, mime_type))
         }
-        "image/bmp" | "image/tiff" | "image/gif" | _
+        "image/bmp" | "image/tiff" | "image/gif"
             if mime_type != "image/png"
                 && mime_type != "image/jpeg"
                 && mime_type != "image/webp" =>
@@ -491,7 +491,7 @@ fn parse_mcfg_dimensions(
         12
     } else if version >= 900 {
         4
-    } else if version >= 600 && version < 700 {
+    } else if (600..700).contains(&version) {
         0x1c
     } else {
         0
