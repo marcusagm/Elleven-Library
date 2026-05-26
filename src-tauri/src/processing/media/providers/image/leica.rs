@@ -1,4 +1,6 @@
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability, PreviewCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::core::AppResult;
 use async_trait::async_trait;
@@ -68,7 +70,9 @@ impl FormatProvider for LeicaRawFormatProvider {
     ///
     /// `Vec<SupportedFormat>` - List of supported formats with metadata.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
         vec![SupportedFormat::with_metadata(
             "Leica RAW Image",
             vec!["rwl"],
@@ -184,7 +188,10 @@ impl ThumbnailCapability for LeicaRawFormatProvider {
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::generate_raw_thumbnail(&path_owned, size_hint)
+            crate::processing::media::extractors::image::generate_raw_thumbnail(
+                &path_owned,
+                size_hint,
+            )
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

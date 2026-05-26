@@ -9,12 +9,14 @@ use crate::core::formats::capabilities::{
     MetadataCapability, PreviewCapability, ThumbnailCapability,
 };
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
-use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+use crate::core::formats::types::{
+    MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+};
 use crate::processing::media::extractors;
 
 /// Provider for CLIP Studio Paint (.clip) files.
 ///
-/// This provider uses the internal SQLite database chunk (`CHNKSQLi`) embedded in `.clip` files 
+/// This provider uses the internal SQLite database chunk (`CHNKSQLi`) embedded in `.clip` files
 /// to extract high-quality metadata (dimensions, resolution) and previews.
 ///
 /// # Technical Details
@@ -76,17 +78,15 @@ impl FormatProvider for ClipStudioFormatProvider {
     ///
     /// `Vec<SupportedFormat>` - List of supported formats.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        vec![
-            SupportedFormat::with_metadata(
-                "CLIP Studio Paint Document",
-                vec!["clip"],
-                vec!["application/x-clip-studio-paint"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
-        ]
+        vec![SupportedFormat::with_metadata(
+            "CLIP Studio Paint Document",
+            vec!["clip"],
+            vec!["application/x-clip-studio-paint"],
+            MediaType::Project,
+            ThumbnailStrategy::NativeExtractor,
+            PreviewStrategy::NativeExtractor,
+            PlaybackStrategy::None,
+        )]
     }
 
     /// Checks if the provider supports the given magic bytes.
@@ -151,7 +151,7 @@ impl ThumbnailCapability for ClipStudioFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate(&self, path: &Path, _asset_id: &str, _size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             let (preview_data, _) = extractors::extract_clip_preview(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
@@ -182,7 +182,7 @@ impl PreviewCapability for ClipStudioFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             extractors::extract_clip_preview(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))
@@ -211,7 +211,7 @@ impl MetadataCapability for ClipStudioFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_technical(&self, path: &Path) -> AppResult<Value> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             let metadata = extractors::extract_clip_metadata(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
@@ -238,7 +238,7 @@ impl MetadataCapability for ClipStudioFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_semantic(&self, path: &Path) -> AppResult<Value> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             let metadata = extractors::extract_clip_metadata(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;

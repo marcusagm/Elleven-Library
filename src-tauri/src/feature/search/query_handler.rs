@@ -39,7 +39,10 @@ impl SearchQueryHandler {
         criteria: SearchCriteria,
         page: PageParams,
     ) -> AppResult<PaginatedAssetsDto> {
-        let items = self.repository.search_assets(criteria.clone(), page).await?;
+        let items = self
+            .repository
+            .search_assets(criteria.clone(), page)
+            .await?;
         let total_items = self.repository.get_search_count(criteria).await?;
 
         Ok(PaginatedAssetsDto { items, total_items })

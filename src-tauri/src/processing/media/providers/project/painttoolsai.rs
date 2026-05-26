@@ -9,7 +9,9 @@ use crate::core::formats::capabilities::{
     MetadataCapability, PreviewCapability, ThumbnailCapability,
 };
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
-use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+use crate::core::formats::types::{
+    MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+};
 use crate::processing::media::extractors;
 
 /// Provider for PaintTool SAI (.sai and .sai2) project files.
@@ -165,18 +167,22 @@ impl ThumbnailCapability for PaintToolSaiFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate(&self, path: &Path, _asset_id: &str, _size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
-        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-        
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
         tokio::task::spawn_blocking(move || {
             if extension == "sai2" {
                 let (preview_data, _) = extractors::extract_sai2_preview(&path_owned)
                     .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
-                
+
                 Ok(preview_data)
             } else {
                 let (preview_data, _) = extractors::extract_sai_preview(&path_owned)
                     .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
-                
+
                 Ok(preview_data)
             }
         })
@@ -205,8 +211,12 @@ impl PreviewCapability for PaintToolSaiFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
-        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-        
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
         tokio::task::spawn_blocking(move || {
             if extension == "sai2" {
                 extractors::extract_sai2_preview(&path_owned)
@@ -240,8 +250,12 @@ impl MetadataCapability for PaintToolSaiFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_technical(&self, path: &Path) -> AppResult<Value> {
         let path_owned = path.to_path_buf();
-        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-        
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
         tokio::task::spawn_blocking(move || {
             if extension == "sai2" {
                 let metadata = extractors::extract_sai2_metadata(&path_owned)
@@ -274,8 +288,12 @@ impl MetadataCapability for PaintToolSaiFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_semantic(&self, path: &Path) -> AppResult<Value> {
         let path_owned = path.to_path_buf();
-        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-        
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
         tokio::task::spawn_blocking(move || {
             if extension == "sai2" {
                 let metadata = extractors::extract_sai2_metadata(&path_owned)

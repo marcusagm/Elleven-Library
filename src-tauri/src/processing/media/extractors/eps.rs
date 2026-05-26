@@ -5,7 +5,9 @@
 use crate::processing::media::extractors::{ai, binary_jpeg};
 use std::path::Path;
 
-pub fn extract_eps_ps_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_eps_ps_preview(
+    path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     if let Ok(res) = binary_jpeg::extract_eps_binary_pointer(path) {
         return Ok(res);
     }
@@ -28,18 +30,34 @@ fn convert_ps_to_pdf(path: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>>
     let temp_db = std::env::temp_dir().join(format!("mundam_eps_{}.pdf", uuid::Uuid::new_v4()));
     let mut success = false;
     if cfg!(target_os = "macos") {
-        if let Ok(out) = std::process::Command::new("pstopdf").arg(path).arg("-o").arg(&temp_db).output() {
-            if out.status.success() { success = true; }
+        if let Ok(out) = std::process::Command::new("pstopdf")
+            .arg(path)
+            .arg("-o")
+            .arg(&temp_db)
+            .output()
+        {
+            if out.status.success() {
+                success = true;
+            }
         }
     }
     if !success {
-        let cmds = if cfg!(target_os = "windows") { vec!["gswin64c", "gswin32c", "gs"] } else { vec!["gs"] };
+        let cmds = if cfg!(target_os = "windows") {
+            vec!["gswin64c", "gswin32c", "gs"]
+        } else {
+            vec!["gs"]
+        };
         for cmd in cmds {
             if let Ok(out) = std::process::Command::new(cmd)
                 .args(["-sDEVICE=pdfwrite", "-dSAFER", "-dBATCH", "-dNOPAUSE"])
                 .arg(format!("-sOutputFile={}", temp_db.display()))
-                .arg(path).output() {
-                if out.status.success() { success = true; break; }
+                .arg(path)
+                .output()
+            {
+                if out.status.success() {
+                    success = true;
+                    break;
+                }
             }
         }
     }
@@ -84,7 +102,9 @@ pub fn extract_eps_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn st
     let mut pages_count = 1;
     if width.is_none() || height.is_none() {
         if let Ok(pdf_data) = convert_ps_to_pdf(path) {
-            if let Ok(pdf_metadata) = crate::processing::media::extractors::pdf::extract_pdf_metadata(&pdf_data) {
+            if let Ok(pdf_metadata) =
+                crate::processing::media::extractors::pdf::extract_pdf_metadata(&pdf_data)
+            {
                 if let Some(extracted_width) = pdf_metadata["technical"]["width"].as_u64() {
                     width = Some(extracted_width as u32);
                 }
@@ -119,10 +139,7 @@ pub fn extract_eps_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn st
 }
 
 fn parse_bounding_box_line(line: &str) -> Option<(f32, f32, f32, f32)> {
-    let coordinate_parts: Vec<&str> = line
-        .split_whitespace()
-        .skip(1)
-        .collect();
+    let coordinate_parts: Vec<&str> = line.split_whitespace().skip(1).collect();
     if coordinate_parts.len() >= 4 {
         let lower_left_x = coordinate_parts[0].parse::<f32>().ok()?;
         let lower_left_y = coordinate_parts[1].parse::<f32>().ok()?;
@@ -144,7 +161,9 @@ mod tests {
     fn test_extract_eps_metadata() {
         let eps_content = "%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 10 20 410 520\n%%EOF";
         let mut temporary_file = NamedTempFile::new().expect("Failed to create temporary file");
-        temporary_file.write_all(eps_content.as_bytes()).expect("Failed to write to temporary file");
+        temporary_file
+            .write_all(eps_content.as_bytes())
+            .expect("Failed to write to temporary file");
         let path = temporary_file.path();
 
         let metadata = extract_eps_metadata(path).expect("Failed to extract EPS metadata");
@@ -154,4 +173,3 @@ mod tests {
         assert_eq!(technical["height"], 500);
     }
 }
-

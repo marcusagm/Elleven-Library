@@ -72,7 +72,9 @@ pub fn extract_figma_metadata(path: &Path) -> Result<Value, Box<dyn std::error::
 
     // Use preview for dimensions
     if let Ok((preview_data, _)) = extract_figma_preview(path) {
-        if let Ok(_reader) = image::ImageReader::new(std::io::Cursor::new(&preview_data)).with_guessed_format() {
+        if let Ok(_reader) =
+            image::ImageReader::new(std::io::Cursor::new(&preview_data)).with_guessed_format()
+        {
             if let Ok((width, height)) = _reader.into_dimensions() {
                 technical_metadata["width"] = width.into();
                 technical_metadata["height"] = height.into();

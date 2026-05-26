@@ -70,7 +70,10 @@ const THUMBNAIL_CANVAS_HEIGHT: i64 = 500;
 /// `AppResult<serde_json::Value>` - A JSON structure containing the extracted metadata.
 pub fn extract_font_metadata(path: &Path) -> AppResult<serde_json::Value> {
     let file_data = std::fs::read(path).map_err(AppError::Io)?;
-    let extension = path.extension().and_then(|extension_str| extension_str.to_str()).unwrap_or("");
+    let extension = path
+        .extension()
+        .and_then(|extension_str| extension_str.to_str())
+        .unwrap_or("");
     let decompressed_font_data = decompress_font(&file_data, extension)?;
 
     let number_of_faces = ttf_parser::fonts_in_collection(&decompressed_font_data).unwrap_or(1);
@@ -97,7 +100,9 @@ pub fn extract_font_metadata(path: &Path) -> AppResult<serde_json::Value> {
                 }
             }
 
-            let family = font_family.or(full_name.clone()).unwrap_or_else(|| "Unknown Font".to_string());
+            let family = font_family
+                .or(full_name.clone())
+                .unwrap_or_else(|| "Unknown Font".to_string());
 
             faces_metadata.push(serde_json::json!({
                 "face_index": face_index,
@@ -120,7 +125,9 @@ pub fn extract_font_metadata(path: &Path) -> AppResult<serde_json::Value> {
     }
 
     if faces_metadata.is_empty() {
-        return Err(AppError::Generic("No valid font faces found in file".into()));
+        return Err(AppError::Generic(
+            "No valid font faces found in file".into(),
+        ));
     }
 
     let mut main_metadata = faces_metadata[0].clone();
@@ -150,11 +157,16 @@ pub fn extract_font_metadata(path: &Path) -> AppResult<serde_json::Value> {
 /// `AppResult<Vec<u8>>` - The encoded WebP thumbnail bytes.
 pub fn generate_font_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
     let file_data = std::fs::read(path).map_err(AppError::Io)?;
-    let extension = path.extension().and_then(|extension_str| extension_str.to_str()).unwrap_or("");
+    let extension = path
+        .extension()
+        .and_then(|extension_str| extension_str.to_str())
+        .unwrap_or("");
     let decompressed_font_data = decompress_font(&file_data, extension)?;
 
     let mut fontdb = usvg::fontdb::Database::new();
-    fontdb.load_font_source(usvg::fontdb::Source::Binary(Arc::new(decompressed_font_data.clone())));
+    fontdb.load_font_source(usvg::fontdb::Source::Binary(Arc::new(
+        decompressed_font_data.clone(),
+    )));
 
     let face = fontdb
         .faces()
@@ -173,69 +185,8 @@ pub fn generate_font_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u8>
     let has_latin_lowercase_a = has_glyph_defined(&parser_face, 'a');
     let has_latin_uppercase_a = has_glyph_defined(&parser_face, 'A');
 
-    let (main_preview, row_one, row_two, row_three) = if has_latin_lowercase_a || has_latin_uppercase_a {
-        (
-            "Aa".to_string(),
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ".to_string(),
-            "abcdefghijklmnopqrstuvwxyz".to_string(),
-            "0123456789".to_string(),
-        )
-    } else {
-        let mut symbol_characters = Vec::new();
-        if let Some(cmap) = parser_face.tables().cmap {
-            for subtable in cmap.subtables {
-                if subtable.is_unicode() {
-                    // Try Private Use Area (PUA) first
-                    for codepoint in 0xE000..=0xF8FF {
-                        if let Some(glyph_id) = subtable.glyph_index(codepoint) {
-                            if glyph_id.0 > 0 {
-                                if let Some(character) = std::char::from_u32(codepoint) {
-                                    symbol_characters.push(character);
-                                    if symbol_characters.len() >= 26 {
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    // Try Dingbats / Symbols if PUA was insufficient
-                    if symbol_characters.len() < 10 {
-                        for codepoint in 0x2600..=0x27BF {
-                            if let Some(glyph_id) = subtable.glyph_index(codepoint) {
-                                if glyph_id.0 > 0 {
-                                    if let Some(character) = std::char::from_u32(codepoint) {
-                                        symbol_characters.push(character);
-                                        if symbol_characters.len() >= 26 {
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    // Try printable ASCII if still insufficient
-                    if symbol_characters.len() < 10 {
-                        for codepoint in 0x21..=0x7E {
-                            if let Some(glyph_id) = subtable.glyph_index(codepoint) {
-                                if glyph_id.0 > 0 {
-                                    if let Some(character) = std::char::from_u32(codepoint) {
-                                        symbol_characters.push(character);
-                                        if symbol_characters.len() >= 26 {
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if !symbol_characters.is_empty() {
-                    break;
-                }
-            }
-        }
-
-        if symbol_characters.is_empty() {
+    let (main_preview, row_one, row_two, row_three) =
+        if has_latin_lowercase_a || has_latin_uppercase_a {
             (
                 "Aa".to_string(),
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ".to_string(),
@@ -243,47 +194,140 @@ pub fn generate_font_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u8>
                 "0123456789".to_string(),
             )
         } else {
-            let main_char = symbol_characters.iter().take(2).collect::<String>();
-
-            let mut characters_chunk_one = String::new();
-            let mut characters_chunk_two = String::new();
-            let mut characters_chunk_three = String::new();
-
-            for (index, symbol) in symbol_characters.iter().enumerate() {
-                if index < 8 {
-                    characters_chunk_one.push(*symbol);
-                    characters_chunk_one.push(' ');
-                } else if index < 16 {
-                    characters_chunk_two.push(*symbol);
-                    characters_chunk_two.push(' ');
-                } else {
-                    characters_chunk_three.push(*symbol);
-                    characters_chunk_three.push(' ');
+            let mut symbol_characters = Vec::new();
+            if let Some(cmap) = parser_face.tables().cmap {
+                for subtable in cmap.subtables {
+                    if subtable.is_unicode() {
+                        // Try Private Use Area (PUA) first
+                        for codepoint in 0xE000..=0xF8FF {
+                            if let Some(glyph_id) = subtable.glyph_index(codepoint) {
+                                if glyph_id.0 > 0 {
+                                    if let Some(character) = std::char::from_u32(codepoint) {
+                                        symbol_characters.push(character);
+                                        if symbol_characters.len() >= 26 {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Try Dingbats / Symbols if PUA was insufficient
+                        if symbol_characters.len() < 10 {
+                            for codepoint in 0x2600..=0x27BF {
+                                if let Some(glyph_id) = subtable.glyph_index(codepoint) {
+                                    if glyph_id.0 > 0 {
+                                        if let Some(character) = std::char::from_u32(codepoint) {
+                                            symbol_characters.push(character);
+                                            if symbol_characters.len() >= 26 {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Try printable ASCII if still insufficient
+                        if symbol_characters.len() < 10 {
+                            for codepoint in 0x21..=0x7E {
+                                if let Some(glyph_id) = subtable.glyph_index(codepoint) {
+                                    if glyph_id.0 > 0 {
+                                        if let Some(character) = std::char::from_u32(codepoint) {
+                                            symbol_characters.push(character);
+                                            if symbol_characters.len() >= 26 {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if !symbol_characters.is_empty() {
+                        break;
+                    }
                 }
             }
-            if characters_chunk_one.is_empty() { characters_chunk_one = " ".to_string(); }
-            if characters_chunk_two.is_empty() { characters_chunk_two = " ".to_string(); }
-            if characters_chunk_three.is_empty() { characters_chunk_three = " ".to_string(); }
 
-            (
-                main_char,
-                characters_chunk_one.trim().to_string(),
-                characters_chunk_two.trim().to_string(),
-                characters_chunk_three.trim().to_string(),
-            )
-        }
-    };
+            if symbol_characters.is_empty() {
+                (
+                    "Aa".to_string(),
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ".to_string(),
+                    "abcdefghijklmnopqrstuvwxyz".to_string(),
+                    "0123456789".to_string(),
+                )
+            } else {
+                let main_char = symbol_characters.iter().take(2).collect::<String>();
+
+                let mut characters_chunk_one = String::new();
+                let mut characters_chunk_two = String::new();
+                let mut characters_chunk_three = String::new();
+
+                for (index, symbol) in symbol_characters.iter().enumerate() {
+                    if index < 8 {
+                        characters_chunk_one.push(*symbol);
+                        characters_chunk_one.push(' ');
+                    } else if index < 16 {
+                        characters_chunk_two.push(*symbol);
+                        characters_chunk_two.push(' ');
+                    } else {
+                        characters_chunk_three.push(*symbol);
+                        characters_chunk_three.push(' ');
+                    }
+                }
+                if characters_chunk_one.is_empty() {
+                    characters_chunk_one = " ".to_string();
+                }
+                if characters_chunk_two.is_empty() {
+                    characters_chunk_two = " ".to_string();
+                }
+                if characters_chunk_three.is_empty() {
+                    characters_chunk_three = " ".to_string();
+                }
+
+                (
+                    main_char,
+                    characters_chunk_one.trim().to_string(),
+                    characters_chunk_two.trim().to_string(),
+                    characters_chunk_three.trim().to_string(),
+                )
+            }
+        };
 
     let options = usvg::Options {
         fontdb: Arc::new(fontdb),
         ..Default::default()
     };
 
-    let safe_family = family_name.replace("&", "&amp;").replace("\"", "&quot;").replace("'", "&apos;").replace("<", "&lt;").replace(">", "&gt;");
-    let safe_main = main_preview.replace("&", "&amp;").replace("\"", "&quot;").replace("'", "&apos;").replace("<", "&lt;").replace(">", "&gt;");
-    let safe_row_one = row_one.replace("&", "&amp;").replace("\"", "&quot;").replace("'", "&apos;").replace("<", "&lt;").replace(">", "&gt;");
-    let safe_row_two = row_two.replace("&", "&amp;").replace("\"", "&quot;").replace("'", "&apos;").replace("<", "&lt;").replace(">", "&gt;");
-    let safe_row_three = row_three.replace("&", "&amp;").replace("\"", "&quot;").replace("'", "&apos;").replace("<", "&lt;").replace(">", "&gt;");
+    let safe_family = family_name
+        .replace("&", "&amp;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;");
+    let safe_main = main_preview
+        .replace("&", "&amp;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;");
+    let safe_row_one = row_one
+        .replace("&", "&amp;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;");
+    let safe_row_two = row_two
+        .replace("&", "&amp;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;");
+    let safe_row_three = row_three
+        .replace("&", "&amp;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;");
 
     let svg_content = FONT_SVG_TEMPLATE
         .replace("{family}", &safe_family)
@@ -354,7 +398,10 @@ mod tests {
         let file_path = Path::new("/Users/marcusmaia/Documents/Desenvolvimento/Mundam/file-samples/Arquivos para testes/Font/ttf/fontawesome-webfont.ttf");
         if file_path.exists() {
             let extracted_metadata = extract_font_metadata(file_path).unwrap();
-            assert_eq!(extracted_metadata["family"].as_str().unwrap(), "FontAwesome");
+            assert_eq!(
+                extracted_metadata["family"].as_str().unwrap(),
+                "FontAwesome"
+            );
 
             let generated_thumbnail = generate_font_thumbnail(file_path, 256).unwrap();
             assert!(!generated_thumbnail.is_empty());
@@ -378,7 +425,10 @@ mod tests {
         let file_path = Path::new("/Users/marcusmaia/Documents/Desenvolvimento/Mundam/file-samples/Arquivos para testes/Font/ttc/SuperClarendon.ttc");
         if file_path.exists() {
             let extracted_metadata = extract_font_metadata(file_path).unwrap();
-            assert_eq!(extracted_metadata["family"].as_str().unwrap(), "Superclarendon");
+            assert_eq!(
+                extracted_metadata["family"].as_str().unwrap(),
+                "Superclarendon"
+            );
             assert!(extracted_metadata["face_count"].as_u64().unwrap() > 1);
 
             let generated_thumbnail = generate_font_thumbnail(file_path, 256).unwrap();
@@ -410,4 +460,3 @@ mod tests {
         }
     }
 }
-

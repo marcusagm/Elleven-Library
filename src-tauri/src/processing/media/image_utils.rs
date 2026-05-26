@@ -3,8 +3,8 @@
 //! Provides lightweight checks for image headers (PNG, JPEG, WebP)
 //! without decoding the full image payload.
 
-use std::io::{Cursor, Seek, SeekFrom};
 use byteorder::{LittleEndian, ReadBytesExt};
+use std::io::{Cursor, Seek, SeekFrom};
 
 /// Supported image formats for validation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,7 +49,7 @@ pub fn detect_image_format(bytes: &[u8]) -> Option<ImageFormat> {
     if bytes.starts_with(b"RIFF") && bytes.len() >= 12 && &bytes[8..12] == b"WEBP" {
         return Some(ImageFormat::Webp);
     }
-    
+
     // GIF: GIF87a or GIF89a
     if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
         return Some(ImageFormat::Gif);
@@ -73,7 +73,9 @@ pub fn get_image_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
     match format {
         ImageFormat::Png => {
             // PNG dimensions are at offset 16 (4 bytes width, 4 bytes height, big-endian)
-            if bytes.len() < 24 { return None; }
+            if bytes.len() < 24 {
+                return None;
+            }
             let mut w_bytes = [0u8; 4];
             let mut h_bytes = [0u8; 4];
             w_bytes.copy_from_slice(&bytes[16..20]);
@@ -85,12 +87,19 @@ pub fn get_image_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
             // Skip SOI (FF D8)
             let _ = cursor.seek(SeekFrom::Start(2));
             while let Ok(marker_start) = cursor.read_u8() {
-                if marker_start != 0xFF { continue; }
+                if marker_start != 0xFF {
+                    continue;
+                }
                 let marker = cursor.read_u8().ok()?;
-                if marker == 0x00 || marker == 0xFF { continue; } // Padding or escaped FF
-                
+                if marker == 0x00 || marker == 0xFF {
+                    continue;
+                } // Padding or escaped FF
+
                 let length = cursor.read_u16::<byteorder::BigEndian>().ok()?;
-                if (0xC0..=0xC3).contains(&marker) || (0xC5..=0xCB).contains(&marker) || (0xCD..=0xCF).contains(&marker) {
+                if (0xC0..=0xC3).contains(&marker)
+                    || (0xC5..=0xCB).contains(&marker)
+                    || (0xCD..=0xCF).contains(&marker)
+                {
                     let _precision = cursor.read_u8().ok()?;
                     let height = cursor.read_u16::<byteorder::BigEndian>().ok()? as u32;
                     let width = cursor.read_u16::<byteorder::BigEndian>().ok()? as u32;
@@ -102,7 +111,9 @@ pub fn get_image_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
             None
         }
         ImageFormat::Webp => {
-            if bytes.len() < 30 { return None; }
+            if bytes.len() < 30 {
+                return None;
+            }
             let chunk_type = &bytes[12..16];
             match chunk_type {
                 b"VP8 " => {
@@ -125,12 +136,14 @@ pub fn get_image_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
                     let h = u32::from_le_bytes([bytes[27], bytes[28], bytes[29], 0]) + 1;
                     Some((w, h))
                 }
-                _ => None
+                _ => None,
             }
         }
         ImageFormat::Gif => {
             // GIF dimensions are at offset 6 (2 bytes width, 2 bytes height, little-endian)
-            if bytes.len() < 10 { return None; }
+            if bytes.len() < 10 {
+                return None;
+            }
             let mut gif_cursor = Cursor::new(&bytes[6..10]);
             let w = gif_cursor.read_u16::<LittleEndian>().ok()?;
             let h = gif_cursor.read_u16::<LittleEndian>().ok()?;

@@ -51,19 +51,19 @@ impl FormatProvider for GenericByteFallbackProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
-        vec![
-            SupportedFormat::with_metadata(
-                "Binary Fallback",
-                vec!["bin"],
-                vec!["application/octet-stream"],
-                MediaType::Unknown,
-                ThumbnailStrategy::None,
-                PreviewStrategy::None,
-                PlaybackStrategy::None,
-            ),
-        ]
+        vec![SupportedFormat::with_metadata(
+            "Binary Fallback",
+            vec!["bin"],
+            vec!["application/octet-stream"],
+            MediaType::Unknown,
+            ThumbnailStrategy::None,
+            PreviewStrategy::None,
+            PlaybackStrategy::None,
+        )]
     }
 
     /// Verifica se o provedor suporta o arquivo baseado em Magic Bytes.

@@ -60,12 +60,18 @@ impl SettingsService {
         let mut settings = self.repository.load().await?;
         match key.as_str() {
             "thumbnail_threads" => {
-                if let Some(v) = value.as_u64().or_else(|| value.as_str().and_then(|s| s.parse().ok())) {
+                if let Some(v) = value
+                    .as_u64()
+                    .or_else(|| value.as_str().and_then(|s| s.parse().ok()))
+                {
                     settings.thumbnail_threads = v as usize;
                 }
             }
             "cache_retention_days" => {
-                if let Some(v) = value.as_u64().or_else(|| value.as_str().and_then(|s| s.parse().ok())) {
+                if let Some(v) = value
+                    .as_u64()
+                    .or_else(|| value.as_str().and_then(|s| s.parse().ok()))
+                {
                     settings.cache_retention_days = v as u32;
                 }
             }

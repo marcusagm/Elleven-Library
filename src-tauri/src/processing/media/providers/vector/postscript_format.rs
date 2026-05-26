@@ -1,6 +1,8 @@
-use crate::core::AppResult;
-use crate::core::formats::capabilities::{MetadataCapability, PreviewCapability, ThumbnailCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
+use crate::core::AppResult;
 use crate::processing::media::extractors;
 use async_trait::async_trait;
 use std::path::Path;
@@ -46,19 +48,19 @@ impl FormatProvider for PostscriptFormatProvider {
     ///
     /// `Vec<SupportedFormat>` - List of supported formats.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
-        vec![
-            SupportedFormat::with_metadata(
-                "Encapsulated PostScript",
-                vec!["eps", "ps"],
-                vec!["application/postscript"],
-                MediaType::Vector,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
-        ]
+        vec![SupportedFormat::with_metadata(
+            "Encapsulated PostScript",
+            vec!["eps", "ps"],
+            vec!["application/postscript"],
+            MediaType::Vector,
+            ThumbnailStrategy::NativeExtractor,
+            PreviewStrategy::NativeExtractor,
+            PlaybackStrategy::None,
+        )]
     }
 
     /// Checks if the provider supports the given magic bytes.

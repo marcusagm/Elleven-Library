@@ -75,7 +75,11 @@ impl FormatProvider for WoffFontProvider {
         vec![SupportedFormat::with_metadata(
             "Web Open Font Format",
             vec!["woff"],
-            vec!["font/woff", "application/font-woff", "application/x-font-woff"],
+            vec![
+                "font/woff",
+                "application/font-woff",
+                "application/x-font-woff",
+            ],
             MediaType::Font,
             ThumbnailStrategy::NativeExtractor,
             PreviewStrategy::None,
@@ -163,7 +167,10 @@ impl ThumbnailCapability for WoffFontProvider {
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::font::generate_font_thumbnail(&path_owned, size_hint)
+            crate::processing::media::extractors::font::generate_font_thumbnail(
+                &path_owned,
+                size_hint,
+            )
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

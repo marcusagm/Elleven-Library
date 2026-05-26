@@ -3,13 +3,14 @@ use chrono::{DateTime, Utc};
 use sqlx::{Sqlite, SqlitePool, Transaction};
 use std::sync::Arc;
 use tracing::{error, info, warn};
-use uuid::Uuid;
 use unicode_normalization::UnicodeNormalization;
+use uuid::Uuid;
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::events::{AppEventBus, DomainEvent};
 use crate::core::ledger::command::{
-    LedgerCommand, UpdateAssetNotesPayload, UpdateAssetRatingPayload, UpdateTechnicalMetadataPayload,
+    LedgerCommand, UpdateAssetNotesPayload, UpdateAssetRatingPayload,
+    UpdateTechnicalMetadataPayload,
 };
 use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::core::models::asset::{Asset, AssetState};
@@ -167,7 +168,7 @@ impl SqliteAssetLedger {
         )
         .await?;
 
-                Self::fetch_asset_by_id(tx, &payload.asset_id).await
+        Self::fetch_asset_by_id(tx, &payload.asset_id).await
     }
 
     async fn handle_update_notes(
@@ -195,7 +196,7 @@ impl SqliteAssetLedger {
         )
         .await?;
 
-                Self::fetch_asset_by_id(tx, &payload.asset_id).await
+        Self::fetch_asset_by_id(tx, &payload.asset_id).await
     }
 
     async fn handle_reextract_colors(
@@ -565,7 +566,8 @@ impl SqliteAssetLedger {
                     .await?;
 
                     for (existing_asset_id, _old_folder_id, old_path_str) in &move_candidates {
-                        if !std::path::Path::new(old_path_str).exists() && old_path_str != &path_str {
+                        if !std::path::Path::new(old_path_str).exists() && old_path_str != &path_str
+                        {
                             info!(
                                 "Ledger: MOVE DETECTED (V1 recovery). Updating asset {} from '{}' to '{}'",
                                 existing_asset_id, old_path_str, path_str
@@ -712,7 +714,6 @@ impl SqliteAssetLedger {
                     // 2. Phase 6 pruning for stale records
                     // 3. CreateAsset (watcher) has the full V1 recovery for real-time moves
 
-
                     let path_ref = &path_str;
                     let state_ref = &state_str;
                     let format_type_ref = &payload.format_type;
@@ -857,9 +858,13 @@ impl SqliteAssetLedger {
             }
             LedgerCommand::UpdateAsset(payload) => {
                 let now = Utc::now();
-                let old_p = payload.old_path.as_ref().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| "None".to_string());
+                let old_p = payload
+                    .old_path
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "None".to_string());
                 let new_p = payload.new_path.to_string_lossy().to_string();
-                
+
                 info!("Ledger: UpdateAsset START. old: {}, new: {}", old_p, new_p);
 
                 // 1. Resolve Asset ID (Using robust fallback for macOS Unicode consistency)
@@ -867,16 +872,23 @@ impl SqliteAssetLedger {
                     (Some(id), _) => {
                         info!("Ledger: UpdateAsset resolved by ID: {}", id);
                         id.clone()
-                    },
+                    }
                     (None, Some(old_path)) => {
                         match Self::resolve_asset_id_robust(tx, old_path).await? {
                             Some(id) => {
-                                info!("Ledger: UpdateAsset resolved old_path '{}' to ID: {}", old_path.display(), id);
+                                info!(
+                                    "Ledger: UpdateAsset resolved old_path '{}' to ID: {}",
+                                    old_path.display(),
+                                    id
+                                );
                                 id
-                            },
+                            }
                             None => {
                                 warn!("Ledger: UpdateAsset IGNORED - old_path '{}' not found in DB (even after robust fallback)", old_path.display());
-                                return Err(AppError::NotFound(format!("Asset not found at path: {}", old_path.display())));
+                                return Err(AppError::NotFound(format!(
+                                    "Asset not found at path: {}",
+                                    old_path.display()
+                                )));
                             }
                         }
                     }
@@ -897,7 +909,10 @@ impl SqliteAssetLedger {
                 let new_path_str = payload.new_path.to_string_lossy().to_string();
 
                 // 2. Safety DELETE (Avoid Unique Constraint Violation on Rename)
-                info!("Ledger: UpdateAsset safety DELETE checking for '{}' (collision prevention)", new_path_str);
+                info!(
+                    "Ledger: UpdateAsset safety DELETE checking for '{}' (collision prevention)",
+                    new_path_str
+                );
                 let delete_res = sqlx::query!(
                     "DELETE FROM assets WHERE path = ? AND id != ?",
                     new_path_str,
@@ -905,13 +920,20 @@ impl SqliteAssetLedger {
                 )
                 .execute(&mut **tx)
                 .await?;
-                
+
                 if delete_res.rows_affected() > 0 {
-                    info!("Ledger: UpdateAsset collision DETECTED. Pruned {} record(s) for '{}'", delete_res.rows_affected(), new_path_str);
+                    info!(
+                        "Ledger: UpdateAsset collision DETECTED. Pruned {} record(s) for '{}'",
+                        delete_res.rows_affected(),
+                        new_path_str
+                    );
                 }
 
                 // 3. Update Asset
-                info!("Ledger: UpdateAsset executing UPDATE for ID {} to NEW path '{}'", asset_id, new_path_str);
+                info!(
+                    "Ledger: UpdateAsset executing UPDATE for ID {} to NEW path '{}'",
+                    asset_id, new_path_str
+                );
                 sqlx::query!(
                     "UPDATE assets SET path = ?, name = ?, updated_at = ? WHERE id = ?",
                     new_path_str,
@@ -927,15 +949,8 @@ impl SqliteAssetLedger {
                     AppError::Internal(format!("Failed to serialize payload: {}", e))
                 })?;
 
-                Self::log_operation(
-                    tx,
-                    "UPDATE_ASSET",
-                    &asset_id,
-                    op_payload,
-                    "COMPLETED",
-                    None,
-                )
-                .await?;
+                Self::log_operation(tx, "UPDATE_ASSET", &asset_id, op_payload, "COMPLETED", None)
+                    .await?;
 
                 info!("Ledger: UpdateAsset SUCCESS for ID {}", asset_id);
                 Self::fetch_asset_by_id(tx, &asset_id).await
@@ -970,37 +985,51 @@ impl SqliteAssetLedger {
                 path,
                 physical_delete,
             } => {
-                let p_str = path.as_ref().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| "None".to_string());
-                info!("Ledger: DeleteAsset START. asset_id: {:?}, path: {}", asset_id, p_str);
+                let p_str = path
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "None".to_string());
+                info!(
+                    "Ledger: DeleteAsset START. asset_id: {:?}, path: {}",
+                    asset_id, p_str
+                );
 
                 // 1. Resolve Asset ID (Using robust fallback for macOS Unicode consistency)
                 let resolved_id: String = match (asset_id, path) {
                     (Some(id), _) => {
                         info!("Ledger: DeleteAsset resolved by ID: {}", id);
                         id.clone()
-                    },
-                    (None, Some(p)) => {
-                        match Self::resolve_asset_id_robust(tx, &p).await? {
-                            Some(id) => {
-                                info!("Ledger: DeleteAsset resolved path '{}' to ID: {}", p.display(), id);
-                                id
-                            },
-                            None => {
-                                warn!("Ledger: DeleteAsset IGNORED - path '{}' not found in DB (even after robust fallback)", p.display());
-                                return Err(AppError::NotFound(format!("Asset not found at path: {}", p.display())));
-                            }
-                        }
                     }
+                    (None, Some(p)) => match Self::resolve_asset_id_robust(tx, &p).await? {
+                        Some(id) => {
+                            info!(
+                                "Ledger: DeleteAsset resolved path '{}' to ID: {}",
+                                p.display(),
+                                id
+                            );
+                            id
+                        }
+                        None => {
+                            warn!("Ledger: DeleteAsset IGNORED - path '{}' not found in DB (even after robust fallback)", p.display());
+                            return Err(AppError::NotFound(format!(
+                                "Asset not found at path: {}",
+                                p.display()
+                            )));
+                        }
+                    },
                     _ => {
                         error!("Ledger: DeleteAsset FAILED - missing ID and path");
                         return Err(AppError::ValidationFailed(
                             "DeleteAsset requires either asset_id or path".to_string(),
-                        ))
+                        ));
                     }
                 };
 
                 // 2. Perform Delete
-                info!("Ledger: DeleteAsset executing DELETE for ID {}", resolved_id);
+                info!(
+                    "Ledger: DeleteAsset executing DELETE for ID {}",
+                    resolved_id
+                );
                 sqlx::query!("DELETE FROM assets WHERE id = ?", resolved_id)
                     .execute(&mut **tx)
                     .await?;
@@ -1265,7 +1294,7 @@ impl SqliteAssetLedger {
                 .await?;
 
                 // 3. Fetch and return
-        Self::fetch_asset_by_id(tx, &asset_id).await
+                Self::fetch_asset_by_id(tx, &asset_id).await
             }
             LedgerCommand::UpdateAssetColors(payload) => {
                 let now = Utc::now();
@@ -1334,7 +1363,8 @@ impl SqliteAssetLedger {
                 self.handle_reextract_colors(tx, &asset_id).await
             }
             LedgerCommand::UpdateTechnicalMetadata(payload) => {
-                self.handle_update_technical_metadata(tx, payload.clone()).await
+                self.handle_update_technical_metadata(tx, payload.clone())
+                    .await
             }
             LedgerCommand::UpdateFormat { asset_id, format } => {
                 self.handle_update_format(tx, &asset_id, &format).await
@@ -1391,7 +1421,7 @@ impl SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
-                                        modified_at: None,
+                    modified_at: None,
                     added_at: None,
                     updated_at: None,
                     width: None,
@@ -1476,7 +1506,7 @@ impl SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
-                                        modified_at: None,
+                    modified_at: None,
                     added_at: None,
                     updated_at: None,
                     width: None,
@@ -1521,7 +1551,7 @@ impl SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
-                                        modified_at: None,
+                    modified_at: None,
                     added_at: None,
                     updated_at: None,
                     width: None,
@@ -1578,7 +1608,7 @@ impl SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
-                                        modified_at: None,
+                    modified_at: None,
                     added_at: None,
                     updated_at: None,
                     width: None,
@@ -1635,7 +1665,7 @@ impl SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
-                                        modified_at: None,
+                    modified_at: None,
                     added_at: None,
                     updated_at: None,
                     width: None,
@@ -1701,7 +1731,7 @@ impl SqliteAssetLedger {
                     family: "TAG".to_string(),
                     file_size: 0,
                     created_at: None,
-                                        modified_at: None,
+                    modified_at: None,
                     added_at: None,
                     updated_at: None,
                     width: None,
@@ -1754,7 +1784,7 @@ impl SqliteAssetLedger {
                     family: "SMART_FOLDER".to_string(),
                     file_size: 0,
                     created_at: Some(now),
-                                        modified_at: Some(now),
+                    modified_at: Some(now),
                     added_at: Some(now),
                     updated_at: Some(now),
                     width: None,
@@ -1805,7 +1835,7 @@ impl SqliteAssetLedger {
                     family: "SMART_FOLDER".to_string(),
                     file_size: 0,
                     created_at: None,
-                                        modified_at: None,
+                    modified_at: None,
                     added_at: None,
                     updated_at: Some(now),
                     width: None,
@@ -1848,7 +1878,7 @@ impl SqliteAssetLedger {
                     family: "SMART_FOLDER".to_string(),
                     file_size: 0,
                     created_at: None,
-                                        modified_at: None,
+                    modified_at: None,
                     added_at: None,
                     updated_at: None,
                     width: None,
@@ -1887,13 +1917,11 @@ impl SqliteAssetLedger {
                 .await?;
 
                 // 3. Fetch asset to return
-        Self::fetch_asset_by_id(tx, &asset_id).await
+                Self::fetch_asset_by_id(tx, &asset_id).await
             }
-            LedgerCommand::Batch(_) => {
-                Err(AppError::Internal(
-                    "Nested Batch commands are not supported".to_string(),
-                ))
-            }
+            LedgerCommand::Batch(_) => Err(AppError::Internal(
+                "Nested Batch commands are not supported".to_string(),
+            )),
             LedgerCommand::RenameFolder(payload) => {
                 let old_path_str = payload.old_path.to_string_lossy().to_string();
                 let new_path_str = payload.new_path.to_string_lossy().to_string();
@@ -1993,7 +2021,7 @@ impl SqliteAssetLedger {
         path: &std::path::Path,
     ) -> AppResult<Option<String>> {
         let path_str = path.to_string_lossy().to_string();
-        
+
         // 1. Direct Match (NFC/NFD sensitive)
         let row = sqlx::query!(
             r#"SELECT id as "id!" FROM assets WHERE path = ? COLLATE NOCASE"#,
@@ -2029,7 +2057,10 @@ impl SqliteAssetLedger {
                     warn!("Ledger: Robust resolution FAILED: Asset '{}' not found in folder ID {} (Normalization mismatch?)", name_str, folder_id);
                 }
             } else {
-                warn!("Ledger: Robust resolution FAILED: Could not resolve folder ID for path '{}'", parent_path.display());
+                warn!(
+                    "Ledger: Robust resolution FAILED: Could not resolve folder ID for path '{}'",
+                    parent_path.display()
+                );
             }
         }
 
@@ -2058,7 +2089,7 @@ impl SqliteAssetLedger {
         // 2. Fallback: Parent ID + Name match
         if let (Some(parent_p), Some(name)) = (path.parent(), path.file_name()) {
             let name_str = name.to_string_lossy().to_string();
-            
+
             // Recurse to find parent ID
             if let Some(parent_id) = Box::pin(Self::resolve_folder_id_robust(tx, parent_p)).await? {
                 let folder_row = sqlx::query!(
@@ -2070,7 +2101,10 @@ impl SqliteAssetLedger {
                 .await?;
 
                 if let Some(f) = folder_row {
-                    info!("Ledger: Robust folder resolution SUCCESS. Resolved '{}' -> ID {}", path_str, f.id);
+                    info!(
+                        "Ledger: Robust folder resolution SUCCESS. Resolved '{}' -> ID {}",
+                        path_str, f.id
+                    );
                     return Ok(Some(f.id));
                 }
             }
@@ -2084,7 +2118,7 @@ impl SqliteAssetLedger {
     pub async fn normalize_database_paths(&self) -> AppResult<()> {
         let mut tx = self.pool.begin().await?;
         let now = Utc::now();
-        
+
         info!("Ledger: Starting database path normalization (NFC)...");
 
         // 1. Normalize Assets
@@ -2130,9 +2164,12 @@ impl SqliteAssetLedger {
         }
 
         tx.commit().await?;
-        
+
         if asset_fix_count > 0 || folder_fix_count > 0 {
-            info!("Ledger: Path normalization COMPLETED. Fixed {} assets and {} folders.", asset_fix_count, folder_fix_count);
+            info!(
+                "Ledger: Path normalization COMPLETED. Fixed {} assets and {} folders.",
+                asset_fix_count, folder_fix_count
+            );
         } else {
             info!("Ledger: Database is already normalized.");
         }

@@ -58,19 +58,19 @@ impl FormatProvider for SvgFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
-        vec![
-            SupportedFormat::with_metadata(
-                "Scalable Vector Graphics",
-                vec!["svg", "svgz"],
-                vec!["image/svg+xml"],
-                MediaType::Vector,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::BrowserNative,
-                PlaybackStrategy::None,
-            ),
-        ]
+        vec![SupportedFormat::with_metadata(
+            "Scalable Vector Graphics",
+            vec!["svg", "svgz"],
+            vec!["image/svg+xml"],
+            MediaType::Vector,
+            ThumbnailStrategy::NativeExtractor,
+            PreviewStrategy::BrowserNative,
+            PlaybackStrategy::None,
+        )]
     }
 
     /// Check if the given header bytes support the format.
@@ -200,8 +200,8 @@ impl ThumbnailCapability for SvgFormatProvider {
 
             let mut pixmap = Pixmap::new(target_size.width() as u32, target_size.height() as u32)
                 .ok_or_else(|| {
-                    crate::core::error::AppError::Generic("Failed to create pixmap buffer".to_string())
-                })?;
+                crate::core::error::AppError::Generic("Failed to create pixmap buffer".to_string())
+            })?;
 
             resvg::render(&tree, transform, &mut pixmap.as_mut());
 
@@ -229,19 +229,27 @@ mod tests {
     async fn test_svg_metadata_and_thumbnail() {
         let svg_content = r#"<svg xmlns="http://www.w3.org/2000/svg" width="150" height="250"><rect width="150" height="250" fill="blue"/></svg>"#;
         let mut temporary_file = NamedTempFile::new().expect("Failed to create temporary file");
-        temporary_file.write_all(svg_content.as_bytes()).expect("Failed to write to temporary file");
+        temporary_file
+            .write_all(svg_content.as_bytes())
+            .expect("Failed to write to temporary file");
         let path = temporary_file.path();
 
         let provider = SvgFormatProvider::new();
 
         // Test metadata extraction
-        let metadata = provider.extract_technical(path).await.expect("Failed to extract metadata");
+        let metadata = provider
+            .extract_technical(path)
+            .await
+            .expect("Failed to extract metadata");
         assert_eq!(metadata["format"], "SVG");
         assert_eq!(metadata["width"], 150);
         assert_eq!(metadata["height"], 250);
 
         // Test thumbnail generation
-        let thumbnail = provider.generate(path, "test_asset_id", 100).await.expect("Failed to generate thumbnail");
+        let thumbnail = provider
+            .generate(path, "test_asset_id", 100)
+            .await
+            .expect("Failed to generate thumbnail");
         assert!(!thumbnail.is_empty(), "Thumbnail data should not be empty");
     }
 
@@ -252,25 +260,34 @@ mod tests {
 
         let svg_content = r#"<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><circle cx="150" cy="200" r="100" fill="green"/></svg>"#;
         let mut temporary_file = NamedTempFile::new().expect("Failed to create temporary file");
-        
+
         let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-        encoder.write_all(svg_content.as_bytes()).expect("Failed to compress SVG content");
+        encoder
+            .write_all(svg_content.as_bytes())
+            .expect("Failed to compress SVG content");
         let compressed_data = encoder.finish().expect("Failed to finish compression");
 
-        temporary_file.write_all(&compressed_data).expect("Failed to write compressed data");
+        temporary_file
+            .write_all(&compressed_data)
+            .expect("Failed to write compressed data");
         let path = temporary_file.path();
 
         let provider = SvgFormatProvider::new();
 
         // Test metadata extraction
-        let metadata = provider.extract_technical(path).await.expect("Failed to extract metadata");
+        let metadata = provider
+            .extract_technical(path)
+            .await
+            .expect("Failed to extract metadata");
         assert_eq!(metadata["format"], "SVG");
         assert_eq!(metadata["width"], 300);
         assert_eq!(metadata["height"], 400);
 
         // Test thumbnail generation
-        let thumbnail = provider.generate(path, "test_asset_id", 100).await.expect("Failed to generate thumbnail");
+        let thumbnail = provider
+            .generate(path, "test_asset_id", 100)
+            .await
+            .expect("Failed to generate thumbnail");
         assert!(!thumbnail.is_empty(), "Thumbnail data should not be empty");
     }
 }
-

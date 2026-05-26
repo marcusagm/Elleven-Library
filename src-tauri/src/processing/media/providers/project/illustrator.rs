@@ -9,7 +9,9 @@ use crate::core::formats::capabilities::{
     MetadataCapability, PreviewCapability, ThumbnailCapability,
 };
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
-use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+use crate::core::formats::types::{
+    MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+};
 use crate::processing::media::extractors;
 
 /// Provider for Adobe Illustrator (.ai) files.
@@ -76,17 +78,15 @@ impl FormatProvider for IllustratorFormatProvider {
     ///
     /// `Vec<SupportedFormat>` - List of supported formats.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        vec![
-            SupportedFormat::with_metadata(
-                "Adobe Illustrator Artwork",
-                vec!["ai"],
-                vec!["application/postscript", "application/pdf"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
-        ]
+        vec![SupportedFormat::with_metadata(
+            "Adobe Illustrator Artwork",
+            vec!["ai"],
+            vec!["application/postscript", "application/pdf"],
+            MediaType::Project,
+            ThumbnailStrategy::NativeExtractor,
+            PreviewStrategy::NativeExtractor,
+            PlaybackStrategy::None,
+        )]
     }
 
     /// Checks if the provider supports the given magic bytes.
@@ -151,11 +151,11 @@ impl ThumbnailCapability for IllustratorFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             let (preview_data, mime_type) = extractors::extract_ai_preview(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
-            
+
             if mime_type == "application/pdf" {
                 extractors::render_pdf_to_png(&preview_data, size_hint)
                     .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))
@@ -188,7 +188,7 @@ impl PreviewCapability for IllustratorFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             extractors::extract_ai_preview(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))
@@ -217,7 +217,7 @@ impl MetadataCapability for IllustratorFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_technical(&self, path: &Path) -> AppResult<Value> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             let metadata = extractors::extract_ai_metadata(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
@@ -244,7 +244,7 @@ impl MetadataCapability for IllustratorFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_semantic(&self, path: &Path) -> AppResult<Value> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             let metadata = extractors::extract_ai_metadata(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;

@@ -25,7 +25,10 @@ pub fn extract_ai_pdf_stream(path: &Path) -> Result<Vec<u8>, Box<dyn std::error:
     let mut file_buffer = Vec::new();
     file.read_to_end(&mut file_buffer)?;
     if let Some(start_index) = file_buffer.windows(5).position(|window| window == b"%PDF-") {
-        if let Some(end_relative_index) = file_buffer[start_index..].windows(5).rposition(|window| window == b"%%EOF") {
+        if let Some(end_relative_index) = file_buffer[start_index..]
+            .windows(5)
+            .rposition(|window| window == b"%%EOF")
+        {
             let end_index = start_index + end_relative_index + 5;
             return Ok(file_buffer[start_index..end_index].to_vec());
         }
@@ -37,17 +40,20 @@ pub fn extract_ai_pdf_stream(path: &Path) -> Result<Vec<u8>, Box<dyn std::error:
 pub fn extract_ai_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut file_buffer = Vec::new();
-    
+
     // Read up to 20MB for metadata parsing
     file.take(20 * 1024 * 1024).read_to_end(&mut file_buffer)?;
-    
+
     let mut width = None;
     let mut height = None;
     let resolution_dpi = 72; // PostScript / PDF points per inch default resolution
 
     // 1. Search for /MediaBox in PDF-based files
     let mediabox_signature = b"/MediaBox";
-    if let Some(mediabox_index) = file_buffer.windows(mediabox_signature.len()).position(|window| window == mediabox_signature) {
+    if let Some(mediabox_index) = file_buffer
+        .windows(mediabox_signature.len())
+        .position(|window| window == mediabox_signature)
+    {
         let search_slice = &file_buffer[mediabox_index..];
         let end_bracket_index = search_slice.iter().position(|&byte| byte == b']');
         if let Some(bracket_index) = end_bracket_index {
@@ -61,8 +67,16 @@ pub fn extract_ai_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn std
                         let lower_left_y_coordinate = coordinates[1].parse::<f64>().unwrap_or(0.0);
                         let upper_right_x_coordinate = coordinates[2].parse::<f64>().unwrap_or(0.0);
                         let upper_right_y_coordinate = coordinates[3].parse::<f64>().unwrap_or(0.0);
-                        width = Some((upper_right_x_coordinate - lower_left_x_coordinate).abs().round() as u32);
-                        height = Some((upper_right_y_coordinate - lower_left_y_coordinate).abs().round() as u32);
+                        width = Some(
+                            (upper_right_x_coordinate - lower_left_x_coordinate)
+                                .abs()
+                                .round() as u32,
+                        );
+                        height = Some(
+                            (upper_right_y_coordinate - lower_left_y_coordinate)
+                                .abs()
+                                .round() as u32,
+                        );
                     }
                 }
             }
@@ -72,9 +86,15 @@ pub fn extract_ai_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn std
     // 2. Fallback to %%HiResBoundingBox or %%BoundingBox
     if width.is_none() || height.is_none() {
         let hi_res_boundingbox_signature = b"%%HiResBoundingBox:";
-        if let Some(boundingbox_index) = file_buffer.windows(hi_res_boundingbox_signature.len()).position(|window| window == hi_res_boundingbox_signature) {
-            let search_slice = &file_buffer[boundingbox_index + hi_res_boundingbox_signature.len()..];
-            let end_line_index = search_slice.iter().position(|&byte| byte == b'\n' || byte == b'\r');
+        if let Some(boundingbox_index) = file_buffer
+            .windows(hi_res_boundingbox_signature.len())
+            .position(|window| window == hi_res_boundingbox_signature)
+        {
+            let search_slice =
+                &file_buffer[boundingbox_index + hi_res_boundingbox_signature.len()..];
+            let end_line_index = search_slice
+                .iter()
+                .position(|&byte| byte == b'\n' || byte == b'\r');
             if let Some(line_index) = end_line_index {
                 let numbers_slice = &search_slice[..line_index];
                 if let Ok(numbers_str) = std::str::from_utf8(numbers_slice) {
@@ -84,8 +104,16 @@ pub fn extract_ai_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn std
                         let lower_left_y_coordinate = coordinates[1].parse::<f64>().unwrap_or(0.0);
                         let upper_right_x_coordinate = coordinates[2].parse::<f64>().unwrap_or(0.0);
                         let upper_right_y_coordinate = coordinates[3].parse::<f64>().unwrap_or(0.0);
-                        width = Some((upper_right_x_coordinate - lower_left_x_coordinate).abs().round() as u32);
-                        height = Some((upper_right_y_coordinate - lower_left_y_coordinate).abs().round() as u32);
+                        width = Some(
+                            (upper_right_x_coordinate - lower_left_x_coordinate)
+                                .abs()
+                                .round() as u32,
+                        );
+                        height = Some(
+                            (upper_right_y_coordinate - lower_left_y_coordinate)
+                                .abs()
+                                .round() as u32,
+                        );
                     }
                 }
             }
@@ -94,9 +122,14 @@ pub fn extract_ai_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn std
 
     if width.is_none() || height.is_none() {
         let boundingbox_signature = b"%%BoundingBox:";
-        if let Some(boundingbox_index) = file_buffer.windows(boundingbox_signature.len()).position(|window| window == boundingbox_signature) {
+        if let Some(boundingbox_index) = file_buffer
+            .windows(boundingbox_signature.len())
+            .position(|window| window == boundingbox_signature)
+        {
             let search_slice = &file_buffer[boundingbox_index + boundingbox_signature.len()..];
-            let end_line_index = search_slice.iter().position(|&byte| byte == b'\n' || byte == b'\r');
+            let end_line_index = search_slice
+                .iter()
+                .position(|&byte| byte == b'\n' || byte == b'\r');
             if let Some(line_index) = end_line_index {
                 let numbers_slice = &search_slice[..line_index];
                 if let Ok(numbers_str) = std::str::from_utf8(numbers_slice) {
@@ -106,8 +139,16 @@ pub fn extract_ai_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn std
                         let lower_left_y_coordinate = coordinates[1].parse::<f64>().unwrap_or(0.0);
                         let upper_right_x_coordinate = coordinates[2].parse::<f64>().unwrap_or(0.0);
                         let upper_right_y_coordinate = coordinates[3].parse::<f64>().unwrap_or(0.0);
-                        width = Some((upper_right_x_coordinate - lower_left_x_coordinate).abs().round() as u32);
-                        height = Some((upper_right_y_coordinate - lower_left_y_coordinate).abs().round() as u32);
+                        width = Some(
+                            (upper_right_x_coordinate - lower_left_x_coordinate)
+                                .abs()
+                                .round() as u32,
+                        );
+                        height = Some(
+                            (upper_right_y_coordinate - lower_left_y_coordinate)
+                                .abs()
+                                .round() as u32,
+                        );
                     }
                 }
             }
@@ -117,7 +158,9 @@ pub fn extract_ai_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn std
     // 3. Fallback to guess from XMP thumbnail image dimensions
     if width.is_none() || height.is_none() {
         if let Ok(preview_data) = binary_jpeg::extract_xmp_thumbnail(path) {
-            if let Ok(reader) = image::ImageReader::new(std::io::Cursor::new(&preview_data)).with_guessed_format() {
+            if let Ok(reader) =
+                image::ImageReader::new(std::io::Cursor::new(&preview_data)).with_guessed_format()
+            {
                 if let Ok((preview_width, preview_height)) = reader.into_dimensions() {
                     width = Some(preview_width);
                     height = Some(preview_height);

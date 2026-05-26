@@ -591,7 +591,9 @@ pub async fn verify_thumbnails(handle: tauri::AppHandle) -> AppResult<usize> {
     }
 
     let mut corrupted_count = 0;
-    let mut dir = tokio::fs::read_dir(thumb_dir).await.map_err(crate::core::error::AppError::Io)?;
+    let mut dir = tokio::fs::read_dir(thumb_dir)
+        .await
+        .map_err(crate::core::error::AppError::Io)?;
 
     while let Ok(Some(entry)) = dir.next_entry().await {
         let path = entry.path();
@@ -609,7 +611,10 @@ pub async fn verify_thumbnails(handle: tauri::AppHandle) -> AppResult<usize> {
     }
 
     if corrupted_count > 0 {
-        tracing::info!("Maintenance: Deleted {} corrupted thumbnails", corrupted_count);
+        tracing::info!(
+            "Maintenance: Deleted {} corrupted thumbnails",
+            corrupted_count
+        );
     }
 
     Ok(corrupted_count)

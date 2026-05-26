@@ -26,10 +26,7 @@ pub struct ProcessManager {
 #[cfg(unix)]
 fn kill_process(pid: u32) {
     use std::process::Command;
-    let _ = Command::new("kill")
-        .arg("-9")
-        .arg(pid.to_string())
-        .output();
+    let _ = Command::new("kill").arg("-9").arg(pid.to_string()).output();
 }
 
 #[cfg(windows)]

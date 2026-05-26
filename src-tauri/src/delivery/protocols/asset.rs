@@ -3,8 +3,8 @@ use std::sync::Arc;
 use tauri::http::{header, Request, Response, StatusCode};
 use tauri::{AppHandle, Manager};
 
-use crate::core::AppResult;
 use crate::core::repository::AssetQueryHandler;
+use crate::core::AppResult;
 use crate::delivery::protocols::common::{error_response, serve_file};
 use percent_encoding::percent_decode_str;
 
@@ -132,9 +132,12 @@ pub fn handler<R: tauri::Runtime>(
 
         if let Some(provider) = registry.inner().resolve(&physical_path, &[]) {
             if let Some(preview_cap) = provider.preview() {
-                let preview_result: AppResult<(Vec<u8>, String)> = tauri::async_runtime::block_on(async {
-                    preview_cap.generate_preview(&physical_path, &asset.id).await
-                });
+                let preview_result: AppResult<(Vec<u8>, String)> =
+                    tauri::async_runtime::block_on(async {
+                        preview_cap
+                            .generate_preview(&physical_path, &asset.id)
+                            .await
+                    });
 
                 if let Ok((data, mime)) = preview_result {
                     return Response::builder()
@@ -255,7 +258,6 @@ async fn serve_file_async(
     path: &Path,
     range: Option<&tauri::http::HeaderValue>,
 ) -> Result<Response<Vec<u8>>, Response<Vec<u8>>> {
-
     let file = match tokio::fs::File::open(path).await {
         Ok(f) => f,
         Err(e) => {
@@ -281,4 +283,3 @@ async fn serve_file_async(
     // Simplistic MIME detection. Use fallback octet setup if unfound.
     serve_file(path, range).await
 }
-

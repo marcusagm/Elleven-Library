@@ -47,19 +47,19 @@ impl FormatProvider for PdfFormatProvider {
     ///
     /// A `Vec<SupportedFormat>` containing the supported formats.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
-        vec![
-            SupportedFormat::with_metadata(
-                "Portable Document Format",
-                vec!["pdf"],
-                vec!["application/pdf"],
-                MediaType::Document,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::BrowserNative,
-                PlaybackStrategy::None,
-            ),
-        ]
+        vec![SupportedFormat::with_metadata(
+            "Portable Document Format",
+            vec!["pdf"],
+            vec!["application/pdf"],
+            MediaType::Document,
+            ThumbnailStrategy::NativeExtractor,
+            PreviewStrategy::BrowserNative,
+            PlaybackStrategy::None,
+        )]
     }
 
     /// Check if the given header bytes support the format.
@@ -109,8 +109,7 @@ impl MetadataCapability for PdfFormatProvider {
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let pdf_data = std::fs::read(&path_owned)
-                .map_err(crate::core::error::AppError::Io)?;
+            let pdf_data = std::fs::read(&path_owned).map_err(crate::core::error::AppError::Io)?;
             let metadata = extractors::extract_pdf_metadata(&pdf_data)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
             Ok(metadata["technical"].clone())
@@ -131,8 +130,7 @@ impl MetadataCapability for PdfFormatProvider {
     async fn extract_semantic(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let pdf_data = std::fs::read(&path_owned)
-                .map_err(crate::core::error::AppError::Io)?;
+            let pdf_data = std::fs::read(&path_owned).map_err(crate::core::error::AppError::Io)?;
             let metadata = extractors::extract_pdf_metadata(&pdf_data)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
             Ok(metadata["semantic"].clone())
@@ -159,8 +157,7 @@ impl ThumbnailCapability for PdfFormatProvider {
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let pdf_data = std::fs::read(&path_owned)
-                .map_err(crate::core::error::AppError::Io)?;
+            let pdf_data = std::fs::read(&path_owned).map_err(crate::core::error::AppError::Io)?;
             extractors::render_pdf_to_png(&pdf_data, size_hint)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))
         })

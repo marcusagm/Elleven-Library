@@ -7,8 +7,8 @@ use std::path::Path;
 use std::process::Command;
 use tracing::error;
 
-use crate::processing::transcoding::resolve_transcoding_tools;
 use crate::feature::transcoding::detector;
+use crate::processing::transcoding::resolve_transcoding_tools;
 
 /// Video information returned by probe
 #[derive(Debug, Clone, Serialize)]
@@ -104,8 +104,8 @@ pub async fn get_video_info(
     }
 
     // Determine if native using existing detector
-    let is_native = detector::is_native_format(registry, path)
-        && is_codec_native(&video_codec, &audio_codec);
+    let is_native =
+        detector::is_native_format(registry, path) && is_codec_native(&video_codec, &audio_codec);
 
     Ok(VideoInfo {
         duration_secs,
@@ -144,5 +144,3 @@ fn is_codec_native(video_codec: &Option<String>, audio_codec: &Option<String>) -
 
     native_video && native_audio
 }
-
-

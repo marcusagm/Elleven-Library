@@ -1,4 +1,6 @@
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability, PreviewCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::core::AppResult;
 use async_trait::async_trait;
@@ -85,7 +87,7 @@ impl FormatProvider for CanonRawFormatProvider {
             vec![
                 "image/x-canon-cr2",
                 "image/x-canon-cr3",
-                "image/x-canon-crw"
+                "image/x-canon-crw",
             ],
             MediaType::Image,
             ThumbnailStrategy::Raw,

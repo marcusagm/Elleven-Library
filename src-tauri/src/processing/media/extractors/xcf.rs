@@ -7,9 +7,9 @@
 //! and improved extraction logic.
 
 use byteorder::{BigEndian, ReadBytesExt};
-use image::{ImageEncoder, ExtendedColorType};
+use image::{ExtendedColorType, ImageEncoder};
 use std::cmp;
-use std::io::{Read, Seek, SeekFrom, BufReader};
+use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 use thiserror::Error;
 
@@ -70,7 +70,7 @@ pub fn extract_xcf_metadata(path: &Path) -> Result<serde_json::Value, XcfError> 
     } else {
         0
     };
-    
+
     // 3. Skip Null Terminator
     let mut null_byte = [0u8; 1];
     reader.read_exact(&mut null_byte)?;
@@ -94,7 +94,7 @@ pub fn extract_xcf_metadata(path: &Path) -> Result<serde_json::Value, XcfError> 
             break;
         }
         let property_length = reader.read_u32::<BigEndian>().unwrap_or(0);
-        
+
         let start_pos = reader.stream_position().unwrap_or(0);
         if property_type == 19 && property_length == 8 {
             // PROP_RESOLUTION
@@ -105,7 +105,7 @@ pub fn extract_xcf_metadata(path: &Path) -> Result<serde_json::Value, XcfError> 
                 }
             }
         }
-        
+
         // Seek to next property
         let _ = reader.seek(SeekFrom::Start(start_pos + property_length as u64));
     }
@@ -114,7 +114,7 @@ pub fn extract_xcf_metadata(path: &Path) -> Result<serde_json::Value, XcfError> 
         "container": "GIMP XCF",
         "metadata_support": "Full"
     });
-    
+
     technical["width"] = serde_json::json!(canvas_width);
     technical["height"] = serde_json::json!(canvas_height);
     technical["dpi"] = serde_json::json!(dpi_x as u32);
@@ -289,7 +289,9 @@ pub fn extract_xcf_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std
         for tile_y in 0..tiles_y {
             for tile_x in 0..tiles_x {
                 // Seek to the pointer for this specific tile
-                let tile_pointer_offset = level_pointer + 8 + ((tile_y * tiles_x + tile_x) * bytes_per_offset as u32) as u64;
+                let tile_pointer_offset = level_pointer
+                    + 8
+                    + ((tile_y * tiles_x + tile_x) * bytes_per_offset as u32) as u64;
                 reader.seek(SeekFrom::Start(tile_pointer_offset))?;
 
                 let tile_pointer = if bytes_per_offset == 8 {
@@ -344,7 +346,7 @@ fn find_embedded_thumbnail<R: Read + Seek>(reader: &mut R) -> Result<Option<Vec<
     loop {
         let property_type = reader.read_u32::<BigEndian>()?;
         let property_length = reader.read_u32::<BigEndian>()?;
-        
+
         if property_type == 0 {
             break;
         }
@@ -355,14 +357,14 @@ fn find_embedded_thumbnail<R: Read + Seek>(reader: &mut R) -> Result<Option<Vec<
             let thumbnail_height = reader.read_u32::<BigEndian>()?;
             let _thumbnail_type = reader.read_u32::<BigEndian>()?; // Usually 0 (RGB) or 1 (RGBA)
             let data_length = reader.read_u32::<BigEndian>()?;
-            
+
             let mut thumbnail_data = vec![0u8; data_length as usize];
             reader.read_exact(&mut thumbnail_data)?;
 
             // GIMP typically saves this as a RAW RGB block.
             // We need to encode it to PNG for our purposes.
             let mut png_bytes = Vec::new();
-            
+
             // Heuristic: if data_length matches w*h*3, it's RGB8. If w*h*4, it's RGBA8.
             let color_type = if data_length == thumbnail_width * thumbnail_height * 3 {
                 ExtendedColorType::Rgb8
@@ -383,7 +385,7 @@ fn find_embedded_thumbnail<R: Read + Seek>(reader: &mut R) -> Result<Option<Vec<
                 thumbnail_height,
                 color_type,
             )?;
-            
+
             return Ok(Some(png_bytes));
         }
 
@@ -391,8 +393,6 @@ fn find_embedded_thumbnail<R: Read + Seek>(reader: &mut R) -> Result<Option<Vec<
     }
     Ok(None)
 }
-
-
 
 /// Reads a GIMP-style Pascal string (UInt32 length + bytes + potential null).
 fn read_gimp_string<R: Read>(reader: &mut R) -> Result<String, Box<dyn std::error::Error>> {
@@ -402,9 +402,12 @@ fn read_gimp_string<R: Read>(reader: &mut R) -> Result<String, Box<dyn std::erro
     }
     let mut buffer = vec![0u8; length as usize];
     reader.read_exact(&mut buffer)?;
-    
+
     // Remove null terminator if present
-    let actual_length = buffer.iter().position(|&byte| byte == 0).unwrap_or(length as usize);
+    let actual_length = buffer
+        .iter()
+        .position(|&byte| byte == 0)
+        .unwrap_or(length as usize);
     Ok(String::from_utf8_lossy(&buffer[..actual_length]).to_string())
 }
 
@@ -431,7 +434,7 @@ fn decode_and_composite_tile<R: Read>(
 
     // Temporary buffer for the tile RGBA data
     let mut tile_rgba = vec![0u8; (total_pixels * 4) as usize];
-    
+
     // If it's RGB (3 bytes), set alpha to fully opaque
     if bytes_per_pixel == 3 {
         for i in 0..total_pixels {
@@ -490,7 +493,11 @@ fn decode_and_composite_tile<R: Read>(
             let global_x = offset_x + (x_start + local_x) as i32;
             let global_y = offset_y + (y_start + local_y) as i32;
 
-            if global_x < 0 || global_y < 0 || global_x >= canvas_width as i32 || global_y >= canvas_height as i32 {
+            if global_x < 0
+                || global_y < 0
+                || global_x >= canvas_width as i32
+                || global_y >= canvas_height as i32
+            {
                 continue;
             }
 
@@ -514,9 +521,15 @@ fn decode_and_composite_tile<R: Read>(
             // Porter-Duff "Over" blending
             let out_alpha = source_alpha + (dest_alpha * (255 - source_alpha) / 255);
             if out_alpha > 0 {
-                canvas_data[canvas_index] = ((source_red * source_alpha + dest_red * dest_alpha * (255 - source_alpha) / 255) / out_alpha) as u8;
-                canvas_data[canvas_index + 1] = ((source_green * source_alpha + dest_green * dest_alpha * (255 - source_alpha) / 255) / out_alpha) as u8;
-                canvas_data[canvas_index + 2] = ((source_blue * source_alpha + dest_blue * dest_alpha * (255 - source_alpha) / 255) / out_alpha) as u8;
+                canvas_data[canvas_index] = ((source_red * source_alpha
+                    + dest_red * dest_alpha * (255 - source_alpha) / 255)
+                    / out_alpha) as u8;
+                canvas_data[canvas_index + 1] = ((source_green * source_alpha
+                    + dest_green * dest_alpha * (255 - source_alpha) / 255)
+                    / out_alpha) as u8;
+                canvas_data[canvas_index + 2] = ((source_blue * source_alpha
+                    + dest_blue * dest_alpha * (255 - source_alpha) / 255)
+                    / out_alpha) as u8;
                 canvas_data[canvas_index + 3] = out_alpha as u8;
             }
         }

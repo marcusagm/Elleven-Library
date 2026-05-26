@@ -78,40 +78,63 @@ pub fn run() {
                             // AssetMetadataUpdated, AssetStateChanged, and AssetTagsUpdated
                             // are handled granularly by thumbnail:ready and extraction:completed,
                             // so they are excluded to prevent redundant full-list refreshes (flicker).
-                            crate::core::events::DomainEvent::AssetCreated { .. } |
-                            crate::core::events::DomainEvent::AssetFolderChanged { .. } |
-                            crate::core::events::DomainEvent::FolderMetadataUpdated { .. } |
-                            crate::core::events::DomainEvent::FsPathDeleted { .. } |
-                            crate::core::events::DomainEvent::FsPathRenamed { .. } => {
-                                let _ = app_handle.emit("library:batch-change", serde_json::json!({
-                                    "added": [],
-                                    "removed": [],
-                                    "updated": [],
-                                    "needs_refresh": true
-                                }));
+                            crate::core::events::DomainEvent::AssetCreated { .. }
+                            | crate::core::events::DomainEvent::AssetFolderChanged { .. }
+                            | crate::core::events::DomainEvent::FolderMetadataUpdated { .. }
+                            | crate::core::events::DomainEvent::FsPathDeleted { .. }
+                            | crate::core::events::DomainEvent::FsPathRenamed { .. } => {
+                                let _ = app_handle.emit(
+                                    "library:batch-change",
+                                    serde_json::json!({
+                                        "added": [],
+                                        "removed": [],
+                                        "updated": [],
+                                        "needs_refresh": true
+                                    }),
+                                );
                             }
-                            crate::core::events::DomainEvent::ScanProgress { total, processed, current_file } => {
-                                let _ = app_handle.emit("indexer:progress", serde_json::json!({
-                                    "total": total,
-                                    "processed": processed,
-                                    "current_file": current_file,
-                                }));
+                            crate::core::events::DomainEvent::ScanProgress {
+                                total,
+                                processed,
+                                current_file,
+                            } => {
+                                let _ = app_handle.emit(
+                                    "indexer:progress",
+                                    serde_json::json!({
+                                        "total": total,
+                                        "processed": processed,
+                                        "current_file": current_file,
+                                    }),
+                                );
                             }
                             crate::core::events::DomainEvent::ScanCompleted { .. } => {
                                 let _ = app_handle.emit("indexer:complete", 0);
                             }
-                            crate::core::events::DomainEvent::ThumbnailGenerated { asset_id, path, .. } => {
-                                let _ = app_handle.emit("thumbnail:ready", serde_json::json!({
-                                    "id": asset_id,
-                                    "path": path,
-                                }));
+                            crate::core::events::DomainEvent::ThumbnailGenerated {
+                                asset_id,
+                                path,
+                                ..
+                            } => {
+                                let _ = app_handle.emit(
+                                    "thumbnail:ready",
+                                    serde_json::json!({
+                                        "id": asset_id,
+                                        "path": path,
+                                    }),
+                                );
                             }
                             crate::core::events::DomainEvent::AssetMetadataUpdated { asset_id } => {
-                                let _ = app_handle.emit("metadata:ready", serde_json::json!({
-                                    "id": asset_id,
-                                }));
+                                let _ = app_handle.emit(
+                                    "metadata:ready",
+                                    serde_json::json!({
+                                        "id": asset_id,
+                                    }),
+                                );
                             }
-                            crate::core::events::DomainEvent::ExtractionCompleted { asset_id, capability } => {
+                            crate::core::events::DomainEvent::ExtractionCompleted {
+                                asset_id,
+                                capability,
+                            } => {
                                 if capability == "COLORS" {
                                     let _ = app_handle.emit("extraction:completed", asset_id);
                                 }
@@ -165,10 +188,11 @@ pub fn run() {
                     ));
                 handle.manage(asset_query_handler.clone());
 
-                let asset_ledger_impl = Arc::new(crate::infra::database::ledger::SqliteAssetLedger::new(
-                    db_manager.pool().clone(),
-                    event_bus.clone(),
-                ));
+                let asset_ledger_impl =
+                    Arc::new(crate::infra::database::ledger::SqliteAssetLedger::new(
+                        db_manager.pool().clone(),
+                        event_bus.clone(),
+                    ));
 
                 // Run database path normalization cleanup (one-time logic)
                 let ledger_for_cleanup = asset_ledger_impl.clone();
@@ -178,7 +202,8 @@ pub fn run() {
                     }
                 });
 
-                let asset_ledger: Arc<dyn crate::core::ledger::port::TransactionalAssetLedger> = asset_ledger_impl;
+                let asset_ledger: Arc<dyn crate::core::ledger::port::TransactionalAssetLedger> =
+                    asset_ledger_impl;
                 handle.manage(asset_ledger.clone());
 
                 // Initialize High-level query/search services
@@ -200,7 +225,8 @@ pub fn run() {
                 );
 
                 // Initialize Transcode Cache
-                let transcode_cache = Arc::new(TranscodeCache::new(&app_data, format_registry.clone()));
+                let transcode_cache =
+                    Arc::new(TranscodeCache::new(&app_data, format_registry.clone()));
                 handle.manage(transcode_cache);
 
                 // Start Streaming Server (Axum)
@@ -211,7 +237,6 @@ pub fn run() {
                     server_token,
                     server_handle,
                 );
-
 
                 let priority_state = std::sync::Arc::new(
                     crate::core::workflows::thumbnails::priority::ThumbnailPriorityState::default(),
@@ -247,15 +272,21 @@ pub fn run() {
                 // FFmpeg Health Check
                 if !crate::processing::transcoding::check_transcoding_availability() {
                     tracing::warn!("FFmpeg not found. Video transcoding unavailable.");
-                    let _ = event_bus.publish(crate::core::events::DomainEvent::SystemHealthIssue {
-                        component: "ffmpeg".to_string(),
-                        message: "FFmpeg not found. Video transcoding unavailable.".to_string(),
-                    });
+                    let _ =
+                        event_bus.publish(crate::core::events::DomainEvent::SystemHealthIssue {
+                            component: "ffmpeg".to_string(),
+                            message: "FFmpeg not found. Video transcoding unavailable.".to_string(),
+                        });
                 }
 
                 // Read concurrency limit from settings (extra map or model default)
-                let concurrency_limit = if let Some(settings_service) = handle.try_state::<crate::feature::settings::SettingsService>() {
-                    match settings_service.get_setting("indexer_concurrency_limit").await {
+                let concurrency_limit = if let Some(settings_service) =
+                    handle.try_state::<crate::feature::settings::SettingsService>()
+                {
+                    match settings_service
+                        .get_setting("indexer_concurrency_limit")
+                        .await
+                    {
                         Ok(Some(value)) => value.as_u64().unwrap_or(200) as usize,
                         _ => 200,
                     }
@@ -318,9 +349,12 @@ pub fn run() {
                     // only new/modified ones.
                     if !roots.is_empty() {
                         let indexer_for_boot = indexer.clone();
-                        let roots_for_boot: Vec<_> = roots.iter().map(|folder| {
-                            (std::path::PathBuf::from(&folder.path), folder.id.clone())
-                        }).collect();
+                        let roots_for_boot: Vec<_> = roots
+                            .iter()
+                            .map(|folder| {
+                                (std::path::PathBuf::from(&folder.path), folder.id.clone())
+                            })
+                            .collect();
 
                         tokio::spawn(async move {
                             for (root_path, folder_id) in roots_for_boot {
@@ -348,7 +382,6 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
-
         .invoke_handler(tauri::generate_handler![
             // IPC Commands
             delivery::tauri::commands::queries::get_assets,

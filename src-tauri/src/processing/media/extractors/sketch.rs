@@ -15,7 +15,9 @@ use std::path::Path;
 /// # Returns
 ///
 /// `Result<(Vec<u8>, String), Box<dyn std::error::Error>>` - The PNG image data and its MIME type.
-pub fn extract_sketch_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_sketch_preview(
+    path: &Path,
+) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let file = std::fs::File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
 
@@ -84,7 +86,9 @@ pub fn extract_sketch_metadata(path: &Path) -> Result<Value, Box<dyn std::error:
     }
 
     if let Ok((preview_data, _)) = extract_sketch_preview(path) {
-        if let Ok(_reader) = image::ImageReader::new(std::io::Cursor::new(&preview_data)).with_guessed_format() {
+        if let Ok(_reader) =
+            image::ImageReader::new(std::io::Cursor::new(&preview_data)).with_guessed_format()
+        {
             if let Ok((width, height)) = _reader.into_dimensions() {
                 technical_metadata["width"] = width.into();
                 technical_metadata["height"] = height.into();
@@ -97,4 +101,3 @@ pub fn extract_sketch_metadata(path: &Path) -> Result<Value, Box<dyn std::error:
         "semantic": semantic_metadata,
     }))
 }
-

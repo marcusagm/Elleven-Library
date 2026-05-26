@@ -1,4 +1,6 @@
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability, PreviewCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::core::AppResult;
 use async_trait::async_trait;
@@ -71,7 +73,9 @@ impl FormatProvider for HasselbladRawFormatProvider {
     ///
     /// `Vec<SupportedFormat>` - List of supported formats with metadata.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
         vec![SupportedFormat::with_metadata(
             "Hasselblad RAW Image",
             vec!["3fr", "fff"],
@@ -92,8 +96,21 @@ impl FormatProvider for HasselbladRawFormatProvider {
     /// # Returns
     ///
     /// `bool` - `true` if the header bytes match, `false` otherwise.
-    fn supports_magic_bytes(&self, _header_bytes: &[u8]) -> bool {
-        false
+    fn supports_magic_bytes(&self, header_bytes: &[u8]) -> bool {
+        if header_bytes.len() < 4 {
+            return false;
+        }
+        // 3FR uses TIFF Little-Endian: II* (49 49 2A 00)
+        let is_tiff_little_endian = header_bytes[0] == 0x49
+            && header_bytes[1] == 0x49
+            && header_bytes[2] == 0x2A
+            && header_bytes[3] == 0x00;
+        // FFF uses TIFF Big-Endian: MM * (4D 4D 00 2A)
+        let is_tiff_big_endian = header_bytes[0] == 0x4D
+            && header_bytes[1] == 0x4D
+            && header_bytes[2] == 0x00
+            && header_bytes[3] == 0x2A;
+        is_tiff_little_endian || is_tiff_big_endian
     }
 
     /// Returns the preview generation capability.
@@ -142,8 +159,11 @@ impl MetadataCapability for HasselbladRawFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
-        tokio::task::spawn_blocking(move || crate::processing::media::extractors::image::extract_raw_metadata(&path_owned))
-            .await.map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
+        tokio::task::spawn_blocking(move || {
+            crate::processing::media::extractors::image::extract_raw_metadata(&path_owned)
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
     }
 
     /// Extracts semantic metadata from Hasselblad RAW files.
@@ -180,8 +200,14 @@ impl ThumbnailCapability for HasselbladRawFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
-        tokio::task::spawn_blocking(move || crate::processing::media::extractors::image::generate_raw_thumbnail(&path_owned, size_hint))
-            .await.map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
+        tokio::task::spawn_blocking(move || {
+            crate::processing::media::extractors::image::generate_raw_thumbnail(
+                &path_owned,
+                size_hint,
+            )
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
     }
 }
 

@@ -58,7 +58,8 @@ fn build_search_criterion_clause<'a>(
     registry: &crate::core::formats::registry::FormatRegistry,
 ) {
     match c.key.as_str() {
-        "name" | "filename" | "path" | "format_type" | "format" | "extension" | "family" | "media_type" | "mediaType" | "notes" => {
+        "name" | "filename" | "path" | "format_type" | "format" | "extension" | "family"
+        | "media_type" | "mediaType" | "notes" => {
             let col = match c.key.as_str() {
                 "filename" => "name",
                 "format" | "extension" => "format_type",
@@ -173,7 +174,8 @@ fn build_search_criterion_clause<'a>(
                 }
             }
         }
-        "created_at" | "updated_at" | "creationDate" | "modified_at" | "modifiedDate" | "added" | "added_at" | "date_added" => {
+        "created_at" | "updated_at" | "creationDate" | "modified_at" | "modifiedDate" | "added"
+        | "added_at" | "date_added" => {
             let key = match c.key.as_str() {
                 "creationDate" => "created_at",
                 "modifiedDate" => "modified_at",
@@ -222,7 +224,9 @@ fn build_search_criterion_clause<'a>(
                         let mut first_name = true;
                         for tag in tags {
                             if tag.as_str().is_some() {
-                                if !first_name { query_builder.push(", "); }
+                                if !first_name {
+                                    query_builder.push(", ");
+                                }
                                 query_builder.push_bind(tag.as_str().unwrap());
                                 first_name = false;
                             }
@@ -231,7 +235,9 @@ fn build_search_criterion_clause<'a>(
                         let mut first_id = true;
                         for tag in tags {
                             if tag.as_str().is_some() {
-                                if !first_id { query_builder.push(", "); }
+                                if !first_id {
+                                    query_builder.push(", ");
+                                }
                                 query_builder.push_bind(tag.as_str().unwrap());
                                 first_id = false;
                             }
@@ -254,7 +260,9 @@ fn build_search_criterion_clause<'a>(
                         let mut first_name = true;
                         for tag in tags {
                             if tag.as_str().is_some() {
-                                if !first_name { query_builder.push(", "); }
+                                if !first_name {
+                                    query_builder.push(", ");
+                                }
                                 query_builder.push_bind(tag.as_str().unwrap());
                                 first_name = false;
                             }
@@ -263,7 +271,9 @@ fn build_search_criterion_clause<'a>(
                         let mut first_id = true;
                         for tag in tags {
                             if tag.as_str().is_some() {
-                                if !first_id { query_builder.push(", "); }
+                                if !first_id {
+                                    query_builder.push(", ");
+                                }
                                 query_builder.push_bind(tag.as_str().unwrap());
                                 first_id = false;
                             }

@@ -75,7 +75,11 @@ impl FormatProvider for OpenTypeFontProvider {
         vec![SupportedFormat::with_metadata(
             "OpenType Font",
             vec!["otf"],
-            vec!["font/otf", "application/x-font-otf", "application/x-font-opentype"],
+            vec![
+                "font/otf",
+                "application/x-font-otf",
+                "application/x-font-opentype",
+            ],
             MediaType::Font,
             ThumbnailStrategy::NativeExtractor,
             PreviewStrategy::None,
@@ -163,7 +167,10 @@ impl ThumbnailCapability for OpenTypeFontProvider {
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::font::generate_font_thumbnail(&path_owned, size_hint)
+            crate::processing::media::extractors::font::generate_font_thumbnail(
+                &path_owned,
+                size_hint,
+            )
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

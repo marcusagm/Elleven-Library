@@ -1,4 +1,6 @@
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability, PreviewCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::core::AppResult;
 use async_trait::async_trait;
@@ -11,7 +13,7 @@ use tracing::instrument;
 /// browser. Thumbnails are generated via `image-rs`.
 ///
 /// # Technical Details
-/// 
+///
 /// - **File Format**: PSD or PSB
 /// - **Preview Format**: PNG image
 /// - **Metadata**: JSON data containing design information

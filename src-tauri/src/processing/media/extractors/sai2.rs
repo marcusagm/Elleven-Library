@@ -222,7 +222,9 @@ fn convert_jssf_to_jpeg(
 
     // Read quantization tables
     if data.len() < 64 {
-        return Err(Sai2Error::InvalidJssfContainer("Data too short for luma quant table".into()));
+        return Err(Sai2Error::InvalidJssfContainer(
+            "Data too short for luma quant table".into(),
+        ));
     }
     let luma_quant = &data[cursor..cursor + 64];
     cursor += 64;
@@ -230,7 +232,9 @@ fn convert_jssf_to_jpeg(
     let mut chroma_quant: &[u8] = &[];
     if jssf_channels > 1 {
         if data.len() < cursor + 64 {
-            return Err(Sai2Error::InvalidJssfContainer("Data too short for chroma quant table".into()));
+            return Err(Sai2Error::InvalidJssfContainer(
+                "Data too short for chroma quant table".into(),
+            ));
         }
         chroma_quant = &data[cursor..cursor + 64];
         cursor += 64;
@@ -379,8 +383,7 @@ fn convert_jssf_to_jpeg(
         if cursor + 2 > data.len() {
             break;
         }
-        let mcu_row_size =
-            u16::from_le_bytes([data[cursor], data[cursor + 1]]) as usize;
+        let mcu_row_size = u16::from_le_bytes([data[cursor], data[cursor + 1]]) as usize;
         cursor += 2;
 
         if cursor + mcu_row_size > data.len() {
@@ -490,15 +493,13 @@ fn unpack_delta_rle_16(
                 write_offset += output_channels as usize;
             } else if opcode <= 14 {
                 // The opcode is the number of bits to consume
-                let bit_active_mask: i32 =
-                    -(((control_mask & (1u64 << opcode)) != 0) as i32);
+                let bit_active_mask: i32 = -(((control_mask & (1u64 << opcode)) != 0) as i32);
 
                 let bit_value_mask: u64 = (1u64 << opcode) - 1;
                 let bit_value = control_mask & bit_value_mask;
 
                 let channel_value: i16 = ((bit_active_mask & 1)
-                    + (bit_active_mask
-                        ^ (((1i32 << opcode) | bit_value as i32) - 1)))
+                    + (bit_active_mask ^ (((1i32 << opcode) | bit_value as i32) - 1)))
                     as i16;
 
                 remaining_bits = remaining_bits.saturating_sub(opcode + 1);
@@ -516,8 +517,7 @@ fn unpack_delta_rle_16(
                 control_mask >>= 7;
 
                 for fill_index in 0..zero_fill_count as usize {
-                    let target_offset =
-                        write_offset + fill_index * output_channels as usize;
+                    let target_offset = write_offset + fill_index * output_channels as usize;
                     if target_offset < decompressed.len() {
                         decompressed[target_offset] = 0;
                     }
@@ -540,8 +540,7 @@ fn unpack_delta_rle_16(
     if input_channels < output_channels {
         for padding_channel in input_channels as usize..output_channels as usize {
             for pixel_index in 0..pixel_count as usize {
-                let target_offset =
-                    pixel_index * output_channels as usize + padding_channel;
+                let target_offset = pixel_index * output_channels as usize + padding_channel;
                 if target_offset < decompressed.len() {
                     decompressed[target_offset] = 0;
                 }
@@ -652,8 +651,7 @@ fn delta_unpack_row_16bpc(
 
     for pixel_index in 0..pixel_count as usize {
         // Convert the pixel above (from previous row) to 16bpc
-        let current_above_pixel_16bpc =
-            Pixel16Bpc::from_8bpc(previous_row_8bpc[pixel_index]);
+        let current_above_pixel_16bpc = Pixel16Bpc::from_8bpc(previous_row_8bpc[pixel_index]);
 
         // Read current delta (4 channels × i16)
         let delta_base = pixel_index * 4;
@@ -730,7 +728,9 @@ fn decode_dpcm_thumbnail(
     let mut tile_sizes = Vec::with_capacity(tiles_count);
     for _ in 0..tiles_count {
         if cursor + 4 > dpcm_data.len() {
-            return Err(Sai2Error::InvalidDpcmData("Not enough data for tile sizes".into()));
+            return Err(Sai2Error::InvalidDpcmData(
+                "Not enough data for tile sizes".into(),
+            ));
         }
         let tile_size = u32::from_le_bytes([
             dpcm_data[cursor],
@@ -806,8 +806,7 @@ fn decode_dpcm_thumbnail(
 
                 // Destination row in the full image
                 let image_row_y = tile_begin_y + tile_row_index as u32;
-                let image_row_start =
-                    (image_row_y * canvas_width + tile_begin_x) as usize;
+                let image_row_start = (image_row_y * canvas_width + tile_begin_x) as usize;
 
                 // Apply the plane predictor
                 let mut destination_row = vec![0u32; tile_size_x];
@@ -825,8 +824,7 @@ fn decode_dpcm_thumbnail(
             }
 
             // Copy last row into composite_row for inter-tile prediction
-            composite_row[..tile_size_x]
-                .copy_from_slice(&previous_row[..tile_size_x]);
+            composite_row[..tile_size_x].copy_from_slice(&previous_row[..tile_size_x]);
 
             cursor = tile_end_cursor;
         }
@@ -944,19 +942,17 @@ fn extract_thumbnail_from_blob<R: Read + Seek>(
         );
 
         let jssf_payload = &blob_data[6..];
-        let jpeg_data =
-            convert_jssf_to_jpeg(jssf_payload, jssf_width, jssf_height, jssf_channels)?;
+        let jpeg_data = convert_jssf_to_jpeg(jssf_payload, jssf_width, jssf_height, jssf_channels)?;
 
         return Ok((jpeg_data, "image/jpeg".into()));
     }
 
     if blob_data_type == BLOB_DPCM {
-        let thumbnail_channels: u8 =
-            if (header.canvas_background_flags & 0x07) == 0 {
-                4
-            } else {
-                3
-            };
+        let thumbnail_channels: u8 = if (header.canvas_background_flags & 0x07) == 0 {
+            4
+        } else {
+            3
+        };
 
         debug!(
             "DPCM thumbnail: {}x{}, {} channels",
@@ -986,9 +982,7 @@ fn extract_thumbnail_from_blob<R: Read + Seek>(
 // Public API
 // ---------------------------------------------------------------------------
 
-pub fn extract_sai2_preview(
-    path: &Path,
-) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+pub fn extract_sai2_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
     let mut file = File::open(path)?;
     let file_size = file.metadata()?.len();
 
@@ -1009,12 +1003,7 @@ pub fn extract_sai2_preview(
                 continue;
             }
 
-            match extract_thumbnail_from_blob(
-                &mut file,
-                entry.blobs_offset,
-                blob_size,
-                &header,
-            ) {
+            match extract_thumbnail_from_blob(&mut file, entry.blobs_offset, blob_size, &header) {
                 Ok(result) => return Ok(result),
                 Err(error) => {
                     debug!(
@@ -1030,17 +1019,13 @@ pub fn extract_sai2_preview(
     Err(Box::new(Sai2Error::ThumbnailNotFound))
 }
 
-pub fn extract_sai2_dimensions(
-    path: &Path,
-) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+pub fn extract_sai2_dimensions(path: &Path) -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let mut file = File::open(path)?;
     let header = parse_canvas_header(&mut file)?;
     Ok((header.canvas_width, header.canvas_height))
 }
 
-pub fn extract_sai2_metadata(
-    path: &Path,
-) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+pub fn extract_sai2_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let mut technical_metadata = serde_json::json!({
         "container": "SAI v2",
         "metadata_support": "Limited"
@@ -1143,8 +1128,7 @@ mod tests {
             assert!(!data.is_empty());
 
             let extension = if mime == "image/jpeg" { "jpg" } else { "png" };
-            let output_path =
-                Path::new(TEST_DIR).join(format!("_test_milk_preview.{}", extension));
+            let output_path = Path::new(TEST_DIR).join(format!("_test_milk_preview.{}", extension));
             std::fs::write(&output_path, &data).unwrap();
         }
     }
@@ -1158,28 +1142,16 @@ mod tests {
         for entry in std::fs::read_dir(test_directory).unwrap() {
             let entry = entry.unwrap();
             let path = entry.path();
-            if path.extension().map_or(false, |extension| extension == "sai2")
-                && !path
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .starts_with('_')
+            if path
+                .extension()
+                .map_or(false, |extension| extension == "sai2")
+                && !path.file_name().unwrap().to_str().unwrap().starts_with('_')
             {
                 let file_name = path.file_name().unwrap().to_str().unwrap();
                 match extract_sai2_preview(&path) {
                     Ok((data, mime)) => {
-                        assert!(
-                            !data.is_empty(),
-                            "Empty preview for {}",
-                            file_name
-                        );
-                        println!(
-                            "✓ {} → {} bytes ({})",
-                            file_name,
-                            data.len(),
-                            mime
-                        );
+                        assert!(!data.is_empty(), "Empty preview for {}", file_name);
+                        println!("✓ {} → {} bytes ({})", file_name, data.len(), mime);
                     }
                     Err(error) => {
                         panic!("✗ {} → Error: {}", file_name, error);

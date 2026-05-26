@@ -12,9 +12,9 @@ use tokio::sync::RwLock;
 use tracing::info;
 
 use super::process_manager::ProcessManager;
-use crate::processing::transcoding::resolve_transcoding_tools;
 use crate::feature::transcoding::cache::TranscodeCache;
 use crate::feature::transcoding::detector;
+use crate::processing::transcoding::resolve_transcoding_tools;
 
 /// Get or generate a video segment
 pub async fn get_segment(
@@ -110,12 +110,7 @@ async fn transcode_segment(
     if is_audio {
         // Audio-only configuration
         cmd.args([
-            "-map", "0:a:0?",
-            "-vn",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-ar", "48000",
-            "-ac", "2",
+            "-map", "0:a:0?", "-vn", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
         ]);
     } else {
         // Video configuration
@@ -160,10 +155,7 @@ async fn transcode_segment(
         ]);
     }
 
-    cmd.args([
-        "-f", "mpegts",
-        "-",
-    ]);
+    cmd.args(["-f", "mpegts", "-"]);
 
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());

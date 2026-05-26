@@ -132,7 +132,9 @@ impl FormatProvider for AudioFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
         vec![
             SupportedFormat::with_metadata(
@@ -381,11 +383,17 @@ impl MetadataCapability for AudioFormatProvider {
             if let Some(duration_str) = format.get("duration").and_then(|d| d.as_str()) {
                 duration_secs = duration_str.parse::<f64>().unwrap_or(0.0);
             }
-            container = format.get("format_name").and_then(|v| v.as_str()).map(|s| s.to_string());
+            container = format
+                .get("format_name")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
 
             // FFprobe retorna bit_rate como string em bps; convertemos para kbps
             if let Some(bitrate_str) = format.get("bit_rate").and_then(|b| b.as_str()) {
-                bitrate_kbps = bitrate_str.parse::<f64>().ok().map(|bps| (bps / 1000.0).round());
+                bitrate_kbps = bitrate_str
+                    .parse::<f64>()
+                    .ok()
+                    .map(|bps| (bps / 1000.0).round());
             }
         }
 
@@ -393,8 +401,14 @@ impl MetadataCapability for AudioFormatProvider {
         if let Some(streams) = json.get("streams").and_then(|s| s.as_array()) {
             for stream in streams {
                 if stream.get("codec_type").and_then(|t| t.as_str()) == Some("audio") {
-                    audio_codec = stream.get("codec_name").and_then(|v| v.as_str()).map(|s| s.to_string());
-                    sample_rate = stream.get("sample_rate").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    audio_codec = stream
+                        .get("codec_name")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    sample_rate = stream
+                        .get("sample_rate")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
                     channels = stream.get("channels").and_then(|v| v.as_i64());
                     break;
                 }
@@ -403,12 +417,16 @@ impl MetadataCapability for AudioFormatProvider {
 
         // Logic for is_native (V1 Parity)
         let is_native = match audio_codec.as_deref() {
-            Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus") | Some("vorbis") => true,
+            Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus")
+            | Some("vorbis") => true,
             Some(codec) if codec.starts_with("pcm_") => true,
             _ => false,
         };
 
-        technical.insert("duration_secs".to_string(), serde_json::json!(duration_secs));
+        technical.insert(
+            "duration_secs".to_string(),
+            serde_json::json!(duration_secs),
+        );
         technical.insert("audio_codec".to_string(), serde_json::json!(audio_codec));
         technical.insert("sample_rate".to_string(), serde_json::json!(sample_rate));
         technical.insert("channels".to_string(), serde_json::json!(channels));

@@ -1,4 +1,6 @@
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability, PreviewCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::core::AppResult;
 use async_trait::async_trait;
@@ -109,8 +111,13 @@ impl FormatProvider for NetpbmFormatProvider {
     fn supports_magic_bytes(&self, header_bytes: &[u8]) -> bool {
         matches!(
             header_bytes.get(..2),
-            Some(b"P1") | Some(b"P2") | Some(b"P3") | Some(b"P4") | Some(b"P5") |
-            Some(b"P6") | Some(b"P7")
+            Some(b"P1")
+                | Some(b"P2")
+                | Some(b"P3")
+                | Some(b"P4")
+                | Some(b"P5")
+                | Some(b"P6")
+                | Some(b"P7")
         )
     }
 

@@ -240,7 +240,10 @@ impl ThumbnailCapability for PhotoshopFormatProvider {
             })?;
             let dynamic_image = image::DynamicImage::ImageRgba8(rgba_buffer);
 
-            crate::processing::media::extractors::image::process_and_encode_webp(dynamic_image, size_hint)
+            crate::processing::media::extractors::image::process_and_encode_webp(
+                dynamic_image,
+                size_hint,
+            )
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

@@ -34,7 +34,9 @@ impl FormatProvider for ArchiveFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
         vec![
             SupportedFormat::with_metadata(
@@ -144,10 +146,15 @@ impl ThumbnailCapability for ArchiveFormatProvider {
         let path_owned = path.to_path_buf();
 
         tokio::task::spawn_blocking(move || {
-            let extension = path_owned.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+            let extension = path_owned
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
 
             if extension == "clip" {
-                extractors::extract_clip_preview(&path_owned).map(|(d, _)| d)
+                extractors::extract_clip_preview(&path_owned)
+                    .map(|(d, _)| d)
                     .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))
             } else {
                 extract_zip_thumbnail(&path_owned, size_hint)
@@ -157,7 +164,6 @@ impl ThumbnailCapability for ArchiveFormatProvider {
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
     }
 }
-
 
 /// Helper: Extract thumbnail from regular ZIP/CBZ.
 ///
@@ -193,7 +199,9 @@ fn extract_zip_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
 
             let img = image::load_from_memory(&buf)
                 .map_err(|e| crate::core::error::AppError::Generic(e.to_string()))?;
-            return crate::processing::media::extractors::image::process_and_encode_webp(img, size_hint);
+            return crate::processing::media::extractors::image::process_and_encode_webp(
+                img, size_hint,
+            );
         }
     }
 

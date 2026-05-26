@@ -17,7 +17,6 @@ use crate::processing::media::archive_format::ArchiveFormatProvider;
 use crate::processing::media::audio_format::AudioFormatProvider;
 use crate::processing::media::cad_format::CadFormatProvider;
 use crate::processing::media::fallback_format::GenericByteFallbackProvider;
-use crate::processing::media::icon_format::IconFormatProvider;
 use crate::processing::media::model3d_format::Model3dFormatProvider;
 use crate::processing::media::text_format::TextFormatProvider;
 use crate::processing::media::usd_format::UsdFormatProvider;
@@ -39,6 +38,7 @@ use crate::processing::media::providers::image::cur::CurFormatProvider;
 use crate::processing::media::providers::image::dds::DdsFormatProvider;
 use crate::processing::media::providers::image::gif::GifFormatProvider;
 use crate::processing::media::providers::image::hdr::HdrFormatProvider;
+use crate::processing::media::providers::image::icns::IcnsFormatProvider;
 use crate::processing::media::providers::image::ico::IcoFormatProvider;
 use crate::processing::media::providers::image::jpeg::JpegFormatProvider;
 use crate::processing::media::providers::image::netpbm::NetpbmFormatProvider;
@@ -140,6 +140,7 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(GifFormatProvider::new()));
     registry.register(Arc::new(HdrFormatProvider::new()));
     registry.register(Arc::new(IcoFormatProvider::new()));
+    registry.register(Arc::new(IcnsFormatProvider::new()));
     registry.register(Arc::new(JpegFormatProvider::new()));
     registry.register(Arc::new(NetpbmFormatProvider::new()));
     registry.register(Arc::new(PngFormatProvider::new()));
@@ -200,7 +201,6 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(SvgFormatProvider::new()));
 
     // Generic fallbacks (must be last)
-    registry.register(Arc::new(IconFormatProvider::new()));
     registry.register(Arc::new(GenericByteFallbackProvider::new()));
 
     registry

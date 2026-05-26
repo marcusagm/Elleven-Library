@@ -1,5 +1,7 @@
 use crate::core::error::AppResult;
-use crate::core::formats::capabilities::{MetadataCapability, PreviewCapability, ThumbnailCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::fs::File;
@@ -87,7 +89,8 @@ impl AffinityFormatProvider {
             if &buffer[index..index + 8] == PNG_SIGNATURE {
                 // Found PNG, limit search for IEND
                 let search_limit = (index + 50 * 1024 * 1024).min(buffer.len());
-                if let Some(iend_relative_offset) = self.find_iend(&buffer[index + 8..search_limit]) {
+                if let Some(iend_relative_offset) = self.find_iend(&buffer[index + 8..search_limit])
+                {
                     let png_length = iend_relative_offset + 8 + 4 + 4; // Signature + data until IEND + IEND + CRC
 
                     if best_png.is_none_or(|(_, previous_size)| png_length > previous_size) {
@@ -138,24 +141,31 @@ fn extract_png_metadata_details(png_data: &[u8]) -> (Option<u32>, Option<u32>, O
         return (None, None, None);
     }
 
-    let width = Some(u32::from_be_bytes(png_data[16..20].try_into().unwrap_or([0; 4])));
-    let height = Some(u32::from_be_bytes(png_data[20..24].try_into().unwrap_or([0; 4])));
+    let width = Some(u32::from_be_bytes(
+        png_data[16..20].try_into().unwrap_or([0; 4]),
+    ));
+    let height = Some(u32::from_be_bytes(
+        png_data[20..24].try_into().unwrap_or([0; 4]),
+    ));
     let mut dots_per_inch = None;
 
     let mut offset = 33;
     while offset + 8 <= png_data.len() {
-        let chunk_length = u32::from_be_bytes(png_data[offset..offset + 4].try_into().unwrap_or([0; 4])) as usize;
+        let chunk_length =
+            u32::from_be_bytes(png_data[offset..offset + 4].try_into().unwrap_or([0; 4])) as usize;
         let chunk_type = &png_data[offset + 4..offset + 8];
 
         if chunk_type == b"pHYs" && offset + 8 + chunk_length <= png_data.len() {
             let physical_dimensions_data = &png_data[offset + 8..offset + 8 + chunk_length];
             if physical_dimensions_data.len() >= 9 {
-                let pixels_per_unit_x = u32::from_be_bytes(physical_dimensions_data[0..4].try_into().unwrap_or([0; 4]));
+                let pixels_per_unit_x =
+                    u32::from_be_bytes(physical_dimensions_data[0..4].try_into().unwrap_or([0; 4]));
                 let unit_specifier = physical_dimensions_data[8];
                 if unit_specifier == 1 {
                     // Convert pixels per meter to DPI (dots per inch)
                     // 1 meter = 39.3701 inches
-                    let computed_dots_per_inch = (pixels_per_unit_x as f64 / 39.3701).round() as u32;
+                    let computed_dots_per_inch =
+                        (pixels_per_unit_x as f64 / 39.3701).round() as u32;
                     dots_per_inch = Some(computed_dots_per_inch);
                 }
             }
@@ -198,7 +208,9 @@ impl FormatProvider for AffinityFormatProvider {
     ///
     /// `Vec<SupportedFormat>` - List of supported formats with metadata.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
         vec![
             SupportedFormat::with_metadata(
@@ -397,36 +409,21 @@ mod tests {
     fn test_extract_png_metadata_details() {
         let png_data = vec![
             // Signature
-            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-            // IHDR length: 13
-            0x00, 0x00, 0x00, 0x0d,
-            // IHDR type: "IHDR"
-            0x49, 0x48, 0x44, 0x52,
-            // Width: 300
-            0x00, 0x00, 0x01, 0x2c,
-            // Height: 400
-            0x00, 0x00, 0x01, 0x90,
-            // Other fields: 5 bytes
-            0x08, 0x02, 0x00, 0x00, 0x00,
-            // CRC: 4 bytes
-            0x00, 0x00, 0x00, 0x00,
-            // pHYs length: 9
-            0x00, 0x00, 0x00, 0x09,
-            // pHYs type: "pHYs"
-            0x70, 0x48, 0x59, 0x73,
-            // Pixels per unit X: 2835 (72 DPI)
-            0x00, 0x00, 0x0b, 0x13,
-            // Pixels per unit Y: 2835
-            0x00, 0x00, 0x0b, 0x13,
-            // Unit: 1 (meter)
-            0x01,
-            // CRC: 4 bytes
-            0x00, 0x00, 0x00, 0x00,
-            // IEND length: 0
-            0x00, 0x00, 0x00, 0x00,
-            // IEND type: "IEND"
-            0x49, 0x45, 0x4e, 0x44,
-            // CRC: 4 bytes
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // IHDR length: 13
+            0x00, 0x00, 0x00, 0x0d, // IHDR type: "IHDR"
+            0x49, 0x48, 0x44, 0x52, // Width: 300
+            0x00, 0x00, 0x01, 0x2c, // Height: 400
+            0x00, 0x00, 0x01, 0x90, // Other fields: 5 bytes
+            0x08, 0x02, 0x00, 0x00, 0x00, // CRC: 4 bytes
+            0x00, 0x00, 0x00, 0x00, // pHYs length: 9
+            0x00, 0x00, 0x00, 0x09, // pHYs type: "pHYs"
+            0x70, 0x48, 0x59, 0x73, // Pixels per unit X: 2835 (72 DPI)
+            0x00, 0x00, 0x0b, 0x13, // Pixels per unit Y: 2835
+            0x00, 0x00, 0x0b, 0x13, // Unit: 1 (meter)
+            0x01, // CRC: 4 bytes
+            0x00, 0x00, 0x00, 0x00, // IEND length: 0
+            0x00, 0x00, 0x00, 0x00, // IEND type: "IEND"
+            0x49, 0x45, 0x4e, 0x44, // CRC: 4 bytes
             0x00, 0x00, 0x00, 0x00,
         ];
 
@@ -441,15 +438,20 @@ mod tests {
         let path = Path::new("/Users/marcusmaia/Documents/Desenvolvimento/Mundam/file-samples/Arquivos para testes/Project/afdesign/paella_icons.afdesign");
         if path.exists() {
             let provider = AffinityFormatProvider::new();
-            let metadata = provider.extract_technical(path).await.expect("Failed to extract metadata");
+            let metadata = provider
+                .extract_technical(path)
+                .await
+                .expect("Failed to extract metadata");
             assert_eq!(metadata["format"], "Affinity");
             assert!(metadata["width"].is_number());
             assert!(metadata["height"].is_number());
 
-            let preview = provider.generate_preview(path, "test_asset").await.expect("Failed to generate preview");
+            let preview = provider
+                .generate_preview(path, "test_asset")
+                .await
+                .expect("Failed to generate preview");
             assert!(!preview.0.is_empty());
             assert_eq!(preview.1, "image/png");
         }
     }
 }
-

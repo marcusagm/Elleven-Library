@@ -7,10 +7,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tauri::Manager;
 use tokio::process::{Child, Command};
 use tokio::sync::RwLock;
 use tracing::{error, info};
-use tauri::Manager;
 
 use crate::processing::transcoding::resolve_transcoding_tools;
 
@@ -43,7 +43,12 @@ impl LinearManager {
     }
 
     /// Get valid session or start a new one
-    pub async fn get_or_start(&self, asset_id: &str, file_path: &Path, quality: &str) -> Result<PathBuf, String> {
+    pub async fn get_or_start(
+        &self,
+        asset_id: &str,
+        file_path: &Path,
+        quality: &str,
+    ) -> Result<PathBuf, String> {
         let key = asset_id.to_string();
 
         // 1. Check if active session exists
@@ -58,7 +63,10 @@ impl LinearManager {
                             return Ok(session.temp_dir.clone());
                         }
                         Ok(Some(status)) => {
-                            info!("Linear FFmpeg exited: {}. Checking for completion...", status);
+                            info!(
+                                "Linear FFmpeg exited: {}. Checking for completion...",
+                                status
+                            );
                             if session.temp_dir.join("index.m3u8").exists() {
                                 session.last_access = Instant::now();
                                 return Ok(session.temp_dir.clone());
@@ -73,18 +81,23 @@ impl LinearManager {
         }
 
         // 2. Start new session
-        let app_data = self.app_handle.path().app_local_data_dir()
+        let app_data = self
+            .app_handle
+            .path()
+            .app_local_data_dir()
             .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-        
+
         let temp_dir_base = app_data.join("streams").join("linear");
         if !temp_dir_base.exists() {
-            tokio::fs::create_dir_all(&temp_dir_base).await
+            tokio::fs::create_dir_all(&temp_dir_base)
+                .await
                 .map_err(|e| format!("Failed to create linear base dir: {}", e))?;
         }
 
         let session_id = uuid::Uuid::new_v4().to_string();
         let temp_dir = temp_dir_base.join(&session_id);
-        tokio::fs::create_dir_all(&temp_dir).await
+        tokio::fs::create_dir_all(&temp_dir)
+            .await
             .map_err(|e| format!("Failed to create session dir: {}", e))?;
 
         let tools = resolve_transcoding_tools::<tauri::Wry>(None)
@@ -100,27 +113,41 @@ impl LinearManager {
         let mut cmd = Command::new(&tools.ffmpeg);
         cmd.args([
             "-hide_banner",
-            "-loglevel", "error",
-            "-i", &file_path.to_string_lossy(),
-            "-c:v", "libx264",
-            "-pix_fmt", "yuv420p",
-            "-preset", "ultrafast",
-            "-tune", "zerolatency",
-            "-c:a", "aac",
-            "-b:a", "128k",
-            "-b:v", video_bitrate,
-            "-f", "hls",
-            "-hls_time", "4",
-            "-hls_list_size", "0",
-            "-hls_segment_filename", "segment_%05d.ts",
-            "index.m3u8"
+            "-loglevel",
+            "error",
+            "-i",
+            &file_path.to_string_lossy(),
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-preset",
+            "ultrafast",
+            "-tune",
+            "zerolatency",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-b:v",
+            video_bitrate,
+            "-f",
+            "hls",
+            "-hls_time",
+            "4",
+            "-hls_list_size",
+            "0",
+            "-hls_segment_filename",
+            "segment_%05d.ts",
+            "index.m3u8",
         ]);
 
         cmd.current_dir(&temp_dir);
         cmd.stdout(std::process::Stdio::null());
         cmd.stderr(std::process::Stdio::null());
 
-        let child = cmd.spawn()
+        let child = cmd
+            .spawn()
             .map_err(|e| format!("Failed to spawn FFmpeg: {}", e))?;
 
         let session = LinearSession {
@@ -162,7 +189,10 @@ impl LinearManager {
     }
 
     /// Get active session
-    pub async fn get_session(&self, asset_id: &str) -> Option<tokio::sync::RwLockReadGuard<'_, HashMap<String, LinearSession>>> {
+    pub async fn get_session(
+        &self,
+        asset_id: &str,
+    ) -> Option<tokio::sync::RwLockReadGuard<'_, HashMap<String, LinearSession>>> {
         let sessions = self.sessions.read().await;
         if sessions.contains_key(asset_id) {
             Some(sessions)
@@ -170,7 +200,7 @@ impl LinearManager {
             None
         }
     }
-    
+
     /// Get the temp directory for an active session
     pub async fn get_temp_dir(&self, asset_id: &str) -> Option<PathBuf> {
         let key = asset_id.to_string();

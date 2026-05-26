@@ -1,4 +1,6 @@
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability, PreviewCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::core::AppResult;
 use async_trait::async_trait;
@@ -38,7 +40,9 @@ impl OlympusRawFormatProvider {
     /// # Returns
     ///
     /// `OlympusRawFormatProvider` - A new instance of the provider.
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl FormatProvider for OlympusRawFormatProvider {
@@ -183,7 +187,10 @@ impl ThumbnailCapability for OlympusRawFormatProvider {
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::generate_raw_thumbnail(&path_owned, size_hint)
+            crate::processing::media::extractors::image::generate_raw_thumbnail(
+                &path_owned,
+                size_hint,
+            )
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

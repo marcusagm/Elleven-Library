@@ -6,11 +6,11 @@ pub mod analysis;
 pub mod assets;
 /// Module for library management.
 pub mod library;
+/// Module for media-related features (waveforms, etc).
+pub mod media;
 /// Module for search functionality.
 pub mod search;
 /// Module for settings management.
 pub mod settings;
 /// Module for transcoding functionality.
 pub mod transcoding;
-/// Module for media-related features (waveforms, etc).
-pub mod media;

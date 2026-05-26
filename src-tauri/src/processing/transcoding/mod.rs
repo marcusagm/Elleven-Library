@@ -29,8 +29,12 @@ pub fn resolve_transcoding_tools<R: tauri::Runtime>(
     let ffprobe = find_binary(app_handle, "ffprobe")
         .ok_or_else(|| AppError::Transcoding("FFprobe binary not found".to_string()))?;
     let assimp = find_binary(app_handle, "assimp");
-    
-    Ok(TranscodingTools { ffmpeg, ffprobe, assimp })
+
+    Ok(TranscodingTools {
+        ffmpeg,
+        ffprobe,
+        assimp,
+    })
 }
 
 /// Tenta encontrar um binário específico no sistema.
@@ -62,13 +66,20 @@ fn find_binary<R: tauri::Runtime>(
             }
 
             // Tenta caminho por plataforma: resource/name/platform/binary
-            let platform_path = resource_dir.join(name).join(platform_dir).join(&binary_name);
+            let platform_path = resource_dir
+                .join(name)
+                .join(platform_dir)
+                .join(&binary_name);
             if platform_path.exists() {
                 return Some(platform_path);
             }
 
             // Tenta caminho por plataforma com bin/ (comum em assimp macos): resource/name/platform/bin/binary
-            let bin_path = resource_dir.join(name).join(platform_dir).join("bin").join(&binary_name);
+            let bin_path = resource_dir
+                .join(name)
+                .join(platform_dir)
+                .join("bin")
+                .join(&binary_name);
             if bin_path.exists() {
                 return Some(bin_path);
             }
@@ -93,7 +104,11 @@ fn find_binary<R: tauri::Runtime>(
                     }
 
                     // Tenta caminho por plataforma com bin/
-                    let bin_path = src_tauri.join(name).join(platform_dir).join("bin").join(&binary_name);
+                    let bin_path = src_tauri
+                        .join(name)
+                        .join(platform_dir)
+                        .join("bin")
+                        .join(&binary_name);
                     if bin_path.exists() {
                         return Some(bin_path);
                     }
@@ -145,12 +160,16 @@ pub fn run_command_with_timeout(
 
     let stdout_join_handle = std::thread::spawn(move || {
         let mut stdout_buffer = Vec::new();
-        stdout_pipe.read_to_end(&mut stdout_buffer).map(|_| stdout_buffer)
+        stdout_pipe
+            .read_to_end(&mut stdout_buffer)
+            .map(|_| stdout_buffer)
     });
 
     let stderr_join_handle = std::thread::spawn(move || {
         let mut stderr_buffer = Vec::new();
-        stderr_pipe.read_to_end(&mut stderr_buffer).map(|_| stderr_buffer)
+        stderr_pipe
+            .read_to_end(&mut stderr_buffer)
+            .map(|_| stderr_buffer)
     });
 
     match child_process.wait_timeout(Duration::from_secs(timeout_seconds))? {
@@ -158,11 +177,15 @@ pub fn run_command_with_timeout(
             let stdout_data = stdout_join_handle
                 .join()
                 .map_err(|_| AppError::Transcoding("Stdout reader thread panicked".to_string()))?
-                .map_err(|error| AppError::Transcoding(format!("Failed to read stdout: {}", error)))?;
+                .map_err(|error| {
+                    AppError::Transcoding(format!("Failed to read stdout: {}", error))
+                })?;
             let stderr_data = stderr_join_handle
                 .join()
                 .map_err(|_| AppError::Transcoding("Stderr reader thread panicked".to_string()))?
-                .map_err(|error| AppError::Transcoding(format!("Failed to read stderr: {}", error)))?;
+                .map_err(|error| {
+                    AppError::Transcoding(format!("Failed to read stderr: {}", error))
+                })?;
 
             Ok(std::process::Output {
                 status: exit_status,

@@ -1,7 +1,7 @@
 use crate::core::formats::{FormatRegistry, SupportedFormat};
 use crate::core::models::{
-    Asset, AssetColor, AssetFilter, Folder, LibraryStats, PageParams,
-    PaginatedAssetsDto, SmartFolder, Tag,
+    Asset, AssetColor, AssetFilter, Folder, LibraryStats, PageParams, PaginatedAssetsDto,
+    SmartFolder, Tag,
 };
 use crate::feature::assets::queries::AssetQueryService;
 use std::sync::Arc;

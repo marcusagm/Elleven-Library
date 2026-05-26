@@ -3,8 +3,8 @@
 //! Listens for `DomainEvent::ThumbnailGenerated`, analyzes the thumbnail file,
 //! and dispatches a `LedgerCommand::UpdateAssetColors` to persist the result.
 
-use crate::core::formats::FormatRegistry;
 use crate::core::events::{AppEventBus, DomainEvent};
+use crate::core::formats::FormatRegistry;
 use crate::core::ledger::command::{LedgerCommand, UpdateAssetColorsPayload};
 use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::feature::analysis::colors::extract_color_palette;
@@ -70,7 +70,12 @@ impl ColorWorker {
             loop {
                 match subscriber.recv().await {
                     Ok(event) => {
-                        if let DomainEvent::ThumbnailGenerated { asset_id, path, format: _ } = event {
+                        if let DomainEvent::ThumbnailGenerated {
+                            asset_id,
+                            path,
+                            format: _,
+                        } = event
+                        {
                             let asset_id_clone = asset_id.clone();
                             if path.is_empty() {
                                 debug!(

@@ -7,6 +7,9 @@
 //! - Session Token Authentication.
 //! - Asset ID to Physical Path resolution via AssetQueryHandler.
 
+use crate::core::error::AppError;
+use crate::feature::transcoding::cache::TranscodeCache;
+use crate::infra::database::manager::DbManager;
 use axum::{
     body::Body,
     extract::{Path, Query, State},
@@ -17,31 +20,28 @@ use axum::{
     Router,
 };
 use std::collections::HashMap;
-use tracing::{error, instrument, warn};
-use crate::infra::database::manager::DbManager;
-use crate::feature::transcoding::cache::TranscodeCache;
-use crate::core::error::AppError;
 use std::time::Duration;
+use tracing::{error, instrument, warn};
 
+use axum::http::HeaderValue;
 use std::net::SocketAddr;
 use std::path::Path as StdPath;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
-use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
-use axum::http::HeaderValue;
 use tokio_util::sync::CancellationToken;
+use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 
 use crate::core::repository::AssetQueryHandler;
 use crate::delivery::tauri::commands::queries::StreamingSessionToken;
 
 use crate::core::models::asset::Folder;
-use crate::delivery::streaming::{probe, playlist, segment};
+use crate::delivery::streaming::{playlist, probe, segment};
 
-use tokio::sync::RwLock;
-use crate::delivery::streaming::process_manager::ProcessManager;
 use crate::delivery::streaming::linear_manager::LinearManager;
+use crate::delivery::streaming::process_manager::ProcessManager;
+use tokio::sync::RwLock;
 
 /// Shared server state for Axum handlers.
 #[derive(Clone)]
@@ -73,8 +73,6 @@ impl IntoResponse for StreamError {
 
 const SEGMENT_DURATION: u32 = 4;
 
-
-
 /// Initializes and starts the Axum streaming server.
 pub async fn start_server(
     app_handle: AppHandle,
@@ -87,9 +85,12 @@ pub async fn start_server(
         .clone();
 
     let database = app_handle.state::<Arc<DbManager>>().inner().clone();
-    let registry = app_handle.state::<Arc<crate::core::formats::registry::FormatRegistry>>().inner().clone();
+    let registry = app_handle
+        .state::<Arc<crate::core::formats::registry::FormatRegistry>>()
+        .inner()
+        .clone();
     let session_token = app_handle.state::<StreamingSessionToken>().0.clone();
-    
+
     // Initialize Delivery-layer managers (Parity with V1)
     let process_manager = Arc::new(RwLock::new(ProcessManager::new()));
     let linear_manager = LinearManager::new(app_handle.clone());
@@ -236,7 +237,10 @@ async fn auth_middleware(
     match provided_token {
         Some(token) if token == state.session_token => Ok(next.run(req).await),
         _ => {
-            tracing::warn!("Unauthorized streaming request: invalid or missing token in URI: {}", req.uri());
+            tracing::warn!(
+                "Unauthorized streaming request: invalid or missing token in URI: {}",
+                req.uri()
+            );
             Err(StatusCode::UNAUTHORIZED)
         }
     }
@@ -253,37 +257,38 @@ async fn validate_path_scope(
     path: &std::path::Path,
 ) -> Result<(), AppError> {
     let path_clone = path.to_path_buf();
-    
-    // Canonicalize to resolve symlinks and '..'
-    let canonical_path = tokio::task::spawn_blocking(move || {
-        path_clone.canonicalize()
-    })
-    .await
-    .map_err(|e| {
-        error!("Blocking task join error: {:?}", e);
-        AppError::Internal(format!("Blocking task join error: {:?}", e))
-    })?
-    .map_err(|e| {
-        warn!("Path scope validation: cannot resolve path {:?}: {:?}", path, e);
-        AppError::Forbidden(format!("Cannot resolve path: {:?}", e))
-    })?;
 
-    // Use AssetQueryHandler to list root locations
-    let roots: Vec<Folder> = asset_query_handler
-        .list_folders(None)
+    // Canonicalize to resolve symlinks and '..'
+    let canonical_path = tokio::task::spawn_blocking(move || path_clone.canonicalize())
         .await
         .map_err(|e| {
-            error!("Failed to list root folders: {:?}", e);
-            AppError::Internal(format!("Failed to list root folders: {:?}", e))
+            error!("Blocking task join error: {:?}", e);
+            AppError::Internal(format!("Blocking task join error: {:?}", e))
+        })?
+        .map_err(|e| {
+            warn!(
+                "Path scope validation: cannot resolve path {:?}: {:?}",
+                path, e
+            );
+            AppError::Forbidden(format!("Cannot resolve path: {:?}", e))
         })?;
 
-    let is_within_scope = roots.iter().any(|root| {
-        canonical_path.starts_with(&root.path)
-    });
+    // Use AssetQueryHandler to list root locations
+    let roots: Vec<Folder> = asset_query_handler.list_folders(None).await.map_err(|e| {
+        error!("Failed to list root folders: {:?}", e);
+        AppError::Internal(format!("Failed to list root folders: {:?}", e))
+    })?;
+
+    let is_within_scope = roots
+        .iter()
+        .any(|root| canonical_path.starts_with(&root.path));
 
     if !is_within_scope {
         warn!("Access denied: path {:?} is outside authorized roots", path);
-        return Err(AppError::Forbidden(format!("Path {:?} is outside authorized roots", path)));
+        return Err(AppError::Forbidden(format!(
+            "Path {:?} is outside authorized roots",
+            path
+        )));
     }
 
     Ok(())
@@ -300,7 +305,10 @@ async fn probe_handler(
     Path(asset_id): Path<String>,
 ) -> Result<Response, StreamError> {
     // Resolve asset_id to physical path
-    let asset = state.asset_query_handler.get_by_id(&asset_id).await
+    let asset = state
+        .asset_query_handler
+        .get_by_id(&asset_id)
+        .await
         .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
@@ -344,10 +352,13 @@ async fn stream_handler(
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
     // Validate path scope
-    validate_path_scope(&state.asset_query_handler, &asset.path).await.map_err(forbidden_response)?;
+    validate_path_scope(&state.asset_query_handler, &asset.path)
+        .await
+        .map_err(forbidden_response)?;
 
     let range = headers.get(header::RANGE).cloned();
-    serve_file(&asset.path, range).await
+    serve_file(&asset.path, range)
+        .await
         .map_err(|s| StreamError(AppError::Generic(format!("Serve error: {}", s))))
 }
 
@@ -360,10 +371,17 @@ async fn playlist_handler(
 ) -> Result<Response, StreamError> {
     tracing::debug!("Playlist request: asset_id_or_path={}", id_and_ext);
     // Expected format: {asset_id}/playlist.m3u8
-    let asset_id = id_and_ext.split('/').next().unwrap_or(&id_and_ext).to_string();
+    let asset_id = id_and_ext
+        .split('/')
+        .next()
+        .unwrap_or(&id_and_ext)
+        .to_string();
 
     // Resolve asset_id to physical path
-    let asset = state.asset_query_handler.get_by_id(&asset_id).await
+    let asset = state
+        .asset_query_handler
+        .get_by_id(&asset_id)
+        .await
         .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
@@ -419,7 +437,11 @@ async fn segment_handler(
     Path((asset_id, segment)): Path<(String, String)>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Response, StreamError> {
-    tracing::debug!("Segment request: asset_id={}, segment={}", asset_id, segment);
+    tracing::debug!(
+        "Segment request: asset_id={}, segment={}",
+        asset_id,
+        segment
+    );
     let quality = params
         .get("quality")
         .map(|s| s.as_str())
@@ -427,12 +449,15 @@ async fn segment_handler(
 
     // Extract index from segment part
     let index_str = segment.trim_end_matches(".ts");
-    let index = index_str.parse::<u32>().map_err(|_| {
-        StreamError(AppError::Generic("Invalid segment index".to_string()))
-    })?;
+    let index = index_str
+        .parse::<u32>()
+        .map_err(|_| StreamError(AppError::Generic("Invalid segment index".to_string())))?;
 
     // Resolve asset_id to physical path
-    let asset = state.asset_query_handler.get_by_id(&asset_id).await
+    let asset = state
+        .asset_query_handler
+        .get_by_id(&asset_id)
+        .await
         .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
@@ -484,12 +509,17 @@ async fn linear_hls_handler(
     // 1. Parse Asset ID from path
     let parts: Vec<&str> = path.split('/').collect();
     if parts.is_empty() {
-        return Err(StreamError(AppError::Generic("Invalid live path".to_string())));
+        return Err(StreamError(AppError::Generic(
+            "Invalid live path".to_string(),
+        )));
     }
     let asset_id = parts[0].to_string();
 
     // Resolve asset_id to physical path
-    let asset = state.asset_query_handler.get_by_id(&asset_id).await
+    let asset = state
+        .asset_query_handler
+        .get_by_id(&asset_id)
+        .await
         .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
@@ -514,7 +544,11 @@ async fn linear_hls_handler(
             .map(|s| s.as_str())
             .unwrap_or("standard");
 
-        match state.linear_manager.get_or_start(&asset.id, &file_path, quality).await {
+        match state
+            .linear_manager
+            .get_or_start(&asset.id, &file_path, quality)
+            .await
+        {
             Ok(temp_dir) => {
                 let playlist_path = temp_dir.join("index.m3u8");
 
@@ -569,18 +603,24 @@ async fn linear_hls_handler(
         // Extract asset_id from the path (e.g., "asset_id/segment_index.ts")
         let parts: Vec<&str> = path.split('/').collect();
         if parts.len() < 2 {
-            return Err(StreamError(AppError::Generic("Invalid segment path".into())));
+            return Err(StreamError(AppError::Generic(
+                "Invalid segment path".into(),
+            )));
         }
         let asset_id = parts[0].to_string();
-        
-        let sessions = state.linear_manager.get_session(&asset_id).await
+
+        let sessions = state
+            .linear_manager
+            .get_session(&asset_id)
+            .await
             .ok_or_else(|| StreamError(AppError::Generic("Session not found".into())))?;
-            
-        let session = sessions.get(&asset_id)
+
+        let session = sessions
+            .get(&asset_id)
             .ok_or_else(|| StreamError(AppError::Generic("Session not found".into())))?;
-            
+
         let segment_path = session.temp_dir.join(parts[1]);
-        
+
         // Wait for segment to be ready (it might be being transcoded)
         let mut attempts = 0;
         while !segment_path.exists() && attempts < 50 {
@@ -592,31 +632,48 @@ async fn linear_hls_handler(
             return Err(StreamError(AppError::Generic("Segment timed out".into())));
         }
 
-        serve_file(&segment_path, None).await.map_err(|s| StreamError(AppError::Generic(format!("Serve error: {}", s))))
+        serve_file(&segment_path, None)
+            .await
+            .map_err(|s| StreamError(AppError::Generic(format!("Serve error: {}", s))))
     } else {
         Err(StreamError(AppError::Generic("Invalid HLS path".into())))
     }
 }
 
 /// Helper to serve a file using tokio and support Range headers.
-async fn serve_file(path: &StdPath, range: Option<header::HeaderValue>) -> Result<Response, StatusCode> {
+async fn serve_file(
+    path: &StdPath,
+    range: Option<header::HeaderValue>,
+) -> Result<Response, StatusCode> {
     let file = File::open(path).await.map_err(|_| StatusCode::NOT_FOUND)?;
-    let metadata = file.metadata().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let metadata = file
+        .metadata()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let size = metadata.len();
 
-    let mime = mime_guess::from_path(path).first_or_octet_stream().to_string();
-    
+    let mime = mime_guess::from_path(path)
+        .first_or_octet_stream()
+        .to_string();
+
     // Simple Range handling (can be optimized with tower_http::services::ServeFile if preferred)
     // For now mirroring the logic from V1/Asset protocol but in Axum style.
-    
+
     if let Some(range_header) = range.and_then(|h| h.to_str().ok().map(|s| s.to_owned())) {
         if let Some(range_spec) = range_header.strip_prefix("bytes=") {
             let parts: Vec<&str> = range_spec.split('-').collect();
             let start = parts[0].parse::<u64>().unwrap_or(0);
-            let end = parts.get(1).and_then(|s| s.parse::<u64>().ok()).unwrap_or(size - 1);
+            let end = parts
+                .get(1)
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(size - 1);
 
             if start >= size {
-                return Ok((StatusCode::RANGE_NOT_SATISFIABLE, format!("bytes */{}", size)).into_response());
+                return Ok((
+                    StatusCode::RANGE_NOT_SATISFIABLE,
+                    format!("bytes */{}", size),
+                )
+                    .into_response());
             }
 
             let end = end.min(size - 1);
@@ -624,8 +681,10 @@ async fn serve_file(path: &StdPath, range: Option<header::HeaderValue>) -> Resul
 
             let mut file = file;
             use tokio::io::AsyncSeekExt;
-            file.seek(tokio::io::SeekFrom::Start(start)).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-            
+            file.seek(tokio::io::SeekFrom::Start(start))
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
             // Use explicit take from AsyncReadExt
             let stream = ReaderStream::new(tokio::io::AsyncReadExt::take(file, length));
             let body = Body::from_stream(stream);
@@ -633,7 +692,10 @@ async fn serve_file(path: &StdPath, range: Option<header::HeaderValue>) -> Resul
             return Response::builder()
                 .status(StatusCode::PARTIAL_CONTENT)
                 .header(header::CONTENT_TYPE, mime)
-                .header(header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, end, size))
+                .header(
+                    header::CONTENT_RANGE,
+                    format!("bytes {}-{}/{}", start, end, size),
+                )
                 .header(header::ACCEPT_RANGES, "bytes")
                 .header(header::CONTENT_LENGTH, length)
                 .body(body)

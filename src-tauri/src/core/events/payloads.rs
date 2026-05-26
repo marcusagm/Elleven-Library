@@ -20,11 +20,17 @@ pub enum DomainEvent {
         asset_id: String,
         active_tags: Vec<String>,
     },
-    AssetMetadataUpdated { asset_id: String },
+    AssetMetadataUpdated {
+        asset_id: String,
+    },
     /// Request to re-extract colors for a specific asset
-    ReextractAssetColors { asset_id: String },
+    ReextractAssetColors {
+        asset_id: String,
+    },
     /// A thumbnail has been invalidated and needs regeneration.
-    ThumbnailInvalidated { asset_id: String },
+    ThumbnailInvalidated {
+        asset_id: String,
+    },
     /// The internal state (e.g., Processing -> Ready) of an asset has changed.
     AssetStateChanged {
         asset_id: String,
@@ -55,31 +61,57 @@ pub enum DomainEvent {
 
     // ├─ Tag CRUD Originated
     /// A new taxonomy tag was created.
-    TagCreated { id: String, name: String },
+    TagCreated {
+        id: String,
+        name: String,
+    },
     /// An existing tag's properties were updated.
-    TagUpdated { id: String },
+    TagUpdated {
+        id: String,
+    },
     /// A tag was deleted and removed from all assets.
-    TagDeleted { id: String },
+    TagDeleted {
+        id: String,
+    },
 
     // ├─ Smart Folders Originated
     /// A smart folder was created.
-    SmartFolderCreated { id: String, name: String },
+    SmartFolderCreated {
+        id: String,
+        name: String,
+    },
     /// A smart folder was updated.
-    SmartFolderUpdated { id: String },
+    SmartFolderUpdated {
+        id: String,
+    },
     /// A smart folder was deleted.
-    SmartFolderDeleted { id: String },
+    SmartFolderDeleted {
+        id: String,
+    },
 
     // ├─ OS Watcher Originated
     /// The Watcher detected a new file in the filesystem.
-    FsFileDiscovered { path: String, size_bytes: u64 },
+    FsFileDiscovered {
+        path: String,
+        size_bytes: u64,
+    },
     /// The Watcher detected a new directory in the filesystem.
-    FsDirectoryDiscovered { path: String },
+    FsDirectoryDiscovered {
+        path: String,
+    },
     /// The Watcher detected the removal of a file path in the filesystem.
-    FsPathDeleted { path: String },
+    FsPathDeleted {
+        path: String,
+    },
     /// The Watcher detected the removal of a directory in the filesystem.
-    FsDirectoryDeleted { path: String },
+    FsDirectoryDeleted {
+        path: String,
+    },
     /// The Watcher detected a rename/move operation in the filesystem.
-    FsPathRenamed { from: String, to: String },
+    FsPathRenamed {
+        from: String,
+        to: String,
+    },
 
     // ├─ Workers/Jobs Originated (Heavy Extractor Lifecycle)
     /// An extraction (Thumbnail, Metadata, etc.) was completed successfully.
@@ -95,7 +127,9 @@ pub enum DomainEvent {
 
     // ├─ System
     /// A library scan has started.
-    ScanStarted { library_id: String },
+    ScanStarted {
+        library_id: String,
+    },
     /// Progress update for an ongoing scan.
     ScanProgress {
         total: usize,
@@ -103,9 +137,15 @@ pub enum DomainEvent {
         current_file: String,
     },
     /// A library scan has completed.
-    ScanCompleted { library_id: String },
+    ScanCompleted {
+        library_id: String,
+    },
     /// A new thumbnail has been generated and is ready at the given path.
-    ThumbnailGenerated { asset_id: String, path: String, format: String },
+    ThumbnailGenerated {
+        asset_id: String,
+        path: String,
+        format: String,
+    },
     /// System health alert, used to notify the UI about critical dependency failures.
     SystemHealthIssue {
         component: String,

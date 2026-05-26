@@ -1,10 +1,12 @@
 use crate::core::error::{AppError, AppResult};
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability, PreviewCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use async_trait::async_trait;
 use std::path::Path;
 use std::process::Command;
-use tracing::{instrument, error};
+use tracing::{error, instrument};
 
 /// Provider for 3D model formats (Blender, OBJ, GLTF, FBX, etc.)
 #[derive(Default)]
@@ -24,12 +26,15 @@ impl FormatProvider for Model3dFormatProvider {
 
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec![
-            "blend", "fbx", "obj", "gltf", "glb", "dae", "stl", "3ds", "3mf", "dxf", "dwg", "lwo", "lws",
+            "blend", "fbx", "obj", "gltf", "glb", "dae", "stl", "3ds", "3mf", "dxf", "dwg", "lwo",
+            "lws",
         ]
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
         vec![
             SupportedFormat::with_metadata(
@@ -117,10 +122,10 @@ impl FormatProvider for Model3dFormatProvider {
     }
 
     fn supports_magic_bytes(&self, header_bytes: &[u8]) -> bool {
-        header_bytes.starts_with(b"BLENDER") || 
-        header_bytes.starts_with(b"glTF") ||   
-        header_bytes.starts_with(b"{") ||      
-        header_bytes.starts_with(b"Kayak") 
+        header_bytes.starts_with(b"BLENDER")
+            || header_bytes.starts_with(b"glTF")
+            || header_bytes.starts_with(b"{")
+            || header_bytes.starts_with(b"Kayak")
     }
 
     fn metadata(&self) -> Option<&dyn MetadataCapability> {
@@ -164,7 +169,9 @@ impl ThumbnailCapability for Model3dFormatProvider {
                         return Ok(data[pos..pos + end + 2].to_vec());
                     }
                 }
-                Err(AppError::FormatNotSupported("No thumbnail in Blender file".into()))
+                Err(AppError::FormatNotSupported(
+                    "No thumbnail in Blender file".into(),
+                ))
             })
             .await
             .map_err(|_| AppError::ExtractionProcessTimeout)??;
@@ -173,7 +180,9 @@ impl ThumbnailCapability for Model3dFormatProvider {
 
         // 2. Fallback to a generic 3D icon or empty result
         // TODO: Could use assimp to get a metadata thumbnail if available
-        Err(AppError::FormatNotSupported("3D thumbnail generation pending".into()))
+        Err(AppError::FormatNotSupported(
+            "3D thumbnail generation pending".into(),
+        ))
     }
 }
 
@@ -192,29 +201,37 @@ impl PreviewCapability for Model3dFormatProvider {
         // Already GLB/GLTF, no need for conversion
         if ext == "glb" || ext == "gltf" {
             let data = tokio::fs::read(&path_owned).await.map_err(AppError::Io)?;
-            let mime = if ext == "glb" { "model/gltf-binary" } else { "model/gltf+json" };
+            let mime = if ext == "glb" {
+                "model/gltf-binary"
+            } else {
+                "model/gltf+json"
+            };
             return Ok((data, mime.to_string()));
         }
 
         let tools = crate::processing::transcoding::resolve_transcoding_tools::<tauri::Wry>(None)?;
-        let assimp_bin = tools.assimp.ok_or_else(|| AppError::Transcoding("Assimp binary not found".to_string()))?;
-        
+        let assimp_bin = tools
+            .assimp
+            .ok_or_else(|| AppError::Transcoding("Assimp binary not found".to_string()))?;
+
         // Use a temporary directory for conversion
         let temp_dir = std::env::temp_dir().join(format!("mundam_3d_{}", asset_id_owned));
-        tokio::fs::create_dir_all(&temp_dir).await.map_err(AppError::Io)?;
-        
+        tokio::fs::create_dir_all(&temp_dir)
+            .await
+            .map_err(AppError::Io)?;
+
         let output_glb = temp_dir.join(format!("{}.glb", asset_id_owned));
 
         // Call Assimp
         let mut cmd = Command::new(assimp_bin);
         cmd.arg("export")
-           .arg(&path_owned)
-           .arg(&output_glb)
-           .arg("-fglb2"); // Export as GLB v2
+            .arg(&path_owned)
+            .arg(&output_glb)
+            .arg("-fglb2"); // Export as GLB v2
 
-        let output = tokio::task::spawn_blocking(move || {
-            cmd.output().map_err(AppError::Io)
-        }).await.map_err(|_| AppError::ExtractionProcessTimeout)??;
+        let output = tokio::task::spawn_blocking(move || cmd.output().map_err(AppError::Io))
+            .await
+            .map_err(|_| AppError::ExtractionProcessTimeout)??;
 
         if !output.status.success() {
             let err = String::from_utf8_lossy(&output.stderr);
@@ -224,7 +241,7 @@ impl PreviewCapability for Model3dFormatProvider {
 
         // Read the generated file
         let glb_data = tokio::fs::read(&output_glb).await.map_err(AppError::Io)?;
-        
+
         // Cleanup temp file
         let _ = tokio::fs::remove_file(&output_glb).await;
         // ignore errors on removing temp dir

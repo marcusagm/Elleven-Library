@@ -1,4 +1,6 @@
-use crate::core::formats::capabilities::{MetadataCapability, ThumbnailCapability, PreviewCapability};
+use crate::core::formats::capabilities::{
+    MetadataCapability, PreviewCapability, ThumbnailCapability,
+};
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
 use crate::core::AppResult;
 use async_trait::async_trait;
@@ -64,7 +66,9 @@ impl FormatProvider for SigmaRawFormatProvider {
     ///
     /// `Vec<SupportedFormat>` - The list of supported formats with their details.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
         vec![SupportedFormat::with_metadata(
             "Sigma RAW Image",
             vec!["x3f"],
@@ -136,8 +140,11 @@ impl MetadataCapability for SigmaRawFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
-        tokio::task::spawn_blocking(move || crate::processing::media::extractors::image::extract_raw_metadata(&path_owned))
-            .await.map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
+        tokio::task::spawn_blocking(move || {
+            crate::processing::media::extractors::image::extract_raw_metadata(&path_owned)
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
     }
 
     /// Extracts semantic metadata from a Sigma RAW file.
@@ -175,8 +182,14 @@ impl ThumbnailCapability for SigmaRawFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
-        tokio::task::spawn_blocking(move || crate::processing::media::extractors::image::generate_raw_thumbnail(&path_owned, size_hint))
-            .await.map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
+        tokio::task::spawn_blocking(move || {
+            crate::processing::media::extractors::image::generate_raw_thumbnail(
+                &path_owned,
+                size_hint,
+            )
+        })
+        .await
+        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
     }
 }
 

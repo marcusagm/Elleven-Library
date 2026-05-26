@@ -38,6 +38,7 @@ pub mod gopro;
 pub mod hasselblad;
 pub mod hdr;
 pub mod heic;
+pub mod icns;
 pub mod ico;
 pub mod jpeg;
 pub mod jxl;

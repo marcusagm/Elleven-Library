@@ -32,7 +32,8 @@ impl FormatRegistry {
     pub fn register(&mut self, provider: Arc<dyn FormatProvider>) {
         for extension in provider.supported_extensions() {
             let ext_lower = extension.to_lowercase();
-            self.by_extension.insert(ext_lower.clone(), provider.clone());
+            self.by_extension
+                .insert(ext_lower.clone(), provider.clone());
             self.supported_extensions.insert(ext_lower);
         }
         self.deep_checkers.push(provider);
@@ -50,8 +51,11 @@ impl FormatRegistry {
     /// * `header` - A buffer containing the initial bytes of the file for magic byte validation.
     pub fn resolve(&self, path: &Path, header: &[u8]) -> Option<Arc<dyn FormatProvider>> {
         // 1. FAST ATTEMPT (O(1)): Cache by Extension
-        let extension = path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase());
-        
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase());
+
         if let Some(ref ext) = extension {
             if let Some(provider) = self.by_extension.get(ext) {
                 // Double check magic bytes if the provider supports it and we have header content
@@ -69,15 +73,24 @@ impl FormatRegistry {
 
                 // CRITICAL FIX: If infer says it's a generic format like TIFF or ZIP,
                 // we prefer the extension-based provider because many pro formats use these containers.
-                if (mime == "image/tiff" || mime == "application/zip" || mime == "application/octet-stream") && extension.is_some() {
-                    if let Some(provider) = extension.as_ref().and_then(|ext| self.by_extension.get(ext)) {
+                if (mime == "image/tiff"
+                    || mime == "application/zip"
+                    || mime == "application/octet-stream")
+                    && extension.is_some()
+                {
+                    if let Some(provider) = extension
+                        .as_ref()
+                        .and_then(|ext| self.by_extension.get(ext))
+                    {
                         return Some(provider.clone());
                     }
                 }
 
                 // Match by MIME across all providers
                 if let Some(provider) = self.deep_checkers.iter().find(|p| {
-                     p.supported_formats().iter().any(|f| f.mime_types.contains(&mime.to_string()))
+                    p.supported_formats()
+                        .iter()
+                        .any(|f| f.mime_types.contains(&mime.to_string()))
                 }) {
                     return Some(provider.clone());
                 }
@@ -113,12 +126,16 @@ impl FormatRegistry {
 
     /// Checks if the file extension is supported by the library.
     pub fn is_supported_extension(&self, extension: &str) -> bool {
-        self.supported_extensions.contains(&extension.to_lowercase())
+        self.supported_extensions
+            .contains(&extension.to_lowercase())
     }
 
     /// Returns a provider by its unique name.
     pub fn get_provider(&self, name: &str) -> Option<Arc<dyn FormatProvider>> {
-        self.deep_checkers.iter().find(|p| p.name() == name).cloned()
+        self.deep_checkers
+            .iter()
+            .find(|p| p.name() == name)
+            .cloned()
     }
 
     /// Returns a list of all supported formats and their extensions.
@@ -131,11 +148,14 @@ impl FormatRegistry {
 
     /// Resolves a provider primarily by its MIME type.
     pub fn resolve_by_mime(&self, mime: &str) -> Option<Arc<dyn FormatProvider>> {
-        self.deep_checkers.iter().find(|p| {
-            p.supported_formats()
-                .iter()
-                .any(|f| f.mime_types.contains(&mime.to_string()))
-        }).cloned()
+        self.deep_checkers
+            .iter()
+            .find(|p| {
+                p.supported_formats()
+                    .iter()
+                    .any(|f| f.mime_types.contains(&mime.to_string()))
+            })
+            .cloned()
     }
 
     /// Resolves a provider by its human-readable format name (e.g., "JPEG Image").

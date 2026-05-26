@@ -16,7 +16,9 @@ pub struct SupportedFormat {
 
 impl SupportedFormat {
     pub fn new(name: impl Into<String>, extensions: Vec<impl Into<String>>) -> Self {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
         Self {
             name: name.into(),

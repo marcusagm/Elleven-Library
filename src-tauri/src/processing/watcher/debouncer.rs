@@ -1,10 +1,10 @@
-use tracing::info;
 use crate::core::events::payloads::DomainEvent;
 use notify::{Event, EventKind};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tokio::time::{Duration, Instant};
+use tracing::info;
 
 /// Metadata snapshot used for heuristic rename pairing.
 /// When a file is "added" (Created event), we capture its size and creation time
@@ -75,9 +75,7 @@ impl EventDebouncer {
 
         match event.kind {
             // ─── Gap 1 Fix: RenameMode::Both (Linux — single-event rename) ──
-            EventKind::Modify(notify::event::ModifyKind::Name(
-                notify::event::RenameMode::Both,
-            )) => {
+            EventKind::Modify(notify::event::ModifyKind::Name(notify::event::RenameMode::Both)) => {
                 if event.paths.len() == 2 {
                     let from_path = event.paths[0].clone();
                     let to_path = event.paths[1].clone();
@@ -98,14 +96,11 @@ impl EventDebouncer {
             }
 
             // ─── Tracked rename: From part ──────────────────────────────────
-            EventKind::Modify(notify::event::ModifyKind::Name(
-                notify::event::RenameMode::From,
-            )) => {
+            EventKind::Modify(notify::event::ModifyKind::Name(notify::event::RenameMode::From)) => {
                 if let Some(path) = event.paths.first() {
                     if let Some(tracker) = event.attrs.tracker() {
                         // Tracked rename — store and wait for matching `To`
-                        self.pending_tracked_renames
-                            .insert(tracker, path.clone());
+                        self.pending_tracked_renames.insert(tracker, path.clone());
                     } else {
                         // Untracked remove — prepare for heuristic matching
                         let metadata_snapshot = read_metadata_snapshot(path);
@@ -118,9 +113,7 @@ impl EventDebouncer {
             }
 
             // ─── Tracked rename: To part ────────────────────────────────────
-            EventKind::Modify(notify::event::ModifyKind::Name(
-                notify::event::RenameMode::To,
-            )) => {
+            EventKind::Modify(notify::event::ModifyKind::Name(notify::event::RenameMode::To)) => {
                 if let Some(path) = event.paths.first() {
                     let matched_from = match event.attrs.tracker() {
                         Some(tracker) => self.pending_tracked_renames.remove(&tracker),
@@ -140,10 +133,8 @@ impl EventDebouncer {
                     } else {
                         // No tracker match — buffer as Created for heuristic pairing
                         let metadata_snapshot = read_metadata_snapshot(path);
-                        self.buffer.insert(
-                            path.clone(),
-                            BufferedEvent::Created(now, metadata_snapshot),
-                        );
+                        self.buffer
+                            .insert(path.clone(), BufferedEvent::Created(now, metadata_snapshot));
                     }
                 }
             }
@@ -194,11 +185,7 @@ impl EventDebouncer {
         self.apply_rename_heuristics().await;
 
         // ─── Process expired pending_tracked_renames (orphaned From events) ─
-        let orphaned_trackers: Vec<usize> = self
-            .pending_tracked_renames
-            .keys()
-            .cloned()
-            .collect();
+        let orphaned_trackers: Vec<usize> = self.pending_tracked_renames.keys().cloned().collect();
         for tracker_id in orphaned_trackers {
             // If a tracked From has been sitting for too long without a To,
             // treat it as a deletion
@@ -210,7 +197,8 @@ impl EventDebouncer {
         }
 
         // 6. Prune recent emitted creates history (5s expiry to cover late renames)
-        self.recent_emitted_creates.retain(|_, (instant, _)| instant.elapsed() < Duration::from_secs(5));
+        self.recent_emitted_creates
+            .retain(|_, (instant, _)| instant.elapsed() < Duration::from_secs(5));
 
         // ─── Gap 3 Fix: Delayed deletion guard ─────────────────────────
         let mut confirmed_deletions: Vec<PathBuf> = Vec::new();
@@ -270,10 +258,11 @@ impl EventDebouncer {
                             let size = std::fs::metadata(&path)
                                 .map(|metadata| metadata.len())
                                 .unwrap_or(0);
-                            
+
                             // Record in recent emitted creates for late pairing fallback
                             if let Some(meta) = read_metadata_snapshot(&path) {
-                                self.recent_emitted_creates.insert(path.clone(), (Instant::now(), meta));
+                                self.recent_emitted_creates
+                                    .insert(path.clone(), (Instant::now(), meta));
                             }
 
                             DomainEvent::FsFileDiscovered {
@@ -301,56 +290,71 @@ impl EventDebouncer {
     async fn apply_rename_heuristics(&mut self) {
         let mut renames_found: Vec<(PathBuf, PathBuf)> = Vec::new();
 
-        let remove_paths: Vec<PathBuf> = self
-            .pending_untracked_removes
-            .keys()
-            .cloned()
-            .collect();
+        let remove_paths: Vec<PathBuf> = self.pending_untracked_removes.keys().cloned().collect();
 
         for from_path in remove_paths {
-            let from_meta = self.pending_untracked_removes.get(&from_path).and_then(|(_, m)| m.clone());
+            let from_meta = self
+                .pending_untracked_removes
+                .get(&from_path)
+                .and_then(|(_, m)| m.clone());
             let mut matched_to_path = None;
 
             // 1. Try strict matching (Size + CreatedAt) if metadata is available
             // ALLOW cross-folder matches if it's a direct metadata hit
             if let Some(meta) = &from_meta {
-                matched_to_path = self.buffer.iter().find(|(_, event)| {
-                    if let BufferedEvent::Created(_, Some(created_snapshot)) = event {
-                        created_snapshot.size_bytes == meta.size_bytes
-                            && created_snapshot.created_at == meta.created_at
-                    } else {
-                        false
-                    }
-                }).map(|(path, _)| path.clone());
+                matched_to_path = self
+                    .buffer
+                    .iter()
+                    .find(|(_, event)| {
+                        if let BufferedEvent::Created(_, Some(created_snapshot)) = event {
+                            created_snapshot.size_bytes == meta.size_bytes
+                                && created_snapshot.created_at == meta.created_at
+                        } else {
+                            false
+                        }
+                    })
+                    .map(|(path, _)| path.clone());
             }
 
             // 2. Fallback matching (Buffer): Same Parent + Same Extension
             if matched_to_path.is_none() {
-                matched_to_path = self.buffer.iter().find(|(to_path, event)| {
-                    matches!(event, BufferedEvent::Created(_, _)) &&
-                    to_path.parent() == from_path.parent() &&
-                    to_path.extension() == from_path.extension() &&
-                    !to_path.is_dir()
-                }).map(|(path, _)| path.clone());
+                matched_to_path = self
+                    .buffer
+                    .iter()
+                    .find(|(to_path, event)| {
+                        matches!(event, BufferedEvent::Created(_, _))
+                            && to_path.parent() == from_path.parent()
+                            && to_path.extension() == from_path.extension()
+                            && !to_path.is_dir()
+                    })
+                    .map(|(path, _)| path.clone());
             }
 
-            // 3. Fallback matching (Recent Emitted): Same Parent + Same Extension 
+            // 3. Fallback matching (Recent Emitted): Same Parent + Same Extension
             // (Crucial for macOS where Metadata might be missing for the "from" path)
             if matched_to_path.is_none() {
                 for (to_path, (_instant, to_meta)) in &self.recent_emitted_creates {
                     let ext_match = from_path.extension() == to_path.extension();
-                    
+
                     if ext_match {
                         // If we have metadata, use it to confirm
                         if let (Some(f_meta), t_meta) = (&from_meta, to_meta) {
                             if f_meta.size_bytes == t_meta.size_bytes {
-                                info!("Debouncer: Late Heuristic MATCH (Meta): {} -> {}", from_path.display(), to_path.display());
+                                info!(
+                                    "Debouncer: Late Heuristic MATCH (Meta): {} -> {}",
+                                    from_path.display(),
+                                    to_path.display()
+                                );
                                 matched_to_path = Some(to_path.clone());
                                 break;
                             }
                         } else if from_path.parent() == to_path.parent() {
                             // No metadata for 'from', but path looks like a rename candidate in same folder
-                            info!("Debouncer: Late Heuristic MATCH (Path-only): {} -> {}", from_path.display(), to_path.display());
+                            info!(
+                                "Debouncer: Late Heuristic MATCH (Path-only): {} -> {}",
+                                from_path.display(),
+                                to_path.display()
+                            );
                             matched_to_path = Some(to_path.clone());
                             break;
                         }
@@ -359,7 +363,11 @@ impl EventDebouncer {
             }
 
             if let Some(to_path) = matched_to_path {
-                info!("Debouncer: Heuristic MATCH found: {} -> {}", from_path.display(), to_path.display());
+                info!(
+                    "Debouncer: Heuristic MATCH found: {} -> {}",
+                    from_path.display(),
+                    to_path.display()
+                );
                 self.buffer.remove(&to_path);
                 renames_found.push((from_path, to_path));
             }
@@ -425,9 +433,13 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(600)).await;
         debouncer.tick(Duration::from_millis(500)).await;
 
-        let result = receiver.try_recv().expect("Should have received a domain event");
+        let result = receiver
+            .try_recv()
+            .expect("Should have received a domain event");
         match result {
-            DomainEvent::FsFileDiscovered { path: event_path, .. } => {
+            DomainEvent::FsFileDiscovered {
+                path: event_path, ..
+            } => {
                 assert_eq!(event_path, path.to_string_lossy().to_string());
             }
             _ => panic!("Expected FsFileDiscovered"),
@@ -448,7 +460,9 @@ mod tests {
 
         debouncer.handle_event(event).await;
 
-        let result = receiver.try_recv().expect("Should have received a rename event");
+        let result = receiver
+            .try_recv()
+            .expect("Should have received a rename event");
         match result {
             DomainEvent::FsPathRenamed {
                 from: event_from,
@@ -467,21 +481,26 @@ mod tests {
         let mut debouncer = EventDebouncer::new(sender);
 
         let path = PathBuf::from("/tmp/nonexistent_test_file_12345.txt");
-        let event = Event::new(EventKind::Remove(notify::event::RemoveKind::File))
-            .add_path(path.clone());
+        let event =
+            Event::new(EventKind::Remove(notify::event::RemoveKind::File)).add_path(path.clone());
 
         debouncer.handle_event(event).await;
 
         // Immediate tick — should NOT emit (guard period not expired)
         debouncer.tick(Duration::from_millis(200)).await;
-        assert!(receiver.try_recv().is_err(), "Should NOT have emitted yet — deletion guard active");
+        assert!(
+            receiver.try_recv().is_err(),
+            "Should NOT have emitted yet — deletion guard active"
+        );
 
         // Wait for guard period to expire
         tokio::time::sleep(Duration::from_secs(2)).await;
         debouncer.tick(Duration::from_millis(200)).await;
 
         // Now it should emit (path doesn't exist)
-        let result = receiver.try_recv().expect("Should have received a deletion event after guard");
+        let result = receiver
+            .try_recv()
+            .expect("Should have received a deletion event after guard");
         match result {
             DomainEvent::FsPathDeleted { path: event_path } => {
                 assert_eq!(event_path, path.to_string_lossy().to_string());

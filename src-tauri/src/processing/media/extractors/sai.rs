@@ -2,7 +2,7 @@
 //!
 //! Ported from V1 backend.
 
-use image::{ImageEncoder, ExtendedColorType};
+use image::{ExtendedColorType, ImageEncoder};
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use thiserror::Error;
@@ -124,7 +124,11 @@ fn parse_table_entries(page_data: &[u32; PAGE_U32_COUNT]) -> Vec<PageTableEntry>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum FatEntryType { Folder, File, Unknown(u8) }
+enum FatEntryType {
+    Folder,
+    File,
+    Unknown(u8),
+}
 
 #[derive(Debug, Clone)]
 struct FatEntry {
@@ -139,8 +143,15 @@ fn parse_fat_entries(page_bytes: &[u8; PAGE_SIZE]) -> Vec<FatEntry> {
     for entry_index in 0..FAT_ENTRIES_PER_PAGE {
         let offset = entry_index * FAT_ENTRY_SIZE;
         let entry_slice = &page_bytes[offset..offset + FAT_ENTRY_SIZE];
-        let flags = u32::from_le_bytes([entry_slice[0], entry_slice[1], entry_slice[2], entry_slice[3]]);
-        if flags == 0 { break; }
+        let flags = u32::from_le_bytes([
+            entry_slice[0],
+            entry_slice[1],
+            entry_slice[2],
+            entry_slice[3],
+        ]);
+        if flags == 0 {
+            break;
+        }
         let name_bytes = &entry_slice[4..36];
         let name_end = name_bytes.iter().position(|&byte| byte == 0).unwrap_or(32);
         let name = String::from_utf8_lossy(&name_bytes[..name_end]).to_string();
@@ -150,9 +161,24 @@ fn parse_fat_entries(page_bytes: &[u8; PAGE_SIZE]) -> Vec<FatEntry> {
             0x80 => FatEntryType::File,
             other => FatEntryType::Unknown(other),
         };
-        let page_index = u32::from_le_bytes([entry_slice[40], entry_slice[41], entry_slice[42], entry_slice[43]]);
-        let size = u32::from_le_bytes([entry_slice[44], entry_slice[45], entry_slice[46], entry_slice[47]]);
-        entries.push(FatEntry { name, _entry_type: entry_type, page_index, size });
+        let page_index = u32::from_le_bytes([
+            entry_slice[40],
+            entry_slice[41],
+            entry_slice[42],
+            entry_slice[43],
+        ]);
+        let size = u32::from_le_bytes([
+            entry_slice[44],
+            entry_slice[45],
+            entry_slice[46],
+            entry_slice[47],
+        ]);
+        entries.push(FatEntry {
+            name,
+            _entry_type: entry_type,
+            page_index,
+            size,
+        });
     }
     entries
 }
@@ -166,15 +192,25 @@ struct SaiPageReader<R: Read + Seek> {
 impl<R: Read + Seek> SaiPageReader<R> {
     fn new(mut reader: R) -> Result<Self, SaiError> {
         let file_size = reader.seek(SeekFrom::End(0))? as usize;
-        if !file_size.is_multiple_of(PAGE_SIZE) || file_size == 0 { return Err(SaiError::InvalidFileSize); }
-        Ok(SaiPageReader { reader, page_count: file_size / PAGE_SIZE, cached_table: None })
+        if !file_size.is_multiple_of(PAGE_SIZE) || file_size == 0 {
+            return Err(SaiError::InvalidFileSize);
+        }
+        Ok(SaiPageReader {
+            reader,
+            page_count: file_size / PAGE_SIZE,
+            cached_table: None,
+        })
     }
 
     fn read_raw_page(&mut self, page_index: usize) -> Result<[u32; PAGE_U32_COUNT], SaiError> {
         if page_index >= self.page_count {
-            return Err(SaiError::Io(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Page index out of bounds")));
+            return Err(SaiError::Io(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "Page index out of bounds",
+            )));
         }
-        self.reader.seek(SeekFrom::Start((page_index * PAGE_SIZE) as u64))?;
+        self.reader
+            .seek(SeekFrom::Start((page_index * PAGE_SIZE) as u64))?;
         let mut raw_bytes = [0u8; PAGE_SIZE];
         self.reader.read_exact(&mut raw_bytes)?;
         let mut page_u32 = [0u32; PAGE_U32_COUNT];
@@ -184,9 +220,14 @@ impl<R: Read + Seek> SaiPageReader<R> {
         Ok(page_u32)
     }
 
-    fn fetch_table_page(&mut self, table_page_index: usize) -> Result<[u32; PAGE_U32_COUNT], SaiError> {
+    fn fetch_table_page(
+        &mut self,
+        table_page_index: usize,
+    ) -> Result<[u32; PAGE_U32_COUNT], SaiError> {
         if let Some((cached_index, cached_data)) = &self.cached_table {
-            if *cached_index == table_page_index { return Ok(*cached_data); }
+            if *cached_index == table_page_index {
+                return Ok(*cached_data);
+            }
         }
         let mut page_data = self.read_raw_page(table_page_index)?;
         decrypt_table_page(&mut page_data, table_page_index);
@@ -208,8 +249,11 @@ impl<R: Read + Seek> SaiPageReader<R> {
     }
 
     fn fetch_page(&mut self, page_index: usize) -> Result<[u32; PAGE_U32_COUNT], SaiError> {
-        if page_index.is_multiple_of(TABLE_SPAN) { self.fetch_table_page(page_index) }
-        else { self.fetch_data_page(page_index) }
+        if page_index.is_multiple_of(TABLE_SPAN) {
+            self.fetch_table_page(page_index)
+        } else {
+            self.fetch_data_page(page_index)
+        }
     }
 
     fn page_to_bytes(page_data: &[u32; PAGE_U32_COUNT]) -> [u8; PAGE_SIZE] {
@@ -220,7 +264,11 @@ impl<R: Read + Seek> SaiPageReader<R> {
         bytes
     }
 
-    fn read_file_data(&mut self, start_page_index: usize, total_size: usize) -> Result<Vec<u8>, SaiError> {
+    fn read_file_data(
+        &mut self,
+        start_page_index: usize,
+        total_size: usize,
+    ) -> Result<Vec<u8>, SaiError> {
         let mut result_buffer = Vec::with_capacity(total_size);
         let mut current_page_index = start_page_index;
         let mut bytes_remaining = total_size;
@@ -234,23 +282,31 @@ impl<R: Read + Seek> SaiPageReader<R> {
             let bytes_to_copy = bytes_remaining.min(PAGE_SIZE);
             result_buffer.extend_from_slice(&page_bytes[..bytes_to_copy]);
             bytes_remaining -= bytes_to_copy;
-            if bytes_remaining == 0 { break; }
+            if bytes_remaining == 0 {
+                break;
+            }
             let table_index = (current_page_index / TABLE_SPAN) * TABLE_SPAN;
             let table_data = self.fetch_table_page(table_index)?;
             let table_entries = parse_table_entries(&table_data);
-            current_page_index = table_entries[current_page_index % TABLE_SPAN].next_page_index as usize;
+            current_page_index =
+                table_entries[current_page_index % TABLE_SPAN].next_page_index as usize;
         }
         Ok(result_buffer)
     }
 }
 
-fn find_root_entry<R: Read + Seek>(page_reader: &mut SaiPageReader<R>, target_name: &str) -> Result<Option<FatEntry>, SaiError> {
+fn find_root_entry<R: Read + Seek>(
+    page_reader: &mut SaiPageReader<R>,
+    target_name: &str,
+) -> Result<Option<FatEntry>, SaiError> {
     let mut current_page = 2;
     while current_page != 0 {
         let page_data = page_reader.fetch_page(current_page)?;
         let page_bytes = SaiPageReader::<R>::page_to_bytes(&page_data);
         for entry in parse_fat_entries(&page_bytes) {
-            if entry.name == target_name { return Ok(Some(entry)); }
+            if entry.name == target_name {
+                return Ok(Some(entry));
+            }
         }
         let table_index = (current_page / TABLE_SPAN) * TABLE_SPAN;
         let table_data = page_reader.fetch_table_page(table_index)?;
@@ -283,10 +339,11 @@ pub fn extract_sai_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn st
 pub fn extract_sai_dimensions(path: &Path) -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let file = std::fs::File::open(path)?;
     let mut reader = SaiPageReader::new(file)?;
-    let entry = find_root_entry(&mut reader, "thumbnail")?
-        .ok_or(SaiError::ThumbnailNotFound)?;
+    let entry = find_root_entry(&mut reader, "thumbnail")?.ok_or(SaiError::ThumbnailNotFound)?;
     let raw = reader.read_file_data(entry.page_index as usize, entry.size as usize)?;
-    if raw.len() < 12 { return Err(SaiError::InvalidThumbnailMagic.into()); }
+    if raw.len() < 12 {
+        return Err(SaiError::InvalidThumbnailMagic.into());
+    }
     let width = u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]);
     let height = u32::from_le_bytes([raw[4], raw[5], raw[6], raw[7]]);
     Ok((width, height))
@@ -297,15 +354,23 @@ pub fn extract_sai_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn std
     let mut reader = SaiPageReader::new(file)?;
     let entry = find_root_entry(&mut reader, "thumbnail")?.ok_or(SaiError::ThumbnailNotFound)?;
     let raw = reader.read_file_data(entry.page_index as usize, entry.size as usize)?;
-    if raw.len() < 12 { return Err(SaiError::InvalidThumbnailMagic.into()); }
+    if raw.len() < 12 {
+        return Err(SaiError::InvalidThumbnailMagic.into());
+    }
     let width = u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]);
     let height = u32::from_le_bytes([raw[4], raw[5], raw[6], raw[7]]);
     let magic = u32::from_le_bytes([raw[8], raw[9], raw[10], raw[11]]);
-    if magic != THUMBNAIL_MAGIC_BM32 { return Err(SaiError::InvalidThumbnailMagic.into()); }
+    if magic != THUMBNAIL_MAGIC_BM32 {
+        return Err(SaiError::InvalidThumbnailMagic.into());
+    }
     let pixel_data_size = (width * height * 4) as usize;
-    if raw.len() < 12 + pixel_data_size { return Err("Thumbnail data truncated".into()); }
+    if raw.len() < 12 + pixel_data_size {
+        return Err("Thumbnail data truncated".into());
+    }
     let mut pixels = raw[12..12 + pixel_data_size].to_vec();
-    for pixel in pixels.chunks_exact_mut(4) { pixel.swap(0, 2); }
+    for pixel in pixels.chunks_exact_mut(4) {
+        pixel.swap(0, 2);
+    }
     let mut png = Vec::new();
     image::codecs::png::PngEncoder::new(std::io::Cursor::new(&mut png))
         .write_image(&pixels, width, height, ExtendedColorType::Rgba8)

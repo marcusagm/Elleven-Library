@@ -83,7 +83,9 @@ impl FormatProvider for VideoFormatProvider {
 
     fn supported_formats(&self) -> Vec<crate::core::formats::provider::SupportedFormat> {
         use crate::core::formats::provider::SupportedFormat;
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
         vec![
             SupportedFormat::with_metadata(
@@ -333,18 +335,27 @@ impl MetadataCapability for VideoFormatProvider {
             if let Some(duration_str) = format.get("duration").and_then(|d| d.as_str()) {
                 duration_secs = duration_str.parse::<f64>().unwrap_or(0.0);
             }
-            container = format.get("format_name").and_then(|v| v.as_str()).map(|s| s.to_string());
+            container = format
+                .get("format_name")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
 
             // FFprobe retorna bit_rate como string em bps; convertemos para kbps
             if let Some(bitrate_str) = format.get("bit_rate").and_then(|b| b.as_str()) {
-                bitrate_kbps = bitrate_str.parse::<f64>().ok().map(|bps| (bps / 1000.0).round());
+                bitrate_kbps = bitrate_str
+                    .parse::<f64>()
+                    .ok()
+                    .map(|bps| (bps / 1000.0).round());
             }
         }
 
         if let Some(streams) = json.get("streams").and_then(|s| s.as_array()) {
             for stream in streams {
                 let codec_type = stream.get("codec_type").and_then(|t| t.as_str());
-                let codec_name = stream.get("codec_name").and_then(|c| c.as_str()).map(|s| s.to_string());
+                let codec_name = stream
+                    .get("codec_name")
+                    .and_then(|c| c.as_str())
+                    .map(|s| s.to_string());
 
                 match codec_type {
                     Some("video") if video_codec.is_none() => {
@@ -353,7 +364,9 @@ impl MetadataCapability for VideoFormatProvider {
                         height = stream.get("height").and_then(|h| h.as_i64());
 
                         // FFprobe retorna r_frame_rate como fração (ex: "30000/1001")
-                        if let Some(frame_rate_str) = stream.get("r_frame_rate").and_then(|v| v.as_str()) {
+                        if let Some(frame_rate_str) =
+                            stream.get("r_frame_rate").and_then(|v| v.as_str())
+                        {
                             frame_rate_fps = parse_frame_rate_fraction(frame_rate_str);
                         }
                     }
@@ -374,7 +387,8 @@ impl MetadataCapability for VideoFormatProvider {
         };
 
         let native_audio = match audio_codec.as_deref() {
-            Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus") | Some("vorbis") => true,
+            Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus")
+            | Some("vorbis") => true,
             Some(codec) if codec.starts_with("pcm_") => true,
             None => true,
             _ => false,
@@ -382,13 +396,19 @@ impl MetadataCapability for VideoFormatProvider {
 
         let is_native = native_video && native_audio;
 
-        technical.insert("duration_secs".to_string(), serde_json::json!(duration_secs));
+        technical.insert(
+            "duration_secs".to_string(),
+            serde_json::json!(duration_secs),
+        );
         technical.insert("video_codec".to_string(), serde_json::json!(video_codec));
         technical.insert("audio_codec".to_string(), serde_json::json!(audio_codec));
         technical.insert("container".to_string(), serde_json::json!(container));
         technical.insert("width".to_string(), serde_json::json!(width));
         technical.insert("height".to_string(), serde_json::json!(height));
-        technical.insert("frame_rate_fps".to_string(), serde_json::json!(frame_rate_fps));
+        technical.insert(
+            "frame_rate_fps".to_string(),
+            serde_json::json!(frame_rate_fps),
+        );
         technical.insert("bitrate_kbps".to_string(), serde_json::json!(bitrate_kbps));
         technical.insert("is_native".to_string(), serde_json::json!(is_native));
 

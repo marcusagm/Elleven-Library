@@ -1,8 +1,8 @@
+use crate::core::error::{AppError, AppResult};
+use crate::processing::transcoding::{resolve_transcoding_tools, run_command_with_timeout};
 use std::path::Path;
 use std::process::Command;
 use tauri::AppHandle;
-use crate::core::error::{AppError, AppResult};
-use crate::processing::transcoding::{resolve_transcoding_tools, run_command_with_timeout};
 
 /// Extracts the audio waveform from a file as a normalized vector of floats.
 ///
@@ -79,8 +79,9 @@ pub async fn extract_audio_waveform(path: &Path, app_handle: &AppHandle) -> AppR
         }
     })
     .await
-    .map_err(|join_error| AppError::Internal(format!("Waveform task panicked: {}", join_error)))??;
+    .map_err(|join_error| {
+        AppError::Internal(format!("Waveform task panicked: {}", join_error))
+    })??;
 
     Ok(result)
 }
-

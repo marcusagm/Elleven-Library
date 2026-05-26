@@ -26,7 +26,9 @@ impl FormatProvider for TextFormatProvider {
     }
 
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+        use crate::core::formats::types::{
+            MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+        };
 
         vec![
             SupportedFormat::with_metadata(
@@ -74,7 +76,8 @@ impl MetadataCapability for TextFormatProvider {
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let content = std::fs::read_to_string(&path_owned).map_err(crate::core::error::AppError::Io)?;
+            let content =
+                std::fs::read_to_string(&path_owned).map_err(crate::core::error::AppError::Io)?;
             let lines = content.lines().count();
             let characters = content.chars().count();
             let words = content.split_whitespace().count();
@@ -100,7 +103,11 @@ impl PreviewCapability for TextFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
-        let extension = path_owned.extension().and_then(|e| e.to_str()).unwrap_or("txt").to_lowercase();
+        let extension = path_owned
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("txt")
+            .to_lowercase();
 
         let mime_type = match extension.as_str() {
             "md" => "text/markdown",
@@ -110,7 +117,9 @@ impl PreviewCapability for TextFormatProvider {
             _ => "text/plain",
         };
 
-        let data = tokio::fs::read(path_owned).await.map_err(crate::core::error::AppError::Io)?;
+        let data = tokio::fs::read(path_owned)
+            .await
+            .map_err(crate::core::error::AppError::Io)?;
         Ok((data, mime_type.to_string()))
     }
 }

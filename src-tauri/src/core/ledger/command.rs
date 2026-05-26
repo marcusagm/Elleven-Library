@@ -233,10 +233,7 @@ pub enum LedgerCommand {
     /// Update technical metadata (dimensions, etc).
     UpdateTechnicalMetadata(UpdateTechnicalMetadataPayload),
     /// Update an asset's format type (e.g. during repair/migration).
-    UpdateFormat {
-        asset_id: String,
-        format: String,
-    },
+    UpdateFormat { asset_id: String, format: String },
 
     /// Create a new taxonomy tag with name, optional color and parent.
     CreateTag(CreateTagPayload),

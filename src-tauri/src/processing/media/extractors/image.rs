@@ -43,15 +43,9 @@ pub fn process_and_encode_webp(
 
     let aspect_ratio = source_width as f32 / source_height as f32;
     let (target_width, target_height) = if aspect_ratio > 1.0 {
-        (
-            size_hint,
-            (size_hint as f32 / aspect_ratio).max(1.0) as u32,
-        )
+        (size_hint, (size_hint as f32 / aspect_ratio).max(1.0) as u32)
     } else {
-        (
-            (size_hint as f32 * aspect_ratio).max(1.0) as u32,
-            size_hint,
-        )
+        ((size_hint as f32 * aspect_ratio).max(1.0) as u32, size_hint)
     };
 
     let source_fr_image = fr::images::Image::from_vec_u8(
@@ -66,11 +60,15 @@ pub fn process_and_encode_webp(
         fr::images::Image::new(target_width, target_height, fr::PixelType::U8x4);
 
     let mut resizer = fr::Resizer::new();
-    let resize_options = fr::ResizeOptions::new()
-        .resize_alg(fr::ResizeAlg::Convolution(fr::FilterType::Bilinear));
+    let resize_options =
+        fr::ResizeOptions::new().resize_alg(fr::ResizeAlg::Convolution(fr::FilterType::Bilinear));
 
     resizer
-        .resize(&source_fr_image, &mut destination_fr_image, Some(&resize_options))
+        .resize(
+            &source_fr_image,
+            &mut destination_fr_image,
+            Some(&resize_options),
+        )
         .map_err(|error| AppError::Generic(error.to_string()))?;
 
     let webp_encoder =
@@ -135,19 +133,55 @@ fn parse_exif_resolution_value(resolution_string: &str) -> Option<f64> {
 ///
 /// * `AppError::Io` - If the file cannot be opened.
 /// * `AppError::Generic` - If dimension extraction fails.
+/// Helper to open a raster image with limits disabled and custom extension handling (e.g. .cur).
+fn open_raster_image(path: &Path) -> AppResult<image::DynamicImage> {
+    let file_extension = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    let mut image_reader = image::ImageReader::open(path).map_err(AppError::Io)?;
+    if file_extension == "cur" {
+        image_reader.set_format(image::ImageFormat::Ico);
+    } else {
+        image_reader = image_reader.with_guessed_format().map_err(AppError::Io)?;
+    }
+
+    image_reader.limits(image::Limits::no_limits());
+
+    image_reader
+        .decode()
+        .map_err(|decode_error| AppError::Generic(format!("Image decode error: {}", decode_error)))
+}
+
 pub fn extract_raster_metadata(path: &Path) -> AppResult<serde_json::Value> {
-    let image_reader = image::ImageReader::open(path)
-        .map_err(AppError::Io)?
-        .with_guessed_format()
-        .map_err(AppError::Io)?;
+    let file_extension = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    let mut image_reader = image::ImageReader::open(path).map_err(AppError::Io)?;
+
+    if file_extension == "cur" {
+        image_reader.set_format(image::ImageFormat::Ico);
+    } else {
+        image_reader = image_reader.with_guessed_format().map_err(AppError::Io)?;
+    }
+
+    image_reader.limits(image::Limits::no_limits());
 
     let detected_format = image_reader.format();
     let image_dimensions = match image_reader.into_dimensions() {
         Ok(dimensions) => dimensions,
         Err(dimension_error) => {
-            tracing::warn!("ImageReader::into_dimensions failed ({}), falling back to full decode: {:?}", dimension_error, path);
-            let decoded_image = image::open(path)
-                .map_err(|decode_error| AppError::Generic(format!("Image dimension/decode fallback error: {}", decode_error)))?;
+            tracing::warn!(
+                "ImageReader::into_dimensions failed ({}), falling back to full decode: {:?}",
+                dimension_error,
+                path
+            );
+            let decoded_image = open_raster_image(path)?;
             (decoded_image.width(), decoded_image.height())
         }
     };
@@ -219,15 +253,14 @@ pub fn generate_raster_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u
 
     let decoded_image = match file_extension.as_str() {
         "jpg" | "jpeg" | "jpe" | "jfif" => {
-            let jpeg_bytes =
-                std::fs::read(path).map_err(AppError::Io)?;
+            let jpeg_bytes = std::fs::read(path).map_err(AppError::Io)?;
             let mut jpeg_decoder = JpegDecoder::new(&jpeg_bytes);
             let decoded_pixels = jpeg_decoder
                 .decode()
                 .map_err(|error| AppError::Generic(format!("JPEG decode error: {:?}", error)))?;
-            let jpeg_info = jpeg_decoder.info().ok_or_else(|| {
-                AppError::Generic("Failed to retrieve JPEG image info".into())
-            })?;
+            let jpeg_info = jpeg_decoder
+                .info()
+                .ok_or_else(|| AppError::Generic("Failed to retrieve JPEG image info".into()))?;
 
             let mut rgba_pixels = Vec::with_capacity(decoded_pixels.len() / 3 * 4);
             for rgb_chunk in decoded_pixels.chunks_exact(3) {
@@ -242,11 +275,12 @@ pub fn generate_raster_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u
                 jpeg_info.height as u32,
                 rgba_pixels,
             )
-            .ok_or_else(|| AppError::Generic("Failed to build RGBA buffer from JPEG data".into()))?;
+            .ok_or_else(|| {
+                AppError::Generic("Failed to build RGBA buffer from JPEG data".into())
+            })?;
             image::DynamicImage::ImageRgba8(rgba_buffer)
         }
-        _ => image::open(path)
-            .map_err(|error| AppError::Generic(format!("Image decode error: {}", error)))?,
+        _ => open_raster_image(path)?,
     };
 
     process_and_encode_webp(decoded_image, size_hint)
@@ -270,7 +304,7 @@ pub fn generate_raster_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u
 pub fn extract_raw_metadata(path: &Path) -> AppResult<serde_json::Value> {
     let mut image_width = 0u32;
     let mut image_height = 0u32;
-    
+
     // First try LibRaw
     if let Ok(file_handle) = std::fs::File::open(path) {
         if let Ok(memory_map) = unsafe { memmap2::MmapOptions::new().map(&file_handle) } {
@@ -280,7 +314,7 @@ pub fn extract_raw_metadata(path: &Path) -> AppResult<serde_json::Value> {
             }
         }
     }
-    
+
     // If LibRaw fails, fallback to brute force dimension extraction
     if image_width == 0 || image_height == 0 {
         if let Ok((bytes, _)) = brute_force_extract_jpeg_bytes(path) {
@@ -335,21 +369,34 @@ fn ensure_jpeg_bytes(raw_bytes: Vec<u8>) -> AppResult<Vec<u8>> {
         || raw_bytes.starts_with(&[0x89, b'P', b'N', b'G'])
     {
         // TIFF or PNG, convert to JPEG
-        let decoded_image = image::load_from_memory(&raw_bytes)
-            .map_err(|decode_error| AppError::Generic(format!("Failed to decode embedded raw preview image: {}", decode_error)))?;
+        let decoded_image = image::load_from_memory(&raw_bytes).map_err(|decode_error| {
+            AppError::Generic(format!(
+                "Failed to decode embedded raw preview image: {}",
+                decode_error
+            ))
+        })?;
         let mut jpeg_data = Vec::new();
         let mut cursor = std::io::Cursor::new(&mut jpeg_data);
         decoded_image
             .to_rgb8()
             .write_to(&mut cursor, image::ImageFormat::Jpeg)
-            .map_err(|encode_error| AppError::Generic(format!("Failed to encode raw preview to JPEG: {}", encode_error)))?;
+            .map_err(|encode_error| {
+                AppError::Generic(format!(
+                    "Failed to encode raw preview to JPEG: {}",
+                    encode_error
+                ))
+            })?;
         Ok(jpeg_data)
     } else {
         // Fallback: try decoding anyway, if it works convert to JPEG
         if let Ok(decoded_image) = image::load_from_memory(&raw_bytes) {
             let mut jpeg_data = Vec::new();
             let mut cursor = std::io::Cursor::new(&mut jpeg_data);
-            if decoded_image.to_rgb8().write_to(&mut cursor, image::ImageFormat::Jpeg).is_ok() {
+            if decoded_image
+                .to_rgb8()
+                .write_to(&mut cursor, image::ImageFormat::Jpeg)
+                .is_ok()
+            {
                 return Ok(jpeg_data);
             }
         }
@@ -476,7 +523,10 @@ pub fn generate_hdr_exr_dds_thumbnail(path: &Path, size_hint: u32) -> AppResult<
             return process_and_encode_webp(decoded_image, size_hint);
         }
     }
-    Err(AppError::Generic(format!("Failed to generate thumbnail for HDR/EXR/DDS file: {:?}", path)))
+    Err(AppError::Generic(format!(
+        "Failed to generate thumbnail for HDR/EXR/DDS file: {:?}",
+        path
+    )))
 }
 
 /// Generates a preview for HDR/EXR/DDS files using a multi-tier fallback strategy.
@@ -493,11 +543,21 @@ pub fn generate_hdr_exr_dds_preview(path: &Path) -> AppResult<(Vec<u8>, String)>
     if let Ok((jpeg_bytes, _)) = brute_force_extract_jpeg_bytes(path) {
         return Ok((jpeg_bytes, "image/jpeg".to_string()));
     }
-    Err(AppError::Generic(format!("Failed to generate preview for HDR/EXR/DDS file: {:?}", path)))
+    Err(AppError::Generic(format!(
+        "Failed to generate preview for HDR/EXR/DDS file: {:?}",
+        path
+    )))
 }
 
-
-/// Extracts the largest embedded JPEG preview from a RAW file using LibRaw.
+/// Extracts the largest embedded preview from a RAW file using LibRaw.
+///
+/// LibRaw may return thumbnails in two forms:
+/// 1. **Encoded image data** (JPEG, PNG, TIFF) — returned as-is.
+/// 2. **Raw RGB bitmap data** (no format header) — common for Hasselblad 3FR/FFF
+///    files where the embedded thumbnail is stored as uncompressed pixel data.
+///    In this case, the data length equals `width × height × 3` (RGB) or
+///    `width × height × 4` (RGBA). We detect this and encode as JPEG before
+///    returning so downstream callers can use `image::load_from_memory()`.
 fn extract_libraw_preview(path: &Path) -> AppResult<Vec<u8>> {
     let file_handle = std::fs::File::open(path).map_err(AppError::Io)?;
     let memory_map = unsafe {
@@ -506,19 +566,101 @@ fn extract_libraw_preview(path: &Path) -> AppResult<Vec<u8>> {
             .map_err(AppError::Io)?
     };
 
-    let mut raw_image = rsraw::RawImage::open(&memory_map).map_err(|error| {
-        AppError::Generic(format!("LibRaw open error: {:?}", error))
-    })?;
+    let mut raw_image = rsraw::RawImage::open(&memory_map)
+        .map_err(|error| AppError::Generic(format!("LibRaw open error: {:?}", error)))?;
 
     let embedded_thumbnails = raw_image.extract_thumbs().map_err(|error| {
         AppError::Generic(format!("LibRaw thumb extraction error: {:?}", error))
     })?;
 
-    embedded_thumbnails
+    let largest_thumbnail = embedded_thumbnails
         .iter()
         .max_by_key(|thumbnail| thumbnail.width * thumbnail.height)
-        .map(|thumbnail| thumbnail.data.clone())
-        .ok_or_else(|| AppError::Generic("No embedded thumbnails found in RAW file".into()))
+        .ok_or_else(|| AppError::Generic("No embedded thumbnails found in RAW file".into()))?;
+
+    let thumbnail_data = &largest_thumbnail.data;
+
+    // If data already starts with a known image format header, return as-is.
+    let has_jpeg_header = thumbnail_data.starts_with(&[0xFF, 0xD8]);
+    let has_png_header = thumbnail_data.starts_with(&[0x89, b'P', b'N', b'G']);
+    let has_tiff_le_header = thumbnail_data.starts_with(&[0x49, 0x49, 0x2A, 0x00]);
+    let has_tiff_be_header = thumbnail_data.starts_with(&[0x4D, 0x4D, 0x00, 0x2A]);
+
+    if has_jpeg_header || has_png_header || has_tiff_le_header || has_tiff_be_header {
+        return Ok(thumbnail_data.clone());
+    }
+
+    // LibRaw returned raw bitmap pixel data (common for Hasselblad 3FR/FFF).
+    // Detect by matching data length against expected RGB or RGBA buffer sizes.
+    let thumbnail_width = largest_thumbnail.width;
+    let thumbnail_height = largest_thumbnail.height;
+    let expected_rgb_byte_count = (thumbnail_width * thumbnail_height * 3) as usize;
+    let expected_rgba_byte_count = (thumbnail_width * thumbnail_height * 4) as usize;
+
+    let dynamic_image = if thumbnail_data.len() == expected_rgb_byte_count {
+        image::RgbImage::from_raw(thumbnail_width, thumbnail_height, thumbnail_data.clone())
+            .map(image::DynamicImage::ImageRgb8)
+            .ok_or_else(|| {
+                AppError::Generic(format!(
+                    "Failed to construct RGB image from LibRaw bitmap ({}x{}, {} bytes)",
+                    thumbnail_width, thumbnail_height, thumbnail_data.len()
+                ))
+            })?
+    } else if thumbnail_data.len() == expected_rgba_byte_count {
+        image::RgbaImage::from_raw(thumbnail_width, thumbnail_height, thumbnail_data.clone())
+            .map(image::DynamicImage::ImageRgba8)
+            .ok_or_else(|| {
+                AppError::Generic(format!(
+                    "Failed to construct RGBA image from LibRaw bitmap ({}x{}, {} bytes)",
+                    thumbnail_width, thumbnail_height, thumbnail_data.len()
+                ))
+            })?
+    } else {
+        // Last resort: try image::load_from_memory in case it's an unknown but valid format
+        return image::load_from_memory(thumbnail_data)
+            .map_err(|decode_error| {
+                AppError::Generic(format!(
+                    "LibRaw thumbnail is neither encoded image nor raw bitmap \
+                     ({}x{}, {} bytes, expected_rgb={}, expected_rgba={}, header={:02X?}): {}",
+                    thumbnail_width,
+                    thumbnail_height,
+                    thumbnail_data.len(),
+                    expected_rgb_byte_count,
+                    expected_rgba_byte_count,
+                    &thumbnail_data[..thumbnail_data.len().min(8)],
+                    decode_error
+                ))
+            })
+            .and_then(|decoded_image| {
+                let mut jpeg_buffer = Vec::new();
+                let mut cursor = std::io::Cursor::new(&mut jpeg_buffer);
+                decoded_image
+                    .to_rgb8()
+                    .write_to(&mut cursor, image::ImageFormat::Jpeg)
+                    .map_err(|encode_error| {
+                        AppError::Generic(format!(
+                            "Failed to encode LibRaw thumbnail to JPEG: {}",
+                            encode_error
+                        ))
+                    })?;
+                Ok(jpeg_buffer)
+            });
+    };
+
+    // Encode the raw bitmap as JPEG for downstream compatibility.
+    let mut jpeg_buffer = Vec::new();
+    let mut cursor = std::io::Cursor::new(&mut jpeg_buffer);
+    dynamic_image
+        .to_rgb8()
+        .write_to(&mut cursor, image::ImageFormat::Jpeg)
+        .map_err(|encode_error| {
+            AppError::Generic(format!(
+                "Failed to encode LibRaw bitmap thumbnail to JPEG: {}",
+                encode_error
+            ))
+        })?;
+
+    Ok(jpeg_buffer)
 }
 
 /// Scans the first 8 MB of a file looking for JPEG start-of-image markers and
@@ -561,14 +703,18 @@ fn brute_force_extract_jpeg_bytes(path: &Path) -> AppResult<(Vec<u8>, u32)> {
                         }
                         end_offset += 1;
                     }
-                    
+
                     if found_eoi {
                         best_bytes = Some(memory_map[scan_offset..end_offset].to_vec());
                     } else {
                         // Fallback: just save it as JPEG again
                         let mut jpeg_data = Vec::new();
                         let mut cursor = std::io::Cursor::new(&mut jpeg_data);
-                        if decoded_image.to_rgb8().write_to(&mut cursor, image::ImageFormat::Jpeg).is_ok() {
+                        if decoded_image
+                            .to_rgb8()
+                            .write_to(&mut cursor, image::ImageFormat::Jpeg)
+                            .is_ok()
+                        {
                             best_bytes = Some(jpeg_data);
                         }
                     }
@@ -583,7 +729,9 @@ fn brute_force_extract_jpeg_bytes(path: &Path) -> AppResult<(Vec<u8>, u32)> {
     if let Some(bytes) = best_bytes {
         Ok((bytes, best_pixel_count))
     } else {
-        Err(AppError::Generic("Brute-force JPEG scan found no valid images".into()))
+        Err(AppError::Generic(
+            "Brute-force JPEG scan found no valid images".into(),
+        ))
     }
 }
 
@@ -608,13 +756,13 @@ pub fn extract_ffmpeg_image_metadata(path: &Path) -> AppResult<serde_json::Value
 
     let mut ffprobe_command = Command::new(transcoding_tools.ffprobe);
     ffprobe_command.args([
-        "-v",
-        "error",
-        "-show_format",
-        "-show_streams",
-        "-of",
-        "json",
-        &path.to_string_lossy(),
+        "-v", // Log level
+        "error", // Only show errors
+        "-show_format", // Show format information
+        "-show_streams", // Show stream information
+        "-of", // Output format
+        "json", // JSON format
+        &path.to_string_lossy(), // Path to the image file
     ]);
 
     let ffprobe_output = run_command_with_timeout(ffprobe_command, 10)?;
@@ -627,14 +775,17 @@ pub fn extract_ffmpeg_image_metadata(path: &Path) -> AppResult<serde_json::Value
         )));
     }
 
-    let probe_json: serde_json::Value = serde_json::from_slice(&ffprobe_output.stdout)
-        .map_err(|error| {
+    let probe_json: serde_json::Value =
+        serde_json::from_slice(&ffprobe_output.stdout).map_err(|error| {
             AppError::Transcoding(format!("Failed to parse FFprobe JSON output: {}", error))
         })?;
 
     let mut technical_metadata = serde_json::Map::new();
 
-    if let Some(streams) = probe_json.get("streams").and_then(|streams| streams.as_array()) {
+    if let Some(streams) = probe_json
+        .get("streams")
+        .and_then(|streams| streams.as_array())
+    {
         if let Some(first_stream) = streams.first() {
             if let Some(stream_width) = first_stream.get("width") {
                 technical_metadata.insert("width".into(), stream_width.clone());
@@ -675,20 +826,25 @@ pub fn generate_ffmpeg_image_thumbnail(path: &Path, size_hint: u32) -> AppResult
 
     let mut ffmpeg_command = Command::new(transcoding_tools.ffmpeg);
     ffmpeg_command.args([
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-i",
-        &path.to_string_lossy(),
-        "-vf",
-        &format!("scale='min({},iw)':'if(gt(ih,iw),-1,-2)':flags=lanczos", size_hint),
-        "-vframes",
-        "1",
-        "-f",
-        "image2",
-        "-c:v",
-        "mjpeg",
-        "-",
+        "-hide_banner", // Hides the ffmpeg banner
+        "-loglevel", // Set the log level
+        "error", // Only show errors
+        "-strict", // Set the strictness level
+        "unofficial", // Set the strictness level to unofficial
+        "-i", // Input file
+        &path.to_string_lossy(), // Path to the image file
+        "-vf", // Video filters
+        &format!(
+            "format=yuv420p,scale='min({},iw)':'if(gt(ih,iw),-1,-2)':flags=lanczos", // Format the image to yuv420p and scale it to the hint
+            size_hint // Scale the image to the hint
+        ),
+        "-vframes", // Number of frames to extract
+        "1", // Extract 1 frame
+        "-f", // Output format
+        "image2", // Image2 format
+        "-c:v", // Video codec
+        "mjpeg", // Motion JPEG
+        "-", // Output to stdout
     ]);
 
     // 60 seconds for heavy images like HEIC/AVIF
@@ -715,8 +871,11 @@ pub fn generate_ffmpeg_image_thumbnail(path: &Path, size_hint: u32) -> AppResult
 ///
 /// * `AppError::Generic` - If decoding or encoding fails.
 pub fn generate_raster_preview(path: &Path) -> AppResult<(Vec<u8>, String)> {
-    let decoded_image = image::open(path).map_err(|e| {
-        AppError::Generic(format!("Raster preview extraction failed: {}", e))
+    let decoded_image = open_raster_image(path).map_err(|preview_decode_error| {
+        AppError::Generic(format!(
+            "Raster preview extraction failed: {}",
+            preview_decode_error
+        ))
     })?;
 
     let bytes = process_and_encode_webp(decoded_image, 2048)?;
@@ -731,22 +890,24 @@ pub fn generate_ffmpeg_image_preview(path: &Path) -> AppResult<(Vec<u8>, String)
 
     let mut ffmpeg_command = Command::new(transcoding_tools.ffmpeg);
     ffmpeg_command.args([
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-i",
-        &path.to_string_lossy(),
-        "-vf",
-        "scale='min(2048,iw)':'if(gt(ih,iw),-1,-2)':flags=lanczos",
-        "-vframes",
-        "1",
-        "-f",
-        "image2",
-        "-c:v",
-        "mjpeg",
-        "-q:v",
-        "2",
-        "-",
+        "-hide_banner", // Hides the ffmpeg banner
+        "-loglevel", // Log level
+        "error", // Only show errors
+        "-strict", // Strictness level
+        "unofficial", // Unofficial strictness level
+        "-i", // Input file
+        &path.to_string_lossy(), // Path to the image file
+        "-vf", // Video filters
+        "format=yuv420p,scale='min(2048,iw)':'if(gt(ih,iw),-1,-2)':flags=lanczos", // Format the image to yuv420p and scale it to the hint
+        "-vframes", // Number of frames to extract
+        "1", // Extract 1 frame
+        "-f", // Output format
+        "image2", // Image2 format
+        "-c:v", // Video codec
+        "mjpeg", // Motion JPEG
+        "-q:v", // Quality
+        "2", // Quality
+        "-", // Output to stdout
     ]);
 
     // 60 seconds for heavy images like HEIC/AVIF

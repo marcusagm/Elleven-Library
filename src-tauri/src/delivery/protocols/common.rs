@@ -1,7 +1,7 @@
 use std::path::Path;
+use tauri::http::{header, Response, StatusCode};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
-use tauri::http::{header, Response, StatusCode};
 use tracing::error;
 
 /// Generic error response for protocol handlers
@@ -17,10 +17,10 @@ pub fn error_response(status: StatusCode, body: Vec<u8>) -> Response<Vec<u8>> {
 pub fn decode_uri_path(uri: &str, scheme: &str) -> String {
     let prefix = format!("{}://localhost/", scheme);
     let path = uri.strip_prefix(&prefix).unwrap_or(uri);
-    
+
     // Remove query parameters if any
     let path = path.split('?').next().unwrap_or(path);
-    
+
     percent_encoding::percent_decode_str(path)
         .decode_utf8_lossy()
         .into_owned()

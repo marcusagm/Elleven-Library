@@ -1,5 +1,7 @@
 use crate::core::error::AppResult;
-use crate::core::models::{Asset, AssetColor, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag};
+use crate::core::models::{
+    Asset, AssetColor, AssetFilter, AssetSummaryDto, Folder, PageParams, Tag,
+};
 use crate::core::repository::AssetQueryHandler;
 use crate::infra::database::models::AssetSummaryDb;
 use async_trait::async_trait;
@@ -29,7 +31,6 @@ impl SqliteAssetQueries {
 /// Implementation of the AssetQueryHandler port for SqliteAssetQueries.
 #[async_trait]
 impl AssetQueryHandler for SqliteAssetQueries {
-
     /// Retrieves a list of asset IDs that are missing thumbnails.
     ///
     /// # Arguments
@@ -152,29 +153,31 @@ impl AssetQueryHandler for SqliteAssetQueries {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| crate::infra::database::models::AssetDb {
-            id: r.id,
-            name: r.name,
-            path: r.path,
-            state: r.state,
-            format_type: r.format_type,
-            family: r.family,
-            file_size: r.file_size,
-            created_at: r.created_at,
-            modified_at: r.modified_at,
-            added_at: r.added_at,
-            updated_at: r.updated_at,
-            folder_id: r.folder_id,
-            thumbnail_path: r.thumbnail_path,
-            rating: r.rating,
-            notes: r.notes,
-            width: r.width,
-            height: r.height,
-            duration_secs: r.duration_secs,
-            technical_payload: r.technical_payload,
-            semantic_payload: r.semantic_payload,
-            dominant_color: r.dominant_color,
-        }).map(Into::into))
+        Ok(row
+            .map(|r| crate::infra::database::models::AssetDb {
+                id: r.id,
+                name: r.name,
+                path: r.path,
+                state: r.state,
+                format_type: r.format_type,
+                family: r.family,
+                file_size: r.file_size,
+                created_at: r.created_at,
+                modified_at: r.modified_at,
+                added_at: r.added_at,
+                updated_at: r.updated_at,
+                folder_id: r.folder_id,
+                thumbnail_path: r.thumbnail_path,
+                rating: r.rating,
+                notes: r.notes,
+                width: r.width,
+                height: r.height,
+                duration_secs: r.duration_secs,
+                technical_payload: r.technical_payload,
+                semantic_payload: r.semantic_payload,
+                dominant_color: r.dominant_color,
+            })
+            .map(Into::into))
     }
 
     /// Lists assets with pagination and filtering.
@@ -243,7 +246,8 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         if let Some(tags) = filter.tags {
             if !tags.is_empty() {
-                query_builder.push(" AND a.id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (");
+                query_builder
+                    .push(" AND a.id IN (SELECT asset_id FROM asset_tags WHERE tag_id IN (");
                 let mut first = true;
                 for tag in tags {
                     if !first {
@@ -523,14 +527,14 @@ impl AssetQueryHandler for SqliteAssetQueries {
         criteria: crate::core::models::SearchCriteria,
     ) -> AppResult<i64> {
         use crate::infra::database::search_builder::build_search_where_clause;
- 
+
         let mut query_builder: QueryBuilder<Sqlite> = QueryBuilder::new(
             r#"
             SELECT COUNT(DISTINCT a.id)
             FROM assets a
             LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
             WHERE 1=1 AND
-            "#
+            "#,
         );
         build_search_where_clause(&criteria.root_group, &mut query_builder, &self.registry);
 
@@ -539,7 +543,6 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         Ok(count)
     }
-
 
     /// Retrieves a single asset by its unique ID.
     ///
@@ -685,7 +688,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
                 updated_at: r.updated_at.unwrap_or_else(chrono::Utc::now),
             });
         }
-        
+
         Ok(folders)
     }
 
@@ -810,29 +813,32 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
         let folder_counts: Vec<crate::core::models::FolderCount> = folder_counts_rows
             .into_iter()
-            .filter_map(|r| r.folder_id.map(|id| crate::core::models::FolderCount {
-                folder_id: id,
-                count: r.count,
-            }))
+            .filter_map(|r| {
+                r.folder_id.map(|id| crate::core::models::FolderCount {
+                    folder_id: id,
+                    count: r.count,
+                })
+            })
             .collect();
 
         // Calculate recursive counts in-memory instead of slow recursive CTE
-        let all_folders = sqlx::query!(
-            r#"SELECT id as "id!", parent_id as "parent_id?" FROM folders"#
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let all_folders =
+            sqlx::query!(r#"SELECT id as "id!", parent_id as "parent_id?" FROM folders"#)
+                .fetch_all(&self.pool)
+                .await?;
 
-        let mut parent_map: std::collections::HashMap<String, Option<String>> = std::collections::HashMap::new();
+        let mut parent_map: std::collections::HashMap<String, Option<String>> =
+            std::collections::HashMap::new();
         for row in all_folders {
             parent_map.insert(row.id, row.parent_id);
         }
 
-        let mut recursive_counts: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+        let mut recursive_counts: std::collections::HashMap<String, i64> =
+            std::collections::HashMap::new();
         for fc in &folder_counts {
             // Add to itself
             *recursive_counts.entry(fc.folder_id.clone()).or_insert(0) += fc.count;
-            
+
             // Add to all parents
             let mut current_parent = parent_map.get(&fc.folder_id).cloned().flatten();
             while let Some(parent_id) = current_parent {
@@ -859,7 +865,10 @@ impl AssetQueryHandler for SqliteAssetQueries {
     }
 
     /// Retrieves all colors extracted for a specific asset.
-    async fn get_asset_colors(&self, asset_id: &str) -> AppResult<Vec<crate::core::models::AssetColor>> {
+    async fn get_asset_colors(
+        &self,
+        asset_id: &str,
+    ) -> AppResult<Vec<crate::core::models::AssetColor>> {
         let rows = sqlx::query!(
             r#"
             SELECT id as "id!", hex_color, lab_lightness, lab_green_red, lab_blue_yellow, percentage, rank
@@ -926,32 +935,38 @@ impl AssetQueryHandler for SqliteAssetQueries {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| crate::infra::database::models::AssetDb {
-            id: r.id,
-            name: r.name,
-            path: r.path,
-            state: r.state,
-            format_type: r.format_type,
-            family: r.family,
-            file_size: r.file_size,
-            created_at: r.created_at,
-            modified_at: r.modified_at,
-            added_at: r.added_at,
-            updated_at: r.updated_at,
-            folder_id: r.folder_id,
-            thumbnail_path: r.thumbnail_path,
-            rating: r.rating,
-            notes: r.notes,
-            width: r.width,
-            height: r.height,
-            duration_secs: r.duration_secs,
-            technical_payload: r.technical_payload,
-            semantic_payload: r.semantic_payload,
-            dominant_color: r.dominant_color,
-        }).map(Into::into))
+        Ok(row
+            .map(|r| crate::infra::database::models::AssetDb {
+                id: r.id,
+                name: r.name,
+                path: r.path,
+                state: r.state,
+                format_type: r.format_type,
+                family: r.family,
+                file_size: r.file_size,
+                created_at: r.created_at,
+                modified_at: r.modified_at,
+                added_at: r.added_at,
+                updated_at: r.updated_at,
+                folder_id: r.folder_id,
+                thumbnail_path: r.thumbnail_path,
+                rating: r.rating,
+                notes: r.notes,
+                width: r.width,
+                height: r.height,
+                duration_secs: r.duration_secs,
+                technical_payload: r.technical_payload,
+                semantic_payload: r.semantic_payload,
+                dominant_color: r.dominant_color,
+            })
+            .map(Into::into))
     }
 
-    async fn find_assets_by_size(&self, size_bytes: u64, state: Option<crate::core::models::AssetState>) -> AppResult<Vec<Asset>> {
+    async fn find_assets_by_size(
+        &self,
+        size_bytes: u64,
+        state: Option<crate::core::models::AssetState>,
+    ) -> AppResult<Vec<Asset>> {
         let size_i64 = size_bytes as i64;
         let state_str = state.map(|s| s.to_string());
 
@@ -983,29 +998,33 @@ impl AssetQueryHandler for SqliteAssetQueries {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| crate::infra::database::models::AssetDb {
-            id: r.id,
-            name: r.name,
-            path: r.path,
-            state: r.state,
-            format_type: r.format_type,
-            family: r.family,
-            file_size: r.file_size,
-            created_at: r.created_at,
-            modified_at: r.modified_at,
-            added_at: r.added_at,
-            updated_at: r.updated_at,
-            folder_id: r.folder_id,
-            thumbnail_path: r.thumbnail_path,
-            rating: r.rating,
-            notes: r.notes,
-            width: r.width,
-            height: r.height,
-            duration_secs: r.duration_secs,
-            technical_payload: r.technical_payload,
-            semantic_payload: r.semantic_payload,
-            dominant_color: r.dominant_color,
-        }).map(Into::into).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| crate::infra::database::models::AssetDb {
+                id: r.id,
+                name: r.name,
+                path: r.path,
+                state: r.state,
+                format_type: r.format_type,
+                family: r.family,
+                file_size: r.file_size,
+                created_at: r.created_at,
+                modified_at: r.modified_at,
+                added_at: r.added_at,
+                updated_at: r.updated_at,
+                folder_id: r.folder_id,
+                thumbnail_path: r.thumbnail_path,
+                rating: r.rating,
+                notes: r.notes,
+                width: r.width,
+                height: r.height,
+                duration_secs: r.duration_secs,
+                technical_payload: r.technical_payload,
+                semantic_payload: r.semantic_payload,
+                dominant_color: r.dominant_color,
+            })
+            .map(Into::into)
+            .collect())
     }
 
     async fn get_assets_needing_repair(&self) -> AppResult<Vec<Asset>> {
@@ -1067,7 +1086,7 @@ impl AssetQueryHandler for SqliteAssetQueries {
 
     async fn adopt_orphaned_children(&self, parent_id: &str, parent_path: &str) -> AppResult<()> {
         let pattern = format!("{}/%", parent_path.trim_end_matches('/'));
-        
+
         // Update all folders that:
         // 1. Are currently roots (parent_id IS NULL)
         // 2. Are not the parent itself

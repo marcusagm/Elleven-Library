@@ -1,5 +1,7 @@
 use crate::core::error::AppResult;
-use crate::core::models::{Asset, AssetFilter, AssetSummaryDto, Folder, LibraryStats, PageParams, SmartFolder, Tag};
+use crate::core::models::{
+    Asset, AssetFilter, AssetSummaryDto, Folder, LibraryStats, PageParams, SmartFolder, Tag,
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
@@ -181,10 +183,16 @@ pub trait AssetQueryHandler: Send + Sync {
     async fn get_library_stats(&self) -> AppResult<LibraryStats>;
 
     /// Gets the total count of assets matching the specified search criteria.
-    async fn get_search_count(&self, criteria: crate::core::models::SearchCriteria) -> AppResult<i64>;
+    async fn get_search_count(
+        &self,
+        criteria: crate::core::models::SearchCriteria,
+    ) -> AppResult<i64>;
 
     /// Retrieves all colors extracted for a specific asset.
-    async fn get_asset_colors(&self, asset_id: &str) -> AppResult<Vec<crate::core::models::AssetColor>>;
+    async fn get_asset_colors(
+        &self,
+        asset_id: &str,
+    ) -> AppResult<Vec<crate::core::models::AssetColor>>;
 
     /// Finds a folder ID by its physical path.
     async fn find_folder_by_path(&self, path: &str) -> AppResult<Option<String>>;
@@ -194,7 +202,11 @@ pub trait AssetQueryHandler: Send + Sync {
 
     /// Finds assets by their file size and state.
     /// Useful for recovering moved files that were treated as Delete + Create.
-    async fn find_assets_by_size(&self, size_bytes: u64, state: Option<crate::core::models::AssetState>) -> AppResult<Vec<Asset>>;
+    async fn find_assets_by_size(
+        &self,
+        size_bytes: u64,
+        state: Option<crate::core::models::AssetState>,
+    ) -> AppResult<Vec<Asset>>;
 
     /// Retrieves assets that need repair (e.g. missing format or thumbnail)
     async fn get_assets_needing_repair(&self) -> AppResult<Vec<Asset>>;

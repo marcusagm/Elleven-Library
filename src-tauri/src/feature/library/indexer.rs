@@ -4,6 +4,7 @@ use crate::core::ledger::command::{CreateAssetPayload, CreateFolderPayload, Ledg
 use crate::core::ledger::port::TransactionalAssetLedger;
 use crate::core::models::asset::AssetState;
 use crate::core::repository::AssetQueryHandler;
+use async_recursion::async_recursion;
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use std::collections::HashMap;
@@ -14,7 +15,6 @@ use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, instrument, warn};
 use walkdir::{DirEntry, WalkDir};
-use async_recursion::async_recursion;
 
 /// Intermediate result produced by each fan-out producer task.
 enum AssetDiscoveryResult {
@@ -85,7 +85,10 @@ impl LibraryIndexer {
     pub async fn scan_directory(&self, path: PathBuf, folder_id: Option<String>) -> AppResult<()> {
         let scan_start_time = std::time::Instant::now();
         let root_str = path.to_string_lossy().to_string();
-        info!("▶ Scan STARTED for: {} (concurrency_limit={})", root_str, self.concurrency_limit);
+        info!(
+            "▶ Scan STARTED for: {} (concurrency_limit={})",
+            root_str, self.concurrency_limit
+        );
 
         // Resolve folder_id if not provided
         let current_root_id = if let Some(id) = folder_id {
@@ -95,9 +98,13 @@ impl LibraryIndexer {
         };
 
         // Emit ScanStarted
-        let _ = self.event_bus.publish(crate::core::events::DomainEvent::ScanStarted {
-            library_id: current_root_id.clone().unwrap_or_else(|| "root".to_string()),
-        });
+        let _ = self
+            .event_bus
+            .publish(crate::core::events::DomainEvent::ScanStarted {
+                library_id: current_root_id
+                    .clone()
+                    .unwrap_or_else(|| "root".to_string()),
+            });
 
         // ─── PHASE 1: Single Walk (eliminates duplicate WalkDir) ──────────
         let registry_for_walk = self.registry.clone();
@@ -174,7 +181,11 @@ impl LibraryIndexer {
             }
 
             // Check DB
-            if let Some(existing_id) = self.query_handler.find_folder_by_path(&dir_path_str).await? {
+            if let Some(existing_id) = self
+                .query_handler
+                .find_folder_by_path(&dir_path_str)
+                .await?
+            {
                 let mut cache_write = folder_cache.write().await;
                 cache_write.insert(dir_path, existing_id);
                 continue;
@@ -215,7 +226,10 @@ impl LibraryIndexer {
             .query_handler
             .get_all_files_comparison_data(&root_str)
             .await?;
-        debug!("Loaded {} entries from comparison cache", comparison_cache.len());
+        debug!(
+            "Loaded {} entries from comparison cache",
+            comparison_cache.len()
+        );
 
         // ─── PHASE 4: Fan-out file classification ─────────────────────────
         let (result_sender, mut result_receiver) = mpsc::channel::<AssetDiscoveryResult>(2000);
@@ -232,7 +246,7 @@ impl LibraryIndexer {
             .iter()
             .map(|e| e.path().to_string_lossy().to_string())
             .collect();
-        
+
         let verified_folder_paths: std::collections::HashSet<String> = directory_entries
             .iter()
             .map(|e| e.path().to_string_lossy().to_string())
@@ -288,7 +302,9 @@ impl LibraryIndexer {
                     if batch_payloads.len() >= batch_size {
                         if let Err(batch_error) = self
                             .ledger
-                            .execute(LedgerCommand::BatchCreate(std::mem::take(&mut batch_payloads)))
+                            .execute(LedgerCommand::BatchCreate(std::mem::take(
+                                &mut batch_payloads,
+                            )))
                             .await
                         {
                             error!("BatchCreate failed: {}", batch_error);
@@ -306,11 +322,13 @@ impl LibraryIndexer {
 
             // Emit progress periodically
             if processed_count.is_multiple_of(100) || processed_count == total_files as u64 {
-                let _ = self.event_bus.publish(crate::core::events::DomainEvent::ScanProgress {
-                    total: total_files,
-                    processed: processed_count as usize,
-                    current_file: format!("{}/{}", processed_count, total_files),
-                });
+                let _ = self
+                    .event_bus
+                    .publish(crate::core::events::DomainEvent::ScanProgress {
+                        total: total_files,
+                        processed: processed_count as usize,
+                        current_file: format!("{}/{}", processed_count, total_files),
+                    });
             }
         }
 
@@ -336,11 +354,15 @@ impl LibraryIndexer {
         // Prune Missing Files
         for cached_path in shared_comparison_cache.keys() {
             if !verified_file_paths.contains(cached_path) {
-                if let Err(e) = self.ledger.execute(LedgerCommand::DeleteAsset {
-                    asset_id: None,
-                    path: Some(PathBuf::from(cached_path)),
-                    physical_delete: false,
-                }).await {
+                if let Err(e) = self
+                    .ledger
+                    .execute(LedgerCommand::DeleteAsset {
+                        asset_id: None,
+                        path: Some(PathBuf::from(cached_path)),
+                        physical_delete: false,
+                    })
+                    .await
+                {
                     warn!("Failed to prune stale file {}: {}", cached_path, e);
                 } else {
                     pruned_files_count += 1;
@@ -351,11 +373,20 @@ impl LibraryIndexer {
         // Prune Missing Folders
         for folder in existing_folders {
             let folder_path_str = folder.path.to_string_lossy().to_string();
-            
-            if folder_path_str.starts_with(&root_str) && folder_path_str != root_str && !verified_folder_paths.contains(&folder_path_str) {
-                if let Err(e) = self.ledger.execute(LedgerCommand::RemoveFolder(
-                    crate::core::ledger::command::RemoveFolderPayload { folder_id: folder.id.clone() }
-                )).await {
+
+            if folder_path_str.starts_with(&root_str)
+                && folder_path_str != root_str
+                && !verified_folder_paths.contains(&folder_path_str)
+            {
+                if let Err(e) = self
+                    .ledger
+                    .execute(LedgerCommand::RemoveFolder(
+                        crate::core::ledger::command::RemoveFolderPayload {
+                            folder_id: folder.id.clone(),
+                        },
+                    ))
+                    .await
+                {
                     warn!("Failed to prune stale folder {}: {}", folder_path_str, e);
                 } else {
                     pruned_folders_count += 1;
@@ -370,9 +401,11 @@ impl LibraryIndexer {
         );
 
         // Emit ScanCompleted
-        let _ = self.event_bus.publish(crate::core::events::DomainEvent::ScanCompleted {
-            library_id: current_root_id.unwrap_or_else(|| "root".to_string()),
-        });
+        let _ = self
+            .event_bus
+            .publish(crate::core::events::DomainEvent::ScanCompleted {
+                library_id: current_root_id.unwrap_or_else(|| "root".to_string()),
+            });
 
         Ok(())
     }
@@ -437,24 +470,37 @@ impl LibraryIndexer {
 
                 let parent_id = if let Some(parent) = dir_path.parent() {
                     let parent_str = parent.to_string_lossy().to_string();
-                    self.query_handler.find_folder_by_path(&parent_str).await.unwrap_or(None)
+                    self.query_handler
+                        .find_folder_by_path(&parent_str)
+                        .await
+                        .unwrap_or(None)
                 } else {
                     None
                 };
 
-                let folder_name = dir_path.file_name().and_then(|name| name.to_str()).unwrap_or("Unknown").to_string();
-                let _ = self.ledger.execute(LedgerCommand::CreateFolder(CreateFolderPayload {
-                    parent_id,
-                    name: folder_name,
-                    path: dir_path,
-                })).await;
+                let folder_name = dir_path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("Unknown")
+                    .to_string();
+                let _ = self
+                    .ledger
+                    .execute(LedgerCommand::CreateFolder(CreateFolderPayload {
+                        parent_id,
+                        name: folder_name,
+                        path: dir_path,
+                    }))
+                    .await;
             }
 
             DomainEvent::FsDirectoryDeleted { path } => {
                 if let Ok(Some(folder_id)) = self.query_handler.find_folder_by_path(&path).await {
-                    let _ = self.ledger.execute(LedgerCommand::RemoveFolder(
-                        crate::core::ledger::command::RemoveFolderPayload { folder_id },
-                    )).await;
+                    let _ = self
+                        .ledger
+                        .execute(LedgerCommand::RemoveFolder(
+                            crate::core::ledger::command::RemoveFolderPayload { folder_id },
+                        ))
+                        .await;
                 }
             }
 
@@ -465,11 +511,11 @@ impl LibraryIndexer {
     /// Handles a new file discovery event, potentially recovering a rename or move.
     async fn handle_file_discovered(&self, path: String) {
         let entry_path = PathBuf::from(&path);
-        
+
         // 1. Strategic Delay: On macOS, a Rename is often emitted as Delete then Create.
         // 500ms gives enough time for handle_path_deleted to populate recent_removals.
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        
+
         // Try to get metadata for fingerprint matching
         let disk_metadata = std::fs::metadata(&entry_path).ok();
         let disk_size = disk_metadata.as_ref().map(|m| m.len() as i64).unwrap_or(0);
@@ -479,7 +525,9 @@ impl LibraryIndexer {
             .map(DateTime::<Utc>::from);
 
         // --- STEP 1: Fast Match (Size + CreatedAt from recent_removals) ---
-        let from_path = self.recent_removals.iter()
+        let from_path = self
+            .recent_removals
+            .iter()
             .find(|entry| {
                 let (_, (_, removed_size, removed_created_at)) = entry.pair();
                 let size_matches = *removed_size as i64 == disk_size && disk_size > 0;
@@ -497,22 +545,29 @@ impl LibraryIndexer {
             .map(|entry| entry.key().clone());
 
         if let Some(from_path) = from_path {
-            info!("Indexer: Fast Match (Size: {}) - Treating as Move: {} -> {}", 
-                disk_size, from_path.to_string_lossy(), path);
-            
+            info!(
+                "Indexer: Fast Match (Size: {}) - Treating as Move: {} -> {}",
+                disk_size,
+                from_path.to_string_lossy(),
+                path
+            );
+
             self.recent_removals.remove(&from_path);
-            
+
             // Cancel the pending delayed delete
             if let Some((_, cancel_token)) = self.pending_removals.remove(&from_path) {
                 cancel_token.cancel();
             }
-            
+
             let update_payload = crate::core::ledger::command::UpdateAssetPayload {
                 asset_id: None,
                 old_path: Some(from_path),
                 new_path: entry_path.clone(),
             };
-            let _ = self.ledger.execute(LedgerCommand::UpdateAsset(update_payload)).await;
+            let _ = self
+                .ledger
+                .execute(LedgerCommand::UpdateAsset(update_payload))
+                .await;
             return;
         }
 
@@ -528,17 +583,25 @@ impl LibraryIndexer {
         // If the path already exists in the database, don't create it again.
         // This prevents duplicates if FsFileDiscovered was already emitted or handled.
         if let Ok(Some(_)) = self.query_handler.find_asset_by_path(&path_str).await {
-            debug!("Indexer: Asset already exists for path '{}', skipping duplicate creation", entry_path.display());
+            debug!(
+                "Indexer: Asset already exists for path '{}', skipping duplicate creation",
+                entry_path.display()
+            );
             return Ok(());
         }
 
-        let extension = entry_path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-        
+        let extension = entry_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("");
+
         if !self.registry.is_supported_extension(extension) {
             return Ok(());
         }
 
-        let (format_name, family_name) = self.registry.detect(&entry_path)
+        let (format_name, family_name) = self
+            .registry
+            .detect(&entry_path)
             .map(|f| (f.name.to_string(), f.type_category.to_string()))
             .unwrap_or_else(|| ("unknown".to_string(), "unknown".to_string()));
 
@@ -564,7 +627,9 @@ impl LibraryIndexer {
             modified_at,
         };
 
-        self.ledger.execute(LedgerCommand::CreateAsset(create_payload)).await?;
+        self.ledger
+            .execute(LedgerCommand::CreateAsset(create_payload))
+            .await?;
         Ok(())
     }
 
@@ -586,8 +651,10 @@ impl LibraryIndexer {
         }
 
         let token = CancellationToken::new();
-        self.pending_removals.insert(entry_path.clone(), token.clone());
-        self.recent_removals.insert(entry_path.clone(), (Utc::now(), old_size, old_created_at));
+        self.pending_removals
+            .insert(entry_path.clone(), token.clone());
+        self.recent_removals
+            .insert(entry_path.clone(), (Utc::now(), old_size, old_created_at));
 
         let self_clone = Arc::new(self.clone_state());
         let path_buf = entry_path.clone();
@@ -626,17 +693,26 @@ impl LibraryIndexer {
         self.recent_removals.remove(&from_path);
 
         if to_path.is_dir() {
-            if let Ok(Some(folder_id)) = self.query_handler.find_folder_by_path(&from_path.to_string_lossy()).await {
-                let _ = self.ledger.execute(LedgerCommand::RenameFolder(crate::core::ledger::command::RenameFolderPayload {
-                    folder_id,
-                    old_path: from_path,
-                    new_path: to_path,
-                })).await;
+            if let Ok(Some(folder_id)) = self
+                .query_handler
+                .find_folder_by_path(&from_path.to_string_lossy())
+                .await
+            {
+                let _ = self
+                    .ledger
+                    .execute(LedgerCommand::RenameFolder(
+                        crate::core::ledger::command::RenameFolderPayload {
+                            folder_id,
+                            old_path: from_path,
+                            new_path: to_path,
+                        },
+                    ))
+                    .await;
             }
         } else {
             // CRITICAL: Collision Detection for Fast renames
-            // If the destination 'to' already exists in the database (likely because 
-            // handle_file_discovered was already processed), we must delete the 
+            // If the destination 'to' already exists in the database (likely because
+            // handle_file_discovered was already processed), we must delete the
             // "new" (blank) record and UPDATE the original one to stay with 'to'.
             // This preserves all metadata (labels, tags, etc) of the original asset.
             if let Ok(Some(collision_asset)) = self.query_handler.find_asset_by_path(&to).await {
@@ -649,11 +725,16 @@ impl LibraryIndexer {
                 let _ = self.ledger.execute(delete_cmd).await;
             }
 
-            let _ = self.ledger.execute(LedgerCommand::UpdateAsset(crate::core::ledger::command::UpdateAssetPayload {
-                asset_id: None,
-                old_path: Some(from_path),
-                new_path: to_path,
-            })).await;
+            let _ = self
+                .ledger
+                .execute(LedgerCommand::UpdateAsset(
+                    crate::core::ledger::command::UpdateAssetPayload {
+                        asset_id: None,
+                        old_path: Some(from_path),
+                        new_path: to_path,
+                    },
+                ))
+                .await;
         }
     }
 
@@ -676,17 +757,23 @@ impl LibraryIndexer {
             if asset.format_type == "unknown" {
                 if let Some(supported_format) = self.registry.detect(&asset.path) {
                     let format_name = supported_format.name.to_string();
-                    let _ = self.ledger.execute(LedgerCommand::UpdateFormat {
-                        asset_id: asset.id.clone(),
-                        format: format_name,
-                    }).await;
+                    let _ = self
+                        .ledger
+                        .execute(LedgerCommand::UpdateFormat {
+                            asset_id: asset.id.clone(),
+                            format: format_name,
+                        })
+                        .await;
                 }
             }
 
             if asset.thumbnail_path.is_none() {
-                let _ = self.ledger.execute(LedgerCommand::RegenerateThumbnail {
-                    asset_id: asset.id.clone(),
-                }).await;
+                let _ = self
+                    .ledger
+                    .execute(LedgerCommand::RegenerateThumbnail {
+                        asset_id: asset.id.clone(),
+                    })
+                    .await;
             }
         }
 
@@ -713,7 +800,11 @@ impl LibraryIndexer {
         };
 
         // 3. Create this folder (this will also trigger orphan adoption)
-        let folder_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
+        let folder_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Unknown")
+            .to_string();
         let create_folder_command = LedgerCommand::CreateFolder(CreateFolderPayload {
             parent_id,
             name: folder_name,
@@ -776,11 +867,16 @@ async fn classify_file_entry(
     let disk_created_time: Option<DateTime<Utc>> = metadata.created().ok().map(|time| time.into());
 
     // Differential check: compare with cached data
-    let needs_indexing = if let Some((cached_size, cached_modified_time)) = comparison_cache.get(&path_str) {
-        disk_size != *cached_size || (disk_modified_time - *cached_modified_time).num_seconds().abs() >= 1
-    } else {
-        true // New file — not in cache
-    };
+    let needs_indexing =
+        if let Some((cached_size, cached_modified_time)) = comparison_cache.get(&path_str) {
+            disk_size != *cached_size
+                || (disk_modified_time - *cached_modified_time)
+                    .num_seconds()
+                    .abs()
+                    >= 1
+        } else {
+            true // New file — not in cache
+        };
 
     if !needs_indexing {
         return AssetDiscoveryResult::ExistingAsset;

@@ -3,11 +3,11 @@
 //! Handles persistent storage and naming of transcoded media chunks and full files.
 //! Integrated with the AppData directory for long-term caching of MKV/AVI conversions.
 
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 
 use super::detector;
 use crate::core::formats::registry::FormatRegistry;
@@ -36,7 +36,10 @@ impl TranscodeCache {
         if let Err(e) = fs::create_dir_all(&cache_dir) {
             tracing::error!("Failed to initialize transcode cache directory: {}", e);
         }
-        Self { cache_dir, registry }
+        Self {
+            cache_dir,
+            registry,
+        }
     }
 
     /// Returns the internal cache directory.

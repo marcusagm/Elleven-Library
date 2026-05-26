@@ -31,13 +31,17 @@ pub fn extract_clip_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
     let mut file = File::open(path)?;
     let mut magic = [0u8; 8];
     file.read_exact(&mut magic)?;
-    if &magic != CLIP_MAGIC { return Err(ClipError::InvalidFormat.into()); }
+    if &magic != CLIP_MAGIC {
+        return Err(ClipError::InvalidFormat.into());
+    }
     file.seek(SeekFrom::Current(16))?; // Skip length and offsets
 
     let mut sql_data = None;
     loop {
         let mut name = [0u8; 8];
-        if file.read_exact(&mut name).is_err() { break; }
+        if file.read_exact(&mut name).is_err() {
+            break;
+        }
         let len = file.read_u64::<BigEndian>()?;
         let start = file.stream_position()?;
         if &name == SQL_CHUNK_NAME {
@@ -46,7 +50,9 @@ pub fn extract_clip_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
             sql_data = Some(data);
             break;
         }
-        if &name == FOOTER_CHUNK_NAME { break; }
+        if &name == FOOTER_CHUNK_NAME {
+            break;
+        }
         file.seek(SeekFrom::Start(start + len))?;
     }
 
@@ -55,9 +61,7 @@ pub fn extract_clip_preview(path: &Path) -> Result<(Vec<u8>, String), Box<dyn st
     let temp_db = temp_dir.join(format!("mundam_clip_{}.sqlite", uuid::Uuid::new_v4()));
     std::fs::write(&temp_db, db_bytes)?;
 
-    let result = tauri::async_runtime::block_on(async {
-        query_preview(&temp_db).await
-    });
+    let result = tauri::async_runtime::block_on(async { query_preview(&temp_db).await });
 
     let _ = std::fs::remove_file(&temp_db);
     result.map_err(|e| e.into())
@@ -67,13 +71,17 @@ pub fn extract_clip_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn s
     let mut file = File::open(path)?;
     let mut magic = [0u8; 8];
     file.read_exact(&mut magic)?;
-    if &magic != CLIP_MAGIC { return Err(ClipError::InvalidFormat.into()); }
+    if &magic != CLIP_MAGIC {
+        return Err(ClipError::InvalidFormat.into());
+    }
     file.seek(SeekFrom::Current(16))?; // Skip length and offsets
 
     let mut sql_data = None;
     loop {
         let mut name = [0u8; 8];
-        if file.read_exact(&mut name).is_err() { break; }
+        if file.read_exact(&mut name).is_err() {
+            break;
+        }
         let len = file.read_u64::<BigEndian>()?;
         let start = file.stream_position()?;
         if &name == SQL_CHUNK_NAME {
@@ -82,7 +90,9 @@ pub fn extract_clip_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn s
             sql_data = Some(data);
             break;
         }
-        if &name == FOOTER_CHUNK_NAME { break; }
+        if &name == FOOTER_CHUNK_NAME {
+            break;
+        }
         file.seek(SeekFrom::Start(start + len))?;
     }
 
@@ -91,9 +101,7 @@ pub fn extract_clip_metadata(path: &Path) -> Result<serde_json::Value, Box<dyn s
     let temp_db = temp_dir.join(format!("mundam_clip_meta_{}.sqlite", uuid::Uuid::new_v4()));
     std::fs::write(&temp_db, db_bytes)?;
 
-    let result = tauri::async_runtime::block_on(async {
-        query_metadata(&temp_db).await
-    });
+    let result = tauri::async_runtime::block_on(async { query_metadata(&temp_db).await });
 
     let _ = std::fs::remove_file(&temp_db);
     result.map_err(|e| e.into())
@@ -117,19 +125,20 @@ async fn query_metadata(path: &Path) -> Result<serde_json::Value, ClipError> {
         .max_connections(1)
         .connect(&format!("sqlite://{}", path.to_str().unwrap_or_default()))
         .await?;
-        
-    let row: (f64, f64, f64) = sqlx::query_as("SELECT CanvasWidth, CanvasHeight, CanvasResolution FROM Canvas LIMIT 1")
-        .fetch_one(&pool)
-        .await
-        .map_err(|e| ClipError::DatabaseError(e.to_string()))?;
-        
+
+    let row: (f64, f64, f64) =
+        sqlx::query_as("SELECT CanvasWidth, CanvasHeight, CanvasResolution FROM Canvas LIMIT 1")
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| ClipError::DatabaseError(e.to_string()))?;
+
     pool.close().await;
-    
+
     let mut technical = serde_json::json!({
         "container": "Clip Studio Paint",
         "metadata_support": "Full"
     });
-    
+
     technical["width"] = serde_json::json!(row.0 as u32);
     technical["height"] = serde_json::json!(row.1 as u32);
     technical["dpi"] = serde_json::json!(row.2 as u32);

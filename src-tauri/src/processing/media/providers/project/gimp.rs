@@ -9,12 +9,14 @@ use crate::core::formats::capabilities::{
     MetadataCapability, PreviewCapability, ThumbnailCapability,
 };
 use crate::core::formats::provider::{FormatProvider, SupportedFormat};
-use crate::core::formats::types::{MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy};
+use crate::core::formats::types::{
+    MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
+};
 use crate::processing::media::extractors;
 
 /// Provider for GIMP XCF (.xcf) files.
 ///
-/// This provider uses internal chunk parsing to extract metadata and uses layer 
+/// This provider uses internal chunk parsing to extract metadata and uses layer
 /// compositing logic to generate previews for XCF files.
 ///
 /// # Technical Details
@@ -76,17 +78,15 @@ impl FormatProvider for GimpFormatProvider {
     ///
     /// `Vec<SupportedFormat>` - List of supported formats.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
-        vec![
-            SupportedFormat::with_metadata(
-                "GIMP Image",
-                vec!["xcf"],
-                vec!["image/x-xcf"],
-                MediaType::Project,
-                ThumbnailStrategy::NativeExtractor,
-                PreviewStrategy::NativeExtractor,
-                PlaybackStrategy::None,
-            ),
-        ]
+        vec![SupportedFormat::with_metadata(
+            "GIMP Image",
+            vec!["xcf"],
+            vec!["image/x-xcf"],
+            MediaType::Project,
+            ThumbnailStrategy::NativeExtractor,
+            PreviewStrategy::NativeExtractor,
+            PlaybackStrategy::None,
+        )]
     }
 
     /// Checks if the provider supports the given magic bytes.
@@ -151,7 +151,7 @@ impl ThumbnailCapability for GimpFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate(&self, path: &Path, _asset_id: &str, _size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             let (preview_data, _) = extractors::extract_xcf_preview(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
@@ -182,7 +182,7 @@ impl PreviewCapability for GimpFormatProvider {
     #[instrument(skip(self, path))]
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             extractors::extract_xcf_preview(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))
@@ -211,7 +211,7 @@ impl MetadataCapability for GimpFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_technical(&self, path: &Path) -> AppResult<Value> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             let metadata = extractors::extract_xcf_metadata(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;
@@ -238,7 +238,7 @@ impl MetadataCapability for GimpFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_semantic(&self, path: &Path) -> AppResult<Value> {
         let path_owned = path.to_path_buf();
-        
+
         tokio::task::spawn_blocking(move || {
             let metadata = extractors::extract_xcf_metadata(&path_owned)
                 .map_err(|error| crate::core::error::AppError::Generic(error.to_string()))?;

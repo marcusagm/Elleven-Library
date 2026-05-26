@@ -1,6 +1,4 @@
-use crate::core::models::{
-    Asset, AssetFilter, Folder, PageParams, PaginatedAssetsDto, Tag,
-};
+use crate::core::models::{Asset, AssetFilter, Folder, PageParams, PaginatedAssetsDto, Tag};
 use crate::core::repository::AssetQueryHandler;
 use crate::core::AppResult;
 use std::sync::Arc;
@@ -187,7 +185,10 @@ impl AssetQueryService {
     ///
     /// * `Ok(Vec<AssetColor>)` if successful.
     /// * `Err(AppError)` if the query fails.
-    pub async fn get_asset_colors(&self, asset_id: &str) -> AppResult<Vec<crate::core::models::AssetColor>> {
+    pub async fn get_asset_colors(
+        &self,
+        asset_id: &str,
+    ) -> AppResult<Vec<crate::core::models::AssetColor>> {
         self.repository.get_asset_colors(asset_id).await
     }
 }

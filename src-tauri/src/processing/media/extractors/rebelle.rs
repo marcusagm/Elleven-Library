@@ -66,4 +66,3 @@ pub fn extract_rebelle_preview(
 
     Err("No valid preview or image found in Rebelle archive".into())
 }
-
