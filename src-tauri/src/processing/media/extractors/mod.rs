@@ -18,6 +18,7 @@ pub mod sai;
 pub mod sai2;
 pub mod sketch;
 pub mod xcf;
+pub mod x3f;
 
 // Convenience re-exports
 pub use ai::{extract_ai_metadata, extract_ai_preview};
@@ -47,3 +48,4 @@ pub use sai::{extract_sai_dimensions, extract_sai_metadata, extract_sai_preview}
 pub use sai2::{extract_sai2_dimensions, extract_sai2_metadata, extract_sai2_preview};
 pub use sketch::{extract_sketch_metadata, extract_sketch_preview};
 pub use xcf::{extract_xcf_metadata, extract_xcf_preview};
+pub use x3f::{extract_x3f_metadata, extract_x3f_preview, generate_x3f_thumbnail};

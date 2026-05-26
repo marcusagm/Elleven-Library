@@ -141,7 +141,7 @@ impl MetadataCapability for SigmaRawFormatProvider {
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::extract_raw_metadata(&path_owned)
+            crate::processing::media::extractors::x3f::extract_x3f_metadata(&path_owned)
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
@@ -183,7 +183,7 @@ impl ThumbnailCapability for SigmaRawFormatProvider {
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::generate_raw_thumbnail(
+            crate::processing::media::extractors::x3f::generate_x3f_thumbnail(
                 &path_owned,
                 size_hint,
             )
@@ -214,7 +214,7 @@ impl PreviewCapability for SigmaRawFormatProvider {
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
         let bytes = tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::extract_raw_preview(&path_owned)
+            crate::processing::media::extractors::x3f::extract_x3f_preview(&path_owned)
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)??;
@@ -222,3 +222,49 @@ impl PreviewCapability for SigmaRawFormatProvider {
         Ok((bytes, "image/jpeg".to_string()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[tokio::test]
+    async fn test_sigma_raw_provider_capabilities() {
+        let provider = SigmaRawFormatProvider::new();
+        assert_eq!(provider.name(), "SIGMA_RAW_PROVIDER");
+        assert!(provider.supported_extensions().contains(&"x3f"));
+        assert!(provider.supports_magic_bytes(b"FOVb\x00\x00\x00\x00"));
+        
+        let sample_file_path = Path::new("/Users/marcusmaia/Documents/Desenvolvimento/Mundam/file-samples/Arquivos para testes/Image/x3f/SDIM0024.X3F");
+        if sample_file_path.exists() {
+            // Test metadata extraction
+            let metadata_result = provider.extract_technical(sample_file_path).await;
+            assert!(metadata_result.is_ok(), "Metadata extraction failed: {:?}", metadata_result.err());
+            let metadata_value = metadata_result.unwrap();
+            
+            assert!(metadata_value.get("width").is_some(), "Metadata lacks width");
+            assert!(metadata_value.get("height").is_some(), "Metadata lacks height");
+            assert!(metadata_value.get("Model").is_some(), "Metadata lacks camera model");
+            
+            let image_width = metadata_value["width"].as_u64().unwrap();
+            let image_height = metadata_value["height"].as_u64().unwrap();
+            assert_eq!(image_width, 5424);
+            assert_eq!(image_height, 3616);
+            
+            // Test preview extraction
+            let preview_result = provider.generate_preview(sample_file_path, "test_asset_id").await;
+            assert!(preview_result.is_ok(), "Preview generation failed: {:?}", preview_result.err());
+            let (preview_bytes, mime_type) = preview_result.unwrap();
+            assert_eq!(mime_type, "image/jpeg");
+            assert!(preview_bytes.starts_with(&[0xFF, 0xD8]), "Preview is not a valid JPEG");
+            
+            // Test thumbnail generation
+            let thumbnail_result = provider.generate(sample_file_path, "test_asset_id", 200).await;
+            assert!(thumbnail_result.is_ok(), "Thumbnail generation failed: {:?}", thumbnail_result.err());
+            let thumbnail_bytes = thumbnail_result.unwrap();
+            assert!(!thumbnail_bytes.is_empty(), "Generated thumbnail is empty");
+        }
+    }
+}
+
+
