@@ -775,6 +775,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmake"
+version = "0.1.58"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0f78a02292a74a88ac736019ab962ece0bc380e3f977bf72e376c5d78ff0678"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3247,6 +3256,7 @@ dependencies = [
  "base64 0.22.1",
  "byteorder",
  "chrono",
+ "cmake",
  "dashmap",
  "fast_image_resize",
  "flate2",
@@ -3254,6 +3264,7 @@ dependencies = [
  "imagesize",
  "infer 0.15.0",
  "kmeans_colors",
+ "libc",
  "memmap2",
  "mime_guess",
  "notify",

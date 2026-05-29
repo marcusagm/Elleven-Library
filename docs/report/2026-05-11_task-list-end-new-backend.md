@@ -113,10 +113,24 @@
 | 🔴            | `dcr`    | 🔴    | 🔴    | Formatos antigos sem jpeg embutido               | Removido da registry V2 por obsolescência.                | Corretamente removido suporte                                                                                                                                                                                                                         |
 | 🟢🟠           | `kdc`    | 🔴    | 🔴    | Formatos antigos sem jpeg embutido               | Removido da registry V2 por obsolescência.                | Thumbnail Ok, Metadados Ok, Dimensões Ok, Preview Ok, porem em comparação a v1 está nitidamente com problemas ao gerar thumbs e preview não mostrando as imagens corretamente.                                                                        |
 | 🟢🟠           | `dds`    | 🟢    | 🟢    | Estável.                                         | Suporte nativo via `ImageFormatProvider`.                 | Thumbnail Ok, Metadados Ok, Dimensões Ok, Preview Ok, entretanto apresentou o erro `Application error: The image's dimensions are either too small or too large` Ao tentar previsualizar as imagens, mesmo a previsualização aparecendo corretamente. |
-| 🟢🟠           | `gpr`    | 🟢    | 🟢    | Estável via LibRaw.                              | Suporte multicamadas (LibRaw + BruteForce JPEG).          | Thumbnail Não gerou, Metadados Ok, Dimensões Não gerou, Preview Não gerou                                                                                                                                                                             |
+| 🟢🟢           | `gpr`    | 🟢    | 🟢    | Estável via LibRaw.                              | Nativo em Rust (FFI c/ GoPro SDK oficial).                | Thumbnail Ok, Metadados Ok, Dimensões Ok, Preview Ok - Implementação 100% nativa usando bind (C FFI) para o SDK oficial da GoPro, suportando todos os SOs sem dependências de terceiros.                                  |
 | 🟢🟠           | `jxl`    | 🟠    | 🟢    | Apenas ícone genérico/stub                       | Suporte via `ModernImageFormatProvider` (FFmpeg).         | Thumbnail Não gerou, Metadados Ok, Dimensões Ok, Preview Não gerou                                                                                                                                                                                    |
 | 🟢🟠           | `raw`    | 🟢    | 🟢    | Suporte LibRaw (Genérico).                       | Suporte multicamadas (LibRaw + BruteForce JPEG).          | Ambas as versões sem thumbnails e preview, porem a v2 extraiu informações de dimensão e metadados corretamente. Esse formato parece ser da marca de camera leica                                                                                      |
 | 🟢🟢           | `x3f`    | 🟢    | 🟢    | Estável via LibRaw.                              | Suporte multicamadas (LibRaw + BruteForce JPEG).          | Thumbnail Ok, Metadados Ok, Dimensões Ok, Preview Ok                                                                                                                                                                                                  |
+
+Notes sobre formatos Raw:
+
+O formato **RAW** é um termo genérico que abrange centenas de formatos proprietários de diferentes fabricantes de câmeras (Canon .CR2/.CR3, Nikon .NEF, Sony .ARW, Fujifilm .RAF, Panasonic .RW2, etc.).
+
+A tabela da V2 está correta:
+*   **RAW**: O formato genérico não possui suporte nativo na V2.
+*   **gpr** e **x3f**: São formatos específicos (GoPro e Sigma/Foveon) que possuem suporte nativo e funcional na V2, conforme validado na auditoria.
+
+**Por que a V2 não tem suporte genérico para "RAW"?**
+O suporte a RAW na V1 era fornecido pelo **dcraw**, uma biblioteca C mais antiga e de manutenção intermitente.
+Na V2, optou-se por usar o **LibRaw**, que é a biblioteca padrão da indústria para processamento de RAWs modernos. O LibRaw não suporta todos os formatos genéricos de "RAW" que existiam no dcraw, mas cobre os principais e mais recentes.
+
+Podemos observar o crate https://github.com/dnglab/dnglab/tree/main que tem suporte para grande parte dos formatos raw, escrito nativamente em rust.
 
 ### Video
 | Manual Check | Extensão | V1   | V2   | V1 Notes                                  | V2 Notes                                                  | Manual chack notes                                                                                     |

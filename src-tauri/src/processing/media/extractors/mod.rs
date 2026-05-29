@@ -9,6 +9,7 @@ pub mod corelpainter;
 pub mod eps;
 pub mod figma;
 pub mod font;
+pub mod gpr;
 pub mod image;
 pub mod mdp;
 pub mod pdf;
@@ -33,6 +34,7 @@ pub use corelpainter::{extract_corel_painter_preview, extract_corelpainter_metad
 pub use eps::{extract_eps_metadata, extract_eps_ps_preview};
 pub use figma::{extract_figma_metadata, extract_figma_preview};
 pub use font::{extract_font_metadata, generate_font_thumbnail};
+pub use gpr::{extract_gpr_metadata, extract_gpr_preview, generate_gpr_thumbnail};
 pub use image::{
     extract_exr_metadata, extract_ffmpeg_image_metadata, extract_raster_metadata,
     extract_raw_metadata, extract_raw_preview, generate_ffmpeg_image_preview,

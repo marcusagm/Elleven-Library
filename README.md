@@ -52,15 +52,17 @@ Built with **Tauri v2**, **Rust**, and **SolidJS**, Mundam combines the raw powe
 ### Prerequisites
 *   **Node.js** (v18+)
 *   **Rust** (v1.70+)
+*   **CMake** (Required for compiling native C/C++ format integrations like GoPro RAW)
 *   **macOS / Linux / Windows** (Build tools required)
 
 ### Getting Started
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/marcusagm/Mundam.git
-    cd mundam
+    git clone --recursive https://github.com/marcusagm/Mundam.git
+    cd Mundam
     ```
+    > **Note**: The `--recursive` flag is required to fetch the C++ submodules (e.g., GoPro SDK). If you already cloned the repository without it, run `git submodule update --init --recursive` inside the project folder.
 
 2.  **Install Frontend Dependencies**
     ```bash
