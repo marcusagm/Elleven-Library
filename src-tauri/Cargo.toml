@@ -79,6 +79,7 @@ ttf-parser = "0.25"
 dashmap = "6.1.0"
 unicode-normalization = "0.1"
 async-recursion = "1.0.0"
+jxl-oxide = "0.12"
 
 
 

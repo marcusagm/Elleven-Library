@@ -9,21 +9,26 @@ use tracing::instrument;
 
 /// Provider for JPEG XL image files (.jxl).
 ///
-/// JPEG XL is a next-generation image format offering superior compression
-/// and HDR support. FFmpeg support for JXL is still maturing; thumbnail
-/// generation falls back to `ThumbnailStrategy::Icon` when FFmpeg cannot
-/// produce output. Metadata extraction uses FFprobe.
+/// JPEG XL is a next-generation image format (ISO/IEC 18181) offering superior
+/// compression, HDR support, progressive decoding, and lossless JPEG recompression.
+///
+/// This provider uses **`jxl-oxide`** — a 100% pure Rust decoder — for all
+/// extraction operations, completely eliminating the dependency on FFmpeg having
+/// `libjxl` compiled in. FFmpeg is retained only as a last-resort fallback.
 ///
 /// # Technical Details
 ///
 /// - **File Format**: JPEG XL (ISO/IEC 18181)
-/// - **Thumbnail Format**: Icon fallback (FFmpeg support is experimental)
-/// - **Metadata**: Dimensions via FFprobe when available
+/// - **Decoder**: `jxl-oxide` (pure Rust, memory-safe, multithreaded via Rayon)
+/// - **Thumbnail**: Native decode → resize → WebP (with FFmpeg fallback)
+/// - **Preview**: Native decode → resize to 2048px → WebP (with FFmpeg fallback)
+/// - **Metadata**: Dimensions, bit depth, color encoding, animation flags via
+///   `jxl-oxide` header parsing + EXIF via `rexif`
 ///
-/// # Features
+/// # Supported Encapsulation Modes
 ///
-/// - Extracts dimensions from JXL files using FFprobe.
-/// - Generates icon-based thumbnails as a fallback when FFmpeg does not support JXL decoding.
+/// - Bare codestream (magic: `FF 0A`)
+/// - ISOBMFF container (magic: `00 00 00 0C 4A 58 4C 20`)
 ///
 /// # Examples
 ///
@@ -83,8 +88,8 @@ impl FormatProvider for JxlFormatProvider {
             vec!["jxl"],
             vec!["image/jxl"],
             MediaType::Image,
-            ThumbnailStrategy::Icon,
-            PreviewStrategy::None,
+            ThumbnailStrategy::NativeExtractor,
+            PreviewStrategy::NativeExtractor,
             PlaybackStrategy::None,
         )]
     }
@@ -132,10 +137,11 @@ impl FormatProvider for JxlFormatProvider {
 
 #[async_trait]
 impl MetadataCapability for JxlFormatProvider {
-    /// Attempts to extract dimensions from a JXL file via FFprobe.
+    /// Extracts technical metadata from a JXL file using native `jxl-oxide` parsing.
     ///
-    /// Returns an empty object if FFprobe does not support the JXL codec in the
-    /// current installation.
+    /// Reads the JXL header to extract dimensions, bit depth, color encoding,
+    /// and animation flags. Also attempts EXIF extraction via `rexif` for
+    /// containerized JXL files.
     ///
     /// # Arguments
     ///
@@ -152,7 +158,7 @@ impl MetadataCapability for JxlFormatProvider {
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::extract_ffmpeg_image_metadata(&path_owned)
+            crate::processing::media::extractors::jxl::extract_jxl_metadata(&path_owned)
                 .unwrap_or_else(|_| serde_json::json!({}))
         })
         .await
@@ -179,7 +185,9 @@ impl MetadataCapability for JxlFormatProvider {
 
 #[async_trait]
 impl ThumbnailCapability for JxlFormatProvider {
-    /// Attempts thumbnail generation via FFmpeg; returns an error if unsupported.
+    /// Generates a WebP thumbnail from a JXL file using native `jxl-oxide` decoding.
+    ///
+    /// Falls back to FFmpeg if the native decoder fails.
     ///
     /// # Arguments
     ///
@@ -193,13 +201,13 @@ impl ThumbnailCapability for JxlFormatProvider {
     ///
     /// # Errors
     ///
-    /// * `AppError::Transcoding` - If FFmpeg does not support JXL decoding.
+    /// * `AppError::Generic` - If all decoding tiers fail.
     /// * `AppError::ExtractionProcessTimeout` - If the blocking task times out.
     #[instrument(skip(self, path))]
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::generate_ffmpeg_image_thumbnail(
+            crate::processing::media::extractors::jxl::generate_jxl_thumbnail(
                 &path_owned,
                 size_hint,
             )
@@ -211,7 +219,9 @@ impl ThumbnailCapability for JxlFormatProvider {
 
 #[async_trait]
 impl PreviewCapability for JxlFormatProvider {
-    /// Generates a preview from a JXL file.
+    /// Generates a high-quality preview from a JXL file using native `jxl-oxide` decoding.
+    ///
+    /// Falls back to FFmpeg if the native decoder fails.
     ///
     /// # Arguments
     ///
@@ -224,13 +234,13 @@ impl PreviewCapability for JxlFormatProvider {
     ///
     /// # Errors
     ///
-    /// * `AppError::Generic` - If JXL decoding fails.
+    /// * `AppError::Generic` - If all decoding tiers fail.
     /// * `AppError::ExtractionProcessTimeout` - If the blocking task times out.
     #[instrument(skip(self, path))]
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::generate_ffmpeg_image_preview(&path_owned)
+            crate::processing::media::extractors::jxl::extract_jxl_preview(&path_owned)
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
