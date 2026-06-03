@@ -4,21 +4,24 @@
 
 ### Raster formats
 
-| Format             | Extensions                     | Thumbnail | Preview | Metadata | Extraction strategy | Notes |
-| ------------------ | ------------------------------ | --------- | ------- | -------- | ------------------- | ----- |
-| Bitmap             | bmp                            | 🟢         | 🟢       | 🟢        | Native              |       |
-| Animated PNG       | apng                           | 🟢         | 🟢       | 🟢        | Native              |       |
-| Portable Network   | png                            | 🟢         | 🟢       | 🟢        | Native              |       |
-| Graphics           | gif                            | 🟢         | 🟢       | 🟢        | Native              |       |
-| Joint Photographic | jpg, jpeg, jpe, jif, jfif, jfi | 🟢         | 🟢       | 🟢        | Native              |       |
-| Tagged Image       | tiff, tif                      | 🟢         | 🟢       | 🟢        | Native              |       |
-| Truevision         | tga, targa                     | 🟢         | 🟢       | 🟢        | Native              |       |
-| High Efficiency    | heic, heif                     | 🟢         | 🟢       | 🟢        | External            |       |
-| WebP               | webp                           | 🟢         | 🟢       | 🟢        | External            |       |
-| JPEG XL            | jxl                            | 🟢         | 🟢       | 🟢        | External            |       |
-| JPEG 2000          | jp2, j2c                       | 🟢         | 🟢       | 🟢        | External            |       |
-| OpenEXR            | exr                            | 🟢         | 🟢       | 🟢        | External            |       |
-| AV1 Image Format   | avif, avif                     | 🟢         | 🟢       | 🟢        | External            |       |
+| Format                   | Extensions                     | Thumbnail | Preview | Metadata | Extraction strategy | Notes                                                               |
+| ------------------------ | ------------------------------ | --------- | ------- | -------- | ------------------- | ------------------------------------------------------------------- |
+| Bitmap                   | bmp                            | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| Animated PNG             | apng                           | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| Portable Network Graphic | png                            | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| Graphics Interchange     | gif                            | 🟢         | 🟢       | 🟢        | External            |                                                                     |
+| Joint Photographic       | jpg, jpeg, jpe, jif, jfif, jfi | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| Tagged Image             | tiff, tif                      | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| Truevision               | tga, targa                     | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| High Efficiency          | heic, heif                     | 🟢         | 🟢       | 🟢        | Native              | Intermitent problems in preview, instability in decoder M3U8 local. |
+| High Efficiency Sequence | heifs                          | 🟢         | 🟢       | 🟢        | Native              | Not tested.                                                         |
+| WebP                     | webp                           | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| JPEG XL                  | jxl                            | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| JPEG 2000                | jp2, j2c                       | 🟢         | 🟢       | 🟢        | External            |                                                                     |
+| OpenEXR                  | exr                            | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| AV1 Image Format         | avif, avifs                    | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| High Dynamic Range       | hdr                            | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
+| Portable Any Map         | pnm, ppm, pgm, pbm, pam        | 🟢         | 🟢       | 🟢        | Native              |                                                                     |
 
 ### Icon
 
@@ -32,94 +35,83 @@
 
 | Format                   | Extensions | Thumbnail | Preview | Metadata | Extraction strategy | Notes |
 | ------------------------ | ---------- | --------- | ------- | -------- | ------------------- | ----- |
-| Scalable Vector Graphics | svg        | 🟢         | 🟢       | 🟢        | Native              |       |
-| Encapsulated PostScript  | eps        | 🟢         | 🟢       | 🟢        | External            |       |
+| Scalable Vector Graphics | svg, svgz  | 🟢         | 🟢       | 🟢        | Native              |       |
+| Encapsulated PostScript  | eps        | 🟢         | 🟢       | 🟢        | Native              |       |
 | Portable Document Format | pdf        | 🟢         | 🟢       | 🟢        | External            |       |
-| PostScript               | ps         | 🟢         | 🟢       | 🟢        | External            |       |
+| PostScript               | ps         | 🟢         | 🟢       | 🟢        | Native              |       |
 
 ### Raw camera formats
 
-| Format                   | Extensions | Thumbnail | Preview | Metadata | Extraction strategy | Notes |
-| ------------------------ | ---------- | --------- | ------- | -------- | ------------------- | ----- |
-| Hasselblad Raw           | 3fr        | 🟢         | 🟢       | 🟢        | External            |       |
-| Sony Raw Format          | arw        | 🟢         | 🟢       | 🟢        | External            |       |
-| Adobe Digital            | dng        | 🟢         | 🟢       | 🟢        | External            |       |
-| Canon Raw Format         | cr2        | 🟢         | 🟢       | 🟢        | External            |       |
-| Canon Raw Format         | cr3        | 🟢         | 🟢       | 🟢        | External            |       |
-| Canon Raw Format         | crw        | 🟢         | 🟢       | 🟢        | External            |       |
-| Digital Camera Raw       | dcr        | 🟢         | 🟢       | 🟢        | External            |       |
-| Kodak Digital            | dcs        | 🟢         | 🟢       | 🟢        | External            |       |
-| DirectDraw Surface       | dds        | 🟢         | 🟢       | 🟢        | External            |       |
-| Epson Raw Format         | erf        | 🟢         | 🟢       | 🟢        | External            |       |
-| Fujifilm RAW             | fff        | 🟢         | 🟢       | 🟢        | External            |       |
-| GoPro RAW Format         | gpr        | 🟢         | 🟢       | 🟢        | External            |       |
-| Hasselblad IIQ           | iiq        | 🟢         | 🟢       | 🟢        | External            |       |
-| Kodak Digital            | kdc        | 🟢         | 🟢       | 🟢        | External            |       |
-| Mamiya Electronic Format | mef        | 🟢         | 🟢       | 🟢        | External            |       |
-| Leaf Camera RAW          | mos        | 🟢         | 🟢       | 🟢        | External            |       |
-| Nikon Electronic         | nef        | 🟢         | 🟢       | 🟢        | External            |       |
-| Nikon Raw Format         | nrw        | 🟢         | 🟢       | 🟢        | External            |       |
-| Olympus Raw Format       | orf        | 🟢         | 🟢       | 🟢        | External            |       |
-| Panasonic Raw            | pam        | 🟢         | 🟢       | 🟢        | External            |       |
-| Panasonic Raw            | pbm        | 🟢         | 🟢       | 🟢        | External            |       |
-| Pentax Raw               | pef        | 🟢         | 🟢       | 🟢        | External            |       |
-| Panasonic Raw            | pgm        | 🟢         | 🟢       | 🟢        | External            |       |
-| Panasonic Raw            | ppm        | 🟢         | 🟢       | 🟢        | External            |       |
-| Fujifilm RAW             | raf        | 🟢         | 🟢       | 🟢        | External            |       |
-| Leica Raw                | raw        | 🟢         | 🟢       | 🟢        | External            |       |
-| Panasonic Raw            | rw2        | 🟢         | 🟢       | 🟢        | External            |       |
-| Panasonic Raw            | rwl        | 🟢         | 🟢       | 🟢        | External            |       |
-| Sony Raw File            | sr2        | 🟢         | 🟢       | 🟢        | External            |       |
-| Sony Raw File            | srf        | 🟢         | 🟢       | 🟢        | External            |       |
-| Sony Raw File            | srw        | 🟢         | 🟢       | 🟢        | External            |       |
-| Sigma RAW                | x3f        | 🟢         | 🟢       | 🟢        | External            |       |
+| Format                   | Extensions         | Thumbnail | Preview | Metadata | Extraction strategy | Notes                                                         |
+| ------------------------ | ------------------ | --------- | ------- | -------- | ------------------- | ------------------------------------------------------------- |
+| Hasselblad Raw           | 3fr, fff, iiq      | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Sony Raw Format          | arw, sr2, srf, srw | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Adobe Digital Negative   | dng                | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Canon Raw Format         | cr2, cr3, crw      | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| DirectDraw Surface       | dds                | 🟢         | 🟢       | 🟢        | Native              |                                                               |
+| DJI RAW                  | dcr                | 🔴         | 🔴       | 🔴        | None                | Removed from the v2 registry by obsolescence.                 |
+| Epson Raw Format         | erf                | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| GoPro RAW Format         | gpr                | 🟢         | 🟢       | 🟢        | Native              |                                                               |
+| Kodak Digital            | kdc                | 🟢         | 🟢       | 🟢        | External            | No embedded preview for legacy formats (DC120).               |
+| Mamiya Electronic Format | mef                | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Leaf Camera RAW          | mos                | 🟢         | 🟢       | 🟢        | External            | Metadata generating 'Unknown to this library' in some fields. |
+| Minolta Raw              | mrw                | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Nikon Electronic         | nef, nrw           | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Olympus Raw Format       | orf                | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Panasonic Raw            | rw2, rwl           | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Pentax Raw               | pef                | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Fujifilm RAW             | raf                | 🟢         | 🟢       | 🟢        | External            |                                                               |
+| Leica Raw                | raw                | 🔴         | 🔴       | 🟢        | External            | Both versions without thumbnails and preview.                 |
+| Sigma RAW                | x3f                | 🟢         | 🟢       | 🟢        | External            |                                                               |
 
 ## Project
 
 ### Design applications
 
-| Format              | Extensions | Thumbnail | Preview | Metadata | Extraction strategy | Notes |
-| ------------------- | ---------- | --------- | ------- | -------- | ------------------- | ----- |
-| Adobe Photoshop     | psd        | 🟢         | 🟢       | 🟢        | Native              |       |
-| Adobe Illustrator   | ai         | 🟢         | 🟢       | 🟢        | External            |       |
-| Adobe After Effects | aep        | 🟢         | 🟢       | 🟢        | External            |       |
-| Adobe Premiere      | prproj     | 🟢         | 🟢       | 🟢        | External            |       |
-| Adobe Animate       | fla        | 🟢         | 🟢       | 🟢        | External            |       |
-| Adobe Audition      | au         | 🟢         | 🟢       | 🟢        | External            |       |
-| Affinity            | af         | 🟢         | 🟢       | 🟢        | External            |       |
-| Affinity Designer   | afdesign   | 🟢         | 🟢       | 🟢        | External            |       |
-| Affinity Photo      | afphoto    | 🟢         | 🟢       | 🟢        | External            |       |
-| Affinity Publisher  | afpub      | 🟢         | 🟢       | 🟢        | External            |       |
-| Aseprite            | ase        | 🟢         | 🟢       | 🟢        | External            |       |
-| Clip Studio Paint   | clip       | 🟢         | 🟢       | 🟢        | External            |       |
-| Corel Painter       | rif        | 🟢         | 🟢       | 🟢        | External            |       |
-| CorelDRAW           | cdr        | 🟢         | 🟢       | 🟢        | External            |       |
-| Figma               | fig        | 🟢         | 🟢       | 🟢        | External            |       |
-| FireAlpaca          | alp        | 🟢         | 🟢       | 🟢        | External            |       |
-| GIMP                | xcf        | 🟢         | 🟢       | 🟢        | External            |       |
-| Krita               | krita      | 🟢         | 🟢       | 🟢        | External            |       |
-| MediBang            | medibang   | 🟢         | 🟢       | 🟢        | External            |       |
-| Paint Tool SAI      | sai        | 🟢         | 🟢       | 🟢        | Native              |       |
-| Paint Tool SAI2     | sai2       | 🟢         | 🟢       | 🟢        | Native              |       |
-| Penpot              | penpot     | 🟢         | 🟢       | 🟢        | External            |       |
-| Rebelle             | reb        | 🟢         | 🟢       | 🟢        | External            |       |
-| Sketch              | sketch     | 🟢         | 🟢       | 🟢        | External            |       |
-| Sketchbook          | tiff       | 🟢         | 🟢       | 🟢        | External            |       |
-| Piskel              | piskel     | 🔴         | 🔴       | 🔴        | External            |       |
-| Procreate           | pro        | 🔴         | 🔴       | 🔴        | External            |       |
+| Format              | Extensions                   | Thumbnail | Preview | Metadata | Extraction strategy | Notes                                   |
+| ------------------- | ---------------------------- | --------- | ------- | -------- | ------------------- | --------------------------------------- |
+| Adobe Photoshop     | psd, psb                     | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Adobe Illustrator   | ai                           | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Adobe After Effects | aep                          | 🔴         | 🔴       | 🔴        | External            | Generic icon stub, did not index in v2. |
+| Adobe Premiere      | prproj                       | 🔴         | 🔴       | 🔴        | External            | Generic icon stub, did not index in v2. |
+| Adobe Animate       | fla                          | 🟢         | 🟢       | 🟢        | External            |                                         |
+| Adobe Audition      | au                           | 🟢         | 🟢       | 🟢        | External            |                                         |
+| Affinity            | af, afdesign, afphoto, afpub | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Aseprite            | ase, aseprite                | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Clip Studio Paint   | clip                         | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Corel Painter       | rif, riff                    | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| CorelDRAW           | cdr                          | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Figma               | fig                          | 🟢         | 🟢       | 🟢        | Native              | May improve comments extraction.        |
+| FireAlpaca          | alp                          | 🟢         | 🟢       | 🟢        | External            |                                         |
+| GIMP                | xcf                          | 🟢         | 🟢       | 🟢        | Native              | Complex blending modes pending.         |
+| Krita               | kra, krz, krita              | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| MediBang            | mdp, medibang                | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Paint Tool SAI      | sai, sai2                    | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Penpot              | penpot                       | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Rebelle             | reb                          | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Sketch              | sketch                       | 🟢         | 🟢       | 🟢        | Native              |                                         |
+| Sketchbook          | tiff                         | 🟢         | 🟢       | 🟢        | External            |                                         |
+| Piskel              | piskel                       | 🔴         | 🔴       | 🔴        | External            |                                         |
+| Procreate           | pro                          | 🔴         | 🔴       | 🔴        | External            |                                         |
+| ARRIRAW             | ari                          | 🟠         | 🟠       | 🟠        | External            | Not tested.                             |
+| Blackmagic RAW      | braw                         | 🔴         | 🔴       | 🔴        | External            | v2 did not index, identified as video.  |
+| DaVinci Resolve     | drp                          | 🟠         | 🟠       | 🟠        | External            | Not tested.                             |
+| Final Cut Pro       | fcpxml                       | 🟠         | 🟠       | 🟠        | External            | Not tested.                             |
+| Adobe InDesign      | idml, indd                   | 🟠         | 🟠       | 🟠        | External            | Not tested.                             |
+| RED Digital Cinema  | r3d                          | 🟠         | 🟠       | 🟠        | External            | Not tested.                             |
 
 ### Mind Maps, flowcharts and sketch-likes
 
 | Format     | Extensions                  | Thumbnail | Preview | Metadata | Extraction strategy | Notes |
 | ---------- | --------------------------- | --------- | ------- | -------- | ------------------- | ----- |
-| XMind      | xmind                       | 🟢         | 🟢       | 🟢        | External            |       |
-| excalidraw | excalidraw, excalidraw.json | 🟢         | 🟢       | 🟢        | External            | 🟢     |
-| tldraw     | tldraw, tldraw.json         | 🟢         | 🟢       | 🟢        | External            | 🟢     |
-| drawio     | drawio, drawio.xml          | 🟢         | 🟢       | 🟢        | External            | 🟢     |
-| Miro       | miro, miro.json             | 🟢         | 🟢       | 🟢        | External            | 🟢     |
-| FigJam     | figjam, figjam.json         | 🟢         | 🟢       | 🟢        | External            | 🟢     |
-| Mural      | mural, mural.json           | 🟢         | 🟢       | 🟢        | External            | 🟢     |
-| eraser.io  | eraser.io, eraser.io.json   | 🟢         | 🟢       | 🟢        | External            | 🟢     |
+| XMind      | xmind                       | 🟢         | 🟢       | 🟢        | Native              |       |
+| excalidraw | excalidraw, excalidraw.json | 🟢         | 🟢       | 🟢        | External            |       |
+| tldraw     | tldraw, tldraw.json         | 🟢         | 🟢       | 🟢        | External            |       |
+| drawio     | drawio, drawio.xml          | 🟢         | 🟢       | 🟢        | External            |       |
+| Miro       | miro, miro.json             | 🟢         | 🟢       | 🟢        | External            |       |
+| FigJam     | figjam, figjam.json         | 🟢         | 🟢       | 🟢        | External            |       |
+| Mural      | mural, mural.json           | 🟢         | 🟢       | 🟢        | External            |       |
+| eraser.io  | eraser.io, eraser.io.json   | 🟢         | 🟢       | 🟢        | External            |       |
 
 ## 3D Models
 
@@ -157,74 +149,82 @@
 
 ## Font
 
-| Format                 | Extensions                | Thumbnail | Preview | Metadata | Extraction strategy | Notes |
-| ---------------------- | ------------------------- | --------- | ------- | -------- | ------------------- | ----- |
-| TrueType Font          | ttf, ttc                  | 🟢         | 🟢       | 🟢        | External            |       |
-| OpenType Font          | otf, otc                  | 🟢         | 🟢       | 🟢        | External            |       |
-| Web Open Font Format   | woff, woff2               | 🟢         | 🟢       | 🟢        | External            |       |
-| Variable Font          | vttf, vf, fvar            | 🟢         | 🟢       | 🟢        | External            |       |
-| Color Font             | color, COLR               | 🟢         | 🟢       | 🟢        | External            |       |
-| OpenType Variable Font | opentype, variable, vfont | 🟢         | 🟢       | 🟢        | External            |       |
-| FontForge Font         | sf, sfd                   | 🟢         | 🟢       | 🟢        | External            |       |
-| Embedded OpenType Font | eot                       | 🟢         | 🟢       | 🟢        | External            |       |
+| Format                 | Extensions                | Thumbnail | Preview | Metadata | Extraction strategy | Notes                              |
+| ---------------------- | ------------------------- | --------- | ------- | -------- | ------------------- | ---------------------------------- |
+| TrueType Font          | ttf, ttc                  | 🟢         | 🟢       | 🟢        | Native              |                                    |
+| OpenType Font          | otf, otc                  | 🟢         | 🟢       | 🟢        | Native              |                                    |
+| Web Open Font Format   | woff, woff2               | 🟢         | 🟢       | 🟢        | Native              |                                    |
+| Variable Font          | vttf, vf, fvar            | 🔴         | 🔴       | 🔴        | None                | Not supported.                     |
+| Color Font             | color, COLR               | 🔴         | 🔴       | 🔴        | None                | Not supported.                     |
+| OpenType Variable Font | opentype, variable, vfont | 🔴         | 🔴       | 🔴        | None                | Not supported.                     |
+| FontForge Font         | sf, sfd                   | 🔴         | 🔴       | 🔴        | None                | Not supported.                     |
+| Embedded OpenType Font | eot                       | 🔴         | 🔴       | 🔴        | None                | Not supported by glyph extraction. |
 
 ## Audio Formats
 
-| Format                        | Extensions      | Thumbnail | Playback | Metadata | Thumbnail strategy | Playback strategy | Extraction strategy | Notes |
-| ----------------------------- | --------------- | --------- | -------- | -------- | ------------------ | ----------------- | ------------------- | ----- |
-| MIDI                          | mid, midi       | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| MP3                           | mp3             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| WAV                           | wav             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| AAC                           | aac             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Ogg Vorbis                    | ogg, oga        | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| AIFF/AIFF-C                   | aiff, aif, aifc | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| CAF                           | caf             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| WAV                           | wv              | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Apple Lossless Audio Codec    | m4a             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Audio Interchange File Format | aiff, aif       | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Dolby Digital Audio           | ac3             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Digital Theater Systems       | dts             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| FLAC                          | flac            | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| MP3                           | mp3             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| MPEG-4 Part 14                | m4a             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Opus                          | opus            | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Ogg Vorbis                    | ogg, oga        | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| RealAudio                     | ra              | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Sun Microsystems              | au, snd         | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| True Audio Codec              | tta             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Windows Media Audio           | wma             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Waveform Audio File Format    | wav             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
-| Wave64                        | wav64           | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              |       |
+| Format                        | Extensions      | Thumbnail | Playback | Metadata | Thumbnail strategy | Playback strategy | Extraction strategy | Notes                                               |
+| ----------------------------- | --------------- | --------- | -------- | -------- | ------------------ | ----------------- | ------------------- | --------------------------------------------------- |
+| Advanced Audio Coding         | aac             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Audible Audio                 | aax             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | ffmpeg              | Not tested.                                         |
+| Dolby Digital Audio           | ac3             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Audio Interchange File Format | aiff, aif, aifc | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Adaptive Multi-Rate           | amr             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              |                                                     |
+| Monkey's Audio                | ape             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              |                                                     |
+| Broadcast Wave Format         | bwf             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Not tested.                                         |
+| Core Audio Format             | caf             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Digital Theater Systems       | dts             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Free Lossless Audio Codec     | flac            | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Apple Lossless Audio Codec    | m4a             | 🟢         | 🔴        | 🟢        | Generic icon       | hls               | Native              | Failed to load media in frontend.                   |
+| MPEG-4 Ringtone               | m4r             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              |                                                     |
+| Musical Instrument Digital    | mid, midi       | 🔴         | 🔴        | 🔴        | Generic icon       | hls               | ffmpeg              | FFprobe failed for transcoding.                     |
+| Matroska Audio                | mka             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              |                                                     |
+| MPEG-1 Audio Layer II         | mp2             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| MP3                           | mp3             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Ogg Audio                     | oga, ogg        | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Opus                          | opus            | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| RealAudio                     | ra              | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Speex                         | spx             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Waveform Audio File Format    | wav             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| Windows Media Audio           | wma             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
+| WavPack                       | wv              | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
 
 ## Video Formats
 
-| Format | Extensions | Thumbnail | Playback | Metadata | Thumbnail strategy | Playback strategy | Extraction strategy | Notes  |
-| ------ | ---------- | --------- | -------- | -------- | ------------------ | ----------------- | ------------------- | ------ |
-| 3G2    | 3g2        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| 3GP    | 3gp        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| ASF    | asf        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| AVI    | avi        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| F4V    | f4v        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| FLV    | flv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| HEVC   | hevc       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| M2TS   | m2ts       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| M2V    | m2v        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| M4V    | m4v        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| MJPEG  | mjpeg      | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| MOV    | mov        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| MTS    | mts        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| MP4    | mp4        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| MPEG   | mpeg       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| MPG    | mpg        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| MKV    | mkv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| OGV    | ogv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| RM     | rm         | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| WEBM   | webm       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| WMV    | wmv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| WTV    | wtv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| SWF    | swf        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| TS     | ts         | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
-| VOB    | vob        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | ffmpeg              | ffmpeg |
+| Format | Extensions | Thumbnail | Playback | Metadata | Thumbnail strategy | Playback strategy | Extraction strategy | Notes                              |
+| ------ | ---------- | --------- | -------- | -------- | ------------------ | ----------------- | ------------------- | ---------------------------------- |
+| 3G2    | 3g2        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| 3GP    | 3gp        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| ASF    | asf        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| AVI    | avi        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| DivX   | divx       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              | Not tested.                        |
+| F4V    | f4v        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| FLV    | flv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| H.264  | h264       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              | Not tested.                        |
+| H.265  | h265       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              | Not tested.                        |
+| HEVC   | hevc       | 🟠         | 🟠        | 🟢        | ffmpeg             | hls               | Native              | Instability in local M3U8 decoder. |
+| M2TS   | m2ts       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| M2V    | m2v        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| M4V    | m4v        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| MJPEG  | mjpeg      | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| MJPG   | mjpg       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              | Not tested.                        |
+| MKV    | mkv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| MOV    | mov        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| MP4    | mp4        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| MPEG   | mpeg       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| MPG    | mpg        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| MTS    | mts        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| MXF    | mxf        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| OGV    | ogv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| QT     | qt         | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              | Not tested.                        |
+| RM     | rm         | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| RMVB   | rmvb       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              | Not tested.                        |
+| SWF    | swf        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| TS     | ts         | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| VOB    | vob        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| WEBM   | webm       | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| WMV    | wmv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| WTV    | wtv        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              |                                    |
+| Y4M    | y4m        | 🟢         | 🟢        | 🟢        | ffmpeg             | hls               | Native              | Not tested.                        |
 
 ## Documents
 

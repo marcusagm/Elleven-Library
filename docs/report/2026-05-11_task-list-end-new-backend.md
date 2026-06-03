@@ -312,11 +312,11 @@ Podemos observar o crate https://github.com/dnglab/dnglab/tree/main que tem supo
 
 ## Sem arquivos para testes
 
-- **Imagens**: `avifs`, `gpr`, `heifs`, `mjpg`
+- **Imagens**: `avifs, `heifs`, `mjpg`
 - **Áudio**: `aax`, `bwf`
 - **Vídeo**: `divx`, `h264`, `h265`, `qt`, `rmvb`, `y4m`
 - **Modelos 3D**: `dwg`, `iges`, `igs`, `sculpt`, `step`, `stp`, `usd`, `usda`, `usdc`, `usdz`, `zpr`, `ztl`
-- **Projeto**: `ari`, `drp`, `fcpxml`, `idml`, `indd`, `kra~`, `krz`, `psb`, `r3d`, `riff`
+- **Projeto**: `ari`, `drp`, `fcpxml`, `idml`, `indd`, `krz`, `psb`, `r3d`, `riff`
 - **Arquivo**: `7z`, `cbz`, `gz`, `tar`, `zip`
 - **Fontes**: `eof`
 - **Documentos**: `md`
