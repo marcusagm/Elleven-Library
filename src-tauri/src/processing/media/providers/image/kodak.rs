@@ -151,7 +151,7 @@ impl MetadataCapability for KodakRawFormatProvider {
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::extract_raw_metadata(&path_owned)
+            crate::processing::media::extractors::kdc::extract_kdc_metadata(&path_owned)
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
@@ -198,7 +198,7 @@ impl ThumbnailCapability for KodakRawFormatProvider {
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::generate_raw_thumbnail(
+            crate::processing::media::extractors::kdc::generate_kdc_thumbnail(
                 &path_owned,
                 size_hint,
             )
@@ -229,7 +229,7 @@ impl PreviewCapability for KodakRawFormatProvider {
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
         let bytes = tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::extract_raw_preview(&path_owned)
+            crate::processing::media::extractors::kdc::extract_kdc_preview(&path_owned)
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)??;

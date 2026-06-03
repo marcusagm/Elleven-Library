@@ -3278,6 +3278,7 @@ dependencies = [
  "resvg",
  "rexif",
  "rsraw",
+ "rsraw-sys",
  "serde",
  "serde_json",
  "sqlx",

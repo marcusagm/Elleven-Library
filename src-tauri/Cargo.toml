@@ -90,4 +90,5 @@ async-recursion = "1.0.0"
 # opt-level = 3
 
 [dev-dependencies]
+rsraw-sys = "0.1.0"
 tempfile = "3.10"

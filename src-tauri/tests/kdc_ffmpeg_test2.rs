@@ -1,0 +1,12 @@
+use mundam_lib::processing::media::extractors::image::*;
+use std::path::Path;
+
+#[test]
+fn run() {
+    let path = Path::new("/Users/marcusmaia/Documents/Desenvolvimento/Mundam/file-samples/Arquivos para testes/Image/kdc/RAW_KODAK_DC120_WITH_JPEG.KDC");
+    let res = generate_ffmpeg_image_preview(path);
+    match res {
+        Ok((data, _)) => println!("FFmpeg extracted {} bytes", data.len()),
+        Err(e) => println!("FFmpeg failed: {:?}", e),
+    }
+}

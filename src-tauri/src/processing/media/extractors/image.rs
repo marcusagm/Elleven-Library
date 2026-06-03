@@ -478,22 +478,36 @@ pub fn extract_raw_preview(path: &Path) -> AppResult<Vec<u8>> {
 
     if let Ok(Some(thumbnail_data)) = quickraw_result {
         if let Ok(jpeg_bytes) = ensure_jpeg_bytes(thumbnail_data) {
-            return Ok(jpeg_bytes);
+            if jpeg_bytes.len() > 50_000 {
+                return Ok(jpeg_bytes);
+            }
         }
     }
 
     // Tier 1: LibRaw embedded preview
     if let Ok(embedded_preview_bytes) = extract_libraw_preview(path) {
         if let Ok(jpeg_bytes) = ensure_jpeg_bytes(embedded_preview_bytes) {
-            return Ok(jpeg_bytes);
+            if jpeg_bytes.len() > 50_000 {
+                return Ok(jpeg_bytes);
+            }
         }
     }
 
     // Tier 2: Brute-force JPEG scan
-    if let Ok((embedded_preview_bytes, _)) = brute_force_extract_jpeg_bytes(path) {
+    if let Ok((embedded_preview_bytes, pixel_count)) = brute_force_extract_jpeg_bytes(path) {
         if let Ok(jpeg_bytes) = ensure_jpeg_bytes(embedded_preview_bytes) {
-            return Ok(jpeg_bytes);
+            if pixel_count > 500_000 || jpeg_bytes.len() > 50_000 {
+                // Validate that the extracted JPEG is actually valid
+                if image::load_from_memory(&jpeg_bytes).is_ok() {
+                    return Ok(jpeg_bytes);
+                }
+            }
         }
+    }
+
+    // Tier 2.5: Full LibRaw decode (slow but provides maximum quality for files without large embedded previews like Kodak EasyShare)
+    if let Ok(decoded_bytes) = extract_libraw_full_decode(path) {
+        return Ok(decoded_bytes);
     }
 
     // Tier 3: FFmpeg fallback (extracts full size or max 2048px JPEG)
@@ -663,9 +677,63 @@ fn extract_libraw_preview(path: &Path) -> AppResult<Vec<u8>> {
     Ok(jpeg_buffer)
 }
 
+/// Performs a full demosaicing and decoding of a RAW file using LibRaw.
+/// This is used as a fallback for files that lack embedded previews.
+fn extract_libraw_full_decode(path: &Path) -> AppResult<Vec<u8>> {
+    let file_handle = std::fs::File::open(path).map_err(AppError::Io)?;
+    let memory_map = unsafe {
+        memmap2::MmapOptions::new()
+            .map(&file_handle)
+            .map_err(AppError::Io)?
+    };
+
+    let mut raw_image = rsraw::RawImage::open(&memory_map)
+        .map_err(|error| AppError::Generic(format!("LibRaw open error: {:?}", error)))?;
+
+    raw_image.unpack().map_err(|error| AppError::Generic(format!("LibRaw unpack error: {:?}", error)))?;
+    
+    let mut image = raw_image.process::<{ rsraw::BIT_DEPTH_8 }>()
+        .map_err(|error| AppError::Generic(format!("LibRaw process error: {:?}", error)))?;
+        
+    let expected_len = (image.width() * image.height() * image.colors() as u32) as usize;
+    if image.len() != expected_len {
+        return Err(AppError::Generic(format!("LibRaw decoded size mismatch: expected {} ({}x{}x{}), got {}", expected_len, image.width(), image.height(), image.colors(), image.len())));
+    }
+    
+    let dynamic_image = if image.colors() == 3 {
+        image::RgbImage::from_raw(image.width(), image.height(), image.to_vec())
+            .map(image::DynamicImage::ImageRgb8)
+            .ok_or_else(|| AppError::Generic("Failed to construct RGB image from LibRaw decode".into()))?
+    } else if image.colors() == 4 {
+        image::RgbaImage::from_raw(image.width(), image.height(), image.to_vec())
+            .map(image::DynamicImage::ImageRgba8)
+            .ok_or_else(|| AppError::Generic("Failed to construct RGBA image from LibRaw decode".into()))?
+    } else if image.colors() == 1 {
+        image::GrayImage::from_raw(image.width(), image.height(), image.to_vec())
+            .map(image::DynamicImage::ImageLuma8)
+            .ok_or_else(|| AppError::Generic("Failed to construct Gray image from LibRaw decode".into()))?
+    } else {
+        return Err(AppError::Generic(format!("Unsupported LibRaw colors: {}", image.colors())));
+    };
+
+    let mut jpeg_buffer = Vec::new();
+    let mut cursor = std::io::Cursor::new(&mut jpeg_buffer);
+    dynamic_image
+        .to_rgb8()
+        .write_to(&mut cursor, image::ImageFormat::Jpeg)
+        .map_err(|encode_error| {
+            AppError::Generic(format!(
+                "Failed to encode LibRaw full decode to JPEG: {}",
+                encode_error
+            ))
+        })?;
+
+    Ok(jpeg_buffer)
+}
+
 /// Scans the first 8 MB of a file looking for JPEG start-of-image markers and
 /// returns the largest valid JPEG image found.
-fn brute_force_extract_jpeg_bytes(path: &Path) -> AppResult<(Vec<u8>, u32)> {
+pub fn brute_force_extract_jpeg_bytes(path: &Path) -> AppResult<(Vec<u8>, u32)> {
     let file_handle = std::fs::File::open(path).map_err(AppError::Io)?;
     let memory_map = unsafe {
         memmap2::MmapOptions::new()
