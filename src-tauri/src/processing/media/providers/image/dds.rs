@@ -149,7 +149,17 @@ impl MetadataCapability for DdsFormatProvider {
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::extract_raster_metadata(&path_owned)
+            use ddsfile::Dds;
+            let file = std::fs::File::open(&path_owned).map_err(crate::core::error::AppError::Io)?;
+            let mut reader = std::io::BufReader::new(file);
+            let dds = Dds::read(&mut reader).map_err(|e| crate::core::error::AppError::Generic(format!("Failed to parse DDS: {}", e)))?;
+
+            Ok(serde_json::json!({
+                "width": dds.get_width(),
+                "height": dds.get_height(),
+                "format": "DDS",
+                "mipmap_count": dds.get_num_mipmap_levels(),
+            }))
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
@@ -196,8 +206,16 @@ impl ThumbnailCapability for DdsFormatProvider {
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::generate_hdr_exr_dds_thumbnail(
-                &path_owned,
+            use ddsfile::Dds;
+            let file = std::fs::File::open(&path_owned).map_err(crate::core::error::AppError::Io)?;
+            let mut reader = std::io::BufReader::new(file);
+            let dds = Dds::read(&mut reader).map_err(|e| crate::core::error::AppError::Generic(format!("Failed to parse DDS: {}", e)))?;
+
+            let dynamic_image = image_dds::image_from_dds(&dds, 0)
+                .map_err(|e| crate::core::error::AppError::Generic(format!("Failed to decode DDS image: {}", e)))?;
+
+            crate::processing::media::extractors::image::process_and_encode_webp(
+                image::DynamicImage::ImageRgba8(dynamic_image),
                 size_hint,
             )
         })
@@ -227,7 +245,19 @@ impl PreviewCapability for DdsFormatProvider {
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::image::generate_hdr_exr_dds_preview(&path_owned)
+            use ddsfile::Dds;
+            let file = std::fs::File::open(&path_owned).map_err(crate::core::error::AppError::Io)?;
+            let mut reader = std::io::BufReader::new(file);
+            let dds = Dds::read(&mut reader).map_err(|e| crate::core::error::AppError::Generic(format!("Failed to parse DDS: {}", e)))?;
+
+            let dynamic_image = image_dds::image_from_dds(&dds, 0)
+                .map_err(|e| crate::core::error::AppError::Generic(format!("Failed to decode DDS image: {}", e)))?;
+
+            let webp_bytes = crate::processing::media::extractors::image::process_and_encode_webp(
+                image::DynamicImage::ImageRgba8(dynamic_image),
+                2048,
+            )?;
+            Ok((webp_bytes, "image/webp".to_string()))
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

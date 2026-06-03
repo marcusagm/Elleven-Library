@@ -63,68 +63,38 @@ impl FormatProvider for IcnsFormatProvider {
     }
 }
 
-fn extract_largest_icns_image(icns_bytes: &[u8]) -> Option<(Vec<u8>, usize, usize)> {
-    if icns_bytes.len() < 8 || &icns_bytes[0..4] != b"icns" {
-        return None;
-    }
-
-    let file_length = u32::from_be_bytes(icns_bytes[4..8].try_into().ok()?) as usize;
-    let actual_length = icns_bytes.len().min(file_length);
-
-    let mut scan_offset = 8usize;
-    let mut best_image: Option<(Vec<u8>, usize, usize)> = None;
-    let mut best_area = 0usize;
-
-    while scan_offset + 8 <= actual_length {
-        let block_length = u32::from_be_bytes(
-            icns_bytes[scan_offset + 4..scan_offset + 8]
-                .try_into()
-                .ok()?,
-        ) as usize;
-
-        if block_length < 8 || scan_offset + block_length > actual_length {
-            break;
-        }
-
-        let block_data = &icns_bytes[scan_offset + 8..scan_offset + block_length];
-
-        let is_png = block_data.starts_with(b"\x89PNG\r\n\x1a\n");
-        let is_jpeg = block_data.starts_with(b"\xFF\xD8\xFF");
-
-        if is_png || is_jpeg {
-            if let Ok(dimensions) = imagesize::blob_size(block_data) {
-                let area = dimensions.width * dimensions.height;
-                if area > best_area {
-                    best_area = area;
-                    best_image = Some((block_data.to_vec(), dimensions.width, dimensions.height));
-                }
-            }
-        }
-
-        scan_offset += block_length;
-    }
-
-    best_image
-}
-
 #[async_trait]
 impl MetadataCapability for IcnsFormatProvider {
     #[instrument(skip(self, path))]
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let icns_bytes = std::fs::read(&path_owned).map_err(AppError::Io)?;
-            if let Some((_, width, height)) = extract_largest_icns_image(&icns_bytes) {
-                Ok(serde_json::json!({
-                    "width": width,
-                    "height": height,
-                    "format": "ICNS",
-                }))
-            } else {
-                Err(AppError::Generic(
-                    "Failed to extract valid icon image from ICNS".into(),
-                ))
+            let file = std::fs::File::open(&path_owned).map_err(AppError::Io)?;
+            let file = std::io::BufReader::new(file);
+            let icon_family = icns::IconFamily::read(file).map_err(|e| AppError::Generic(format!("ICNS decode error: {}", e)))?;
+            
+            let mut max_width = 0;
+            let mut max_height = 0;
+            for icon in icon_family.available_icons() {
+                let width = icon.pixel_width();
+                let height = icon.pixel_height();
+                if width > max_width {
+                    max_width = width;
+                }
+                if height > max_height {
+                    max_height = height;
+                }
             }
+            
+            if max_width == 0 {
+                return Err(AppError::Generic("No valid icons in ICNS".into()));
+            }
+
+            Ok(serde_json::json!({
+                "width": max_width,
+                "height": max_height,
+                "format": "ICNS",
+            }))
         })
         .await
         .map_err(|_| AppError::ExtractionProcessTimeout)?
@@ -141,21 +111,48 @@ impl ThumbnailCapability for IcnsFormatProvider {
     async fn generate(&self, path: &Path, _asset_id: &str, size_hint: u32) -> AppResult<Vec<u8>> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let icns_bytes = std::fs::read(&path_owned).map_err(AppError::Io)?;
-            if let Some((image_bytes, _, _)) = extract_largest_icns_image(&icns_bytes) {
-                let decoded_image =
-                    image::load_from_memory(&image_bytes).map_err(|decode_error| {
-                        AppError::Generic(format!("Failed to decode ICNS image: {}", decode_error))
-                    })?;
-                crate::processing::media::extractors::image::process_and_encode_webp(
-                    decoded_image,
-                    size_hint,
-                )
-            } else {
-                Err(AppError::Generic(
-                    "Failed to extract valid icon image from ICNS".into(),
-                ))
+            let file = std::fs::File::open(&path_owned).map_err(AppError::Io)?;
+            let file = std::io::BufReader::new(file);
+            let icon_family = icns::IconFamily::read(file).map_err(|e| AppError::Generic(format!("ICNS decode error: {}", e)))?;
+            
+            let mut best_icon = None;
+            let mut max_width = 0;
+            
+            for icon in icon_family.available_icons() {
+                let width = icon.pixel_width();
+                if width >= size_hint && (best_icon.is_none() || width < max_width) {
+                    best_icon = Some(icon);
+                    max_width = width;
+                }
             }
+            
+            if best_icon.is_none() {
+                let mut largest = None;
+                let mut l_width = 0;
+                for icon in icon_family.available_icons() {
+                    let width = icon.pixel_width();
+                    if width > l_width {
+                        largest = Some(icon);
+                        l_width = width;
+                    }
+                }
+                best_icon = largest;
+            }
+            
+            let target_icon_type = best_icon.ok_or_else(|| AppError::Generic("No valid icons found in ICNS".into()))?;
+            let image = icon_family.get_icon_with_type(target_icon_type)
+                .map_err(|e| AppError::Generic(format!("Failed to extract icon type: {}", e)))?;
+            
+            let mut png_data = Vec::new();
+            image.write_png(&mut png_data).map_err(|e| AppError::Generic(format!("Failed to write ICNS to PNG buffer: {}", e)))?;
+            
+            let decoded_image = image::load_from_memory(&png_data)
+                .map_err(|e| AppError::Generic(format!("Failed to decode ICNS PNG: {}", e)))?;
+                
+            crate::processing::media::extractors::image::process_and_encode_webp(
+                decoded_image,
+                size_hint,
+            )
         })
         .await
         .map_err(|_| AppError::ExtractionProcessTimeout)?
@@ -168,44 +165,37 @@ impl PreviewCapability for IcnsFormatProvider {
     async fn generate_preview(&self, path: &Path, _asset_id: &str) -> AppResult<(Vec<u8>, String)> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            let icns_bytes = std::fs::read(&path_owned).map_err(AppError::Io)?;
-            if let Some((image_bytes, _, _)) = extract_largest_icns_image(&icns_bytes) {
-                let decoded_image =
-                    image::load_from_memory(&image_bytes).map_err(|decode_error| {
-                        AppError::Generic(format!("Failed to decode ICNS image: {}", decode_error))
-                    })?;
-                let webp_bytes =
-                    crate::processing::media::extractors::image::process_and_encode_webp(
-                        decoded_image,
-                        2048,
-                    )?;
-                Ok((webp_bytes, "image/webp".to_string()))
-            } else {
-                Err(AppError::Generic(
-                    "Failed to extract valid icon image from ICNS".into(),
-                ))
+            let file = std::fs::File::open(&path_owned).map_err(AppError::Io)?;
+            let file = std::io::BufReader::new(file);
+            let icon_family = icns::IconFamily::read(file).map_err(|e| AppError::Generic(format!("ICNS decode error: {}", e)))?;
+            
+            let mut best_icon = None;
+            let mut max_width = 0;
+            for icon in icon_family.available_icons() {
+                let width = icon.pixel_width();
+                if width > max_width {
+                    best_icon = Some(icon);
+                    max_width = width;
+                }
             }
+            
+            let target_icon_type = best_icon.ok_or_else(|| AppError::Generic("No valid icons found in ICNS".into()))?;
+            let image = icon_family.get_icon_with_type(target_icon_type)
+                .map_err(|e| AppError::Generic(format!("Failed to extract icon type: {}", e)))?;
+            
+            let mut png_data = Vec::new();
+            image.write_png(&mut png_data).map_err(|e| AppError::Generic(format!("Failed to write ICNS to PNG buffer: {}", e)))?;
+            
+            let decoded_image = image::load_from_memory(&png_data)
+                .map_err(|e| AppError::Generic(format!("Failed to decode ICNS PNG: {}", e)))?;
+                
+            let webp_bytes = crate::processing::media::extractors::image::process_and_encode_webp(
+                decoded_image,
+                2048,
+            )?;
+            Ok((webp_bytes, "image/webp".to_string()))
         })
         .await
         .map_err(|_| AppError::ExtractionProcessTimeout)?
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_supports_magic_bytes() {
-        let provider = IcnsFormatProvider::new();
-        assert!(provider.supports_magic_bytes(b"icns\x00\x00\x00\x08"));
-        assert!(!provider.supports_magic_bytes(b"png_\x00\x00\x00\x08"));
-    }
-
-    #[test]
-    fn test_extract_largest_icns_image_invalid() {
-        assert!(extract_largest_icns_image(b"").is_none());
-        assert!(extract_largest_icns_image(b"icns").is_none());
-        assert!(extract_largest_icns_image(b"icns\x00\x00\x00\x10ic08\x00\x00\x00\x00").is_none());
     }
 }

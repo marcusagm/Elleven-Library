@@ -80,6 +80,9 @@ dashmap = "6.1.0"
 unicode-normalization = "0.1"
 async-recursion = "1.0.0"
 jxl-oxide = "0.12"
+icns = "0.4.0"
+ddsfile = "=0.5.2"
+image_dds = "0.7.2"
 
 
 
