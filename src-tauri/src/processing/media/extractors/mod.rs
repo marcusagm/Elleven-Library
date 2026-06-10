@@ -23,6 +23,7 @@ pub mod x3f;
 pub mod kdc;
 pub mod jxl;
 pub mod video;
+pub mod audio;
 
 // Convenience re-exports
 pub use ai::{extract_ai_metadata, extract_ai_preview};
@@ -57,3 +58,5 @@ pub use x3f::{extract_x3f_metadata, extract_x3f_preview, generate_x3f_thumbnail}
 pub use kdc::{extract_kdc_metadata, extract_kdc_preview, generate_kdc_thumbnail};
 pub use jxl::{extract_jxl_metadata, extract_jxl_preview, generate_jxl_thumbnail};
 pub use video::{extract_video_technical_metadata, generate_video_thumbnail};
+pub use audio::extract_audio_technical_metadata;
+

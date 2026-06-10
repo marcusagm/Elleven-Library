@@ -14,33 +14,11 @@ pub use registry::FormatRegistry;
 
 // Legacy providers (non-image categories, not yet migrated to providers/)
 use crate::processing::media::archive_format::ArchiveFormatProvider;
-use crate::processing::media::audio_format::AudioFormatProvider;
 use crate::processing::media::cad_format::CadFormatProvider;
 use crate::processing::media::fallback_format::GenericByteFallbackProvider;
 use crate::processing::media::model3d_format::Model3dFormatProvider;
 use crate::processing::media::text_format::TextFormatProvider;
 use crate::processing::media::usd_format::UsdFormatProvider;
-
-// Video Providers
-use crate::processing::media::providers::video::avi::AviVideoProvider;
-use crate::processing::media::providers::video::flash_video::FlashVideoProvider;
-use crate::processing::media::providers::video::h264_raw::H264RawVideoProvider;
-use crate::processing::media::providers::video::hevc::HevcVideoProvider;
-use crate::processing::media::providers::video::matroska::MatroskaVideoProvider;
-use crate::processing::media::providers::video::motion_jpeg::MotionJpegVideoProvider;
-use crate::processing::media::providers::video::mpeg4::Mpeg4VideoProvider;
-use crate::processing::media::providers::video::mpeg_transport_stream::MpegTransportStreamProvider;
-use crate::processing::media::providers::video::mpeg_video::MpegVideoProvider;
-use crate::processing::media::providers::video::mxf::MxfVideoProvider;
-use crate::processing::media::providers::video::ogg_video::OggVideoProvider;
-use crate::processing::media::providers::video::quicktime::QuicktimeVideoProvider;
-use crate::processing::media::providers::video::realmedia::RealmediaVideoProvider;
-use crate::processing::media::providers::video::shockwave_flash::ShockwaveFlashProvider;
-use crate::processing::media::providers::video::three_gpp::ThreeGppVideoProvider;
-use crate::processing::media::providers::video::webm::WebmVideoProvider;
-use crate::processing::media::providers::video::windows_media::WindowsMediaVideoProvider;
-use crate::processing::media::providers::video::windows_recorded_tv::WindowsRecordedTvProvider;
-use crate::processing::media::providers::video::yuv4mpeg2::Yuv4mpeg2VideoProvider;
 
 // Document Providers
 use crate::processing::media::providers::document::pdf_format::PdfFormatProvider;
@@ -119,6 +97,50 @@ use crate::processing::media::providers::project::xmind::XMindFormatProvider;
 use crate::processing::media::providers::vector::postscript_format::PostscriptFormatProvider;
 use crate::processing::media::providers::vector::svg_format::SvgFormatProvider;
 
+
+// Audio Providers
+use crate::processing::media::providers::audio::aiff::AiffAudioProvider;
+use crate::processing::media::providers::audio::amr::AmrAudioProvider;
+use crate::processing::media::providers::audio::apple_core_audio::AppleCoreAudioProvider;
+use crate::processing::media::providers::audio::audible::AudibleAudioProvider;
+use crate::processing::media::providers::audio::dolby_digital::DolbyDigitalAudioProvider;
+use crate::processing::media::providers::audio::dts::DtsAudioProvider;
+use crate::processing::media::providers::audio::flac::FlacAudioProvider;
+use crate::processing::media::providers::audio::matroska_audio::MatroskaAudioProvider;
+use crate::processing::media::providers::audio::midi::MidiAudioProvider;
+use crate::processing::media::providers::audio::monkeys_audio::MonkeysAudioProvider;
+use crate::processing::media::providers::audio::mp3::Mp3AudioProvider;
+use crate::processing::media::providers::audio::mpeg4_audio::Mpeg4AudioProvider;
+use crate::processing::media::providers::audio::musepack::MusepackAudioProvider;
+use crate::processing::media::providers::audio::ogg_audio::OggAudioProvider;
+use crate::processing::media::providers::audio::opus::OpusAudioProvider;
+use crate::processing::media::providers::audio::realaudio::RealaudioProvider;
+use crate::processing::media::providers::audio::speex::SpeexAudioProvider;
+use crate::processing::media::providers::audio::wav::WavAudioProvider;
+use crate::processing::media::providers::audio::wavpack::WavpackAudioProvider;
+use crate::processing::media::providers::audio::windows_media_audio::WindowsMediaAudioProvider;
+
+// Video Providers
+use crate::processing::media::providers::video::avi::AviVideoProvider;
+use crate::processing::media::providers::video::flash_video::FlashVideoProvider;
+use crate::processing::media::providers::video::h264_raw::H264RawVideoProvider;
+use crate::processing::media::providers::video::hevc::HevcVideoProvider;
+use crate::processing::media::providers::video::matroska::MatroskaVideoProvider;
+use crate::processing::media::providers::video::motion_jpeg::MotionJpegVideoProvider;
+use crate::processing::media::providers::video::mpeg4::Mpeg4VideoProvider;
+use crate::processing::media::providers::video::mpeg_transport_stream::MpegTransportStreamProvider;
+use crate::processing::media::providers::video::mpeg_video::MpegVideoProvider;
+use crate::processing::media::providers::video::mxf::MxfVideoProvider;
+use crate::processing::media::providers::video::ogg_video::OggVideoProvider;
+use crate::processing::media::providers::video::quicktime::QuicktimeVideoProvider;
+use crate::processing::media::providers::video::realmedia::RealmediaVideoProvider;
+use crate::processing::media::providers::video::shockwave_flash::ShockwaveFlashProvider;
+use crate::processing::media::providers::video::three_gpp::ThreeGppVideoProvider;
+use crate::processing::media::providers::video::webm::WebmVideoProvider;
+use crate::processing::media::providers::video::windows_media::WindowsMediaVideoProvider;
+use crate::processing::media::providers::video::windows_recorded_tv::WindowsRecordedTvProvider;
+use crate::processing::media::providers::video::yuv4mpeg2::Yuv4mpeg2VideoProvider;
+
 use std::sync::Arc;
 
 /// Factory function to build the main `FormatRegistry`.
@@ -134,9 +156,7 @@ use std::sync::Arc;
 pub fn build_format_registry() -> FormatRegistry {
     let mut registry = FormatRegistry::new();
 
-
-    // Legacy non-video providers (not yet split into providers/)
-    registry.register(Arc::new(AudioFormatProvider::new()));
+    // Legacy non-video/audio providers (not yet split into providers/)
     registry.register(Arc::new(ArchiveFormatProvider::new()));
     registry.register(Arc::new(TextFormatProvider::new()));
     registry.register(Arc::new(Model3dFormatProvider::new()));
@@ -240,6 +260,28 @@ pub fn build_format_registry() -> FormatRegistry {
     registry.register(Arc::new(HevcVideoProvider::new()));
     registry.register(Arc::new(H264RawVideoProvider::new()));
     registry.register(Arc::new(Yuv4mpeg2VideoProvider::new()));
+
+    // Audio Providers
+    registry.register(Arc::new(Mp3AudioProvider::new()));
+    registry.register(Arc::new(WavAudioProvider::new()));
+    registry.register(Arc::new(FlacAudioProvider::new()));
+    registry.register(Arc::new(OggAudioProvider::new()));
+    registry.register(Arc::new(Mpeg4AudioProvider::new()));
+    registry.register(Arc::new(AiffAudioProvider::new()));
+    registry.register(Arc::new(WindowsMediaAudioProvider::new()));
+    registry.register(Arc::new(OpusAudioProvider::new()));
+    registry.register(Arc::new(MidiAudioProvider::new()));
+    registry.register(Arc::new(MatroskaAudioProvider::new()));
+    registry.register(Arc::new(SpeexAudioProvider::new()));
+    registry.register(Arc::new(MonkeysAudioProvider::new()));
+    registry.register(Arc::new(WavpackAudioProvider::new()));
+    registry.register(Arc::new(DolbyDigitalAudioProvider::new()));
+    registry.register(Arc::new(DtsAudioProvider::new()));
+    registry.register(Arc::new(AmrAudioProvider::new()));
+    registry.register(Arc::new(AppleCoreAudioProvider::new()));
+    registry.register(Arc::new(AudibleAudioProvider::new()));
+    registry.register(Arc::new(RealaudioProvider::new()));
+    registry.register(Arc::new(MusepackAudioProvider::new()));
 
     // Generic fallbacks (must be last)
     registry.register(Arc::new(GenericByteFallbackProvider::new()));
