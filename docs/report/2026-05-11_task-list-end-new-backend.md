@@ -1,5 +1,92 @@
 # Recursos
 
+## Atalhos
+
+- [ ] Adicionar atalho para omitir as sidebars com a tecla "tab" como padrão.
+
+## Acessibilidade
+
+- [ ] Adicionar verificações de `prefers-reduced-motion` no CSS para animações de layout.
+
+## Home
+
+- [ ] Mostrar a lista de arquivos mais recentes de todas as pastas indexadas.
+- [ ] Adicionar contator de pastas indexadas e arquivos na capa da aplicação.
+- [ ] Adicionar contator de arquivos por formato, um contador por tipo como imagem, audio, video, documentos, etc.
+- [ ] Adicionar contator de tags.
+- [ ] Adicioanr contator de smart folders.
+- [ ] Adicionar contator de arquivos duplicados.
+- [ ] Adicionar contator de arquivos favoritos.
+- [ ] Adicionar contator de arquivos na lixeira.
+
+## Library
+
+- [ ] Adicionar lixeira
+- [ ] Adicionar arquivos favoritos
+
+## Item Inspector
+
+- [ ] Copiar cor extraida no formato rgba, rgb, hex, hsl, hsv, hwb, cmyk.
+- [ ] Adicionar atalho para buscar por cores diretamente pela paleta de cores selecionada.
+- [ ] Persistência de paineis abertos ou colapsados, por exemplo se o painel general info for aberto, deve permacer aberto até o usuário fecha-lo.
+
+## Seacrh
+
+- [ ] Adicionar botão de limpar texto de busca.
+- [ ] Verificar fuzzy search, pois parece não estar funcionando bem.
+- [ ] Adicionar sistema de sugestões.
+- [ ] Permitir a busca por Harmonia de cores 
+- [ ] Busca recursiva por tags, incluir tags filhas na busca.
+- [ ] Busca recursiva por pastas, incluir pastas filhas na busca.
+
+## Folders
+
+- [ ] Criar nova subpasta
+- [ ] Renomear pasta
+- [ ] Mover pasta
+- [ ] Excluir pasta
+
+## Listagem
+
+- [ ] Adicionar opção de copiar caminho do arquivo.
+- [ ] Adicionar visualização por icones.
+- [ ] Implementar a funcionalidade de clicar e arrastar no vazio para selecionar múltiplos itens na Grid e no mansory.
+
+## Assets
+
+- [ ] Abrir arquivo no editor padrão do sistema operacional.
+- [ ] Abrir pasta onde se encontra o arquivo.
+- [ ] Adicionar asset como favorito.
+- [ ] Converter arquivo para outros formatos.
+- [ ] Verificar duplicidade de arquivos.
+- [ ] Adicionar asset arrastando para a janela do Mundam.
+- [ ] Adicionar recurso de virar imagem automaticamente de acordo com o metadado EXIF orientation.
+
+## Visualizador de assets
+
+### Geral
+
+- [ ] Adicionar nome do arquivo acima da toolbar.
+- [ ] Ao carregar o arquivo, mostrar um loader de forma que não trave a interface do usuário, permitindo que ele possa sair do itemview quando quiser, cancelando o processo se necessário.
+- [ ] Permitir acesso a detalhes do arquivo na item view.
+
+### Imagens
+
+- [ ] Adicionar opção de copiar imagem na visualização de imagens.
+- [ ] Adicionar sistema de notas para imagens permitindo texto e desenhos.
+- [ ] Visualizardor de gifs com controle de play/pause, de velocidade de reprodução e timeline para navigating entre frames.
+
+### Áudio
+
+- [ ] No lugar onde está atualmente um icone estático, mostrar Espectro de Frequência.
+- [ ] Adicionar sistema de notas atribuidas a um tempo determinado no áudio.
+
+### Vídeos
+
+- [ ] Adicionar sistema de notas atribuidas a um tempo determinado no video.
+
+# Bugs
+
 - [x] Filtro de por itens com tags não está funcionando
 - [x] Restaurar o menu de contexto da pasta raiz.
 - [x] Melhorar a atualização de dados de arquivos para evitar flicker e interface.
@@ -32,7 +119,6 @@
 ## Core
 
 - [ ] Melhorar a forma de resgitro de formatos em /Users/marcusmaia/Documents/Desenvolvimento/Mundam/src-tauri/src/core/formats/registry.rs e mod.rs
-- [ ] O ideal é que cada formato junto com seus alias, tenho um arquivo exclusivo em "src-tauri/src/processing/media" assim como é feito para arquivos `affinity_format`, `ai_format`, `aseprite_format`, `pdf_format`, entre outros, e funções comuns fiquem agrupadas em "helpers" e em "extractors" se forem especificas para determinado formato. Isso permitirá o tratamento exclusivo por formato definindo extração e inclusive fallbacks diferentes para cada formato de arquivo, isso tambem deixará claro como é o registro de cada formato, sem precisar ficar procurando em arquivos genericos como "cad_format", "image_format" ou "audio_format".
 - [ ] Testar todos os comandas e encontar uma forma melhor de organização /Users/marcusmaia/Documents/Desenvolvimento/Mundam/src-tauri/src/core/ledger/command.rs
 - [ ] Melhorar a organização dos arquivos e pastas em /Users/marcusmaia/Documents/Desenvolvimento/Mundam/src-tauri/src/core/ledger/models/*
 - [ ] Verificar o funcionamento do core/repository e sua interação com o ledgerer
@@ -45,7 +131,24 @@
 
 ## Processing
 
-- [ ] Organização dos formatos e extratores
+- [ ] O ideal é que cada formato junto com seus alias, tenho um arquivo exclusivo em 
+      "src-tauri/src/processing/media" assim como é feito para arquivos `affinity_format`,
+      `ai_format`, `aseprite_format`, `pdf_format`, entre outros, e funções comuns fiquem 
+      agrupadas em "helpers" e em "extractors" se forem especificas para determinado formato. 
+      Isso permitirá o tratamento exclusivo por formato definindo extração e inclusive 
+      fallbacks diferentes para cada formato de arquivo, isso tambem deixará claro como é 
+      o registro de cada formato, sem precisar ficar procurando em arquivos genericos como 
+      "cad_format", "image_format" ou "audio_format".
+- [ ] Organização dos formatos e extratores de arquivos
+- [ ] Organização dos formatos e extratores de audio
+- [ ] Organização dos formatos e extratores de documentos
+- [x] Organização dos formatos e extratores de imagens
+- [x] Organização dos formatos e extratores de fontes
+- [ ] Organização dos formatos e extratores de modelos 3D
+- [x] Organização dos formatos e extratores de projetos
+- [x] Organização dos formatos e extratores de vetores
+- [ ] Organização dos formatos e extratores de video
+
 
 ## Outros arquivos para verificar
 
@@ -206,38 +309,38 @@ Podemos observar o crate https://github.com/dnglab/dnglab/tree/main que tem supo
 ### Project
 | Manual Check | Extensão   | V1   | V2   | V1 Notes                                         | V2 Notes                                                    | Manual chack notes                                                                                                                                                                                                                                                 |
 | :----------- | :--------- | :--- | :--- | :----------------------------------------------- | :---------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🔴            | `aep`      | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | v2 não indexou e assim como a v1, não tem thumbnail ou preview                                                                                                                                                                                                     |
 | 🟢🟢           | `afdesign` | 🟢    | 🟢    | Apenas thumbnail via assinatura PNG.             | Suporte completo via `AffinityFormatProvider`.              | v2 agora gera thumbnail, preview de alta qualidade em PNG e extrai metadados completos como largura, altura e resolução DPI do arquivo de preview integrado.                                                                                                       |
 | 🟢🟢           | `afphoto`  | 🟢    | 🟢    | Apenas thumbnail via assinatura PNG.             | Suporte completo via `AffinityFormatProvider`.              | v2 agora gera thumbnail, preview de alta qualidade em PNG e extrai metadados completos como largura, altura e resolução DPI do arquivo de preview integrado.                                                                                                       |
 | 🟢🟢           | `afpub`    | 🟢    | 🟢    | Apenas thumbnail via assinatura PNG.             | Suporte completo via `AffinityFormatProvider`.              | v2 agora gera thumbnail, preview de alta qualidade em PNG e extrai metadados completos como largura, altura e resolução DPI do arquivo de preview integrado.                                                                                                       |
-| 🟢🟠           | `cdr`      | 🟢    | 🟢    | Estável. Metadados e preview nativos.            | Suporte nativo via `CoreldrawFormatProvider`.               | Implementação completa com suporte a todas as versões (v3-v24+), incluindo dimensões e versões.                                                                                                                                                                    |
 | 🟢🟢           | `ai`       | 🟢    | 🟢    | Estável para arquivos baseados em PDF.           | Suporte completo (PDF e PostScript) via `AiFormatProvider`. | v2 extrai thumbnails de qualidade, dimensões exatas de canvas, resolução DPI e metadados.                                                                                                                                                                          |
-| ⚠️            | `ari`      | 🟢    | 🟠    | Ícone nativo.                                    | Suporte via ícone genérico.                                 | Não testado                                                                                                                                                                                                                                                        |
-| 🟢🟢           | `ase`      | 🟢    | 🟢    | Alias estável.                                   | Metadados técnicos e semânticos completos.                  | A implementação da v2 está mais completa                                                                                                                                                                                                                           |
 | 🟢🟢           | `aseprite` | 🟢    | 🟢    | Estável.                                         | Metadados técnicos e semânticos completos.                  | A implementação da v2 está mais completa                                                                                                                                                                                                                           |
-| 🔴            | `braw`     | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | A v2 não indexou o arquivo e assim como a v1, não tem thumbnail ou preview, alem de identificar como vídeo.                                                                                                                                                        |
+| 🟢🟢           | `ase`      | 🟢    | 🟢    | Alias estável.                                   | Metadados técnicos e semânticos completos.                  | A implementação da v2 está mais completa                                                                                                                                                                                                                           |
 | 🟢🟢           | `clip`     | 🟢    | 🟢    | Estável.                                         | Suporte nativo via `ClipStudioFormatProvider`.              | Implementação concluída com extração de metadata avançada aprimorada: agora extrai e relata as dimensões corretas do canvas (largura, altura) e a resolução (DPI) através da leitura e query da tabela 'Canvas' do banco de dados SQLite embutido no formato.      |
-| ⚠️            | `drp`      | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
-| ⚠️            | `fcpxml`   | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
-| 🟢🟠           | `fig`      | 🟢    | 🟢    | Estável via parsing de ZIP.                      | Suporte nativo via `FigmaFormatProvider`.                   | Implementação completa com extração de dimensões via preview e suporte a comentários do container. Porem ainda é possível melhorar                                                                                                                                 |
-| ⚠️            | `idml`     | 🟠    | 🟠    | Apenas ícone genérico/stub                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
-| ⚠️            | `indd`     | 🟠    | 🟠    | Apenas ícone genérico/stub                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
 | 🟢🟢           | `kra`      | 🟢    | 🟢    | Estável via parsing de ZIP.                      | Nativo via `ProjectZipFormatProvider`.                      | A implementação da v2 está mais completa                                                                                                                                                                                                                           |
-| ⚠️            | `krz`      | 🟢    | 🟢    | Alias (Krita Compressed).                        | Nativo via `ProjectZipFormatProvider`.                      | Não testado                                                                                                                                                                                                                                                        |
 | 🟢🟢           | `mdp`      | 🟢    | 🟢    | Estável. Metadados e preview nativos.            | Suporte completo via `MedibangFormatProvider`.              | Tudo certo, metadados como dimensões, resolução e camadas agora são extraídos.                                                                                                                                                                                     |
-| 🔴            | `prproj`   | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | v2 não indexou e assim como a v1, não tem thumbnail ou preview                                                                                                                                                                                                     |
-| ⚠️            | `psb`      | 🟢    | 🟢    | Estável via `psd` crate.                         | Estável. Metadados e thumbnails nativos.                    | Não testado                                                                                                                                                                                                                                                        |
 | 🟢🟢           | `psd`      | 🟢    | 🟢    | Estável via `psd` crate.                         | Estável. Metadados e thumbnails nativos.                    | A implementação da v2 está mais completa                                                                                                                                                                                                                           |
-| ⚠️            | `r3d`      | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
 | 🟢🟢           | `reb`      | 🟢    | 🟢    | Estável. Metadados avançados via `artwork.xml`.  | Suporte completo via `RebelleFormatProvider`.               | A implementação da v2 está mais completa                                                                                                                                                                                                                           |
 | 🟢🟢           | `penpot`   | 🟢    | 🟢    | Estável via ZIP (V1) e Zstd (V2).                | Suporte nativo via `PenpotFormatProvider`.                  | Implementação concluída com extração de metadata avançada.                                                                                                                                                                                                         |
 | 🟢🟢           | `rif`      | 🟢    | 🟢    | Suporte Corel Painter.                           | Suporte nativo via `CorelPainterFormatProvider`.            | Tudo certo, ambas as versões com thumb e preview de qualidade. Agora suporta extração de dimensões a partir da imagem do preview.                                                                                                                                  |
-| ⚠️            | `riff`     | 🟢    | 🟢    | Suporte Corel Painter.                           | Suporte nativo via `CorelPainterFormatProvider`.            | Não testado                                                                                                                                                                                                                                                        |
 | 🟢🟢           | `sai`      | 🟢    | 🟢    | Parsing binário nativo para metadados e preview. | Suporte nativo via `PaintToolSaiFormatProvider`.            | Implementação concluída com nova arquitetura de metadata. As dimensões corretas do canvas são extraídas em ambas as versões.                                                                                                                                       |
 | 🟢🟢           | `sai2`     | 🟢    | 🟢    | Parsing binário nativo para metadados e preview. | Suporte nativo via `PaintToolSaiFormatProvider`.            | V2 com suporte muito superior. Implementação concluída com nova arquitetura de metadata. As dimensões corretas do canvas são extraídas do header.                                                                                                                  |
 | 🟢🟢           | `sketch`   | 🟢    | 🟢    | Estável. Metadados e preview nativos.            | Suporte nativo via `SketchFormatProvider`.                  | Implementação completa com extração de versão do app, páginas e dimensões do preview.                                                                                                                                                                              |
-| 🟢🟠           | `xcf`      | 🟢    | 🟢    | Problemas com modos de camada e máscaras         | Suporte nativo via `GimpFormatProvider`.                    | Implementação concluída com extração de metadados avançada aprimorada: agora extrai dimensões (largura, altura) e resolução física (DPI) do cabeçalho e propriedades `PROP_RESOLUTION` do GIMP. Modos de mesclagem complexos seguem como possível evolução futura. |
 | 🟢🟢           | `xmind`    | 🟢    | 🟢    | Estável.                                         | Suporte nativo via `XMindFormatProvider`.                   | A implementação da v2 está mais completa                                                                                                                                                                                                                           |
+| 🟢🟠           | `cdr`      | 🟢    | 🟢    | Estável. Metadados e preview nativos.            | Suporte nativo via `CoreldrawFormatProvider`.               | Implementação completa com suporte a todas as versões (v3-v24+), incluindo dimensões e versões.                                                                                                                                                                    |
+| 🟢🟠           | `fig`      | 🟢    | 🟢    | Estável via parsing de ZIP.                      | Suporte nativo via `FigmaFormatProvider`.                   | Implementação completa com extração de dimensões via preview e suporte a comentários do container. Porem ainda é possível melhorar                                                                                                                                 |
+| 🟢🟠           | `xcf`      | 🟢    | 🟢    | Problemas com modos de camada e máscaras         | Suporte nativo via `GimpFormatProvider`.                    | Implementação concluída com extração de metadados avançada aprimorada: agora extrai dimensões (largura, altura) e resolução física (DPI) do cabeçalho e propriedades `PROP_RESOLUTION` do GIMP. Modos de mesclagem complexos seguem como possível evolução futura. |
+| 🔴            | `aep`      | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | v2 não indexou e assim como a v1, não tem thumbnail ou preview                                                                                                                                                                                                     |
+| ⚠️            | `ari`      | 🟢    | 🟠    | Ícone nativo.                                    | Suporte via ícone genérico.                                 | Não testado                                                                                                                                                                                                                                                        |
+| 🔴            | `braw`     | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | A v2 não indexou o arquivo e assim como a v1, não tem thumbnail ou preview, alem de identificar como vídeo.                                                                                                                                                        |
+| ⚠️            | `drp`      | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
+| ⚠️            | `fcpxml`   | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
+| ⚠️            | `idml`     | 🟠    | 🟠    | Apenas ícone genérico/stub                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
+| ⚠️            | `indd`     | 🟠    | 🟠    | Apenas ícone genérico/stub                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
+| ⚠️            | `krz`      | 🟢    | 🟢    | Alias (Krita Compressed).                        | Nativo via `ProjectZipFormatProvider`.                      | Não testado                                                                                                                                                                                                                                                        |
+| 🔴            | `prproj`   | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | v2 não indexou e assim como a v1, não tem thumbnail ou preview                                                                                                                                                                                                     |
+| ⚠️            | `psb`      | 🟢    | 🟢    | Estável via `psd` crate.                         | Estável. Metadados e thumbnails nativos.                    | Não testado                                                                                                                                                                                                                                                        |
+| ⚠️            | `r3d`      | 🟠    | 🟠    | Stub mostra ícone genérico                       | Stub de ícone via `IconFormatProvider`.                     | Não testado                                                                                                                                                                                                                                                        |
+| ⚠️            | `riff`     | 🟢    | 🟢    | Suporte Corel Painter.                           | Suporte nativo via `CorelPainterFormatProvider`.            | Não testado                                                                                                                                                                                                                                                        |
 
 ### Vector
 | Manual check | Extensão | V1   | V2   | V1 Notes                                          | V2 Notes                                       | Manual check notes                                                                                                                                                                                    |

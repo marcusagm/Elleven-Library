@@ -20,7 +20,27 @@ use crate::processing::media::fallback_format::GenericByteFallbackProvider;
 use crate::processing::media::model3d_format::Model3dFormatProvider;
 use crate::processing::media::text_format::TextFormatProvider;
 use crate::processing::media::usd_format::UsdFormatProvider;
-use crate::processing::media::video_format::VideoFormatProvider;
+
+// Video Providers
+use crate::processing::media::providers::video::avi::AviVideoProvider;
+use crate::processing::media::providers::video::flash_video::FlashVideoProvider;
+use crate::processing::media::providers::video::h264_raw::H264RawVideoProvider;
+use crate::processing::media::providers::video::hevc::HevcVideoProvider;
+use crate::processing::media::providers::video::matroska::MatroskaVideoProvider;
+use crate::processing::media::providers::video::motion_jpeg::MotionJpegVideoProvider;
+use crate::processing::media::providers::video::mpeg4::Mpeg4VideoProvider;
+use crate::processing::media::providers::video::mpeg_transport_stream::MpegTransportStreamProvider;
+use crate::processing::media::providers::video::mpeg_video::MpegVideoProvider;
+use crate::processing::media::providers::video::mxf::MxfVideoProvider;
+use crate::processing::media::providers::video::ogg_video::OggVideoProvider;
+use crate::processing::media::providers::video::quicktime::QuicktimeVideoProvider;
+use crate::processing::media::providers::video::realmedia::RealmediaVideoProvider;
+use crate::processing::media::providers::video::shockwave_flash::ShockwaveFlashProvider;
+use crate::processing::media::providers::video::three_gpp::ThreeGppVideoProvider;
+use crate::processing::media::providers::video::webm::WebmVideoProvider;
+use crate::processing::media::providers::video::windows_media::WindowsMediaVideoProvider;
+use crate::processing::media::providers::video::windows_recorded_tv::WindowsRecordedTvProvider;
+use crate::processing::media::providers::video::yuv4mpeg2::Yuv4mpeg2VideoProvider;
 
 // Document Providers
 use crate::processing::media::providers::document::pdf_format::PdfFormatProvider;
@@ -114,8 +134,8 @@ use std::sync::Arc;
 pub fn build_format_registry() -> FormatRegistry {
     let mut registry = FormatRegistry::new();
 
-    // Legacy non-image providers (not yet split into providers/)
-    registry.register(Arc::new(VideoFormatProvider::new()));
+
+    // Legacy non-video providers (not yet split into providers/)
     registry.register(Arc::new(AudioFormatProvider::new()));
     registry.register(Arc::new(ArchiveFormatProvider::new()));
     registry.register(Arc::new(TextFormatProvider::new()));
@@ -199,6 +219,27 @@ pub fn build_format_registry() -> FormatRegistry {
     // Vector Providers
     registry.register(Arc::new(PostscriptFormatProvider::new()));
     registry.register(Arc::new(SvgFormatProvider::new()));
+
+    // Video Providers
+    registry.register(Arc::new(Mpeg4VideoProvider::new()));
+    registry.register(Arc::new(WebmVideoProvider::new()));
+    registry.register(Arc::new(QuicktimeVideoProvider::new()));
+    registry.register(Arc::new(MatroskaVideoProvider::new()));
+    registry.register(Arc::new(MxfVideoProvider::new()));
+    registry.register(Arc::new(WindowsMediaVideoProvider::new()));
+    registry.register(Arc::new(FlashVideoProvider::new()));
+    registry.register(Arc::new(ShockwaveFlashProvider::new()));
+    registry.register(Arc::new(MpegVideoProvider::new()));
+    registry.register(Arc::new(MpegTransportStreamProvider::new()));
+    registry.register(Arc::new(AviVideoProvider::new()));
+    registry.register(Arc::new(ThreeGppVideoProvider::new()));
+    registry.register(Arc::new(RealmediaVideoProvider::new()));
+    registry.register(Arc::new(WindowsRecordedTvProvider::new()));
+    registry.register(Arc::new(OggVideoProvider::new()));
+    registry.register(Arc::new(MotionJpegVideoProvider::new()));
+    registry.register(Arc::new(HevcVideoProvider::new()));
+    registry.register(Arc::new(H264RawVideoProvider::new()));
+    registry.register(Arc::new(Yuv4mpeg2VideoProvider::new()));
 
     // Generic fallbacks (must be last)
     registry.register(Arc::new(GenericByteFallbackProvider::new()));
