@@ -53,3 +53,4 @@ pub mod manager;
 pub mod models;
 pub mod queries;
 pub mod search_builder;
+pub mod handlers;
