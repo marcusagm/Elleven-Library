@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO asset_metadata_envelope (\n            asset_id, width, height, duration_secs, \n            technical_payload, semantic_payload, created_at, updated_at\n        )\n        VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n        ON CONFLICT(asset_id) DO UPDATE SET\n            width = excluded.width,\n            height = excluded.height,\n            duration_secs = excluded.duration_secs,\n            technical_payload = excluded.technical_payload,\n            semantic_payload = excluded.semantic_payload,\n            updated_at = excluded.updated_at\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "8c1031683538d37a6ec339b616057306f00bc545af2fe1e1a7fe5ecd1ece0c07"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO asset_tags (asset_id, tag_id)\n            VALUES (?, ?)\n            ON CONFLICT DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "b9aca769f08974856930b1d5d1f4c9eef6d8961f4cfdbf408e9c3714c99e56e2"
+}
