@@ -72,7 +72,7 @@ impl FormatProvider for Mpeg4AudioProvider {
             MediaType::Audio,
             ThumbnailStrategy::Icon,
             PreviewStrategy::None,
-            PlaybackStrategy::Native,
+            PlaybackStrategy::AudioLinearHls,
         )]
     }
 

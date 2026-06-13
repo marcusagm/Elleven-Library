@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::Manager;
-use tracing::{info, warn};
+use tracing::info;
 
 use hound::{WavSpec, WavWriter};
 use midly::Smf;

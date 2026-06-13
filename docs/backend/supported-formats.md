@@ -174,9 +174,9 @@
 | Core Audio Format             | caf             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
 | Digital Theater Systems       | dts             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
 | Free Lossless Audio Codec     | flac            | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
-| Apple Lossless Audio Codec    | m4a             | 🟢         | 🔴        | 🟢        | Generic icon       | hls               | Native              | Failed to load media in frontend.                   |
-| MPEG-4 Ringtone               | m4r             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              |                                                     |
-| Musical Instrument Digital    | mid, midi       | 🔴         | 🔴        | 🔴        | Generic icon       | hls               | ffmpeg              | FFprobe failed for transcoding.                     |
+| Apple Lossless Audio Codec    | m4a             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | AudioLinearHls      | M4A ALAC converted to AAC on-the-fly.               |
+| MPEG-4 Ringtone               | m4r             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | AudioLinearHls      |                                                     |
+| Musical Instrument Digital    | mid, midi       | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | AudioLinearHls/Synth| Synthesizes to WAV on the fly.                      |
 | Matroska Audio                | mka             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              |                                                     |
 | MPEG-1 Audio Layer II         | mp2             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
 | MP3                           | mp3             | 🟢         | 🟢        | 🟢        | Generic icon       | hls               | Native              | Some files had missing waveforms depending on size. |
