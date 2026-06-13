@@ -306,6 +306,9 @@ Podemos observar o crate https://github.com/dnglab/dnglab/tree/main que tem supo
 | 🟢            | `wma`    | 🟢    | 🟢    | Estável.                                   | Estável. Playback nativo ou HLS.              | Tudo certo, porem em ambas as versões alguns arquivos não tiveram a waveform extraida ou mostrada no frontend, observei que acontece quando o arquivo é muito pequeno ou muito grande         |
 | 🟢            | `wv`     | 🟢    | 🟢    | Estável.                                   | Estável. Playback nativo ou HLS.              | Tudo certo, porem em ambas as versões alguns arquivos não tiveram a waveform extraida ou mostrada no frontend, observei que acontece quando o arquivo é muito pequeno ou muito grande         |
 
+estou trabalhando em arquivo mid e m4a. 
+Fiz o cargo clean, antes de continuar rede a aplicação
+
 ### Project
 | Manual Check | Extensão   | V1   | V2   | V1 Notes                                         | V2 Notes                                                    | Manual chack notes                                                                                                                                                                                                                                                 |
 | :----------- | :--------- | :--- | :--- | :----------------------------------------------- | :---------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

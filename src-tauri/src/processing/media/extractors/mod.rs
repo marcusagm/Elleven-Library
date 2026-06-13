@@ -24,6 +24,7 @@ pub mod kdc;
 pub mod jxl;
 pub mod video;
 pub mod audio;
+pub mod midi_renderer;
 
 // Convenience re-exports
 pub use ai::{extract_ai_metadata, extract_ai_preview};

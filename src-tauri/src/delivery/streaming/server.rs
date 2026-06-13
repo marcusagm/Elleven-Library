@@ -552,9 +552,9 @@ async fn linear_hls_handler(
             Ok(temp_dir) => {
                 let playlist_path = temp_dir.join("index.m3u8");
 
-                // Poll for playlist existence (ffmpeg might take a second to create it)
+                // Poll for playlist existence (ffmpeg might take a second to create it, or up to 60s for MIDI synthesis)
                 let mut tries = 0;
-                while !playlist_path.exists() && tries < 150 {
+                while !playlist_path.exists() && tries < 600 {
                     tokio::time::sleep(Duration::from_millis(100)).await;
                     tries += 1;
                 }
@@ -609,17 +609,16 @@ async fn linear_hls_handler(
         }
         let asset_id = parts[0].to_string();
 
-        let sessions = state
+        let temp_dir = state
             .linear_manager
-            .get_session(&asset_id)
+            .get_temp_dir(&asset_id)
             .await
             .ok_or_else(|| StreamError(AppError::Generic("Session not found".into())))?;
 
-        let session = sessions
-            .get(&asset_id)
-            .ok_or_else(|| StreamError(AppError::Generic("Session not found".into())))?;
+        // Update the session's last_access to prevent timeout while streaming
+        state.linear_manager.update_access(&asset_id).await;
 
-        let segment_path = session.temp_dir.join(parts[1]);
+        let segment_path = temp_dir.join(parts[1]);
 
         // Wait for segment to be ready (it might be being transcoded)
         let mut attempts = 0;

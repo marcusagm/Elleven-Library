@@ -53,7 +53,11 @@ export class HlsPlayerManager {
             maxBufferSize: 60 * 1024 * 1024,
             fragLoadingMaxRetry: 3,
             manifestLoadingMaxRetry: 3,
-            levelLoadingMaxRetry: 3
+            levelLoadingMaxRetry: 3,
+            manifestLoadingTimeOut: 60000,
+            manifestLoadingMaxRetryTimeout: 60000,
+            fragLoadingTimeOut: 60000,
+            fragLoadingMaxRetryTimeout: 60000
         });
 
         this.hlsInstance.attachMedia(mediaElement);

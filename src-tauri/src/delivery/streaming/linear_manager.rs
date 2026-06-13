@@ -110,13 +110,32 @@ impl LinearManager {
             _ => "2500k",
         };
 
+        let mut actual_input = file_path.to_path_buf();
+
+        if let Some(ext) = file_path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+            if ext == "mid" || ext == "midi" {
+                let wav_path = temp_dir.join("synthesized.wav");
+                // Run the synthesis
+                if let Err(e) = crate::processing::media::extractors::midi_renderer::render_midi_to_wav(
+                    file_path,
+                    &wav_path,
+                    Some(&self.app_handle)
+                ).await {
+                    error!("MIDI Synthesis failed: {}", e);
+                    return Err(format!("MIDI synthesis failed: {}", e));
+                }
+                // FFmpeg will now transcode the synthesized WAV
+                actual_input = wav_path;
+            }
+        }
+
         let mut cmd = Command::new(&tools.ffmpeg);
         cmd.args([
             "-hide_banner",
             "-loglevel",
             "error",
             "-i",
-            &file_path.to_string_lossy(),
+            &actual_input.to_string_lossy(),
             "-c:v",
             "libx264",
             "-pix_fmt",
@@ -206,5 +225,13 @@ impl LinearManager {
         let key = asset_id.to_string();
         let sessions = self.sessions.read().await;
         sessions.get(&key).map(|s| s.temp_dir.clone())
+    }
+
+    /// Update the last_access time for a session to prevent timeout
+    pub async fn update_access(&self, asset_id: &str) {
+        let mut sessions = self.sessions.write().await;
+        if let Some(session) = sessions.get_mut(asset_id) {
+            session.last_access = Instant::now();
+        }
     }
 }

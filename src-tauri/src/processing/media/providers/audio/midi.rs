@@ -72,7 +72,7 @@ impl FormatProvider for MidiAudioProvider {
             MediaType::Audio,
             ThumbnailStrategy::Icon,
             PreviewStrategy::None,
-            PlaybackStrategy::AudioHls,
+            PlaybackStrategy::AudioLinearHls, // Uses rustysynth to render to WAV and stream via LinearHls
         )]
     }
 
@@ -102,14 +102,15 @@ impl MetadataCapability for MidiAudioProvider {
     ///
     /// * `AppError::Transcoding` - If FFprobe fails to run or returns invalid JSON.
     /// * `AppError::ExtractionProcessTimeout` - If the blocking task times out.
-    #[instrument(skip(self, path))]
-    async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
-        let path_owned = path.to_path_buf();
-        tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::audio::extract_audio_technical_metadata(&path_owned)
-        })
-        .await
-        .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?
+    #[instrument(skip(self, _path))]
+    async fn extract_technical(&self, _path: &Path) -> AppResult<serde_json::Value> {
+        // MIDI files are sequence files, not standard audio streams.
+        // FFprobe often fails to parse them natively without a SoundFont or specific config.
+        // We return a basic structure to prevent pipeline failure.
+        Ok(serde_json::json!({
+            "format": "midi",
+            "codec": "midi",
+        }))
     }
 
     /// Extracts semantic metadata (currently empty for audio).

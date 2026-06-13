@@ -13,8 +13,34 @@ use tauri::AppHandle;
 /// * `path` - Path to the audio/video file.
 /// * `app_handle` - Tauri application handle to resolve FFmpeg location.
 pub async fn extract_audio_waveform(path: &Path, app_handle: &AppHandle) -> AppResult<Vec<f32>> {
+    let mut path_to_process = path.to_path_buf();
+    let mut temp_dir_to_clean = None;
+
+    // Fast path for MIDI: FFmpeg fails to extract waveform from sequence files.
+    // We must synthesize it to a temporary WAV first.
+    if let Some(ext) = path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+        if ext == "mid" || ext == "midi" {
+            let temp_dir = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+            tokio::fs::create_dir_all(&temp_dir).await.map_err(|e| {
+                AppError::Internal(format!("Failed to create temp dir for MIDI waveform: {}", e))
+            })?;
+            
+            let temp_wav = temp_dir.join("waveform_temp.wav");
+            crate::processing::media::extractors::midi_renderer::render_midi_to_wav(
+                path,
+                &temp_wav,
+                Some(app_handle),
+            )
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to synthesize MIDI for waveform: {}", e)))?;
+            
+            path_to_process = temp_wav;
+            temp_dir_to_clean = Some(temp_dir);
+        }
+    }
+
     let tools = resolve_transcoding_tools(Some(app_handle))?;
-    let path_owned = path.to_path_buf();
+    let path_owned = path_to_process.clone();
 
     // Run the blocking FFmpeg subprocess on a dedicated thread
     let result = tokio::task::spawn_blocking(move || {
@@ -82,6 +108,10 @@ pub async fn extract_audio_waveform(path: &Path, app_handle: &AppHandle) -> AppR
     .map_err(|join_error| {
         AppError::Internal(format!("Waveform task panicked: {}", join_error))
     })??;
+
+    if let Some(dir) = temp_dir_to_clean {
+        let _ = tokio::fs::remove_dir_all(dir).await;
+    }
 
     Ok(result)
 }

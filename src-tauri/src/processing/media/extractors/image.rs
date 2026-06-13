@@ -692,8 +692,8 @@ fn extract_libraw_full_decode(path: &Path) -> AppResult<Vec<u8>> {
 
     raw_image.unpack().map_err(|error| AppError::Generic(format!("LibRaw unpack error: {:?}", error)))?;
     
-    let mut image = raw_image.process::<{ rsraw::BIT_DEPTH_8 }>()
-        .map_err(|error| AppError::Generic(format!("LibRaw process error: {:?}", error)))?;
+    let image = raw_image.process::<{ rsraw::BIT_DEPTH_8 }>()
+        .map_err(|e| crate::core::error::AppError::Generic(format!("Failed to process RAW image: {}", e)))?;
         
     let expected_len = (image.width() * image.height() * image.colors() as u32) as usize;
     if image.len() != expected_len {

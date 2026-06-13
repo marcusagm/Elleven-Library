@@ -50,23 +50,37 @@ pub async fn get_stream_url(app_handle: AppHandle, asset_id: String) -> AppResul
         .await?
         .ok_or_else(|| crate::core::error::AppError::NotFound(asset_id.clone()))?;
 
-    let is_native = detector::is_native_format(&registry, &asset.path);
+    let strategy = detector::get_playback_strategy(&registry, &asset.path);
     let media_kind = detector::get_media_kind(&registry, &asset.path);
 
-    if is_native {
-        Ok(format!(
+    use crate::core::formats::types::PlaybackStrategy;
+
+    match strategy {
+        PlaybackStrategy::Native => Ok(format!(
             "http://localhost:{}/stream/{}?token={}",
             port, asset.id, session_token.0
-        ))
-    } else if media_kind != MediaKind::Unknown {
-        Ok(format!(
+        )),
+        PlaybackStrategy::LinearHls | PlaybackStrategy::AudioLinearHls => Ok(format!(
+            "http://localhost:{}/hls-live/{}/index.m3u8?token={}",
+            port, asset.id, session_token.0
+        )),
+        PlaybackStrategy::Hls | PlaybackStrategy::AudioHls => Ok(format!(
             "http://localhost:{}/playlist/{}/playlist.m3u8?token={}",
             port, asset.id, session_token.0
-        ))
-    } else {
-        Err(crate::core::error::AppError::UnsupportedFormat(
-            asset.path.to_string_lossy().to_string(),
-        ))
+        )),
+        _ => {
+            if media_kind != MediaKind::Unknown {
+                // Fallback to standard HLS if strategy isn't None but it's a media format
+                Ok(format!(
+                    "http://localhost:{}/playlist/{}/playlist.m3u8?token={}",
+                    port, asset.id, session_token.0
+                ))
+            } else {
+                Err(crate::core::error::AppError::UnsupportedFormat(
+                    asset.path.to_string_lossy().to_string(),
+                ))
+            }
+        }
     }
 }
 
