@@ -1,3 +1,7 @@
+//! Folder command handlers.
+//!
+//! Encapsulates SQL mutations for folder creation, cascade removal, and
+//! recursive path renaming across both the `folders` and `assets` tables.
 use crate::core::error::{AppError, AppResult};
 use crate::core::ledger::command::{CreateFolderPayload, RemoveFolderPayload, RenameFolderPayload};
 use crate::core::models::asset::{Asset, AssetState};

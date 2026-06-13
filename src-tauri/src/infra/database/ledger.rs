@@ -1,8 +1,15 @@
+//! SQLite implementation of the `TransactionalAssetLedger` port.
+//!
+//! Acts as the transactional router and domain-event emitter for all write
+//! operations. It begins a SQLite transaction, delegates execution to the
+//! appropriate specialized handler in `handlers/`, commits the transaction,
+//! runs any post-commit Saga (Outbox) steps, and finally publishes domain
+//! events on the `AppEventBus`.
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sqlx::{Sqlite, SqlitePool, Transaction};
 use std::sync::Arc;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 use unicode_normalization::UnicodeNormalization;
 use uuid::Uuid;
 
@@ -213,12 +220,59 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
         // 2. Execute commands and collect results
         let mut results = Vec::new();
-        for cmd in commands_to_process {
-            let asset = self.execute_single(&mut tx, cmd.clone()).await?;
-            results.push((asset, cmd));
+        for command_item in commands_to_process {
+            let asset = self.execute_single(&mut tx, command_item.clone()).await?;
+            results.push((asset, command_item));
         }
 
         tx.commit().await?;
+
+        // 2.5 Post-commit Saga Execution (Filesystem Operations)
+        for (asset, command_item) in &results {
+            match command_item {
+                LedgerCommand::DeleteAsset {
+                    physical_delete: true,
+                    path: Some(path_reference),
+                    ..
+                } => {
+                    // Execute physical deletion
+                    let filesystem_result = tokio::fs::remove_file(path_reference).await;
+                    match filesystem_result {
+                        Ok(_) => {
+                            tracing::info!("Ledger: Physical delete SUCCESS for {}", path_reference.display());
+                            // Mark Saga as COMPLETED
+                            let _ = sqlx::query!(
+                                "UPDATE asset_operations_log SET status = 'COMPLETED' WHERE asset_id = ? AND status = 'PENDING' AND operation_type = 'DELETE_ASSET'",
+                                asset.id
+                            )
+                            .execute(&self.pool)
+                            .await;
+                        }
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                            tracing::info!("Ledger: Physical file already missing for {}", path_reference.display());
+                            let _ = sqlx::query!(
+                                "UPDATE asset_operations_log SET status = 'COMPLETED' WHERE asset_id = ? AND status = 'PENDING' AND operation_type = 'DELETE_ASSET'",
+                                asset.id
+                            )
+                            .execute(&self.pool)
+                            .await;
+                        }
+                        Err(error) => {
+                            tracing::warn!("Ledger: Physical delete FAILED for {}: {}", path_reference.display(), error);
+                            let error_message = error.to_string();
+                            let _ = sqlx::query!(
+                                "UPDATE asset_operations_log SET status = 'FAILED', error_note = ? WHERE asset_id = ? AND status = 'PENDING' AND operation_type = 'DELETE_ASSET'",
+                                error_message,
+                                asset.id
+                            )
+                            .execute(&self.pool)
+                            .await;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
 
         // 3. Publish Domain Events only AFTER commit
         // For BatchCreate: emit a single summary to avoid flooding the broadcast channel.
@@ -235,8 +289,8 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                 }
             }
             _ => {
-                for (asset, cmd) in &results {
-                    self.emit_event_for_command(asset, cmd)?;
+                for (asset, command_item) in &results {
+                    self.emit_event_for_command(asset, command_item)?;
                 }
             }
         }
@@ -405,25 +459,25 @@ impl SqliteAssetLedger {
             }
             LedgerCommand::UpdateAsset(payload) => {
                 let now = Utc::now();
-                let old_p = payload
+                let old_path_string = payload
                     .old_path
                     .as_ref()
-                    .map(|p| p.to_string_lossy().to_string())
+                    .map(|path_reference| path_reference.to_string_lossy().to_string())
                     .unwrap_or_else(|| "None".to_string());
-                let new_p = payload.new_path.to_string_lossy().to_string();
+                let new_path_string = payload.new_path.to_string_lossy().to_string();
 
-                info!("Ledger: UpdateAsset START. old: {}, new: {}", old_p, new_p);
+                tracing::info!("Ledger: UpdateAsset START. old: {}, new: {}", old_path_string, new_path_string);
 
                 // 1. Resolve Asset ID (Using robust fallback for macOS Unicode consistency)
                 let asset_id: String = match (&payload.asset_id, &payload.old_path) {
                     (Some(id), _) => {
-                        info!("Ledger: UpdateAsset resolved by ID: {}", id);
+                        tracing::info!("Ledger: UpdateAsset resolved by ID: {}", id);
                         id.clone()
                     }
                     (None, Some(old_path)) => {
                         match Self::resolve_asset_id_robust(tx, old_path).await? {
                             Some(id) => {
-                                info!(
+                                tracing::info!(
                                     "Ledger: UpdateAsset resolved old_path '{}' to ID: {}",
                                     old_path.display(),
                                     id
@@ -431,7 +485,7 @@ impl SqliteAssetLedger {
                                 id
                             }
                             None => {
-                                warn!("Ledger: UpdateAsset IGNORED - old_path '{}' not found in DB (even after robust fallback)", old_path.display());
+                                tracing::warn!("Ledger: UpdateAsset IGNORED - old_path '{}' not found in DB (even after robust fallback)", old_path.display());
                                 return Err(AppError::NotFound(format!(
                                     "Asset not found at path: {}",
                                     old_path.display()
@@ -440,9 +494,10 @@ impl SqliteAssetLedger {
                         }
                     }
                     _ => {
+                        tracing::error!("Ledger: UpdateAsset FAILED - missing both ID and old_path");
                         return Err(AppError::ValidationFailed(
                             "UpdateAsset requires either asset_id or old_path".to_string(),
-                        ))
+                        ));
                     }
                 };
 
@@ -532,91 +587,12 @@ impl SqliteAssetLedger {
                 path,
                 physical_delete,
             } => {
-                let p_str = path
-                    .as_ref()
-                    .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "None".to_string());
-                info!(
-                    "Ledger: DeleteAsset START. asset_id: {:?}, path: {}",
-                    asset_id, p_str
-                );
-
-                // 1. Resolve Asset ID (Using robust fallback for macOS Unicode consistency)
-                let resolved_id: String = match (asset_id, path) {
-                    (Some(id), _) => {
-                        info!("Ledger: DeleteAsset resolved by ID: {}", id);
-                        id.clone()
-                    }
-                    (None, Some(p)) => match Self::resolve_asset_id_robust(tx, &p).await? {
-                        Some(id) => {
-                            info!(
-                                "Ledger: DeleteAsset resolved path '{}' to ID: {}",
-                                p.display(),
-                                id
-                            );
-                            id
-                        }
-                        None => {
-                            warn!("Ledger: DeleteAsset IGNORED - path '{}' not found in DB (even after robust fallback)", p.display());
-                            return Err(AppError::NotFound(format!(
-                                "Asset not found at path: {}",
-                                p.display()
-                            )));
-                        }
-                    },
-                    _ => {
-                        error!("Ledger: DeleteAsset FAILED - missing ID and path");
-                        return Err(AppError::ValidationFailed(
-                            "DeleteAsset requires either asset_id or path".to_string(),
-                        ));
-                    }
-                };
-
-                // 2. Perform Delete
-                info!(
-                    "Ledger: DeleteAsset executing DELETE for ID {}",
-                    resolved_id
-                );
-                sqlx::query!("DELETE FROM assets WHERE id = ?", resolved_id)
-                    .execute(&mut **tx)
-                    .await?;
-
-                // 3. Audit Log
-                Self::log_operation(
+                crate::infra::database::handlers::asset_handler::handle_delete_asset(
                     tx,
-                    "DELETE_ASSET",
-                    &resolved_id,
-                    serde_json::json!({"physical": physical_delete}),
-                    "COMPLETED",
-                    None,
-                )
-                .await?;
-
-                info!("Ledger: DeleteAsset SUCCESS for ID {}", resolved_id);
-                // 4. Return Tombstone
-                Ok(Asset {
-                    id: resolved_id,
-                    name: "deleted".to_string(),
-                    path: std::path::PathBuf::new(),
-                    state: AssetState::Offline,
-                    format_type: "".to_string(),
-                    family: "".to_string(),
-                    file_size: 0,
-                    created_at: None,
-                    modified_at: None,
-                    added_at: None,
-                    updated_at: None,
-                    width: None,
-                    height: None,
-                    duration_secs: None,
-                    technical_payload: None,
-                    semantic_payload: None,
-                    dominant_color: None,
-                    folder_id: None,
-                    thumbnail_path: None,
-                    rating: None,
-                    notes: None,
-                })
+                    asset_id,
+                    path,
+                    physical_delete,
+                ).await
             }
             LedgerCommand::CreateFolder(payload) => {
                 crate::infra::database::handlers::folder_handler::handle_create_folder(tx, payload).await
@@ -717,7 +693,7 @@ impl SqliteAssetLedger {
     }
 
     /// Robustly resolves an asset ID from a path.
-    async fn resolve_asset_id_robust(
+    pub(crate) async fn resolve_asset_id_robust(
         tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
         path: &std::path::Path,
     ) -> AppResult<Option<String>> {
@@ -769,7 +745,7 @@ impl SqliteAssetLedger {
     }
 
     /// Robustly resolves a folder ID by path, handling normalization issues.
-    async fn resolve_folder_id_robust(
+    pub(crate) async fn resolve_folder_id_robust(
         tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
         path: &std::path::Path,
     ) -> AppResult<Option<String>> {

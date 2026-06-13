@@ -1,9 +1,24 @@
+//! Thumbnail command handlers.
+//!
+//! Encapsulates SQL mutations for persisting and invalidating asset thumbnail paths,
+//! decoupled from the actual image generation workers.
 use crate::core::error::AppResult;
 use crate::core::models::asset::{Asset, AssetState};
 use crate::infra::database::ledger::SqliteAssetLedger;
 use chrono::Utc;
 use sqlx::{Sqlite, Transaction};
 
+/// Persists a generated thumbnail path for an asset and transitions its state to `Thumbnailed`.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `asset_id` - The unique identifier of the asset.
+/// * `thumbnail_path` - The filesystem path to the generated thumbnail.
+///
+/// # Errors
+///
+/// Returns `AppError` if the asset record does not exist or the database update fails.
 pub async fn handle_update_thumbnail(
     tx: &mut Transaction<'_, Sqlite>,
     asset_id: &str,
@@ -38,6 +53,19 @@ pub async fn handle_update_thumbnail(
     SqliteAssetLedger::fetch_asset_by_id(tx, asset_id).await
 }
 
+/// Clears an asset's cached thumbnail path, signalling that regeneration is required.
+///
+/// The actual thumbnail generation is triggered by the `ThumbnailInvalidated` domain event
+/// emitted by the Ledger after this handler commits.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `asset_id` - The unique identifier of the asset.
+///
+/// # Errors
+///
+/// Returns `AppError` if the asset record does not exist or the database update fails.
 pub async fn handle_regenerate_thumbnail(
     tx: &mut Transaction<'_, Sqlite>,
     asset_id: &str,

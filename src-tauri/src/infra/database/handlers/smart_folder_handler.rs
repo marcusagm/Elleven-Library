@@ -1,3 +1,8 @@
+//! Smart Folder command handlers.
+//!
+//! Encapsulates SQL mutations for saved search (SmartFolder) CRUD operations.
+//! Smart folders store a JSON query expression and are not backed by a real
+//! filesystem directory.
 use crate::core::error::{AppError, AppResult};
 use crate::core::ledger::command::{
     CreateSmartFolderPayload, DeleteSmartFolderPayload, UpdateSmartFolderPayload,

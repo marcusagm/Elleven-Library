@@ -50,6 +50,14 @@ pub async fn init(app: &AppHandle) -> Result<(), String> {
         }
     });
 
+    // Run Saga Recovery
+    let recovery_service = crate::infra::database::saga_recovery::SagaRecoveryService::new(db_manager.pool().clone());
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = recovery_service.run_recovery().await {
+            tracing::error!("Failed to run saga recovery: {}", e);
+        }
+    });
+
     let asset_ledger: Arc<dyn crate::core::ledger::port::TransactionalAssetLedger> =
         asset_ledger_impl;
     app.manage(asset_ledger.clone());

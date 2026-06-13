@@ -1,3 +1,7 @@
+//! Tag management command handlers.
+//!
+//! Encapsulates SQL mutations for tag CRUD operations and batch tag
+//! association/dissociation across multiple assets.
 use crate::core::error::{AppError, AppResult};
 use crate::core::ledger::command::{
     BatchTagsPayload, CreateTagPayload, UpdateTagPayload, UpdateTagsPayload,
@@ -8,6 +12,16 @@ use chrono::Utc;
 use sqlx::{Sqlite, Transaction};
 use uuid::Uuid;
 
+/// Applies incremental tag additions and removals for a single asset.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `payload` - Contains the asset ID, tags to add, and tags to remove.
+///
+/// # Errors
+///
+/// Returns `AppError` if the asset record is not found or the database operation fails.
 pub async fn handle_update_tags(
     tx: &mut Transaction<'_, Sqlite>,
     payload: UpdateTagsPayload,
@@ -53,15 +67,15 @@ pub async fn handle_update_tags(
     .await?;
 
     // 4. Audit Log
-    let op_payload = serde_json::to_value(&payload).map_err(|e| {
-        AppError::Internal(format!("Failed to serialize payload: {}", e))
+    let operation_payload = serde_json::to_value(&payload).map_err(|serialization_error| {
+        AppError::Internal(format!("Failed to serialize payload: {}", serialization_error))
     })?;
 
     SqliteAssetLedger::log_operation(
         tx,
         "UPDATE_TAGS",
         &payload.asset_id,
-        op_payload,
+        operation_payload,
         "COMPLETED",
         None,
     )
@@ -70,6 +84,16 @@ pub async fn handle_update_tags(
     SqliteAssetLedger::fetch_asset_by_id(tx, &payload.asset_id).await
 }
 
+/// Creates a new taxonomy tag with optional hierarchy and color.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `payload` - Contains the tag name, optional parent ID, and optional color.
+///
+/// # Errors
+///
+/// Returns `AppError` if the tag name conflicts with an existing one or the insert fails.
 pub async fn handle_create_tag(
     tx: &mut Transaction<'_, Sqlite>,
     payload: CreateTagPayload,
@@ -138,6 +162,18 @@ pub async fn handle_create_tag(
     })
 }
 
+/// Updates the mutable properties of an existing tag using a dynamic query.
+///
+/// Only the fields present in the payload will be modified, preserving unset values.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `payload` - Contains the tag ID and any optional fields to update.
+///
+/// # Errors
+///
+/// Returns `AppError` if the tag is not found or the database update fails.
 pub async fn handle_update_tag(
     tx: &mut Transaction<'_, Sqlite>,
     payload: UpdateTagPayload,
@@ -227,6 +263,16 @@ pub async fn handle_update_tag(
     })
 }
 
+/// Deletes a tag and removes all its asset associations.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `id` - The unique identifier of the tag to delete.
+///
+/// # Errors
+///
+/// Returns `AppError` if the database operation fails.
 pub async fn handle_delete_tag(
     tx: &mut Transaction<'_, Sqlite>,
     id: String,
@@ -276,6 +322,16 @@ pub async fn handle_delete_tag(
     })
 }
 
+/// Associates a set of tags with a set of assets in a single atomic batch.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `payload` - Contains the list of asset IDs and tag IDs to associate.
+///
+/// # Errors
+///
+/// Returns `AppError` if any of the insert operations fail.
 pub async fn handle_add_tags_to_assets_batch(
     tx: &mut Transaction<'_, Sqlite>,
     payload: BatchTagsPayload,
@@ -337,6 +393,16 @@ pub async fn handle_add_tags_to_assets_batch(
     })
 }
 
+/// Removes a set of tags from a set of assets in a single atomic batch.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `payload` - Contains the list of asset IDs and tag IDs to disassociate.
+///
+/// # Errors
+///
+/// Returns `AppError` if any of the delete operations fail.
 pub async fn handle_remove_tags_from_assets_batch(
     tx: &mut Transaction<'_, Sqlite>,
     payload: BatchTagsPayload,
@@ -398,6 +464,16 @@ pub async fn handle_remove_tags_from_assets_batch(
     })
 }
 
+/// Replaces all current tags of each asset with a new set in a single atomic batch.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `payload` - Contains the asset IDs and the new tag IDs that will replace all existing ones.
+///
+/// # Errors
+///
+/// Returns `AppError` if any database operation fails.
 pub async fn handle_replace_tags_for_assets_batch(
     tx: &mut Transaction<'_, Sqlite>,
     payload: BatchTagsPayload,
