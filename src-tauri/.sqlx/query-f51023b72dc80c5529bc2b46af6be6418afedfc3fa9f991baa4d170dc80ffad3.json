@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE asset_operations_log SET status = 'FAILED', error_note = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "f51023b72dc80c5529bc2b46af6be6418afedfc3fa9f991baa4d170dc80ffad3"
+}

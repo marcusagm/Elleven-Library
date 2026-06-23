@@ -327,8 +327,9 @@ impl SqliteAssetLedger {
                 })?;
             }
             LedgerCommand::DeleteAsset { .. } => {
-                self.event_bus.publish(DomainEvent::FsPathDeleted {
-                    path: asset.id.clone(),
+                self.event_bus.publish(DomainEvent::AssetDeleted {
+                    asset_id: asset.id.clone(),
+                    folder_id: asset.folder_id.clone(),
                 })?;
             }
             LedgerCommand::CreateFolder(_) => {

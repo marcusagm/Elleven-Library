@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock, Semaphore};
 use tokio::task::JoinSet;
-use tokio_util::sync::CancellationToken;
+
 use tracing::{debug, error, info, instrument, warn};
 use walkdir::{DirEntry, WalkDir};
 
@@ -42,9 +42,9 @@ pub struct LibraryIndexer {
     /// Maximum number of concurrent file-processing tasks.
     concurrency_limit: usize,
 
-    /// 2-second window for pending removals (prevents rename duplication on macOS).
-    pending_removals: Arc<DashMap<PathBuf, CancellationToken>>,
     /// Cache of recently removed files metadata to support "Implicit Rename" recovery.
+    /// Keeps track of removals for a short window so that a subsequent file discovery
+    /// with matching size + created_at can be paired as a move instead of delete+create.
     /// Tuple: (removal_timestamp, file_size, created_at_from_db)
     recent_removals: Arc<DashMap<PathBuf, (DateTime<Utc>, u64, Option<DateTime<Utc>>)>>,
 }
@@ -63,7 +63,6 @@ impl LibraryIndexer {
             event_bus,
             registry,
             concurrency_limit: 200,
-            pending_removals: Arc::new(DashMap::new()),
             recent_removals: Arc::new(DashMap::new()),
         }
     }
@@ -483,16 +482,23 @@ impl LibraryIndexer {
                     .and_then(|name| name.to_str())
                     .unwrap_or("Unknown")
                     .to_string();
-                let _ = self
+                let create_result = self
                     .ledger
                     .execute(LedgerCommand::CreateFolder(CreateFolderPayload {
-                        parent_id,
+                        parent_id: parent_id.clone(),
                         name: folder_name,
-                        path: dir_path,
+                        path: dir_path.clone(),
                     }))
                     .await;
+                
+                // Immediately scan the new folder to discover any files that were dragged/restored inside it
+                if let Ok(new_folder_asset) = create_result {
+                    let _ = self.scan_directory(dir_path, Some(new_folder_asset.id)).await;
+                } else {
+                    // Fallback to scanning with parent_id if folder creation mysteriously failed but we still want to scan
+                    let _ = self.scan_directory(dir_path, parent_id).await;
+                }
             }
-
             DomainEvent::FsDirectoryDeleted { path } => {
                 if let Ok(Some(folder_id)) = self.query_handler.find_folder_by_path(&path).await {
                     let _ = self
@@ -518,10 +524,10 @@ impl LibraryIndexer {
 
         // Try to get metadata for fingerprint matching
         let disk_metadata = std::fs::metadata(&entry_path).ok();
-        let disk_size = disk_metadata.as_ref().map(|m| m.len() as i64).unwrap_or(0);
+        let disk_size = disk_metadata.as_ref().map(|metadata| metadata.len() as i64).unwrap_or(0);
         let disk_created_at: Option<DateTime<Utc>> = disk_metadata
             .as_ref()
-            .and_then(|m| m.created().ok())
+            .and_then(|metadata| metadata.created().ok())
             .map(DateTime::<Utc>::from);
 
         // --- STEP 1: Fast Match (Size + CreatedAt from recent_removals) ---
@@ -529,6 +535,10 @@ impl LibraryIndexer {
             .recent_removals
             .iter()
             .find(|entry| {
+                if *entry.key() == entry_path {
+                    return false; // Not a move if it's the exact same path
+                }
+                
                 let (_, (_, removed_size, removed_created_at)) = entry.pair();
                 let size_matches = *removed_size as i64 == disk_size && disk_size > 0;
                 if !size_matches {
@@ -536,8 +546,8 @@ impl LibraryIndexer {
                 }
                 // If both sides have created_at, require a match for precision
                 match (removed_created_at, &disk_created_at) {
-                    (Some(db_created), Some(disk_created)) => {
-                        (*db_created - *disk_created).num_seconds().abs() < 2
+                    (Some(database_created), Some(filesystem_created)) => {
+                        (*database_created - *filesystem_created).num_seconds().abs() < 2
                     }
                     _ => true, // If either side lacks created_at, rely on size alone
                 }
@@ -554,11 +564,6 @@ impl LibraryIndexer {
 
             self.recent_removals.remove(&from_path);
 
-            // Cancel the pending delayed delete
-            if let Some((_, cancel_token)) = self.pending_removals.remove(&from_path) {
-                cancel_token.cancel();
-            }
-
             let update_payload = crate::core::ledger::command::UpdateAssetPayload {
                 asset_id: None,
                 old_path: Some(from_path),
@@ -571,7 +576,7 @@ impl LibraryIndexer {
             return;
         }
 
-        // --- STEP 3: Normal Discovery (Creation with Collision Check) ---
+        // --- STEP 2: Normal Discovery (Creation with Collision Check) ---
         let _ = self.handle_file_discovery_event(entry_path).await;
     }
 
@@ -633,10 +638,15 @@ impl LibraryIndexer {
         Ok(())
     }
 
-    /// Handles a path deletion event with a safety delay window.
+    /// Handles a path deletion event.
+    ///
+    /// The debouncer has already applied a 3-second deletion guard before emitting
+    /// FsPathDeleted. The indexer trusts this judgment and executes immediately,
+    /// but maintains a `recent_removals` cache so that `handle_file_discovered`
+    /// can still pair late renames/moves.
     async fn handle_path_deleted(&self, path: String) {
         let entry_path = PathBuf::from(&path);
-        info!("Indexer: Scheduling DELAYED DELETE for: {}", path);
+        info!("Indexer: Processing DELETE for: {}", path);
 
         // Capture size AND created_at from DB for precise move pairing
         let mut old_size = 0;
@@ -646,58 +656,50 @@ impl LibraryIndexer {
             old_created_at = asset.created_at;
         }
 
-        if let Some((_, old_token)) = self.pending_removals.remove(&entry_path) {
-            old_token.cancel();
-        }
-
-        let token = CancellationToken::new();
-        self.pending_removals
-            .insert(entry_path.clone(), token.clone());
+        // Populate recent_removals cache for potential late rename/move pairing
         self.recent_removals
             .insert(entry_path.clone(), (Utc::now(), old_size, old_created_at));
 
-        let self_clone = Arc::new(self.clone_state());
-        let path_buf = entry_path.clone();
+        // Execute delete immediately — the debouncer already confirmed the file is gone
+        let delete_command = LedgerCommand::DeleteAsset {
+            asset_id: None,
+            path: Some(entry_path.clone()),
+            physical_delete: false,
+        };
 
-        tokio::spawn(async move {
-            tokio::select! {
-                _ = tokio::time::sleep(std::time::Duration::from_secs(2)) => {
-                    if self_clone.pending_removals.remove(&path_buf).is_some() {
-                        info!("Indexer: Safety window expired. Executing DELETE for: {}", path_buf.display());
-                        self_clone.recent_removals.remove(&path_buf);
-
-                        let delete_cmd = LedgerCommand::DeleteAsset {
-                            asset_id: None,
-                            path: Some(path_buf.clone()),
-                            physical_delete: false,
-                        };
-
-                        let _ = self_clone.ledger.execute(delete_cmd).await;
-                    }
-                }
-                _ = token.cancelled() => {
-                    info!("Indexer: Pending delete CANCELLED for: {} (Rename detected)", path_buf.display());
-                }
+        if let Err(error) = self.ledger.execute(delete_command).await {
+            // NotFound is expected for files not in the DB (e.g., unsupported formats)
+            if !matches!(error, crate::core::error::AppError::NotFound(_)) {
+                error!("Indexer: DELETE failed for {}: {}", path, error);
             }
+        }
+
+        // Clean up recent_removals after 5 seconds (enough time for late move pairing)
+        let recent_removals_clone = self.recent_removals.clone();
+        let entry_path_clone = entry_path.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            recent_removals_clone.remove(&entry_path_clone);
         });
     }
 
-    /// Handles an explicit path rename, cancelling any pending deletes for the source.
+    /// Handles an explicit path rename, cleaning up rename caches for the source.
     async fn handle_path_renamed(&self, from: String, to: String) {
         let from_path = PathBuf::from(&from);
         let to_path = PathBuf::from(&to);
 
-        if let Some((_, token)) = self.pending_removals.remove(&from_path) {
-            token.cancel();
-        }
+        // Clean up rename pairing cache
         self.recent_removals.remove(&from_path);
 
         if to_path.is_dir() {
-            if let Ok(Some(folder_id)) = self
+            let found_folder = self
                 .query_handler
                 .find_folder_by_path(&from_path.to_string_lossy())
                 .await
-            {
+                .unwrap_or(None);
+
+            if let Some(folder_id) = found_folder {
+                // Normal rename: old path exists in DB, update it
                 let _ = self
                     .ledger
                     .execute(LedgerCommand::RenameFolder(
@@ -708,23 +710,51 @@ impl LibraryIndexer {
                         },
                     ))
                     .await;
+            } else {
+                // macOS new folder flow: "Pasta Sem Título" was never persisted,
+                // so treat this as a brand-new folder discovery with the final name.
+                info!(
+                    "Indexer: Rename target '{}' not in DB — treating as new folder creation for '{}'",
+                    from_path.display(),
+                    to_path.display()
+                );
+
+                let to_path_str = to_path.to_string_lossy().to_string();
+                // Don't duplicate if the target already exists
+                if self.query_handler.find_folder_by_path(&to_path_str).await.unwrap_or(None).is_none() {
+                    let parent_id = if let Some(parent) = to_path.parent() {
+                        let parent_str = parent.to_string_lossy().to_string();
+                        self.query_handler
+                            .find_folder_by_path(&parent_str)
+                            .await
+                            .unwrap_or(None)
+                    } else {
+                        None
+                    };
+
+                    let folder_name = to_path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string();
+
+                    let create_result = self
+                        .ledger
+                        .execute(LedgerCommand::CreateFolder(CreateFolderPayload {
+                            parent_id: parent_id.clone(),
+                            name: folder_name,
+                            path: to_path.clone(),
+                        }))
+                        .await;
+
+                    if let Ok(new_folder_asset) = create_result {
+                        let _ = self.scan_directory(to_path, Some(new_folder_asset.id)).await;
+                    } else {
+                        let _ = self.scan_directory(to_path, parent_id).await;
+                    }
+                }
             }
         } else {
-            // CRITICAL: Collision Detection for Fast renames
-            // If the destination 'to' already exists in the database (likely because
-            // handle_file_discovered was already processed), we must delete the
-            // "new" (blank) record and UPDATE the original one to stay with 'to'.
-            // This preserves all metadata (labels, tags, etc) of the original asset.
-            if let Ok(Some(collision_asset)) = self.query_handler.find_asset_by_path(&to).await {
-                info!("Indexer: Collision detected on rename! Destination '{}' already has a record. Clearing it to preserve original metadata.", to);
-                let delete_cmd = LedgerCommand::DeleteAsset {
-                    asset_id: Some(collision_asset.id),
-                    path: None,
-                    physical_delete: false,
-                };
-                let _ = self.ledger.execute(delete_cmd).await;
-            }
-
             let _ = self
                 .ledger
                 .execute(LedgerCommand::UpdateAsset(
@@ -820,18 +850,6 @@ impl LibraryIndexer {
         }
     }
 
-    /// Helper to clone the necessary Arc components for background tasks.
-    fn clone_state(&self) -> LibraryIndexer {
-        LibraryIndexer {
-            query_handler: self.query_handler.clone(),
-            ledger: self.ledger.clone(),
-            event_bus: self.event_bus.clone(),
-            registry: self.registry.clone(),
-            concurrency_limit: self.concurrency_limit,
-            pending_removals: self.pending_removals.clone(),
-            recent_removals: self.recent_removals.clone(),
-        }
-    }
 }
 
 /// Pure classification function executed by each producer task.

@@ -68,10 +68,29 @@ pub fn init_events(app: &AppHandle) {
             }
 
             match event {
+                // ── Targeted Asset Deletion (instant UI removal) ──────
+                DomainEvent::AssetDeleted { asset_id, folder_id } => {
+                    let _ = app_handle.emit(
+                        "library:batch-change",
+                        serde_json::json!({
+                            "added": [],
+                            "removed": [{
+                                "id": asset_id,
+                                "folder_id": folder_id.unwrap_or_default(),
+                                "tag_ids": []
+                            }],
+                            "updated": [],
+                            "needs_refresh": false
+                        }),
+                    );
+                }
+
+                // ── Events requiring a full library refresh ──────────
                 DomainEvent::AssetCreated { .. }
                 | DomainEvent::AssetFolderChanged { .. }
                 | DomainEvent::FolderMetadataUpdated { .. }
-                | DomainEvent::FsPathDeleted { .. }
+                | DomainEvent::FolderRemoved { .. }
+                | DomainEvent::FsDirectoryDeleted { .. }
                 | DomainEvent::FsPathRenamed { .. } => {
                     let _ = app_handle.emit(
                         "library:batch-change",

@@ -354,7 +354,18 @@ pub async fn handle_delete_asset(
         }
     };
 
-    // 2. Perform Delete
+    // 2. Capture pre-deletion metadata for domain event enrichment
+    let pre_delete_row = sqlx::query!(
+        r#"SELECT folder_id as "folder_id?", name as "name!" FROM assets WHERE id = ?"#,
+        resolved_id
+    )
+    .fetch_optional(&mut **tx)
+    .await?;
+
+    let pre_delete_folder_id = pre_delete_row.as_ref().and_then(|row| row.folder_id.clone());
+    let pre_delete_name = pre_delete_row.as_ref().map(|row| row.name.clone()).unwrap_or_else(|| "deleted".to_string());
+
+    // 3. Perform Delete
     tracing::info!(
         "Ledger: DeleteAsset executing DELETE for ID {}",
         resolved_id
@@ -363,7 +374,7 @@ pub async fn handle_delete_asset(
         .execute(&mut **tx)
         .await?;
 
-    // 3. Audit Log - Use Outbox pattern (PENDING if physical, COMPLETED otherwise)
+    // 4. Audit Log - Use Outbox pattern (PENDING if physical, COMPLETED otherwise)
     let status = if physical_delete { "PENDING" } else { "COMPLETED" };
     SqliteAssetLedger::log_operation(
         tx,
@@ -376,10 +387,10 @@ pub async fn handle_delete_asset(
     .await?;
 
     tracing::info!("Ledger: DeleteAsset SUCCESS for ID {}", resolved_id);
-    // 4. Return Tombstone
+    // 5. Return Tombstone (with original folder_id for event enrichment)
     Ok(Asset {
         id: resolved_id,
-        name: "deleted".to_string(),
+        name: pre_delete_name,
         path: std::path::PathBuf::new(),
         state: crate::core::models::asset::AssetState::Offline,
         format_type: "".to_string(),
@@ -395,7 +406,7 @@ pub async fn handle_delete_asset(
         technical_payload: None,
         semantic_payload: None,
         dominant_color: None,
-        folder_id: None,
+        folder_id: pre_delete_folder_id,
         thumbnail_path: None,
         rating: None,
         notes: None,

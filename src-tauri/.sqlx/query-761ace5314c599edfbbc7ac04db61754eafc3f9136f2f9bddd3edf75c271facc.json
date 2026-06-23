@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT \n                id as \"id!\", \n                operation_type as \"operation_type!\", \n                asset_id as \"asset_id!\", \n                payload as \"payload!\", \n                status, \n                error_note, \n                created_at\n            FROM asset_operations_log\n            WHERE status = 'PENDING'\n            ORDER BY created_at ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "operation_type!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "asset_id!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "payload!",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "error_note",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "761ace5314c599edfbbc7ac04db61754eafc3f9136f2f9bddd3edf75c271facc"
+}

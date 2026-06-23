@@ -15,6 +15,11 @@ pub enum DomainEvent {
         path: String,
         format: String,
     },
+    /// An asset was permanently removed from the database.
+    AssetDeleted {
+        asset_id: String,
+        folder_id: Option<String>,
+    },
     /// An asset's tags have been changed.
     AssetTagsUpdated {
         asset_id: String,

@@ -118,21 +118,20 @@
 
 ## Core
 
-- [ ] Melhorar a forma de resgitro de formatos em /Users/marcusmaia/Documents/Desenvolvimento/Mundam/src-tauri/src/core/formats/registry.rs e mod.rs
-- [ ] Testar todos os comandas e encontar uma forma melhor de organização /Users/marcusmaia/Documents/Desenvolvimento/Mundam/src-tauri/src/core/ledger/command.rs
-- [ ] Melhorar a organização dos arquivos e pastas em /Users/marcusmaia/Documents/Desenvolvimento/Mundam/src-tauri/src/core/ledger/models/*
+- [ ] Melhorar a forma de resgitro de formatos em `src-tauri/src/core/formats/registry.rs` e `mod.rs`.
 - [ ] Verificar o funcionamento do core/repository e sua interação com o ledgerer
 - [ ] Verificar o funcionamento do core/settings e sua interação com o ledgerer
 - [ ] Analisar a pasta core/workflows e verificar se existe algo que podemos retirar ou organizar melhor.
 
 ## Infra
 
-- [ ] Analisar /Users/marcusmaia/Documents/Desenvolvimento/Mundam/src-tauri/src/infra/database/ para dividir o arquivo e organizar melhor. Muitos arquivos com muitas linhas de código.
+- [x] Testar todos os comandas e encontar uma forma melhor de organização da pasta `src-tauri/src/infra/database/`.
+- [ ] Verificar melhorias na implementação do ledger com o Saga Pattern citadas no relatório `docs/report/backend-architeture/definition/plans/2026-06-13-ledger-saga-pattern.md`.
 
 ## Processing
 
 - [ ] O ideal é que cada formato junto com seus alias, tenho um arquivo exclusivo em 
-      "src-tauri/src/processing/media" assim como é feito para arquivos `affinity_format`,
+      `src-tauri/src/processing/media` assim como é feito para arquivos `affinity_format`,
       `ai_format`, `aseprite_format`, `pdf_format`, entre outros, e funções comuns fiquem 
       agrupadas em "helpers" e em "extractors" se forem especificas para determinado formato. 
       Isso permitirá o tratamento exclusivo por formato definindo extração e inclusive 

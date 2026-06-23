@@ -179,11 +179,6 @@ impl EventDebouncer {
         let now = Instant::now();
         let deletion_guard_duration = Duration::from_secs(3);
 
-        // ─── Gap 2 Fix: Heuristic pairing for untracked renames ─────────
-        // Before processing deletions, try to pair removes with creates
-        // using metadata (size + created_at) — mimics V1 behavior for macOS Finder renames.
-        self.apply_rename_heuristics().await;
-
         // ─── Process expired pending_tracked_renames (orphaned From events) ─
         let orphaned_trackers: Vec<usize> = self.pending_tracked_renames.keys().cloned().collect();
         for tracker_id in orphaned_trackers {
@@ -202,19 +197,27 @@ impl EventDebouncer {
 
         // ─── Gap 3 Fix: Delayed deletion guard ─────────────────────────
         let mut confirmed_deletions: Vec<PathBuf> = Vec::new();
+        let mut paths_to_remove_from_pending: Vec<PathBuf> = Vec::new();
+
         for (path, (first_seen, _metadata_snapshot)) in &self.pending_untracked_removes {
             if now.duration_since(*first_seen) >= deletion_guard_duration {
+                paths_to_remove_from_pending.push(path.clone());
+
                 // Re-verify: if the path has reappeared (rename completed), don't delete
-                if !path.exists() {
+                if !path_exists_exact(path) {
                     confirmed_deletions.push(path.clone());
                 } else {
-                    // Path reappeared — this was a rename, not a deletion
+                    // Path reappeared — this was a temporary disappearance.
                     // Buffer it as a Created event for the normal debounce path
                     let snapshot = read_metadata_snapshot(path);
                     self.buffer
                         .insert(path.clone(), BufferedEvent::Created(now, snapshot));
                 }
             }
+        }
+
+        for path in &paths_to_remove_from_pending {
+            self.pending_untracked_removes.remove(path);
         }
 
         for path in &confirmed_deletions {
@@ -232,7 +235,6 @@ impl EventDebouncer {
             let _ = self.output_sender.send(domain_event).await;
         }
 
-        // ─── Process expired buffer events (normal debounce) ────────────
         let mut expired_paths = Vec::new();
         for (path, event) in &self.buffer {
             let last_seen = match event {
@@ -246,8 +248,36 @@ impl EventDebouncer {
             }
         }
 
+        // Pass 1: Move expired paths that no longer exist to pending_untracked_removes
+        let mut surviving_paths = Vec::new();
         for path in expired_paths {
+            if !path_exists_exact(&path) {
+                if let Some(event) = self.buffer.remove(&path) {
+                    let snapshot = match event {
+                        BufferedEvent::Created(_, meta) => meta,
+                        _ => None, // Cannot read metadata for a deleted file now
+                    };
+                    self.pending_untracked_removes
+                        .insert(path, (now, snapshot));
+                }
+            } else {
+                surviving_paths.push(path);
+            }
+        }
+
+        // ─── Gap 2 Fix: Heuristic pairing for untracked renames ─────────
+        // Now that deletions are in pending_untracked_removes, we can try to pair them
+        // with the surviving creations/modifications in the buffer.
+        self.apply_rename_heuristics().await;
+
+        // Pass 2: Emit discovery events for paths that survived the heuristic pairing
+        for path in surviving_paths {
             if let Some(event) = self.buffer.remove(&path) {
+                // Double check existence just in case
+                if !path_exists_exact(&path) {
+                    continue;
+                }
+
                 let path_str = path.to_string_lossy().to_string();
                 let domain_event = match event {
                     BufferedEvent::Created(_, _) | BufferedEvent::Modified(_) => {
@@ -305,7 +335,10 @@ impl EventDebouncer {
                 matched_to_path = self
                     .buffer
                     .iter()
-                    .find(|(_, event)| {
+                    .find(|(to_path, event)| {
+                        if **to_path == from_path {
+                            return false;
+                        }
                         if let BufferedEvent::Created(_, Some(created_snapshot)) = event {
                             created_snapshot.size_bytes == meta.size_bytes
                                 && created_snapshot.created_at == meta.created_at
@@ -322,10 +355,11 @@ impl EventDebouncer {
                     .buffer
                     .iter()
                     .find(|(to_path, event)| {
-                        matches!(event, BufferedEvent::Created(_, _))
+                        **to_path != from_path
+                            && (matches!(event, BufferedEvent::Created(_, _)) || matches!(event, BufferedEvent::Modified(_)))
                             && to_path.parent() == from_path.parent()
                             && to_path.extension() == from_path.extension()
-                            && !to_path.is_dir()
+                            && is_likely_directory(&from_path) == is_likely_directory(to_path)
                     })
                     .map(|(path, _)| path.clone());
             }
@@ -334,7 +368,11 @@ impl EventDebouncer {
             // (Crucial for macOS where Metadata might be missing for the "from" path)
             if matched_to_path.is_none() {
                 for (to_path, (_instant, to_meta)) in &self.recent_emitted_creates {
-                    let ext_match = from_path.extension() == to_path.extension();
+                    if *to_path == from_path {
+                        continue;
+                    }
+                    let ext_match = from_path.extension() == to_path.extension() 
+                        && is_likely_directory(&from_path) == is_likely_directory(to_path);
 
                     if ext_match {
                         // If we have metadata, use it to confirm
@@ -348,7 +386,7 @@ impl EventDebouncer {
                                 matched_to_path = Some(to_path.clone());
                                 break;
                             }
-                        } else if from_path.parent() == to_path.parent() {
+                        } else if from_path.parent() == to_path.parent() && is_likely_directory(&from_path) == is_likely_directory(to_path) {
                             // No metadata for 'from', but path looks like a rename candidate in same folder
                             info!(
                                 "Debouncer: Late Heuristic MATCH (Path-only): {} -> {}",
@@ -402,7 +440,39 @@ fn is_likely_directory(path: &std::path::Path) -> bool {
     if let Ok(metadata) = std::fs::metadata(path) {
         return metadata.is_dir();
     }
+    
+    // Hidden files (dotfiles) like .DS_Store are usually not directories
+    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+        if name.starts_with('.') {
+            return false;
+        }
+    }
+    
     path.extension().is_none()
+}
+
+/// Checks if a path exists with the exact case specified.
+/// This is crucial for macOS, which is case-insensitive by default.
+/// If we just use `path.exists()`, renaming "subpasta" to "Subpasta" will appear
+/// as if "subpasta" still exists, breaking the rename heuristic.
+fn path_exists_exact(path: &std::path::Path) -> bool {
+    if !path.exists() {
+        return false;
+    }
+    
+    if let Some(file_name) = path.file_name() {
+        if let Some(parent) = path.parent() {
+            if let Ok(mut entries) = std::fs::read_dir(parent) {
+                while let Some(Ok(entry)) = entries.next() {
+                    if entry.file_name() == file_name {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    }
+    true
 }
 
 #[cfg(test)]
@@ -415,7 +485,11 @@ mod tests {
         let (sender, mut receiver) = mpsc::channel(100);
         let mut debouncer = EventDebouncer::new(sender);
 
-        let path = PathBuf::from("/tmp/test.txt");
+        // Create a real temp file so `path.exists()` is true
+        let temp_dir = std::env::temp_dir();
+        let path = temp_dir.join(format!("test_event_agg_{}.txt", std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos()));
+        std::fs::write(&path, "test content").unwrap();
+
         let event = Event::new(EventKind::Modify(ModifyKind::Any)).add_path(path.clone());
 
         // Send 3 events in rapid succession
@@ -444,6 +518,9 @@ mod tests {
             }
             _ => panic!("Expected FsFileDiscovered"),
         }
+
+        // Cleanup
+        let _ = std::fs::remove_file(path);
     }
 
     #[tokio::test]
@@ -493,8 +570,8 @@ mod tests {
             "Should NOT have emitted yet — deletion guard active"
         );
 
-        // Wait for guard period to expire
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        // Wait for guard period to expire (debouncer uses 3s deletion guard)
+        tokio::time::sleep(Duration::from_secs(4)).await;
         debouncer.tick(Duration::from_millis(200)).await;
 
         // Now it should emit (path doesn't exist)
