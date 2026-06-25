@@ -38,11 +38,15 @@ pub fn init_directories(app: &AppHandle) -> crate::bootstrap::AppDirectories {
         settings_path,
         thumbnails_dir,
     };
-    
+
     app.manage(dirs.clone());
     dirs
 }
 
+/// Initializes the settings service and manages it in the application state.
+///
+/// # Arguments
+/// * `app` - Reference to the Tauri AppHandle.
 pub fn init_settings(app: &AppHandle) {
     let dirs = app.state::<crate::bootstrap::AppDirectories>();
     let settings_adapter = Arc::new(
@@ -52,6 +56,13 @@ pub fn init_settings(app: &AppHandle) {
     app.manage(settings_service);
 }
 
+/// Initializes the event bus and manages it in the application state.
+///
+/// # Arguments
+/// * `app` - Reference to the Tauri AppHandle.
+///
+/// # Returns
+/// The initialized `Arc<dyn AppEventBus>` instance.
 pub fn init_events(app: &AppHandle) {
     let event_bus = Arc::new(TokioEventBus::new());
     app.manage(event_bus.clone() as Arc<dyn AppEventBus>);
@@ -154,11 +165,19 @@ pub fn init_events(app: &AppHandle) {
     });
 }
 
+/// Initializes the lifecycle registry and manages it in the application state.
+///
+/// # Arguments
+/// * `app` - Reference to the Tauri AppHandle.
 pub fn init_lifecycle(app: &AppHandle) {
     let lifecycle = std::sync::Arc::new(LifecycleRegistry::new());
     app.manage(lifecycle);
 }
 
+/// Initializes the format registry and manages it in the application state.
+///
+/// # Arguments
+/// * `app` - Reference to the Tauri AppHandle.
 pub fn init_formats(app: &AppHandle) {
     let format_registry = std::sync::Arc::new(crate::core::formats::build_format_registry());
     app.manage(format_registry);
