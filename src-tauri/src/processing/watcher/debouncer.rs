@@ -339,6 +339,11 @@ impl EventDebouncer {
                         if **to_path == from_path {
                             return false;
                         }
+                        // The rename target must still exist on disk.
+                        // Without this, two rapid deletions get falsely paired as a rename.
+                        if !path_exists_exact(to_path) {
+                            return false;
+                        }
                         if let BufferedEvent::Created(_, Some(created_snapshot)) = event {
                             created_snapshot.size_bytes == meta.size_bytes
                                 && created_snapshot.created_at == meta.created_at
@@ -357,6 +362,7 @@ impl EventDebouncer {
                     .find(|(to_path, event)| {
                         **to_path != from_path
                             && (matches!(event, BufferedEvent::Created(_, _)) || matches!(event, BufferedEvent::Modified(_)))
+                            && path_exists_exact(to_path) // Must still exist — two deletions are NOT a rename
                             && to_path.parent() == from_path.parent()
                             && to_path.extension() == from_path.extension()
                             && is_likely_directory(&from_path) == is_likely_directory(to_path)
@@ -368,7 +374,7 @@ impl EventDebouncer {
             // (Crucial for macOS where Metadata might be missing for the "from" path)
             if matched_to_path.is_none() {
                 for (to_path, (_instant, to_meta)) in &self.recent_emitted_creates {
-                    if *to_path == from_path {
+                    if *to_path == from_path || !path_exists_exact(to_path) {
                         continue;
                     }
                     let ext_match = from_path.extension() == to_path.extension() 
