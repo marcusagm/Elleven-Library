@@ -11,6 +11,7 @@ import {
 } from 'solid-js';
 import { AssetCard } from '../assets/AssetCard';
 import { EmptyState } from '../components/EmptyState';
+import { AssetContextMenu } from '../components/AssetContextMenu';
 import { AssetItem } from '../../../../types';
 import {
     useLibrary,
@@ -80,6 +81,23 @@ export const VirtualGridView: Component = (): JSX.Element => {
      * @type {number}
      */
     const [containerHeight, setContainerHeight] = createSignal(0);
+
+    const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
+    const [contextMenuPosition, setContextMenuPosition] = createSignal({
+        coordinateX: 0,
+        coordinateY: 0
+    });
+    const [contextMenuAsset, setContextMenuAsset] = createSignal<AssetItem | null>(null);
+
+    const handleContextMenu = (event: MouseEvent, id: string) => {
+        event.preventDefault();
+        const item = itemsById().get(id);
+        if (item) {
+            setContextMenuAsset(item);
+            setContextMenuPosition({ coordinateX: event.clientX, coordinateY: event.clientY });
+            setContextMenuOpen(true);
+        }
+    };
 
     /**
      * For grid, all items have aspectRatio = 1 (square cells)
@@ -278,6 +296,7 @@ export const VirtualGridView: Component = (): JSX.Element => {
                                     }}
                                     onSelect={handleSelectWithFocus}
                                     onOpen={actions.handleOpen}
+                                    onContextMenu={handleContextMenu}
                                     getSelectedIds={actions.getSelectedIds}
                                     getItemInfo={getItemInfo}
                                 />
@@ -286,6 +305,14 @@ export const VirtualGridView: Component = (): JSX.Element => {
                     </For>
                 </div>
             </Show>
+
+            <AssetContextMenu
+                isOpen={contextMenuOpen()}
+                coordinateX={contextMenuPosition().coordinateX}
+                coordinateY={contextMenuPosition().coordinateY}
+                asset={contextMenuAsset()}
+                onClose={() => setContextMenuOpen(false)}
+            />
         </div>
     );
 };

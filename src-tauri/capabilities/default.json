@@ -7,6 +7,14 @@
     "core:default",
     "core:webview:allow-create-webview-window",
     "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "opener:allow-reveal-item-in-dir",
+      "allow": [{ "path": "**" }]
+    },
     "sql:allow-execute",
     "sql:allow-select",
     "sql:allow-load",

@@ -48,19 +48,21 @@
 
 ## Listagem
 
-- [ ] Adicionar opção de copiar caminho do arquivo.
+- [x] Adicionar opção de copiar caminho do arquivo.
 - [ ] Adicionar visualização por icones.
 - [ ] Implementar a funcionalidade de clicar e arrastar no vazio para selecionar múltiplos itens na Grid e no mansory.
 
 ## Assets
 
-- [ ] Abrir arquivo no editor padrão do sistema operacional.
-- [ ] Abrir pasta onde se encontra o arquivo.
+- [x] Abrir arquivo no editor padrão do sistema operacional.
+- [x] Abrir pasta onde se encontra o arquivo.
 - [ ] Adicionar asset como favorito.
 - [ ] Converter arquivo para outros formatos.
 - [ ] Verificar duplicidade de arquivos.
 - [ ] Adicionar asset arrastando para a janela do Mundam.
 - [ ] Adicionar recurso de virar imagem automaticamente de acordo com o metadado EXIF orientation.
+- [ ] Copiar Imagem Real para Área de Transferência: Copiar o arquivo diretamente para o clipboard do sistema (para colar em um chat, Photoshop ou Figma, por exemplo).
+- [ ] Adicionar tags pelo menu de contexto seja a um asset ou a todos os assets selecionados.
 
 ## Visualizador de assets
 

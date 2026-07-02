@@ -98,4 +98,6 @@ export interface TableProps<T> {
      * Useful for lazy-loading or priority processing of visible items.
      */
     onVisibleItemsChange?: (items: T[]) => void;
+    /** Callback for right click / context menu event on a row */
+    onRowContextMenu?: (event: MouseEvent, item: T) => void;
 }

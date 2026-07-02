@@ -1,6 +1,7 @@
 import { createSignal, onMount, onCleanup, For, createMemo, Show, untrack } from 'solid-js';
 import { AssetCard } from '../assets/AssetCard';
 import { EmptyState } from '../components/EmptyState';
+import { AssetContextMenu } from '../components/AssetContextMenu';
 import { type AssetItem } from '../../../../types';
 import {
     useLibrary,
@@ -89,6 +90,46 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
      * @type {Signal<number>}
      */
     const [containerHeight, setContainerHeight] = createSignal(0);
+
+    /**
+     * Context menu open signal
+     *
+     * @type {Signal<boolean>} - Context menu open
+     */
+    const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
+
+    /**
+     * Context menu position signal
+     *
+     * @type {Signal<{ coordinateX: number; coordinateY: number }>} - Context menu position
+     */
+    const [contextMenuPosition, setContextMenuPosition] = createSignal({
+        coordinateX: 0,
+        coordinateY: 0
+    });
+
+    /**
+     * Context menu asset signal
+     *
+     * @type {Signal<AssetItem | null>} - Context menu asset
+     */
+    const [contextMenuAsset, setContextMenuAsset] = createSignal<AssetItem | null>(null);
+
+    /**
+     * Handle context menu
+     *
+     * @param {MouseEvent} event - Mouse event
+     * @param {string} id - Asset ID
+     */
+    const handleContextMenu = (event: MouseEvent, id: string) => {
+        event.preventDefault();
+        const item = itemsById().get(id);
+        if (item) {
+            setContextMenuAsset(item);
+            setContextMenuPosition({ coordinateX: event.clientX, coordinateY: event.clientY });
+            setContextMenuOpen(true);
+        }
+    };
 
     /**
      * Convert items to Worker-friendly format (minimal data)
@@ -300,6 +341,7 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
                                     }}
                                     onSelect={handleSelectWithFocus}
                                     onOpen={actions.handleOpen}
+                                    onContextMenu={handleContextMenu}
                                     getSelectedIds={actions.getSelectedIds}
                                     getItemInfo={getItemInfo}
                                 />
@@ -308,6 +350,14 @@ export function VirtualMasonry(props: VirtualMasonryProps) {
                     </For>
                 </div>
             </Show>
+
+            <AssetContextMenu
+                isOpen={contextMenuOpen()}
+                coordinateX={contextMenuPosition().coordinateX}
+                coordinateY={contextMenuPosition().coordinateY}
+                asset={contextMenuAsset()}
+                onClose={() => setContextMenuOpen(false)}
+            />
         </div>
     );
 }

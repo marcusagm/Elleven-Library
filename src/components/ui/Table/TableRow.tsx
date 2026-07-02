@@ -26,6 +26,8 @@ interface TableRowProps<T> {
     onDblClick: () => void;
     /** Callback triggered when the row DOM element is first mounted */
     onMount?: (element: HTMLElement, item: T) => void;
+    /** Triggered when the row is right-clicked */
+    onContextMenu?: (event: MouseEvent) => void;
 }
 
 /**
@@ -53,6 +55,7 @@ export function TableRow<T>(props: TableRowProps<T>) {
             }}
             onClick={event => props.onClick(event)}
             onDblClick={() => props.onDblClick()}
+            onContextMenu={event => props.onContextMenu?.(event)}
             role="row"
             aria-rowindex={props.realIndex + 2} // +1 for 1-based index and +1 for header offset
             aria-selected={props.isSelected}

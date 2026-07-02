@@ -12,6 +12,7 @@ import { AssetItem } from '../../../../types';
 import { formatFileSize, formatDate } from '../../../../utils/format';
 import { assetDnD } from '../../../../core/dnd';
 import { EmptyState } from '../components/EmptyState';
+import { AssetContextMenu } from '../components/AssetContextMenu';
 import { createConditionalScope } from '../../../../core/input';
 import { scheduler } from '../../../../core/utils/scheduler';
 
@@ -113,6 +114,43 @@ export const VirtualListView: Component = (): JSX.Element => {
      * @returns {void}
      */
     createConditionalScope('viewport', () => lib.items.length > 0);
+
+    /**
+     * Context menu open signal
+     *
+     * @type {Signal<boolean>} - Context menu open
+     */
+    const [contextMenuOpen, setContextMenuOpen] = createSignal(false);
+
+    /**
+     * Context menu position signal
+     *
+     * @type {Signal<{ coordinateX: number; coordinateY: number }>} - Context menu position
+     */
+    const [contextMenuPosition, setContextMenuPosition] = createSignal({
+        coordinateX: 0,
+        coordinateY: 0
+    });
+
+    /**
+     * Context menu asset signal
+     *
+     * @type {Signal<AssetItem | null>} - Context menu asset
+     */
+    const [contextMenuAsset, setContextMenuAsset] = createSignal<AssetItem | null>(null);
+
+    /**
+     * Handle context menu
+     *
+     * @param {MouseEvent} event - Mouse event
+     * @param {AssetItem} item - Asset item
+     */
+    const handleContextMenu = (event: MouseEvent, item: AssetItem) => {
+        event.preventDefault();
+        setContextMenuAsset(item);
+        setContextMenuPosition({ coordinateX: event.clientX, coordinateY: event.clientY });
+        setContextMenuOpen(true);
+    };
 
     /**
      * Get thumbnail URL
@@ -398,6 +436,7 @@ export const VirtualListView: Component = (): JSX.Element => {
                     onRowDoubleClick={(item: AssetItem) => {
                         viewport.openItem(item.id.toString());
                     }}
+                    onRowContextMenu={handleContextMenu}
                     onScroll={handleScroll}
                     onRowMount={(element: HTMLElement, item: AssetItem) => {
                         assetDnD(element, () => ({
@@ -418,6 +457,14 @@ export const VirtualListView: Component = (): JSX.Element => {
                     }}
                 />
             </Show>
+
+            <AssetContextMenu
+                isOpen={contextMenuOpen()}
+                coordinateX={contextMenuPosition().coordinateX}
+                coordinateY={contextMenuPosition().coordinateY}
+                asset={contextMenuAsset()}
+                onClose={() => setContextMenuOpen(false)}
+            />
         </div>
     );
 };

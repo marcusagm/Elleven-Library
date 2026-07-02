@@ -72,7 +72,8 @@ export function Table<T>(props: TableProps<T>) {
         'emptyMessage',
         'emptyDescription',
         'emptyIcon',
-        'onVisibleItemsChange'
+        'onVisibleItemsChange',
+        'onRowContextMenu'
     ]);
 
     /** Reference to the main scrollable grid container */
@@ -342,6 +343,9 @@ export function Table<T>(props: TableProps<T>) {
                                         gridContainer?.focus({ preventScroll: true });
                                     }}
                                     onDblClick={() => local.onRowDoubleClick?.(rowItem)}
+                                    onContextMenu={event =>
+                                        local.onRowContextMenu?.(event, rowItem)
+                                    }
                                 />
                             );
                         }}
