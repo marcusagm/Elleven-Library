@@ -5,7 +5,7 @@ use tokio::fs;
 use tracing::{info, warn};
 
 /// Service responsible for recovering and completing pending Sagas (Outbox pattern).
-/// 
+///
 /// This guarantees atomicity between database transactions and filesystem operations.
 /// If a process crashes after a database commit but before the filesystem operation
 /// completes, this service will pick up the `PENDING` operations on startup
@@ -61,16 +61,33 @@ impl SagaRecoveryService {
             return Ok(());
         }
 
-        info!("SagaRecovery: Found {} pending operations. Processing...", pending_operations.len());
+        info!(
+            "SagaRecovery: Found {} pending operations. Processing...",
+            pending_operations.len()
+        );
 
         for operation in pending_operations {
-            match self.process_operation(&operation.id, &operation.operation_type, &operation.asset_id, &operation.payload).await {
+            match self
+                .process_operation(
+                    &operation.id,
+                    &operation.operation_type,
+                    &operation.asset_id,
+                    &operation.payload,
+                )
+                .await
+            {
                 Ok(_) => {
-                    info!("SagaRecovery: Operation {} ({}) completed successfully.", operation.id, operation.operation_type);
+                    info!(
+                        "SagaRecovery: Operation {} ({}) completed successfully.",
+                        operation.id, operation.operation_type
+                    );
                     self.mark_completed(&operation.id).await?;
                 }
                 Err(e) => {
-                    warn!("SagaRecovery: Failed to process operation {} ({}): {}", operation.id, operation.operation_type, e);
+                    warn!(
+                        "SagaRecovery: Failed to process operation {} ({}): {}",
+                        operation.id, operation.operation_type, e
+                    );
                     self.mark_failed(&operation.id, &e.to_string()).await?;
                 }
             }
@@ -100,21 +117,33 @@ impl SagaRecoveryService {
         payload_string: &str,
     ) -> AppResult<()> {
         let payload: serde_json::Value = serde_json::from_str(payload_string).map_err(|error| {
-            AppError::Internal(format!("Failed to parse payload for operation {}: {}", operation_id, error))
+            AppError::Internal(format!(
+                "Failed to parse payload for operation {}: {}",
+                operation_id, error
+            ))
         })?;
 
         match operation_type {
             "DELETE_ASSET" => {
-                let physical_delete = payload.get("physical").and_then(|value| value.as_bool()).unwrap_or(false);
+                let physical_delete = payload
+                    .get("physical")
+                    .and_then(|value| value.as_bool())
+                    .unwrap_or(false);
                 let path_string = payload.get("path").and_then(|value| value.as_str());
 
                 if physical_delete {
                     if let Some(path_reference) = path_string {
                         let path_buffer = std::path::PathBuf::from(path_reference);
                         if path_buffer.exists() {
-                            info!("SagaRecovery: Executing pending physical delete for: {}", path_reference);
+                            info!(
+                                "SagaRecovery: Executing pending physical delete for: {}",
+                                path_reference
+                            );
                             if let Err(error) = fs::remove_file(&path_buffer).await {
-                                warn!("SagaRecovery: Failed to delete file {}: {}", path_reference, error);
+                                warn!(
+                                    "SagaRecovery: Failed to delete file {}: {}",
+                                    path_reference, error
+                                );
                                 // If it fails because of permission or lock, we might want to return Error so it stays PENDING.
                                 // For now, we return error so it goes to FAILED.
                                 return Err(AppError::Io(error));

@@ -5,11 +5,11 @@
 //! single authoritative location that understands both the frontend interface
 //! framework (Tauri via `AppHandle`) and the concrete infrastructure instances.
 
-pub mod system;
 pub mod database;
-pub mod streaming;
-pub mod workers;
 pub mod library;
+pub mod streaming;
+pub mod system;
+pub mod workers;
 
 /// Central data structure containing all core filesystem paths resolved
 /// exactly once during application boot.

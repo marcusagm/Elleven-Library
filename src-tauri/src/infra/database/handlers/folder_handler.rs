@@ -58,9 +58,8 @@ pub async fn handle_create_folder(
     .execute(&mut **tx)
     .await?;
 
-    let op_payload = serde_json::to_value(&payload).map_err(|e| {
-        AppError::Internal(format!("Failed to serialize payload: {}", e))
-    })?;
+    let op_payload = serde_json::to_value(&payload)
+        .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
 
     SqliteAssetLedger::log_operation(
         tx,
@@ -112,9 +111,7 @@ pub async fn handle_remove_folder(
     .fetch_optional(&mut **tx)
     .await?
     .map(|r| r.path)
-    .ok_or_else(|| {
-        AppError::NotFound(format!("Folder ID not found: {}", folder_id_ref))
-    })?;
+    .ok_or_else(|| AppError::NotFound(format!("Folder ID not found: {}", folder_id_ref)))?;
 
     // 2. Perform Cascade Delete
     // To be safe with tags and colors, we use the recursive CTE to find all subfolders
@@ -144,9 +141,8 @@ pub async fn handle_remove_folder(
     }
 
     // 3. Audit Log
-    let op_payload = serde_json::to_value(&payload).map_err(|e| {
-        AppError::Internal(format!("Failed to serialize payload: {}", e))
-    })?;
+    let op_payload = serde_json::to_value(&payload)
+        .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
 
     SqliteAssetLedger::log_operation(
         tx,

@@ -14,9 +14,18 @@ use tauri::{AppHandle, Manager};
 /// * `app` - Reference to the Tauri AppHandle.
 pub async fn init(app: &AppHandle) {
     let dirs = app.state::<crate::bootstrap::AppDirectories>();
-    let lifecycle = app.state::<Arc<crate::lifecycle::LifecycleRegistry>>().inner().clone();
-    let format_registry = app.state::<Arc<crate::core::formats::FormatRegistry>>().inner().clone();
-    let event_bus = app.state::<Arc<dyn crate::core::events::AppEventBus>>().inner().clone();
+    let lifecycle = app
+        .state::<Arc<crate::lifecycle::LifecycleRegistry>>()
+        .inner()
+        .clone();
+    let format_registry = app
+        .state::<Arc<crate::core::formats::FormatRegistry>>()
+        .inner()
+        .clone();
+    let event_bus = app
+        .state::<Arc<dyn crate::core::events::AppEventBus>>()
+        .inner()
+        .clone();
 
     // Initialize HLS On-the-Fly Streaming Manager
     let hls_manager = crate::feature::transcoding::hls_manager::HlsManager::new(&dirs.app_data);
@@ -30,9 +39,9 @@ pub async fn init(app: &AppHandle) {
 
     // Generate a session token for streaming server authentication
     let session_token = uuid::Uuid::new_v4().to_string();
-    app.manage(crate::delivery::tauri::commands::queries::StreamingSessionToken(
-        session_token.clone(),
-    ));
+    app.manage(
+        crate::delivery::tauri::commands::queries::StreamingSessionToken(session_token.clone()),
+    );
 
     // Initialize Transcode Cache
     let transcode_cache = Arc::new(TranscodeCache::new(&dirs.app_data, format_registry.clone()));

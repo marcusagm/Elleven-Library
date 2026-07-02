@@ -217,7 +217,7 @@ fn decode_gpr_natively(
     }
 
     let pixels_len = (out_buffer.width * out_buffer.height * 3) as usize;
-    
+
     if out_buffer.size < pixels_len {
         unsafe { libc::free(out_buffer.buffer) };
         return Err(AppError::Generic(
@@ -226,7 +226,7 @@ fn decode_gpr_natively(
     }
 
     let slice = unsafe { std::slice::from_raw_parts(out_buffer.buffer as *const u8, pixels_len) };
-    
+
     let img = ::image::RgbImage::from_raw(
         out_buffer.width as u32,
         out_buffer.height as u32,
@@ -262,8 +262,7 @@ fn decode_gpr_natively(
 pub fn extract_gpr_metadata(path: &Path) -> AppResult<serde_json::Value> {
     let file_bytes = std::fs::read(path).map_err(AppError::Io)?;
 
-    let (image_width, image_height) = extract_tiff_ifd0_dimensions(&file_bytes)
-        .unwrap_or((0, 0));
+    let (image_width, image_height) = extract_tiff_ifd0_dimensions(&file_bytes).unwrap_or((0, 0));
 
     // Extract EXIF data via rexif (works well on TIFF-based containers)
     let mut exif_map = serde_json::Map::new();
@@ -307,11 +306,11 @@ pub fn extract_gpr_metadata(path: &Path) -> AppResult<serde_json::Value> {
 pub fn generate_gpr_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
     tracing::debug!("GPR thumbnail: using native SDK pipeline for {:?}", path);
     let file_bytes = std::fs::read(path).map_err(AppError::Io)?;
-    
+
     // Use SIXTEENTH resolution which is uncompressed in VC-5 and very fast (~6ms)
     let decoded_image = decode_gpr_natively(&file_bytes, GPR_RGB_RESOLUTION::SIXTEENTH)?;
     let dynamic_image = ::image::DynamicImage::ImageRgb8(decoded_image);
-    
+
     image::process_and_encode_webp(dynamic_image, size_hint)
 }
 
@@ -330,16 +329,16 @@ pub fn generate_gpr_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u8>>
 pub fn extract_gpr_preview(path: &Path) -> AppResult<Vec<u8>> {
     tracing::debug!("GPR preview: using native SDK pipeline for {:?}", path);
     let file_bytes = std::fs::read(path).map_err(AppError::Io)?;
-    
+
     // Use HALF resolution for previews (good balance of quality and speed)
     let decoded_image = decode_gpr_natively(&file_bytes, GPR_RGB_RESOLUTION::HALF)?;
-    
+
     let mut jpeg_bytes = Vec::new();
     let mut encoder = ::image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_bytes, 92);
-    encoder.encode_image(&decoded_image).map_err(|e| {
-        AppError::Generic(format!("Failed to encode GPR preview as JPEG: {}", e))
-    })?;
-    
+    encoder
+        .encode_image(&decoded_image)
+        .map_err(|e| AppError::Generic(format!("Failed to encode GPR preview as JPEG: {}", e)))?;
+
     Ok(jpeg_bytes)
 }
 

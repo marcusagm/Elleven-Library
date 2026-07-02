@@ -617,7 +617,9 @@ fn extract_libraw_preview(path: &Path) -> AppResult<Vec<u8>> {
             .ok_or_else(|| {
                 AppError::Generic(format!(
                     "Failed to construct RGB image from LibRaw bitmap ({}x{}, {} bytes)",
-                    thumbnail_width, thumbnail_height, thumbnail_data.len()
+                    thumbnail_width,
+                    thumbnail_height,
+                    thumbnail_data.len()
                 ))
             })?
     } else if thumbnail_data.len() == expected_rgba_byte_count {
@@ -626,7 +628,9 @@ fn extract_libraw_preview(path: &Path) -> AppResult<Vec<u8>> {
             .ok_or_else(|| {
                 AppError::Generic(format!(
                     "Failed to construct RGBA image from LibRaw bitmap ({}x{}, {} bytes)",
-                    thumbnail_width, thumbnail_height, thumbnail_data.len()
+                    thumbnail_width,
+                    thumbnail_height,
+                    thumbnail_data.len()
                 ))
             })?
     } else {
@@ -690,30 +694,49 @@ fn extract_libraw_full_decode(path: &Path) -> AppResult<Vec<u8>> {
     let mut raw_image = rsraw::RawImage::open(&memory_map)
         .map_err(|error| AppError::Generic(format!("LibRaw open error: {:?}", error)))?;
 
-    raw_image.unpack().map_err(|error| AppError::Generic(format!("LibRaw unpack error: {:?}", error)))?;
-    
-    let image = raw_image.process::<{ rsraw::BIT_DEPTH_8 }>()
-        .map_err(|e| crate::core::error::AppError::Generic(format!("Failed to process RAW image: {}", e)))?;
-        
+    raw_image
+        .unpack()
+        .map_err(|error| AppError::Generic(format!("LibRaw unpack error: {:?}", error)))?;
+
+    let image = raw_image.process::<{ rsraw::BIT_DEPTH_8 }>().map_err(|e| {
+        crate::core::error::AppError::Generic(format!("Failed to process RAW image: {}", e))
+    })?;
+
     let expected_len = (image.width() * image.height() * image.colors() as u32) as usize;
     if image.len() != expected_len {
-        return Err(AppError::Generic(format!("LibRaw decoded size mismatch: expected {} ({}x{}x{}), got {}", expected_len, image.width(), image.height(), image.colors(), image.len())));
+        return Err(AppError::Generic(format!(
+            "LibRaw decoded size mismatch: expected {} ({}x{}x{}), got {}",
+            expected_len,
+            image.width(),
+            image.height(),
+            image.colors(),
+            image.len()
+        )));
     }
-    
+
     let dynamic_image = if image.colors() == 3 {
         image::RgbImage::from_raw(image.width(), image.height(), image.to_vec())
             .map(image::DynamicImage::ImageRgb8)
-            .ok_or_else(|| AppError::Generic("Failed to construct RGB image from LibRaw decode".into()))?
+            .ok_or_else(|| {
+                AppError::Generic("Failed to construct RGB image from LibRaw decode".into())
+            })?
     } else if image.colors() == 4 {
         image::RgbaImage::from_raw(image.width(), image.height(), image.to_vec())
             .map(image::DynamicImage::ImageRgba8)
-            .ok_or_else(|| AppError::Generic("Failed to construct RGBA image from LibRaw decode".into()))?
+            .ok_or_else(|| {
+                AppError::Generic("Failed to construct RGBA image from LibRaw decode".into())
+            })?
     } else if image.colors() == 1 {
         image::GrayImage::from_raw(image.width(), image.height(), image.to_vec())
             .map(image::DynamicImage::ImageLuma8)
-            .ok_or_else(|| AppError::Generic("Failed to construct Gray image from LibRaw decode".into()))?
+            .ok_or_else(|| {
+                AppError::Generic("Failed to construct Gray image from LibRaw decode".into())
+            })?
     } else {
-        return Err(AppError::Generic(format!("Unsupported LibRaw colors: {}", image.colors())));
+        return Err(AppError::Generic(format!(
+            "Unsupported LibRaw colors: {}",
+            image.colors()
+        )));
     };
 
     let mut jpeg_buffer = Vec::new();
@@ -824,12 +847,12 @@ pub fn extract_ffmpeg_image_metadata(path: &Path) -> AppResult<serde_json::Value
 
     let mut ffprobe_command = Command::new(transcoding_tools.ffprobe);
     ffprobe_command.args([
-        "-v", // Log level
-        "error", // Only show errors
-        "-show_format", // Show format information
-        "-show_streams", // Show stream information
-        "-of", // Output format
-        "json", // JSON format
+        "-v",                    // Log level
+        "error",                 // Only show errors
+        "-show_format",          // Show format information
+        "-show_streams",         // Show stream information
+        "-of",                   // Output format
+        "json",                  // JSON format
         &path.to_string_lossy(), // Path to the image file
     ]);
 
@@ -894,25 +917,25 @@ pub fn generate_ffmpeg_image_thumbnail(path: &Path, size_hint: u32) -> AppResult
 
     let mut ffmpeg_command = Command::new(transcoding_tools.ffmpeg);
     ffmpeg_command.args([
-        "-hide_banner", // Hides the ffmpeg banner
-        "-loglevel", // Set the log level
-        "error", // Only show errors
-        "-strict", // Set the strictness level
-        "unofficial", // Set the strictness level to unofficial
-        "-i", // Input file
+        "-hide_banner",          // Hides the ffmpeg banner
+        "-loglevel",             // Set the log level
+        "error",                 // Only show errors
+        "-strict",               // Set the strictness level
+        "unofficial",            // Set the strictness level to unofficial
+        "-i",                    // Input file
         &path.to_string_lossy(), // Path to the image file
-        "-vf", // Video filters
+        "-vf",                   // Video filters
         &format!(
             "format=yuv420p,scale='min({},iw)':'if(gt(ih,iw),-1,-2)':flags=lanczos", // Format the image to yuv420p and scale it to the hint
             size_hint // Scale the image to the hint
         ),
         "-vframes", // Number of frames to extract
-        "1", // Extract 1 frame
-        "-f", // Output format
-        "image2", // Image2 format
-        "-c:v", // Video codec
-        "mjpeg", // Motion JPEG
-        "-", // Output to stdout
+        "1",        // Extract 1 frame
+        "-f",       // Output format
+        "image2",   // Image2 format
+        "-c:v",     // Video codec
+        "mjpeg",    // Motion JPEG
+        "-",        // Output to stdout
     ]);
 
     // 60 seconds for heavy images like HEIC/AVIF
@@ -958,24 +981,24 @@ pub fn generate_ffmpeg_image_preview(path: &Path) -> AppResult<(Vec<u8>, String)
 
     let mut ffmpeg_command = Command::new(transcoding_tools.ffmpeg);
     ffmpeg_command.args([
-        "-hide_banner", // Hides the ffmpeg banner
-        "-loglevel", // Log level
-        "error", // Only show errors
-        "-strict", // Strictness level
-        "unofficial", // Unofficial strictness level
-        "-i", // Input file
+        "-hide_banner",          // Hides the ffmpeg banner
+        "-loglevel",             // Log level
+        "error",                 // Only show errors
+        "-strict",               // Strictness level
+        "unofficial",            // Unofficial strictness level
+        "-i",                    // Input file
         &path.to_string_lossy(), // Path to the image file
-        "-vf", // Video filters
+        "-vf",                   // Video filters
         "format=yuv420p,scale='min(2048,iw)':'if(gt(ih,iw),-1,-2)':flags=lanczos", // Format the image to yuv420p and scale it to the hint
         "-vframes", // Number of frames to extract
-        "1", // Extract 1 frame
-        "-f", // Output format
-        "image2", // Image2 format
-        "-c:v", // Video codec
-        "mjpeg", // Motion JPEG
-        "-q:v", // Quality
-        "2", // Quality
-        "-", // Output to stdout
+        "1",        // Extract 1 frame
+        "-f",       // Output format
+        "image2",   // Image2 format
+        "-c:v",     // Video codec
+        "mjpeg",    // Motion JPEG
+        "-q:v",     // Quality
+        "2",        // Quality
+        "-",        // Output to stdout
     ]);
 
     // 60 seconds for heavy images like HEIC/AVIF

@@ -321,3 +321,13 @@ commands.allow = ["get_app_settings"]
 identifier = "allow-update-app-settings"
 description = "Enables update_app_settings"
 commands.allow = ["update_app_settings"]
+
+[[permission]]
+identifier = "allow-copy-files-to-clipboard"
+description = "Enables copy_files_to_clipboard"
+commands.allow = ["copy_files_to_clipboard"]
+
+[[permission]]
+identifier = "allow-rename-file"
+description = "Enables rename_file"
+commands.allow = ["rename_file"]

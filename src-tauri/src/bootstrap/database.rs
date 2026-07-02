@@ -16,8 +16,14 @@ use tauri::{AppHandle, Manager};
 /// Returns `Err(String)` propagating critical SQLx connection pool assembly failures.
 pub async fn init(app: &AppHandle) -> Result<(), String> {
     let dirs = app.state::<crate::bootstrap::AppDirectories>();
-    let format_registry = app.state::<Arc<crate::core::formats::FormatRegistry>>().inner().clone();
-    let event_bus = app.state::<Arc<dyn crate::core::events::AppEventBus>>().inner().clone();
+    let format_registry = app
+        .state::<Arc<crate::core::formats::FormatRegistry>>()
+        .inner()
+        .clone();
+    let event_bus = app
+        .state::<Arc<dyn crate::core::events::AppEventBus>>()
+        .inner()
+        .clone();
 
     // Initialize Database Infrastructure
     let db_manager = match crate::infra::database::manager::DbManager::new(&dirs.db_path).await {
@@ -51,7 +57,8 @@ pub async fn init(app: &AppHandle) -> Result<(), String> {
     });
 
     // Run Saga Recovery
-    let recovery_service = crate::infra::database::saga_recovery::SagaRecoveryService::new(db_manager.pool().clone());
+    let recovery_service =
+        crate::infra::database::saga_recovery::SagaRecoveryService::new(db_manager.pool().clone());
     tauri::async_runtime::spawn(async move {
         if let Err(e) = recovery_service.run_recovery().await {
             tracing::error!("Failed to run saga recovery: {}", e);

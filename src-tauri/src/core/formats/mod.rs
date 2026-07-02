@@ -97,7 +97,6 @@ use crate::processing::media::providers::project::xmind::XMindFormatProvider;
 use crate::processing::media::providers::vector::postscript_format::PostscriptFormatProvider;
 use crate::processing::media::providers::vector::svg_format::SvgFormatProvider;
 
-
 // Audio Providers
 use crate::processing::media::providers::audio::aiff::AiffAudioProvider;
 use crate::processing::media::providers::audio::amr::AmrAudioProvider;

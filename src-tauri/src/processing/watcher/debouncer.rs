@@ -257,8 +257,7 @@ impl EventDebouncer {
                         BufferedEvent::Created(_, meta) => meta,
                         _ => None, // Cannot read metadata for a deleted file now
                     };
-                    self.pending_untracked_removes
-                        .insert(path, (now, snapshot));
+                    self.pending_untracked_removes.insert(path, (now, snapshot));
                 }
             } else {
                 surviving_paths.push(path);
@@ -377,7 +376,7 @@ impl EventDebouncer {
                     if *to_path == from_path || !path_exists_exact(to_path) {
                         continue;
                     }
-                    let ext_match = from_path.extension() == to_path.extension() 
+                    let ext_match = from_path.extension() == to_path.extension()
                         && is_likely_directory(&from_path) == is_likely_directory(to_path);
 
                     if ext_match {
@@ -392,7 +391,9 @@ impl EventDebouncer {
                                 matched_to_path = Some(to_path.clone());
                                 break;
                             }
-                        } else if from_path.parent() == to_path.parent() && is_likely_directory(&from_path) == is_likely_directory(to_path) {
+                        } else if from_path.parent() == to_path.parent()
+                            && is_likely_directory(&from_path) == is_likely_directory(to_path)
+                        {
                             // No metadata for 'from', but path looks like a rename candidate in same folder
                             info!(
                                 "Debouncer: Late Heuristic MATCH (Path-only): {} -> {}",
@@ -446,14 +447,14 @@ fn is_likely_directory(path: &std::path::Path) -> bool {
     if let Ok(metadata) = std::fs::metadata(path) {
         return metadata.is_dir();
     }
-    
+
     // Hidden files (dotfiles) like .DS_Store are usually not directories
     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
         if name.starts_with('.') {
             return false;
         }
     }
-    
+
     path.extension().is_none()
 }
 
@@ -465,7 +466,7 @@ fn path_exists_exact(path: &std::path::Path) -> bool {
     if !path.exists() {
         return false;
     }
-    
+
     if let Some(file_name) = path.file_name() {
         if let Some(parent) = path.parent() {
             if let Ok(mut entries) = std::fs::read_dir(parent) {
@@ -493,7 +494,10 @@ mod tests {
 
         // Create a real temp file so `path.exists()` is true
         let temp_dir = std::env::temp_dir();
-        let path = temp_dir.join(format!("test_event_agg_{}.txt", std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos()));
+        let path = temp_dir.join(format!(
+            "test_event_agg_{}.txt",
+            std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos()
+        ));
         std::fs::write(&path, "test content").unwrap();
 
         let event = Event::new(EventKind::Modify(ModifyKind::Any)).add_path(path.clone());

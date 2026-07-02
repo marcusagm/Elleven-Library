@@ -94,7 +94,10 @@ impl LibraryIndexer {
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
         let disk_metadata = std::fs::metadata(&entry_path).ok();
-        let disk_size = disk_metadata.as_ref().map(|metadata| metadata.len() as i64).unwrap_or(0);
+        let disk_size = disk_metadata
+            .as_ref()
+            .map(|metadata| metadata.len() as i64)
+            .unwrap_or(0);
         let disk_created_at: Option<DateTime<Utc>> = disk_metadata
             .as_ref()
             .and_then(|metadata| metadata.created().ok())
@@ -115,7 +118,10 @@ impl LibraryIndexer {
                 }
                 match (removed_created_at, &disk_created_at) {
                     (Some(database_created), Some(filesystem_created)) => {
-                        (*database_created - *filesystem_created).num_seconds().abs() < 2
+                        (*database_created - *filesystem_created)
+                            .num_seconds()
+                            .abs()
+                            < 2
                     }
                     _ => true,
                 }
@@ -304,7 +310,13 @@ impl LibraryIndexer {
             );
 
             let to_path_str = to_path.to_string_lossy().to_string();
-            if self.query_handler.find_folder_by_path(&to_path_str).await.unwrap_or(None).is_none() {
+            if self
+                .query_handler
+                .find_folder_by_path(&to_path_str)
+                .await
+                .unwrap_or(None)
+                .is_none()
+            {
                 self.create_and_scan_folder(to_path).await;
             }
         }
@@ -369,7 +381,9 @@ impl LibraryIndexer {
             .await;
 
         if let Ok(new_folder_asset) = create_result {
-            let _ = self.scan_directory(folder_path, Some(new_folder_asset.id)).await;
+            let _ = self
+                .scan_directory(folder_path, Some(new_folder_asset.id))
+                .await;
         } else {
             let _ = self.scan_directory(folder_path, parent_id).await;
         }
@@ -385,7 +399,10 @@ impl LibraryIndexer {
     /// Logs a warning and returns `Ok(None)` if a folder creation fails,
     /// allowing the caller to proceed without a folder ID.
     #[async_recursion]
-    pub(crate) async fn ensure_folder_hierarchy(&self, path: &std::path::Path) -> AppResult<Option<String>> {
+    pub(crate) async fn ensure_folder_hierarchy(
+        &self,
+        path: &std::path::Path,
+    ) -> AppResult<Option<String>> {
         let path_str = path.to_string_lossy().to_string();
         if let Some(id) = self.query_handler.find_folder_by_path(&path_str).await? {
             return Ok(Some(id));
@@ -411,7 +428,10 @@ impl LibraryIndexer {
         match self.ledger.execute(create_folder_command).await {
             Ok(folder_asset) => Ok(Some(folder_asset.id)),
             Err(error) => {
-                warn!("Failed to ensure folder hierarchy for {:?}: {}", path, error);
+                warn!(
+                    "Failed to ensure folder hierarchy for {:?}: {}",
+                    path, error
+                );
                 Ok(None)
             }
         }

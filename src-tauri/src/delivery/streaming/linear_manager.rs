@@ -112,15 +112,22 @@ impl LinearManager {
 
         let mut actual_input = file_path.to_path_buf();
 
-        if let Some(ext) = file_path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+        if let Some(ext) = file_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase())
+        {
             if ext == "mid" || ext == "midi" {
                 let wav_path = temp_dir.join("synthesized.wav");
                 // Run the synthesis
-                if let Err(e) = crate::processing::media::extractors::midi_renderer::render_midi_to_wav(
-                    file_path,
-                    &wav_path,
-                    Some(&self.app_handle)
-                ).await {
+                if let Err(e) =
+                    crate::processing::media::extractors::midi_renderer::render_midi_to_wav(
+                        file_path,
+                        &wav_path,
+                        Some(&self.app_handle),
+                    )
+                    .await
+                {
                     error!("MIDI Synthesis failed: {}", e);
                     return Err(format!("MIDI synthesis failed: {}", e));
                 }

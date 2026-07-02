@@ -107,7 +107,9 @@ impl MetadataCapability for OggAudioProvider {
     async fn extract_technical(&self, path: &Path) -> AppResult<serde_json::Value> {
         let path_owned = path.to_path_buf();
         tokio::task::spawn_blocking(move || {
-            crate::processing::media::extractors::audio::extract_audio_technical_metadata(&path_owned)
+            crate::processing::media::extractors::audio::extract_audio_technical_metadata(
+                &path_owned,
+            )
         })
         .await
         .map_err(|_| crate::core::error::AppError::ExtractionProcessTimeout)?

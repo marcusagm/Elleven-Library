@@ -8,8 +8,8 @@ pub mod feature;
 pub mod infra;
 pub mod lifecycle;
 pub mod processing;
-use tauri::Manager;
 use crate::lifecycle::LifecycleRegistry;
+use tauri::Manager;
 
 /// Runs the application.
 #[allow(clippy::expect_used)]
@@ -18,7 +18,7 @@ pub fn run() {
     // Initialize structured tracing
     crate::infra::telemetry::init_telemetry();
 
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default().plugin(tauri_plugin_clipboard_manager::init());
     builder
         .register_uri_scheme_protocol("thumb", move |ctx, request| {
             crate::delivery::protocols::asset::handler(ctx.app_handle(), &request)
@@ -34,7 +34,7 @@ pub fn run() {
         })
         .setup(|app| {
             let app_handle = app.handle();
-            
+
             crate::bootstrap::system::init_directories(app_handle);
             crate::bootstrap::system::init_settings(app_handle);
             crate::bootstrap::system::init_events(app_handle);
@@ -47,7 +47,7 @@ pub fn run() {
                     tracing::error!("Failed to initialize database: {}", e);
                     return;
                 }
-                
+
                 crate::bootstrap::streaming::init(&handle).await;
                 crate::bootstrap::workers::init(&handle);
                 crate::bootstrap::library::init(&handle).await;
@@ -99,6 +99,8 @@ pub fn run() {
             delivery::tauri::commands::mutations::verify_thumbnails,
             delivery::tauri::commands::mutations::cleanup_cache,
             delivery::tauri::commands::mutations::clear_cache,
+            delivery::tauri::commands::mutations::copy_files_to_clipboard,
+            delivery::tauri::commands::mutations::rename_file,
             delivery::tauri::commands::queries::get_library_supported_formats,
             delivery::tauri::commands::queries::get_audio_waveform_data,
             delivery::tauri::thumbnails::set_thumbnail_priority,

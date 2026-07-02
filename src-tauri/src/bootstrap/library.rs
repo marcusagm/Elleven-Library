@@ -15,11 +15,26 @@ use tauri::{AppHandle, Manager};
 /// # Arguments
 /// * `app` - Reference to the Tauri AppHandle.
 pub async fn init(app: &AppHandle) {
-    let format_registry = app.state::<Arc<crate::core::formats::FormatRegistry>>().inner().clone();
-    let event_bus = app.state::<Arc<dyn crate::core::events::AppEventBus>>().inner().clone();
-    let asset_ledger = app.state::<Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>>().inner().clone();
-    let asset_query_handler = app.state::<Arc<dyn crate::core::repository::AssetQueryHandler>>().inner().clone();
-    let lifecycle = app.state::<Arc<crate::lifecycle::LifecycleRegistry>>().inner().clone();
+    let format_registry = app
+        .state::<Arc<crate::core::formats::FormatRegistry>>()
+        .inner()
+        .clone();
+    let event_bus = app
+        .state::<Arc<dyn crate::core::events::AppEventBus>>()
+        .inner()
+        .clone();
+    let asset_ledger = app
+        .state::<Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>>()
+        .inner()
+        .clone();
+    let asset_query_handler = app
+        .state::<Arc<dyn crate::core::repository::AssetQueryHandler>>()
+        .inner()
+        .clone();
+    let lifecycle = app
+        .state::<Arc<crate::lifecycle::LifecycleRegistry>>()
+        .inner()
+        .clone();
 
     // Read concurrency limit from settings
     let concurrency_limit = if let Some(settings_service) =
@@ -48,7 +63,10 @@ pub async fn init(app: &AppHandle) {
     );
     app.manage(indexer.clone());
 
-    indexer.clone().start_event_listener(event_bus.clone()).await;
+    indexer
+        .clone()
+        .start_event_listener(event_bus.clone())
+        .await;
 
     // Initialize Watcher Service
     let watcher = Arc::new(crate::processing::watcher::WatcherService::new(
@@ -64,7 +82,10 @@ pub async fn init(app: &AppHandle) {
             let root_path = std::path::PathBuf::from(&folder.path);
 
             let watcher_token = lifecycle.child_token();
-            if let Err(e) = watcher.watch(root_path.clone(), watcher_token.clone()).await {
+            if let Err(e) = watcher
+                .watch(root_path.clone(), watcher_token.clone())
+                .await
+            {
                 tracing::error!("Failed to start watcher for {}: {}", root_path.display(), e);
             } else {
                 lifecycle.register(

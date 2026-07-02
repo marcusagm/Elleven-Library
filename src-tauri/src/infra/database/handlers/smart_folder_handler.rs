@@ -31,9 +31,8 @@ pub async fn handle_create_smart_folder(
     .execute(&mut **tx)
     .await?;
 
-    let op_payload = serde_json::to_value(&payload).map_err(|e| {
-        AppError::Internal(format!("Failed to serialize payload: {}", e))
-    })?;
+    let op_payload = serde_json::to_value(&payload)
+        .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
 
     SqliteAssetLedger::log_operation(
         tx,
@@ -86,9 +85,8 @@ pub async fn handle_update_smart_folder(
     .execute(&mut **tx)
     .await?;
 
-    let op_payload = serde_json::to_value(&payload).map_err(|e| {
-        AppError::Internal(format!("Failed to serialize payload: {}", e))
-    })?;
+    let op_payload = serde_json::to_value(&payload)
+        .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
 
     SqliteAssetLedger::log_operation(
         tx,
@@ -133,9 +131,8 @@ pub async fn handle_delete_smart_folder(
         .execute(&mut **tx)
         .await?;
 
-    let op_payload = serde_json::to_value(&payload).map_err(|e| {
-        AppError::Internal(format!("Failed to serialize payload: {}", e))
-    })?;
+    let op_payload = serde_json::to_value(&payload)
+        .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
 
     SqliteAssetLedger::log_operation(
         tx,

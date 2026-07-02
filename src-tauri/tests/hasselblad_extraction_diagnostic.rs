@@ -58,20 +58,18 @@ fn test_quickraw_extraction(file_path: &Path) -> TierResult {
     });
 
     match quickraw_result {
-        Ok(Some(thumbnail_data)) => {
-            match image::load_from_memory(&thumbnail_data) {
-                Ok(decoded_image) => TierResult::success(
-                    tier_name,
-                    decoded_image.width(),
-                    decoded_image.height(),
-                    thumbnail_data.len(),
-                ),
-                Err(decode_error) => TierResult::failure(
-                    tier_name,
-                    format!("quickraw returned data but decode failed: {}", decode_error),
-                ),
-            }
-        }
+        Ok(Some(thumbnail_data)) => match image::load_from_memory(&thumbnail_data) {
+            Ok(decoded_image) => TierResult::success(
+                tier_name,
+                decoded_image.width(),
+                decoded_image.height(),
+                thumbnail_data.len(),
+            ),
+            Err(decode_error) => TierResult::failure(
+                tier_name,
+                format!("quickraw returned data but decode failed: {}", decode_error),
+            ),
+        },
         Ok(None) => TierResult::failure(tier_name, "quickraw returned None".into()),
         Err(_) => TierResult::failure(tier_name, "quickraw panicked".into()),
     }
@@ -101,10 +99,7 @@ fn test_libraw_extraction(file_path: &Path) -> TierResult {
     // Report RAW dimensions
     let raw_width = raw_image.width();
     let raw_height = raw_image.height();
-    eprintln!(
-        "    [LibRaw] RAW dimensions: {}x{}",
-        raw_width, raw_height
-    );
+    eprintln!("    [LibRaw] RAW dimensions: {}x{}", raw_width, raw_height);
 
     let embedded_thumbnails = match raw_image.extract_thumbs() {
         Ok(thumbnails) => thumbnails,
@@ -140,10 +135,7 @@ fn test_libraw_extraction(file_path: &Path) -> TierResult {
         }
 
         let data_header = &largest_thumbnail.data[..largest_thumbnail.data.len().min(16)];
-        eprintln!(
-            "    [LibRaw] Data header bytes: {:02X?}",
-            data_header
-        );
+        eprintln!("    [LibRaw] Data header bytes: {:02X?}", data_header);
 
         // First try to decode as a standard image format (JPEG, PNG, TIFF)
         if let Ok(decoded_image) = image::load_from_memory(&largest_thumbnail.data) {
@@ -161,8 +153,10 @@ fn test_libraw_extraction(file_path: &Path) -> TierResult {
         let expected_rgba_size = (largest_thumbnail.width * largest_thumbnail.height * 4) as usize;
 
         if largest_thumbnail.data.len() == expected_rgb_size {
-            eprintln!("    [LibRaw] Data matches RGB bitmap size ({}x{}x3 = {})",
-                largest_thumbnail.width, largest_thumbnail.height, expected_rgb_size);
+            eprintln!(
+                "    [LibRaw] Data matches RGB bitmap size ({}x{}x3 = {})",
+                largest_thumbnail.width, largest_thumbnail.height, expected_rgb_size
+            );
             if let Some(rgb_image) = image::RgbImage::from_raw(
                 largest_thumbnail.width,
                 largest_thumbnail.height,
@@ -176,8 +170,10 @@ fn test_libraw_extraction(file_path: &Path) -> TierResult {
                 );
             }
         } else if largest_thumbnail.data.len() == expected_rgba_size {
-            eprintln!("    [LibRaw] Data matches RGBA bitmap size ({}x{}x4 = {})",
-                largest_thumbnail.width, largest_thumbnail.height, expected_rgba_size);
+            eprintln!(
+                "    [LibRaw] Data matches RGBA bitmap size ({}x{}x4 = {})",
+                largest_thumbnail.width, largest_thumbnail.height, expected_rgba_size
+            );
             if let Some(rgba_image) = image::RgbaImage::from_raw(
                 largest_thumbnail.width,
                 largest_thumbnail.height,
@@ -257,9 +253,7 @@ fn test_brute_force_extraction(file_path: &Path) -> TierResult {
                     let eoi_limit = (scan_offset + 20 * 1024 * 1024).min(memory_map.len());
                     let mut end_offset = scan_offset + 2;
                     while end_offset < eoi_limit.saturating_sub(1) {
-                        if memory_map[end_offset] == 0xFF
-                            && memory_map[end_offset + 1] == 0xD9
-                        {
+                        if memory_map[end_offset] == 0xFF && memory_map[end_offset + 1] == 0xD9 {
                             end_offset += 2;
                             break;
                         }
@@ -492,7 +486,9 @@ fn test_tiff_ifd_extraction(file_path: &Path) -> TierResult {
         }
 
         // Check for JPEG via Compression=6 + StripOffsets
-        if compression_value == Some(6) && !strip_offsets.is_empty() && !strip_byte_counts.is_empty()
+        if compression_value == Some(6)
+            && !strip_offsets.is_empty()
+            && !strip_byte_counts.is_empty()
         {
             for (strip_idx, (offset, count)) in strip_offsets
                 .iter()
@@ -602,7 +598,9 @@ fn test_tiff_ifd_extraction(file_path: &Path) -> TierResult {
                         let pixels = decoded.width() * decoded.height();
                         eprintln!(
                             "    [TIFF]   SubIFD JPEGInterchangeFormat: {}x{} at 0x{:08X}",
-                            decoded.width(), decoded.height(), jpeg_off
+                            decoded.width(),
+                            decoded.height(),
+                            jpeg_off
                         );
                         if pixels > best_jpeg_pixels {
                             best_jpeg_pixels = pixels;
@@ -613,8 +611,15 @@ fn test_tiff_ifd_extraction(file_path: &Path) -> TierResult {
             }
 
             // Try Compression=6 + StripOffsets in SubIFD
-            if sub_compression == Some(6) && !sub_strip_offsets.is_empty() && !sub_strip_byte_counts.is_empty() {
-                for (idx, (offset, count)) in sub_strip_offsets.iter().zip(sub_strip_byte_counts.iter()).enumerate() {
+            if sub_compression == Some(6)
+                && !sub_strip_offsets.is_empty()
+                && !sub_strip_byte_counts.is_empty()
+            {
+                for (idx, (offset, count)) in sub_strip_offsets
+                    .iter()
+                    .zip(sub_strip_byte_counts.iter())
+                    .enumerate()
+                {
                     let start = *offset as usize;
                     let end = start + *count as usize;
                     if end <= file_bytes.len() {
@@ -622,7 +627,10 @@ fn test_tiff_ifd_extraction(file_path: &Path) -> TierResult {
                             let pixels = decoded.width() * decoded.height();
                             eprintln!(
                                 "    [TIFF]   SubIFD Strip[{}] JPEG: {}x{} at 0x{:08X}",
-                                idx, decoded.width(), decoded.height(), offset
+                                idx,
+                                decoded.width(),
+                                decoded.height(),
+                                offset
                             );
                             if pixels > best_jpeg_pixels {
                                 best_jpeg_pixels = pixels;
@@ -669,13 +677,11 @@ fn test_tiff_ifd_extraction(file_path: &Path) -> TierResult {
 
 /// Runs all extraction tiers on a single file and prints a diagnostic report.
 fn diagnose_file(file_path: &Path) {
-    let file_name = file_path
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy();
-    let file_size_megabytes =
-        std::fs::metadata(file_path).map(|metadata| metadata.len()).unwrap_or(0) as f64
-            / (1024.0 * 1024.0);
+    let file_name = file_path.file_name().unwrap_or_default().to_string_lossy();
+    let file_size_megabytes = std::fs::metadata(file_path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0) as f64
+        / (1024.0 * 1024.0);
 
     eprintln!("\n{}", "=".repeat(80));
     eprintln!("FILE: {}", file_name);

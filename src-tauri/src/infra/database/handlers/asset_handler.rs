@@ -49,7 +49,7 @@ pub async fn handle_create(
     // This preserves tags, rating, notes, thumbnail, and colors.
     if let Some(filesystem_created_at) = payload.created_at {
         let move_candidates: Vec<(String, String, String)> = sqlx::query_as(
-            "SELECT id, folder_id, path FROM assets WHERE file_size = ? AND created_at = ?"
+            "SELECT id, folder_id, path FROM assets WHERE file_size = ? AND created_at = ?",
         )
         .bind(file_size_i64)
         .bind(filesystem_created_at)
@@ -60,7 +60,9 @@ pub async fn handle_create(
             if !std::path::Path::new(old_path_string).exists() && old_path_string != &path_string {
                 tracing::info!(
                     "Ledger: MOVE DETECTED (V1 recovery). Updating asset {} from '{}' to '{}'",
-                    existing_asset_id, old_path_string, path_string
+                    existing_asset_id,
+                    old_path_string,
+                    path_string
                 );
 
                 let folder_id_for_update = payload.folder_id.as_deref();
@@ -134,9 +136,8 @@ pub async fn handle_create(
     let asset_id_final = row.id.to_string();
 
     // 2. Audit Log
-    let op_payload = serde_json::to_value(&payload).map_err(|e| {
-        AppError::Internal(format!("Failed to serialize payload: {}", e))
-    })?;
+    let op_payload = serde_json::to_value(&payload)
+        .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
 
     SqliteAssetLedger::log_operation(
         tx,
@@ -200,9 +201,7 @@ pub async fn handle_batch_create(
             .path
             .file_name()
             .and_then(|file_name_os| file_name_os.to_str())
-            .ok_or_else(|| {
-                AppError::ValidationFailed("Invalid file path".to_string())
-            })?;
+            .ok_or_else(|| AppError::ValidationFailed("Invalid file path".to_string()))?;
         let state_string = payload.state_init.to_string();
         let path_string = payload.path.to_string_lossy().to_string();
         let file_size_i64 = payload.file_size as i64;
@@ -249,9 +248,8 @@ pub async fn handle_batch_create(
         let asset_id = row.id;
 
         // 2. Audit Log
-        let op_payload = serde_json::to_value(&payload).map_err(|e| {
-            AppError::Internal(format!("Failed to serialize payload: {}", e))
-        })?;
+        let op_payload = serde_json::to_value(&payload)
+            .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
 
         SqliteAssetLedger::log_operation(
             tx,
@@ -320,7 +318,8 @@ pub async fn handle_delete_asset(
         .unwrap_or_else(|| "None".to_string());
     tracing::info!(
         "Ledger: DeleteAsset START. asset_id: {:?}, path: {}",
-        asset_id, path_string
+        asset_id,
+        path_string
     );
 
     // 1. Resolve Asset ID (Using robust fallback for macOS Unicode consistency)
@@ -329,23 +328,25 @@ pub async fn handle_delete_asset(
             tracing::info!("Ledger: DeleteAsset resolved by ID: {}", id);
             id.clone()
         }
-        (None, Some(path_reference)) => match SqliteAssetLedger::resolve_asset_id_robust(tx, &path_reference).await? {
-            Some(id) => {
-                tracing::info!(
-                    "Ledger: DeleteAsset resolved path '{}' to ID: {}",
-                    path_reference.display(),
+        (None, Some(path_reference)) => {
+            match SqliteAssetLedger::resolve_asset_id_robust(tx, &path_reference).await? {
+                Some(id) => {
+                    tracing::info!(
+                        "Ledger: DeleteAsset resolved path '{}' to ID: {}",
+                        path_reference.display(),
+                        id
+                    );
                     id
-                );
-                id
+                }
+                None => {
+                    tracing::warn!("Ledger: DeleteAsset IGNORED - path '{}' not found in DB (even after robust fallback)", path_reference.display());
+                    return Err(AppError::NotFound(format!(
+                        "Asset not found at path: {}",
+                        path_reference.display()
+                    )));
+                }
             }
-            None => {
-                tracing::warn!("Ledger: DeleteAsset IGNORED - path '{}' not found in DB (even after robust fallback)", path_reference.display());
-                return Err(AppError::NotFound(format!(
-                    "Asset not found at path: {}",
-                    path_reference.display()
-                )));
-            }
-        },
+        }
         _ => {
             tracing::error!("Ledger: DeleteAsset FAILED - missing ID and path");
             return Err(AppError::ValidationFailed(
@@ -362,8 +363,13 @@ pub async fn handle_delete_asset(
     .fetch_optional(&mut **tx)
     .await?;
 
-    let pre_delete_folder_id = pre_delete_row.as_ref().and_then(|row| row.folder_id.clone());
-    let pre_delete_name = pre_delete_row.as_ref().map(|row| row.name.clone()).unwrap_or_else(|| "deleted".to_string());
+    let pre_delete_folder_id = pre_delete_row
+        .as_ref()
+        .and_then(|row| row.folder_id.clone());
+    let pre_delete_name = pre_delete_row
+        .as_ref()
+        .map(|row| row.name.clone())
+        .unwrap_or_else(|| "deleted".to_string());
 
     // 3. Perform Delete
     tracing::info!(
@@ -375,7 +381,11 @@ pub async fn handle_delete_asset(
         .await?;
 
     // 4. Audit Log - Use Outbox pattern (PENDING if physical, COMPLETED otherwise)
-    let status = if physical_delete { "PENDING" } else { "COMPLETED" };
+    let status = if physical_delete {
+        "PENDING"
+    } else {
+        "COMPLETED"
+    };
     SqliteAssetLedger::log_operation(
         tx,
         "DELETE_ASSET",

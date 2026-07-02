@@ -164,7 +164,9 @@ impl LibraryIndexer {
             directory_entries.len()
         );
 
-        let folder_cache = self.build_folder_cache(&path, &current_root_id, &mut directory_entries).await?;
+        let folder_cache = self
+            .build_folder_cache(&path, &current_root_id, &mut directory_entries)
+            .await?;
 
         let comparison_cache = self
             .query_handler
@@ -186,12 +188,24 @@ impl LibraryIndexer {
             .collect();
 
         let (discovered_count, unchanged_count, error_count) = self
-            .fanout_classify_and_persist(file_entries, &comparison_cache, &folder_cache, &current_root_id, total_files)
+            .fanout_classify_and_persist(
+                file_entries,
+                &comparison_cache,
+                &folder_cache,
+                &current_root_id,
+                total_files,
+            )
             .await;
 
         let existing_folders = self.query_handler.list_all_subfolders().await?;
         let (pruned_files_count, pruned_folders_count) = self
-            .prune_stale_entries(&root_str, &comparison_cache, &verified_file_paths, &existing_folders, &verified_folder_paths)
+            .prune_stale_entries(
+                &root_str,
+                &comparison_cache,
+                &verified_file_paths,
+                &existing_folders,
+                &verified_folder_paths,
+            )
             .await;
 
         let scan_duration = scan_start_time.elapsed();
@@ -440,7 +454,10 @@ impl LibraryIndexer {
                     ))
                     .await
                 {
-                    warn!("Failed to prune stale folder {}: {}", folder_path_str, error);
+                    warn!(
+                        "Failed to prune stale folder {}: {}",
+                        folder_path_str, error
+                    );
                 } else {
                     pruned_folders_count += 1;
                 }

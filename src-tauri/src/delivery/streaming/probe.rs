@@ -45,9 +45,15 @@ pub async fn get_video_info(
     let ffprobe_path = tools.ffprobe;
 
     // Fast path for MIDI: bypass ffprobe since it fails on sequence files
-    if let Some(ext) = path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+    if let Some(ext) = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+    {
         if ext == "mid" || ext == "midi" {
-            let duration_secs = crate::processing::media::extractors::midi_renderer::get_midi_length(path).unwrap_or(0.0);
+            let duration_secs =
+                crate::processing::media::extractors::midi_renderer::get_midi_length(path)
+                    .unwrap_or(0.0);
             return Ok(VideoInfo {
                 duration_secs,
                 is_native: false, // requires transcoding

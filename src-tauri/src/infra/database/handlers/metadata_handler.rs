@@ -33,9 +33,12 @@ pub async fn handle_update_asset_colors(
     let asset_id_reference = &payload.asset_id;
 
     // 1. Delete existing colors for this asset
-    sqlx::query!("DELETE FROM asset_colors WHERE asset_id = ?", asset_id_reference)
-        .execute(&mut **tx)
-        .await?;
+    sqlx::query!(
+        "DELETE FROM asset_colors WHERE asset_id = ?",
+        asset_id_reference
+    )
+    .execute(&mut **tx)
+    .await?;
 
     // 2. Insert new colors
     for color in &payload.colors {
@@ -58,19 +61,20 @@ pub async fn handle_update_asset_colors(
 
     // 3. Update dominant_color in assets table if we have colors
     if let Some(dominant) = payload.colors.first() {
-        sqlx::query(
-            "UPDATE assets SET dominant_color = ?, updated_at = ? WHERE id = ?",
-        )
-        .bind(serde_json::json!(dominant.hex_color))
-        .bind(now)
-        .bind(asset_id_reference)
-        .execute(&mut **tx)
-        .await?;
+        sqlx::query("UPDATE assets SET dominant_color = ?, updated_at = ? WHERE id = ?")
+            .bind(serde_json::json!(dominant.hex_color))
+            .bind(now)
+            .bind(asset_id_reference)
+            .execute(&mut **tx)
+            .await?;
     }
 
     // 4. Audit Log
     let operation_payload = serde_json::to_value(&payload).map_err(|serialization_error| {
-        AppError::Internal(format!("Failed to serialize payload: {}", serialization_error))
+        AppError::Internal(format!(
+            "Failed to serialize payload: {}",
+            serialization_error
+        ))
     })?;
 
     SqliteAssetLedger::log_operation(

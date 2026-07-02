@@ -296,17 +296,16 @@ mod tests {
             return;
         }
 
-        let thumbnail_result = provider.generate(sample_file_path, "test_asset_id", 300).await;
+        let thumbnail_result = provider
+            .generate(sample_file_path, "test_asset_id", 300)
+            .await;
         assert!(
             thumbnail_result.is_ok(),
             "Thumbnail generation failed: {:?}",
             thumbnail_result.err()
         );
         let thumbnail_bytes = thumbnail_result.unwrap();
-        assert!(
-            !thumbnail_bytes.is_empty(),
-            "Generated thumbnail is empty"
-        );
+        assert!(!thumbnail_bytes.is_empty(), "Generated thumbnail is empty");
     }
 
     #[tokio::test]

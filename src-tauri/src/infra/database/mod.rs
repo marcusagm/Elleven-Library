@@ -1,3 +1,4 @@
+pub mod handlers;
 /// Module for database operations.
 ///
 /// This module contains the implementation of the database operations.
@@ -52,6 +53,5 @@ pub mod ledger;
 pub mod manager;
 pub mod models;
 pub mod queries;
-pub mod search_builder;
-pub mod handlers;
 pub mod saga_recovery;
+pub mod search_builder;

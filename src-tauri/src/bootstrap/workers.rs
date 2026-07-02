@@ -15,11 +15,26 @@ use tauri::{AppHandle, Manager};
 /// * `app` - Reference to the Tauri AppHandle.
 pub fn init(app: &AppHandle) {
     let dirs = app.state::<crate::bootstrap::AppDirectories>();
-    let lifecycle = app.state::<Arc<crate::lifecycle::LifecycleRegistry>>().inner().clone();
-    let format_registry = app.state::<Arc<crate::core::formats::FormatRegistry>>().inner().clone();
-    let event_bus = app.state::<Arc<dyn crate::core::events::AppEventBus>>().inner().clone();
-    let asset_ledger = app.state::<Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>>().inner().clone();
-    let asset_query_handler = app.state::<Arc<dyn crate::core::repository::AssetQueryHandler>>().inner().clone();
+    let lifecycle = app
+        .state::<Arc<crate::lifecycle::LifecycleRegistry>>()
+        .inner()
+        .clone();
+    let format_registry = app
+        .state::<Arc<crate::core::formats::FormatRegistry>>()
+        .inner()
+        .clone();
+    let event_bus = app
+        .state::<Arc<dyn crate::core::events::AppEventBus>>()
+        .inner()
+        .clone();
+    let asset_ledger = app
+        .state::<Arc<dyn crate::core::ledger::port::TransactionalAssetLedger>>()
+        .inner()
+        .clone();
+    let asset_query_handler = app
+        .state::<Arc<dyn crate::core::repository::AssetQueryHandler>>()
+        .inner()
+        .clone();
 
     let priority_state = std::sync::Arc::new(
         crate::core::workflows::thumbnails::priority::ThumbnailPriorityState::default(),

@@ -80,7 +80,10 @@ pub fn init_events(app: &AppHandle) {
 
             match event {
                 // ── Targeted Asset Deletion (instant UI removal) ──────
-                DomainEvent::AssetDeleted { asset_id, folder_id } => {
+                DomainEvent::AssetDeleted {
+                    asset_id,
+                    folder_id,
+                } => {
                     let _ = app_handle.emit(
                         "library:batch-change",
                         serde_json::json!({
@@ -130,11 +133,7 @@ pub fn init_events(app: &AppHandle) {
                 DomainEvent::ScanCompleted { .. } => {
                     let _ = app_handle.emit("indexer:complete", 0);
                 }
-                DomainEvent::ThumbnailGenerated {
-                    asset_id,
-                    path,
-                    ..
-                } => {
+                DomainEvent::ThumbnailGenerated { asset_id, path, .. } => {
                     let _ = app_handle.emit(
                         "thumbnail:ready",
                         serde_json::json!({

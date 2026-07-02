@@ -71,8 +71,9 @@ impl MetadataCapability for IcnsFormatProvider {
         tokio::task::spawn_blocking(move || {
             let file = std::fs::File::open(&path_owned).map_err(AppError::Io)?;
             let file = std::io::BufReader::new(file);
-            let icon_family = icns::IconFamily::read(file).map_err(|e| AppError::Generic(format!("ICNS decode error: {}", e)))?;
-            
+            let icon_family = icns::IconFamily::read(file)
+                .map_err(|e| AppError::Generic(format!("ICNS decode error: {}", e)))?;
+
             let mut max_width = 0;
             let mut max_height = 0;
             for icon in icon_family.available_icons() {
@@ -85,7 +86,7 @@ impl MetadataCapability for IcnsFormatProvider {
                     max_height = height;
                 }
             }
-            
+
             if max_width == 0 {
                 return Err(AppError::Generic("No valid icons in ICNS".into()));
             }
@@ -113,11 +114,12 @@ impl ThumbnailCapability for IcnsFormatProvider {
         tokio::task::spawn_blocking(move || {
             let file = std::fs::File::open(&path_owned).map_err(AppError::Io)?;
             let file = std::io::BufReader::new(file);
-            let icon_family = icns::IconFamily::read(file).map_err(|e| AppError::Generic(format!("ICNS decode error: {}", e)))?;
-            
+            let icon_family = icns::IconFamily::read(file)
+                .map_err(|e| AppError::Generic(format!("ICNS decode error: {}", e)))?;
+
             let mut best_icon = None;
             let mut max_width = 0;
-            
+
             for icon in icon_family.available_icons() {
                 let width = icon.pixel_width();
                 if width >= size_hint && (best_icon.is_none() || width < max_width) {
@@ -125,7 +127,7 @@ impl ThumbnailCapability for IcnsFormatProvider {
                     max_width = width;
                 }
             }
-            
+
             if best_icon.is_none() {
                 let mut largest = None;
                 let mut l_width = 0;
@@ -138,17 +140,21 @@ impl ThumbnailCapability for IcnsFormatProvider {
                 }
                 best_icon = largest;
             }
-            
-            let target_icon_type = best_icon.ok_or_else(|| AppError::Generic("No valid icons found in ICNS".into()))?;
-            let image = icon_family.get_icon_with_type(target_icon_type)
+
+            let target_icon_type = best_icon
+                .ok_or_else(|| AppError::Generic("No valid icons found in ICNS".into()))?;
+            let image = icon_family
+                .get_icon_with_type(target_icon_type)
                 .map_err(|e| AppError::Generic(format!("Failed to extract icon type: {}", e)))?;
-            
+
             let mut png_data = Vec::new();
-            image.write_png(&mut png_data).map_err(|e| AppError::Generic(format!("Failed to write ICNS to PNG buffer: {}", e)))?;
-            
+            image.write_png(&mut png_data).map_err(|e| {
+                AppError::Generic(format!("Failed to write ICNS to PNG buffer: {}", e))
+            })?;
+
             let decoded_image = image::load_from_memory(&png_data)
                 .map_err(|e| AppError::Generic(format!("Failed to decode ICNS PNG: {}", e)))?;
-                
+
             crate::processing::media::extractors::image::process_and_encode_webp(
                 decoded_image,
                 size_hint,
@@ -167,8 +173,9 @@ impl PreviewCapability for IcnsFormatProvider {
         tokio::task::spawn_blocking(move || {
             let file = std::fs::File::open(&path_owned).map_err(AppError::Io)?;
             let file = std::io::BufReader::new(file);
-            let icon_family = icns::IconFamily::read(file).map_err(|e| AppError::Generic(format!("ICNS decode error: {}", e)))?;
-            
+            let icon_family = icns::IconFamily::read(file)
+                .map_err(|e| AppError::Generic(format!("ICNS decode error: {}", e)))?;
+
             let mut best_icon = None;
             let mut max_width = 0;
             for icon in icon_family.available_icons() {
@@ -178,17 +185,21 @@ impl PreviewCapability for IcnsFormatProvider {
                     max_width = width;
                 }
             }
-            
-            let target_icon_type = best_icon.ok_or_else(|| AppError::Generic("No valid icons found in ICNS".into()))?;
-            let image = icon_family.get_icon_with_type(target_icon_type)
+
+            let target_icon_type = best_icon
+                .ok_or_else(|| AppError::Generic("No valid icons found in ICNS".into()))?;
+            let image = icon_family
+                .get_icon_with_type(target_icon_type)
                 .map_err(|e| AppError::Generic(format!("Failed to extract icon type: {}", e)))?;
-            
+
             let mut png_data = Vec::new();
-            image.write_png(&mut png_data).map_err(|e| AppError::Generic(format!("Failed to write ICNS to PNG buffer: {}", e)))?;
-            
+            image.write_png(&mut png_data).map_err(|e| {
+                AppError::Generic(format!("Failed to write ICNS to PNG buffer: {}", e))
+            })?;
+
             let decoded_image = image::load_from_memory(&png_data)
                 .map_err(|e| AppError::Generic(format!("Failed to decode ICNS PNG: {}", e)))?;
-                
+
             let webp_bytes = crate::processing::media::extractors::image::process_and_encode_webp(
                 decoded_image,
                 2048,

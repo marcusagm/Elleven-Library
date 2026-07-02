@@ -147,7 +147,6 @@ impl SqliteAssetLedger {
         Ok(asset_db.into())
     }
 
-
     async fn handle_reextract_colors(
         &self,
         tx: &mut Transaction<'_, Sqlite>,
@@ -188,8 +187,6 @@ impl SqliteAssetLedger {
 
         Self::fetch_asset_by_id(tx, asset_id).await
     }
-
-
 }
 
 /// Implementation of the TransactionalAssetLedger trait for SqliteAssetLedger.
@@ -239,7 +236,10 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                     let filesystem_result = tokio::fs::remove_file(path_reference).await;
                     match filesystem_result {
                         Ok(_) => {
-                            tracing::info!("Ledger: Physical delete SUCCESS for {}", path_reference.display());
+                            tracing::info!(
+                                "Ledger: Physical delete SUCCESS for {}",
+                                path_reference.display()
+                            );
                             // Mark Saga as COMPLETED
                             let _ = sqlx::query!(
                                 "UPDATE asset_operations_log SET status = 'COMPLETED' WHERE asset_id = ? AND status = 'PENDING' AND operation_type = 'DELETE_ASSET'",
@@ -249,7 +249,10 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                             .await;
                         }
                         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                            tracing::info!("Ledger: Physical file already missing for {}", path_reference.display());
+                            tracing::info!(
+                                "Ledger: Physical file already missing for {}",
+                                path_reference.display()
+                            );
                             let _ = sqlx::query!(
                                 "UPDATE asset_operations_log SET status = 'COMPLETED' WHERE asset_id = ? AND status = 'PENDING' AND operation_type = 'DELETE_ASSET'",
                                 asset.id
@@ -258,7 +261,11 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
                             .await;
                         }
                         Err(error) => {
-                            tracing::warn!("Ledger: Physical delete FAILED for {}: {}", path_reference.display(), error);
+                            tracing::warn!(
+                                "Ledger: Physical delete FAILED for {}: {}",
+                                path_reference.display(),
+                                error
+                            );
                             let error_message = error.to_string();
                             let _ = sqlx::query!(
                                 "UPDATE asset_operations_log SET status = 'FAILED', error_note = ? WHERE asset_id = ? AND status = 'PENDING' AND operation_type = 'DELETE_ASSET'",

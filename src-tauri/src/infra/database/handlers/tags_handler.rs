@@ -68,7 +68,10 @@ pub async fn handle_update_tags(
 
     // 4. Audit Log
     let operation_payload = serde_json::to_value(&payload).map_err(|serialization_error| {
-        AppError::Internal(format!("Failed to serialize payload: {}", serialization_error))
+        AppError::Internal(format!(
+            "Failed to serialize payload: {}",
+            serialization_error
+        ))
     })?;
 
     SqliteAssetLedger::log_operation(
@@ -119,13 +122,12 @@ pub async fn handle_create_tag(
     .execute(&mut **tx)
     .await?;
 
-    let operation_payload =
-        serde_json::to_value(&payload).map_err(|serialization_error| {
-            AppError::Internal(format!(
-                "Failed to serialize payload: {}",
-                serialization_error
-            ))
-        })?;
+    let operation_payload = serde_json::to_value(&payload).map_err(|serialization_error| {
+        AppError::Internal(format!(
+            "Failed to serialize payload: {}",
+            serialization_error
+        ))
+    })?;
 
     SqliteAssetLedger::log_operation(
         tx,
@@ -195,8 +197,7 @@ pub async fn handle_update_tag(
     }
 
     if !set_clauses.is_empty() {
-        let update_sql =
-            format!("UPDATE tags SET {} WHERE id = ?", set_clauses.join(", "));
+        let update_sql = format!("UPDATE tags SET {} WHERE id = ?", set_clauses.join(", "));
         let mut query = sqlx::query(&update_sql);
 
         if let Some(ref tag_name) = payload.name {
@@ -220,13 +221,12 @@ pub async fn handle_update_tag(
         query.execute(&mut **tx).await?;
     }
 
-    let operation_payload =
-        serde_json::to_value(&payload).map_err(|serialization_error| {
-            AppError::Internal(format!(
-                "Failed to serialize payload: {}",
-                serialization_error
-            ))
-        })?;
+    let operation_payload = serde_json::to_value(&payload).map_err(|serialization_error| {
+        AppError::Internal(format!(
+            "Failed to serialize payload: {}",
+            serialization_error
+        ))
+    })?;
 
     SqliteAssetLedger::log_operation(
         tx,
@@ -273,10 +273,7 @@ pub async fn handle_update_tag(
 /// # Errors
 ///
 /// Returns `AppError` if the database operation fails.
-pub async fn handle_delete_tag(
-    tx: &mut Transaction<'_, Sqlite>,
-    id: String,
-) -> AppResult<Asset> {
+pub async fn handle_delete_tag(tx: &mut Transaction<'_, Sqlite>, id: String) -> AppResult<Asset> {
     // 1. Remove all asset associations first
     sqlx::query!("DELETE FROM asset_tags WHERE tag_id = ?", id)
         .execute(&mut **tx)
@@ -350,13 +347,12 @@ pub async fn handle_add_tags_to_assets_batch(
         }
     }
 
-    let operation_payload =
-        serde_json::to_value(&payload).map_err(|serialization_error| {
-            AppError::Internal(format!(
-                "Failed to serialize payload: {}",
-                serialization_error
-            ))
-        })?;
+    let operation_payload = serde_json::to_value(&payload).map_err(|serialization_error| {
+        AppError::Internal(format!(
+            "Failed to serialize payload: {}",
+            serialization_error
+        ))
+    })?;
 
     SqliteAssetLedger::log_operation(
         tx,
@@ -421,13 +417,12 @@ pub async fn handle_remove_tags_from_assets_batch(
         }
     }
 
-    let operation_payload =
-        serde_json::to_value(&payload).map_err(|serialization_error| {
-            AppError::Internal(format!(
-                "Failed to serialize payload: {}",
-                serialization_error
-            ))
-        })?;
+    let operation_payload = serde_json::to_value(&payload).map_err(|serialization_error| {
+        AppError::Internal(format!(
+            "Failed to serialize payload: {}",
+            serialization_error
+        ))
+    })?;
 
     SqliteAssetLedger::log_operation(
         tx,
@@ -501,13 +496,12 @@ pub async fn handle_replace_tags_for_assets_batch(
         }
     }
 
-    let operation_payload =
-        serde_json::to_value(&payload).map_err(|serialization_error| {
-            AppError::Internal(format!(
-                "Failed to serialize payload: {}",
-                serialization_error
-            ))
-        })?;
+    let operation_payload = serde_json::to_value(&payload).map_err(|serialization_error| {
+        AppError::Internal(format!(
+            "Failed to serialize payload: {}",
+            serialization_error
+        ))
+    })?;
 
     SqliteAssetLedger::log_operation(
         tx,

@@ -167,8 +167,9 @@ pub fn extract_video_technical_metadata(path: &Path) -> AppResult<Value> {
     };
 
     let is_native_audio = match audio_codec.as_deref() {
-        Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus")
-        | Some("vorbis") => true,
+        Some("aac") | Some("mp3") | Some("mp2") | Some("flac") | Some("opus") | Some("vorbis") => {
+            true
+        }
         Some(codec) if codec.starts_with("pcm_") => true,
         None => true,
         _ => false,

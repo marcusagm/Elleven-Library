@@ -232,8 +232,7 @@ pub fn extract_jxl_metadata(path: &Path) -> AppResult<serde_json::Value> {
                 let tag_name = entry.tag.to_string();
                 let tag_value = entry.value_more_readable.to_string();
                 if !tag_value.trim().is_empty() {
-                    metadata_object
-                        .insert(tag_name, serde_json::Value::String(tag_value));
+                    metadata_object.insert(tag_name, serde_json::Value::String(tag_value));
                 }
             }
         }

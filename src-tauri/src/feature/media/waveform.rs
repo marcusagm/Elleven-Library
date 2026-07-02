@@ -18,13 +18,20 @@ pub async fn extract_audio_waveform(path: &Path, app_handle: &AppHandle) -> AppR
 
     // Fast path for MIDI: FFmpeg fails to extract waveform from sequence files.
     // We must synthesize it to a temporary WAV first.
-    if let Some(ext) = path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+    if let Some(ext) = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+    {
         if ext == "mid" || ext == "midi" {
             let temp_dir = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
             tokio::fs::create_dir_all(&temp_dir).await.map_err(|e| {
-                AppError::Internal(format!("Failed to create temp dir for MIDI waveform: {}", e))
+                AppError::Internal(format!(
+                    "Failed to create temp dir for MIDI waveform: {}",
+                    e
+                ))
             })?;
-            
+
             let temp_wav = temp_dir.join("waveform_temp.wav");
             crate::processing::media::extractors::midi_renderer::render_midi_to_wav(
                 path,
@@ -32,8 +39,10 @@ pub async fn extract_audio_waveform(path: &Path, app_handle: &AppHandle) -> AppR
                 Some(app_handle),
             )
             .await
-            .map_err(|e| AppError::Internal(format!("Failed to synthesize MIDI for waveform: {}", e)))?;
-            
+            .map_err(|e| {
+                AppError::Internal(format!("Failed to synthesize MIDI for waveform: {}", e))
+            })?;
+
             path_to_process = temp_wav;
             temp_dir_to_clean = Some(temp_dir);
         }

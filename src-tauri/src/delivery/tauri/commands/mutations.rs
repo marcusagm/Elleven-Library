@@ -619,3 +619,41 @@ pub async fn verify_thumbnails(handle: tauri::AppHandle) -> AppResult<usize> {
 
     Ok(corrupted_count)
 }
+
+/// RPC Command to copy files to the system clipboard (MacOS).
+///
+/// # Arguments
+///
+/// * `paths` - A list of file paths to copy to the clipboard.
+#[tauri::command]
+pub fn copy_files_to_clipboard(paths: Vec<String>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        if paths.is_empty() {
+            return Ok(());
+        }
+        let script = String::from("ObjC.import('AppKit');\nvar pb = $.NSPasteboard.generalPasteboard;\npb.clearContents;\nfunction run(argv) {\nvar urls = $.NSMutableArray.alloc.init;\nfor (var i = 0; i < argv.length; i++) {\nurls.addObject($.NSURL.fileURLWithPath(argv[i]));\n}\npb.writeObjects(urls);\n}");
+        
+        let mut cmd = std::process::Command::new("osascript");
+        cmd.arg("-l").arg("JavaScript").arg("-e").arg(&script);
+        for path in paths.iter() {
+            cmd.arg(path);
+        }
+        
+        cmd.output().map_err(|e| e.to_string())?;
+    }
+    
+    // For Windows/Linux, copying actual files to clipboard natively requires extra crates like `arboard`.
+    // We just do MacOS as Mundam is primarily MacOS currently.
+    
+    Ok(())
+}
+
+/// RPC Command to rename a physical file directly.
+/// This bypasses Tauri's frontend FS scope limitations.
+#[tauri::command]
+pub async fn rename_file(old_path: String, new_path: String) -> Result<(), String> {
+    tokio::fs::rename(old_path, new_path)
+        .await
+        .map_err(|e| e.to_string())
+}

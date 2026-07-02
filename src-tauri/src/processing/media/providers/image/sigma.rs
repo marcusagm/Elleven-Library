@@ -234,37 +234,63 @@ mod tests {
         assert_eq!(provider.name(), "SIGMA_RAW_PROVIDER");
         assert!(provider.supported_extensions().contains(&"x3f"));
         assert!(provider.supports_magic_bytes(b"FOVb\x00\x00\x00\x00"));
-        
+
         let sample_file_path = Path::new("/Users/marcusmaia/Documents/Desenvolvimento/Mundam/file-samples/Arquivos para testes/Image/x3f/SDIM0024.X3F");
         if sample_file_path.exists() {
             // Test metadata extraction
             let metadata_result = provider.extract_technical(sample_file_path).await;
-            assert!(metadata_result.is_ok(), "Metadata extraction failed: {:?}", metadata_result.err());
+            assert!(
+                metadata_result.is_ok(),
+                "Metadata extraction failed: {:?}",
+                metadata_result.err()
+            );
             let metadata_value = metadata_result.unwrap();
-            
-            assert!(metadata_value.get("width").is_some(), "Metadata lacks width");
-            assert!(metadata_value.get("height").is_some(), "Metadata lacks height");
-            assert!(metadata_value.get("Model").is_some(), "Metadata lacks camera model");
-            
+
+            assert!(
+                metadata_value.get("width").is_some(),
+                "Metadata lacks width"
+            );
+            assert!(
+                metadata_value.get("height").is_some(),
+                "Metadata lacks height"
+            );
+            assert!(
+                metadata_value.get("Model").is_some(),
+                "Metadata lacks camera model"
+            );
+
             let image_width = metadata_value["width"].as_u64().unwrap();
             let image_height = metadata_value["height"].as_u64().unwrap();
             assert_eq!(image_width, 5424);
             assert_eq!(image_height, 3616);
-            
+
             // Test preview extraction
-            let preview_result = provider.generate_preview(sample_file_path, "test_asset_id").await;
-            assert!(preview_result.is_ok(), "Preview generation failed: {:?}", preview_result.err());
+            let preview_result = provider
+                .generate_preview(sample_file_path, "test_asset_id")
+                .await;
+            assert!(
+                preview_result.is_ok(),
+                "Preview generation failed: {:?}",
+                preview_result.err()
+            );
             let (preview_bytes, mime_type) = preview_result.unwrap();
             assert_eq!(mime_type, "image/jpeg");
-            assert!(preview_bytes.starts_with(&[0xFF, 0xD8]), "Preview is not a valid JPEG");
-            
+            assert!(
+                preview_bytes.starts_with(&[0xFF, 0xD8]),
+                "Preview is not a valid JPEG"
+            );
+
             // Test thumbnail generation
-            let thumbnail_result = provider.generate(sample_file_path, "test_asset_id", 200).await;
-            assert!(thumbnail_result.is_ok(), "Thumbnail generation failed: {:?}", thumbnail_result.err());
+            let thumbnail_result = provider
+                .generate(sample_file_path, "test_asset_id", 200)
+                .await;
+            assert!(
+                thumbnail_result.is_ok(),
+                "Thumbnail generation failed: {:?}",
+                thumbnail_result.err()
+            );
             let thumbnail_bytes = thumbnail_result.unwrap();
             assert!(!thumbnail_bytes.is_empty(), "Generated thumbnail is empty");
         }
     }
 }
-
-
