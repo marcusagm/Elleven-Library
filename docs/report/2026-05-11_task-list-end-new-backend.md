@@ -26,7 +26,7 @@
 
 ## Item Inspector
 
-- [ ] Copiar cor extraida no formato rgba, rgb, hex, hsl, hsv, hwb, cmyk.
+- [x] Copiar cor extraida no formato rgba, rgb, hex, hsl, hsv, hwb, cmyk.
 - [ ] Adicionar atalho para buscar por cores diretamente pela paleta de cores selecionada.
 - [ ] Persistência de paineis abertos ou colapsados, por exemplo se o painel general info for aberto, deve permacer aberto até o usuário fecha-lo.
 

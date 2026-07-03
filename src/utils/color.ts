@@ -243,3 +243,96 @@ export function convertHexadecimalToHueSaturationLightness(
 
     return { hue, saturation, lightness };
 }
+
+/**
+ * Interface representing a color format option for copying or displaying.
+ */
+export interface ColorFormatOption {
+    label: string;
+    value: string;
+}
+
+/**
+ * Generates an array of color string representations in various formats.
+ * Formats include HEX, RGB, RGBA, HSL, HSV, HWB, and CMYK.
+ *
+ * @param {string} hexColor - The input hexadecimal color string.
+ * @returns {ColorFormatOption[]} Array of color formats with labels and string values.
+ */
+export function generateColorFormats(hexColor: string): ColorFormatOption[] {
+    const red = parseInt(hexColor.slice(1, 3), 16);
+    const green = parseInt(hexColor.slice(3, 5), 16);
+    const blue = parseInt(hexColor.slice(5, 7), 16);
+
+    const redNormalized = red / 255;
+    const greenNormalized = green / 255;
+    const blueNormalized = blue / 255;
+
+    // HSL Calculation
+    const maxChannel = Math.max(redNormalized, greenNormalized, blueNormalized);
+    const minChannel = Math.min(redNormalized, greenNormalized, blueNormalized);
+    const channelDelta = maxChannel - minChannel;
+    const lightness = (maxChannel + minChannel) / 2;
+    let saturationHsl = 0;
+    if (channelDelta !== 0) {
+        saturationHsl =
+            lightness > 0.5
+                ? channelDelta / (2 - maxChannel - minChannel)
+                : channelDelta / (maxChannel + minChannel);
+    }
+
+    let hue = 0;
+    if (channelDelta !== 0) {
+        if (maxChannel === redNormalized) {
+            hue =
+                ((greenNormalized - blueNormalized) / channelDelta +
+                    (greenNormalized < blueNormalized ? 6 : 0)) *
+                60;
+        } else if (maxChannel === greenNormalized) {
+            hue = ((blueNormalized - redNormalized) / channelDelta + 2) * 60;
+        } else {
+            hue = ((redNormalized - greenNormalized) / channelDelta + 4) * 60;
+        }
+    }
+
+    // HSV Calculation
+    const saturationHsv = maxChannel === 0 ? 0 : channelDelta / maxChannel;
+    const brightness = maxChannel;
+
+    // HWB Calculation
+    const whiteness = minChannel;
+    const blackness = 1 - maxChannel;
+
+    // CMYK Calculation
+    const black = 1 - maxChannel;
+    let cyan = 0;
+    let magenta = 0;
+    let yellow = 0;
+    if (black < 1) {
+        cyan = (1 - redNormalized - black) / (1 - black);
+        magenta = (1 - greenNormalized - black) / (1 - black);
+        yellow = (1 - blueNormalized - black) / (1 - black);
+    }
+
+    return [
+        { label: 'HEX', value: hexColor.toUpperCase() },
+        { label: 'RGB', value: `rgb(${red}, ${green}, ${blue})` },
+        { label: 'RGBA', value: `rgba(${red}, ${green}, ${blue}, 1)` },
+        {
+            label: 'HSL',
+            value: `hsl(${Math.round(hue)}, ${Math.round(saturationHsl * 100)}%, ${Math.round(lightness * 100)}%)`
+        },
+        {
+            label: 'HSV',
+            value: `hsv(${Math.round(hue)}, ${Math.round(saturationHsv * 100)}%, ${Math.round(brightness * 100)}%)`
+        },
+        {
+            label: 'HWB',
+            value: `hwb(${Math.round(hue)} ${Math.round(whiteness * 100)}% ${Math.round(blackness * 100)}%)`
+        },
+        {
+            label: 'CMYK',
+            value: `cmyk(${Math.round(cyan * 100)}%, ${Math.round(magenta * 100)}%, ${Math.round(yellow * 100)}%, ${Math.round(black * 100)}%)`
+        }
+    ];
+}
