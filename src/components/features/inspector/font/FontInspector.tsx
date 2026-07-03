@@ -1,9 +1,10 @@
-import { Component, Show } from 'solid-js';
+import { Component, Show, onMount } from 'solid-js';
 import { type AssetItem } from '../../../../types';
 import { Accordion, AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { InspectorTags } from '../base/InspectorTags';
 import { CommonMetadata } from '../base/CommonMetadata';
 import { Type } from 'lucide-solid';
+import { accordionActions, accordionStoreState } from '../../../../core/store/accordionStore';
 import './FontInspector.css';
 
 interface FontInspectorProps {
@@ -11,6 +12,10 @@ interface FontInspectorProps {
 }
 
 export const FontInspector: Component<FontInspectorProps> = props => {
+    onMount(() => {
+        accordionActions.initializeAccordion('inspector_font', ['common']);
+    });
+
     return (
         <div class="inspector-content">
             <div class="inspector-preview font-preview">
@@ -31,7 +36,11 @@ export const FontInspector: Component<FontInspectorProps> = props => {
                 <div class="font-name">{props.item.filename}</div>
             </div>
 
-            <Accordion>
+            <Accordion
+                type="multiple"
+                value={accordionStoreState['inspector_font'] || []}
+                onValueChange={val => accordionActions.setExpandedItems('inspector_font', val)}
+            >
                 <CommonMetadata item={props.item} />
                 <AccordionItem value="font-details">
                     <AccordionHeader title="Typography Info" icon={<Type size={14} />} />

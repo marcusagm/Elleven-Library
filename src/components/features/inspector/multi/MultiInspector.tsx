@@ -1,8 +1,9 @@
-import { Component, For, Show } from 'solid-js';
+import { Component, For, Show, onMount } from 'solid-js';
 import { type AssetItem } from '../../../../types';
 import { InspectorTags } from '../base/InspectorTags';
 import { Accordion, AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { Layers } from 'lucide-solid';
+import { accordionActions, accordionStoreState } from '../../../../core/store/accordionStore';
 import './MultiInspector.css';
 
 interface MultiInspectorProps {
@@ -12,6 +13,10 @@ interface MultiInspectorProps {
 export const MultiInspector: Component<MultiInspectorProps> = props => {
     const previewItems = () => (props.items || []).slice(0, 3).reverse();
     const selectionCount = () => props.items?.length || 0;
+
+    onMount(() => {
+        accordionActions.initializeAccordion('inspector_multi', ['info']);
+    });
 
     return (
         <Show
@@ -51,7 +56,11 @@ export const MultiInspector: Component<MultiInspectorProps> = props => {
 
                 <div class="inspector-selection-count">{selectionCount()} items selected</div>
 
-                <Accordion>
+                <Accordion
+                    type="multiple"
+                    value={accordionStoreState['inspector_multi'] || []}
+                    onValueChange={val => accordionActions.setExpandedItems('inspector_multi', val)}
+                >
                     <InspectorTags itemIds={props.items.map(i => i.id)} />
                     <AccordionItem value="info">
                         <AccordionHeader title="Batch Actions" icon={<Layers size={14} />} />

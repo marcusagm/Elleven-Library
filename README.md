@@ -111,7 +111,7 @@ This project intentionally diverges from typical Electron/Web apps to prioritize
 *   [x] **Masonry Layout**: Optimized virtualized grid for variable aspect ratios.
 *   [x] **Progressive Loading**: Async thumbnail generation and "lazy" original loading.
 *   [x] **Slide/Inspection Mode**: Fullscreen viewer with zoom/pan and navigation.
-*   [ ] **File Actions**: "Open in Explorer", "Copy to Clipboard".
+*   [x] **File Actions**: "Open in Explorer", "Copy to Clipboard".
 
 ### 4. Search & Filtering
 *   [x] **Basic Search**: By filename.
@@ -119,7 +119,7 @@ This project intentionally diverges from typical Electron/Web apps to prioritize
 *   [x] **Smart Collections**: Saved searches that auto-update (Smart Folders).
 
 ### 5. Metadata & Extras
-*   [ ] **EXIF/IPTC**: Auto-read camera data and creation dates.
+*   [x] **EXIF/IPTC**: Auto-read camera data and creation dates.
 *   [ ] **Custom Properties**: User-defined fields (Notes, URL source).
 *   [ ] **Web Clipper**: Browser extension integration for direct imports.
 

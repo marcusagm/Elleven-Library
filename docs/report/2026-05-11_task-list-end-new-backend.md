@@ -28,7 +28,7 @@
 
 - [x] Copiar cor extraida no formato rgba, rgb, hex, hsl, hsv, hwb, cmyk.
 - [ ] Adicionar atalho para buscar por cores diretamente pela paleta de cores selecionada.
-- [ ] Persistência de paineis abertos ou colapsados, por exemplo se o painel general info for aberto, deve permacer aberto até o usuário fecha-lo.
+- [x] Persistência de paineis abertos ou colapsados, por exemplo se o painel general info for aberto, deve permacer aberto até o usuário fecha-lo.
 
 ## Seacrh
 
@@ -117,7 +117,7 @@
       **Arquivos:** `src-tauri/src/infra/database/queries.rs`
 - [ ] A geração de thumbnails deve sempre priorizar os assets que estão visiveis na tela. Atualmente na V2 a prioridade de geração de thumbnails parece não funcionar.
 - [ ] A extração de informação de cores tambem deve priorizar os assets visiveis ou selecionados.
-- [ ] Ao mover uma pasta e todo seu conteúdo para outra pasta indexada, a hieraquia não foi refeita e a alteração do path não foi refletida corretamente no banco de dados.
+- [x] Ao mover uma pasta e todo seu conteúdo para outra pasta indexada, a hieraquia não foi refeita e a alteração do path não foi refletida corretamente no banco de dados.
 
 # Códigos
 

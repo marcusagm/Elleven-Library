@@ -1,9 +1,10 @@
-import { Component, Show } from 'solid-js';
+import { Component, Show, onMount } from 'solid-js';
 import { type AssetItem } from '../../../../types';
 import { Accordion, VideoPlayer as UIVideoPlayer, Loader } from '../../../ui';
 import { InspectorTags } from '../base/InspectorTags';
 import { CommonMetadata } from '../base/CommonMetadata';
 import { useVideoSource } from '../../../../core/hooks/useVideoSource';
+import { accordionActions, accordionStoreState } from '../../../../core/store/accordionStore';
 import './VideoInspector.css';
 
 interface VideoInspectorProps {
@@ -20,6 +21,10 @@ export const VideoInspector: Component<VideoInspectorProps> = props => {
         () => props.item.id.toString(),
         () => props.item.path
     );
+
+    onMount(() => {
+        accordionActions.initializeAccordion('inspector_video', ['common']);
+    });
 
     return (
         <div class="inspector-content">
@@ -39,7 +44,11 @@ export const VideoInspector: Component<VideoInspectorProps> = props => {
                 </Show>
             </div>
 
-            <Accordion>
+            <Accordion
+                type="multiple"
+                value={accordionStoreState['inspector_video'] || []}
+                onValueChange={val => accordionActions.setExpandedItems('inspector_video', val)}
+            >
                 <CommonMetadata item={props.item} />
                 <InspectorTags itemId={props.item.id} />
             </Accordion>

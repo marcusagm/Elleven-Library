@@ -1,9 +1,10 @@
-import { Show, Component } from 'solid-js';
+import { Show, Component, onMount } from 'solid-js';
 import { type AssetItem } from '../../../../types';
 import { Accordion, AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
 import { InspectorTags } from '../base/InspectorTags';
 import { CommonMetadata } from '../base/CommonMetadata';
 import { Box, Layers } from 'lucide-solid';
+import { accordionActions, accordionStoreState } from '../../../../core/store/accordionStore';
 import './ModelInspector.css';
 
 interface ModelInspectorProps {
@@ -11,6 +12,10 @@ interface ModelInspectorProps {
 }
 
 export const ModelInspector: Component<ModelInspectorProps> = props => {
+    onMount(() => {
+        accordionActions.initializeAccordion('inspector_model', ['common']);
+    });
+
     return (
         <div class="inspector-content">
             <div class="inspector-preview model-preview">
@@ -30,7 +35,11 @@ export const ModelInspector: Component<ModelInspectorProps> = props => {
                 </Show>
             </div>
 
-            <Accordion>
+            <Accordion
+                type="multiple"
+                value={accordionStoreState['inspector_model'] || []}
+                onValueChange={val => accordionActions.setExpandedItems('inspector_model', val)}
+            >
                 <CommonMetadata item={props.item} />
                 <AccordionItem value="model-details">
                     <AccordionHeader title="3D Model Details" icon={<Layers size={14} />} />
