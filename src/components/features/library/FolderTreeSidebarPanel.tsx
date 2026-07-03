@@ -1,6 +1,7 @@
 import { Button } from '../../ui';
 import { Component, createMemo, createSignal } from 'solid-js';
-import { Folder as FolderIcon, FolderOpen as FolderOpenIcon, Plus } from 'lucide-solid';
+// import { Folder as FolderIcon, FolderOpen as FolderOpenIcon, Plus } from 'lucide-solid';
+import { Folder as FolderIcon, Plus } from 'lucide-solid';
 import { useMetadata, useFilters, useNotification, useLibrary, useTree } from '../../../core/hooks';
 import { TreeView, TreeNode } from '../../ui/TreeView';
 import { SidebarPanel } from '../../ui/SidebarPanel';
@@ -65,7 +66,8 @@ export const FolderTreeSidebarPanel: Component = () => {
                     name: folder.name,
                     isRoot: folder.is_root
                 } as FolderNodeData,
-                icon: folder.is_root ? FolderOpenIcon : FolderIcon,
+                // icon: folder.is_root ? FolderOpenIcon : FolderIcon,
+                icon: FolderIcon,
                 badge: (
                     <CountBadge
                         showZero={true}

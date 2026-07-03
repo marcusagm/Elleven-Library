@@ -27,7 +27,7 @@ export const TreeViewIcon: Component<TreeViewIconProps> = props => {
             style={{ color: props.color || 'var(--text-secondary)' }}
             aria-hidden="true"
         >
-            <Dynamic component={props.icon} size={14} />
+            <Dynamic component={props.icon} size={16} />
         </span>
     );
 };

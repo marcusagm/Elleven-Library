@@ -2,9 +2,9 @@
  * Settings Modal Styles
  */
 
-/* 
+/*
  * Layout Override for Modal integration
- * We remove padding from the body to allow full-height sidebar 
+ * We remove padding from the body to allow full-height sidebar
  */
 .settings-modal-wrapper {
   height: 80vh;
@@ -101,26 +101,4 @@
   font-size: var(--p-font-size-xs);
   color: var(--text-secondary);
   line-height: 1.5;
-}
-
-/* Scrollbar */
-.settings-sidebar::-webkit-scrollbar,
-.settings-panel::-webkit-scrollbar {
-  width: var(--p-space-s);
-}
-
-.settings-sidebar::-webkit-scrollbar-track,
-.settings-panel::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.settings-sidebar::-webkit-scrollbar-thumb,
-.settings-panel::-webkit-scrollbar-thumb {
-  background-color: var(--bg-surface-3);
-  border-radius: var(--radius-s);
-}
-
-.settings-sidebar::-webkit-scrollbar-thumb:hover,
-.settings-panel::-webkit-scrollbar-thumb:hover {
-  background-color: var(--border-default);
 }

@@ -124,7 +124,8 @@
   color-scheme: dark;
   --bg-page:       var(--p-neutral-900);
   --bg-sidebar:    var(--p-neutral-850);
-  --bg-header:     var(--p-neutral-800);
+  /* --bg-header:     var(--p-neutral-800); */
+  --bg-header:     var(--p-neutral-850);
   --bg-surface-1:  var(--p-neutral-850);
   --bg-surface-2:  var(--p-neutral-800);
   --bg-surface-3:  var(--p-neutral-700);

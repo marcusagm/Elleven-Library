@@ -16,7 +16,7 @@
     /* -webkit-backdrop-filter: blur(12px); Removed to match original */
 }
 
-.toolbar-group {
+.item-view-toolbar .toolbar-group {
     display: flex;
     align-items: center;
     gap: var(--p-space-xs);
@@ -29,7 +29,7 @@
    User said "anterior era bonito". Anterior didn't have groups logic visible in CSS, likely just one flex container.
    I will adapt the group separator to be subtle using variables. */
 
-.toolbar-group:not(:last-child)::after {
+.item-view-toolbar .toolbar-group:not(:last-child)::after {
     content: '';
     display: block;
     width: 1px;
@@ -39,7 +39,7 @@
     margin-right: var(--p-space-xs);
 }
 
-.toolbar-label {
+.item-view-toolbar .toolbar-label {
     font-size: var(--p-font-size-xxs);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -48,7 +48,7 @@
     font-weight: 500;
 }
 
-.toolbar-separator {
+.item-view-toolbar .toolbar-separator {
     width: 1px;
     height: var(--p-space-m);
     background-color: var(--border-default);

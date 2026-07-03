@@ -1,11 +1,13 @@
 .list-view-toolbar {
     display: flex;
     align-items: center;
-    gap: var(--p-space-m);
-    padding: var(--p-space-s) var(--p-space-m);
+    gap: var(--p-space-xs);
+    padding: var(--p-space-s) var(--p-space-xs);
     height: var(--p-space-2xl);
     background-color: var(--bg-page);
-    border-bottom: 1px solid var(--border-subtle);
+    /* border-bottom: 1px solid var(--border-subtle); */
+    box-shadow: var(--shadow-m);
+    z-index: 20;
 }
 
 .toolbar-group {

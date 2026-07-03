@@ -184,7 +184,7 @@ textarea:focus {
 
 ::-webkit-scrollbar-thumb {
     background: var(--border-default);
-    border-radius: var(--radius-none);
+    border-radius: var(--radius-s);
 }
 
 ::-webkit-scrollbar-thumb:hover {

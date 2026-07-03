@@ -16,45 +16,55 @@
   gap: 0;
 }
 
-.ui-button-group-attached.ui-button-group-horizontal > .ui-btn {
+.ui-button-group-attached.ui-button-group-horizontal > .ui-btn,
+.ui-button-group-attached.ui-button-group-horizontal > div > .ui-btn {
   border-radius: 0;
 }
 
-.ui-button-group-attached.ui-button-group-horizontal > .ui-btn:first-child {
+.ui-button-group-attached.ui-button-group-horizontal > .ui-btn:first-child,
+.ui-button-group-attached.ui-button-group-horizontal > div:first-child > .ui-btn {
   border-top-left-radius: var(--radius-s);
   border-bottom-left-radius: var(--radius-s);
 }
 
-.ui-button-group-attached.ui-button-group-horizontal > .ui-btn:last-child {
+.ui-button-group-attached.ui-button-group-horizontal > .ui-btn:last-child,
+.ui-button-group-attached.ui-button-group-horizontal > div:last-child > .ui-btn {
   border-top-right-radius: var(--radius-s);
   border-bottom-right-radius: var(--radius-s);
 }
 
-.ui-button-group-attached.ui-button-group-horizontal > .ui-btn:not(:first-child) {
+.ui-button-group-attached.ui-button-group-horizontal > .ui-btn:not(:first-child),
+.ui-button-group-attached.ui-button-group-horizontal > div:not(:first-child) > .ui-btn {
   margin-left: -1px;
 }
 
 .ui-button-group-attached.ui-button-group-horizontal > .ui-btn:hover,
-.ui-button-group-attached.ui-button-group-horizontal > .ui-btn:focus {
+.ui-button-group-attached.ui-button-group-horizontal > .ui-btn:focus,
+.ui-button-group-attached.ui-button-group-horizontal > div > .ui-btn:hover,
+.ui-button-group-attached.ui-button-group-horizontal > div > .ui-btn:focus {
   z-index: 1;
 }
 
 /* Vertical attached */
-.ui-button-group-attached.ui-button-group-vertical > .ui-btn {
+.ui-button-group-attached.ui-button-group-vertical > .ui-btn,
+.ui-button-group-attached.ui-button-group-vertical > div > .ui-btn {
   border-radius: 0;
 }
 
-.ui-button-group-attached.ui-button-group-vertical > .ui-btn:first-child {
+.ui-button-group-attached.ui-button-group-vertical > .ui-btn:first-child,
+.ui-button-group-attached.ui-button-group-vertical > div:first-child > .ui-btn {
   border-top-left-radius: var(--radius-s);
   border-top-right-radius: var(--radius-s);
 }
 
-.ui-button-group-attached.ui-button-group-vertical > .ui-btn:last-child {
+.ui-button-group-attached.ui-button-group-vertical > .ui-btn:last-child,
+.ui-button-group-attached.ui-button-group-vertical > div:last-child > .ui-btn {
   border-bottom-left-radius: var(--radius-s);
   border-bottom-right-radius: var(--radius-s);
 }
 
-.ui-button-group-attached.ui-button-group-vertical > .ui-btn:not(:first-child) {
+.ui-button-group-attached.ui-button-group-vertical > .ui-btn:not(:first-child),
+.ui-button-group-attached.ui-button-group-vertical > div:not(:first-child) > .ui-btn {
   margin-top: -1px;
 }
 

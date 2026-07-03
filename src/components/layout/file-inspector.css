@@ -7,13 +7,13 @@
 
 .inspector-header {
   padding: var(--p-space-s) var(--p-space-m);
-  background-color: var(--bg-surface-2);
-  font-size: var(--p-font-size-xs);
+  background-color: var(--bg-header);
+  font-size: var(--p-font-size-s);
   font-weight: 600;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  border-bottom: 1px solid var(--border-subtle);
+  letter-spacing: 1.5px;
+  /* border-bottom: 1px solid var(--border-subtle); */
   display: flex;
   justify-content: space-between;
   align-items: center;
