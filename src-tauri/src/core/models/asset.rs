@@ -228,6 +228,8 @@ pub struct AssetFilter {
     pub state: Option<AssetState>,
     /// Search query
     pub search_query: Option<String>,
+    /// Whether to use FTS5 trigram fuzzy matching for the search query
+    pub search_fuzzy: Option<bool>,
     /// Filter by folder
     pub folder_id: Option<String>,
     /// Filter by tags (any of)

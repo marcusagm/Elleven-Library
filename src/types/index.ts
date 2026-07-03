@@ -176,6 +176,8 @@ export interface AssetFilter {
     family?: string;
     state?: string; // Based on AssetState enum
     searchQuery?: string;
+    /** Whether to use FTS5 trigram fuzzy matching for the search query */
+    searchFuzzy?: boolean;
     folderId?: string;
     recursive?: boolean;
     tags?: string[];

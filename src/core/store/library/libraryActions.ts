@@ -54,7 +54,8 @@ export const libraryActions = {
                 folderId: filterState.selectedFolderId?.toString() || undefined,
                 recursive: filterState.folderRecursiveView,
                 tags: filterState.selectedTags.map(String),
-                searchQuery: filterState.searchQuery
+                searchQuery: filterState.searchQuery,
+                searchFuzzy: filterState.searchFuzzy || undefined
             };
 
             if (filterState.advancedSearch) {

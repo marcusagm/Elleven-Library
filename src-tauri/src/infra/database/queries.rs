@@ -225,12 +225,30 @@ impl AssetQueryHandler for SqliteAssetQueries {
             query_builder.push_bind(state.to_string());
         }
 
-        if let Some(search) = filter.search_query {
-            query_builder.push(" AND (a.name LIKE ");
-            query_builder.push_bind(format!("%{}%", search));
-            query_builder.push(" OR a.path LIKE ");
-            query_builder.push_bind(format!("%{}%", search));
-            query_builder.push(")");
+        if let Some(ref search) = filter.search_query {
+            if !search.is_empty() {
+                let lower = search.to_lowercase();
+                let chars: Vec<char> = lower.chars().collect();
+                if filter.search_fuzzy.unwrap_or(false) && chars.len() >= 3 {
+                    let mut trigrams = Vec::new();
+                    for i in 0..=chars.len() - 3 {
+                        let tri: String = chars[i..i + 3].iter().collect();
+                        trigrams.push(format!("\"{}\"", tri));
+                    }
+                    let match_expr = trigrams.join(" OR ");
+                    query_builder.push(
+                        " AND a.rowid IN (SELECT rowid FROM assets_fts WHERE assets_fts MATCH ",
+                    );
+                    query_builder.push_bind(match_expr);
+                    query_builder.push(" ORDER BY bm25(assets_fts) LIMIT 500)");
+                } else {
+                    query_builder.push(" AND (a.name LIKE ");
+                    query_builder.push_bind(format!("%{}%", search));
+                    query_builder.push(" OR a.notes LIKE ");
+                    query_builder.push_bind(format!("%{}%", search));
+                    query_builder.push(")");
+                }
+            }
         }
 
         if let Some(folder_id) = filter.folder_id {
@@ -266,8 +284,55 @@ impl AssetQueryHandler for SqliteAssetQueries {
             }
         }
 
-        // Ordering as per Sprint decision: created_at DESC, name ASC
-        query_builder.push(" ORDER BY a.created_at DESC, a.name ASC ");
+        // --- Sorting Logic ---
+        let allowed_cols = [
+            "filename",      // Frontend uses 'filename'
+            "name",          // Backend fallback
+            "created_at",
+            "modified_at",
+            "added_at",
+            "size",          // Frontend uses 'size'
+            "file_size",     // Backend fallback
+            "format",        // Frontend uses 'format'
+            "format_type",   // Backend fallback
+            "rating",
+        ];
+
+        let sort_field_input = filter
+            .sort_by
+            .as_deref()
+            .filter(|c| allowed_cols.contains(c))
+            .unwrap_or("created_at");
+
+        let final_sort_by = match sort_field_input {
+            "filename" => "name",
+            "format" => "format_type",
+            "size" => "file_size",
+            other => other,
+        };
+
+        let sort_order_input = filter
+            .sort_order
+            .as_deref()
+            .filter(|o| *o == "asc" || *o == "desc")
+            .unwrap_or("desc");
+
+        let final_order = if sort_order_input == "asc" { "ASC" } else { "DESC" };
+
+        query_builder.push(" ORDER BY a.");
+        query_builder.push(final_sort_by);
+
+        if ["name", "format_type"].contains(&final_sort_by) {
+            query_builder.push(" COLLATE NOCASE ");
+        }
+
+        query_builder.push(" ");
+        query_builder.push(final_order);
+
+        // Always use secondary sort by name to ensure stable pagination
+        if final_sort_by != "name" {
+            query_builder.push(", a.name COLLATE NOCASE ASC");
+        }
 
         // Pagination
         query_builder.push(" LIMIT ");
@@ -716,12 +781,30 @@ impl AssetQueryHandler for SqliteAssetQueries {
             query_builder.push_bind(state.to_string());
         }
 
-        if let Some(search) = filter.search_query {
-            query_builder.push(" AND (name LIKE ");
-            query_builder.push_bind(format!("%{}%", search));
-            query_builder.push(" OR path LIKE ");
-            query_builder.push_bind(format!("%{}%", search));
-            query_builder.push(")");
+        if let Some(ref search) = filter.search_query {
+            if !search.is_empty() {
+                let lower = search.to_lowercase();
+                let chars: Vec<char> = lower.chars().collect();
+                if filter.search_fuzzy.unwrap_or(false) && chars.len() >= 3 {
+                    let mut trigrams = Vec::new();
+                    for i in 0..=chars.len() - 3 {
+                        let tri: String = chars[i..i + 3].iter().collect();
+                        trigrams.push(format!("\"{}\"", tri));
+                    }
+                    let match_expr = trigrams.join(" OR ");
+                    query_builder.push(
+                        " AND rowid IN (SELECT rowid FROM assets_fts WHERE assets_fts MATCH ",
+                    );
+                    query_builder.push_bind(match_expr);
+                    query_builder.push(" ORDER BY bm25(assets_fts) LIMIT 500)");
+                } else {
+                    query_builder.push(" AND (name LIKE ");
+                    query_builder.push_bind(format!("%{}%", search));
+                    query_builder.push(" OR notes LIKE ");
+                    query_builder.push_bind(format!("%{}%", search));
+                    query_builder.push(")");
+                }
+            }
         }
 
         if let Some(folder_id) = filter.folder_id {

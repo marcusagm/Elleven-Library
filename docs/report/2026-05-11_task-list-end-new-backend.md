@@ -32,8 +32,9 @@
 
 ## Seacrh
 
-- [ ] Adicionar botão de limpar texto de busca.
-- [ ] Verificar fuzzy search, pois parece não estar funcionando bem.
+- [x] Verificar fuzzy search, pois parece não estar funcionando bem.
+> **Limite de Relevância Fixo (500)**: Atualmente o limite de busca difusa é hard-coded para os 500 melhores resultados (`LIMIT 500`). Isso atende a grande maioria dos casos mas, para bibliotecas com centenas de milhares de assets, o usuário pode sentir falta de algum registro marginal que não obteve um score suficiente no BM25 para entrar no top 500. Pode-se tornar esse limite configurável nas configurações globais da aplicação.
+
 - [ ] Adicionar sistema de sugestões.
 - [ ] Permitir a busca por Harmonia de cores 
 - [ ] Busca recursiva por tags, incluir tags filhas na busca.
@@ -51,6 +52,7 @@
 - [x] Adicionar opção de copiar caminho do arquivo.
 - [ ] Adicionar visualização por icones.
 - [ ] Implementar a funcionalidade de clicar e arrastar no vazio para selecionar múltiplos itens na Grid e no mansory.
+- [ ] A listagem de tabelas mostra colunas diferentes da configurada no painel de ordenação na área de busca. Uma idea é remover as opções de exibição quando a visualização de tabela estiver ativa, ou substituir as opções pelas mesmas opções de colunas exibidas ao clicar com o direito sobre o cabeçalho.
 
 ## Assets
 
