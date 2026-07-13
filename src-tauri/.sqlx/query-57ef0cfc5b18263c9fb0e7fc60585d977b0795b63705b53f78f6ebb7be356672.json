@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO asset_operations_log (id, operation_type, asset_id, payload, status, error_note, created_at)\n        VALUES (?, ?, ?, ?, ?, ?, ?)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "57ef0cfc5b18263c9fb0e7fc60585d977b0795b63705b53f78f6ebb7be356672"
+}
