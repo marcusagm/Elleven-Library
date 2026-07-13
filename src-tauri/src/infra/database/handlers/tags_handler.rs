@@ -7,7 +7,7 @@ use crate::core::ledger::command::{
     BatchTagsPayload, CreateTagPayload, UpdateTagPayload, UpdateTagsPayload,
 };
 use crate::core::models::asset::{Asset, AssetState};
-use crate::infra::database::ledger::SqliteAssetLedger;
+use super::shared;
 use chrono::Utc;
 use sqlx::{Sqlite, Transaction};
 use uuid::Uuid;
@@ -74,7 +74,7 @@ pub async fn handle_update_tags(
         ))
     })?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "UPDATE_TAGS",
         &payload.asset_id,
@@ -84,7 +84,7 @@ pub async fn handle_update_tags(
     )
     .await?;
 
-    SqliteAssetLedger::fetch_asset_by_id(tx, &payload.asset_id).await
+    shared::fetch_asset_by_id(tx, &payload.asset_id).await
 }
 
 /// Creates a new taxonomy tag with optional hierarchy and color.
@@ -129,7 +129,7 @@ pub async fn handle_create_tag(
         ))
     })?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "CREATE_TAG",
         &tag_id,
@@ -228,7 +228,7 @@ pub async fn handle_update_tag(
         ))
     })?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "UPDATE_TAG",
         &payload.id,
@@ -284,7 +284,7 @@ pub async fn handle_delete_tag(tx: &mut Transaction<'_, Sqlite>, id: String) -> 
         .execute(&mut **tx)
         .await?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "DELETE_TAG",
         &id,
@@ -354,7 +354,7 @@ pub async fn handle_add_tags_to_assets_batch(
         ))
     })?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "ADD_TAGS_BATCH",
         "batch",
@@ -424,7 +424,7 @@ pub async fn handle_remove_tags_from_assets_batch(
         ))
     })?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "REMOVE_TAGS_BATCH",
         "batch",
@@ -503,7 +503,7 @@ pub async fn handle_replace_tags_for_assets_batch(
         ))
     })?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "REPLACE_TAGS_BATCH",
         "batch",

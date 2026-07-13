@@ -4,7 +4,7 @@
 //! decoupled from the actual image generation workers.
 use crate::core::error::AppResult;
 use crate::core::models::asset::{Asset, AssetState};
-use crate::infra::database::ledger::SqliteAssetLedger;
+use super::shared;
 use chrono::Utc;
 use sqlx::{Sqlite, Transaction};
 
@@ -39,7 +39,7 @@ pub async fn handle_update_thumbnail(
     .await?;
 
     // 2. Audit Log
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "UPDATE_THUMBNAIL",
         asset_id,
@@ -49,8 +49,7 @@ pub async fn handle_update_thumbnail(
     )
     .await?;
 
-    // 3. Fetch and return
-    SqliteAssetLedger::fetch_asset_by_id(tx, asset_id).await
+    shared::fetch_asset_by_id(tx, asset_id).await
 }
 
 /// Clears an asset's cached thumbnail path, signalling that regeneration is required.
@@ -82,7 +81,7 @@ pub async fn handle_regenerate_thumbnail(
     .await?;
 
     // 2. Audit Log
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "REGENERATE_THUMBNAIL",
         asset_id,
@@ -92,6 +91,5 @@ pub async fn handle_regenerate_thumbnail(
     )
     .await?;
 
-    // 3. Fetch asset to return
-    SqliteAssetLedger::fetch_asset_by_id(tx, asset_id).await
+    shared::fetch_asset_by_id(tx, asset_id).await
 }

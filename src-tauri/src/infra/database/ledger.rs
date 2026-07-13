@@ -5,24 +5,26 @@
 //! appropriate specialized handler in `handlers/`, commits the transaction,
 //! runs any post-commit Saga (Outbox) steps, and finally publishes domain
 //! events on the `AppEventBus`.
+//!
+//! **Architectural Invariant**: This module must contain ZERO lines of raw SQL
+//! or business logic. All mutations are delegated to `handlers/*_handler.rs`
+//! and all shared infrastructure utilities live in `handlers/shared.rs`.
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use sqlx::{Sqlite, SqlitePool, Transaction};
+use sqlx::SqlitePool;
 use std::sync::Arc;
-use tracing::{info, warn};
-use unicode_normalization::UnicodeNormalization;
-use uuid::Uuid;
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::events::{AppEventBus, DomainEvent};
 use crate::core::ledger::command::LedgerCommand;
 use crate::core::ledger::port::TransactionalAssetLedger;
-use crate::core::models::asset::{Asset, AssetState};
+use crate::core::models::asset::Asset;
 
-/// SQLite implementation of the Asset Ledger using SQLx.
+/// SQLite implementation of the Asset Ledger.
 ///
-/// This adapter ensures that all mutations are atomic and audited
-/// via the `asset_operations_log` table before publishing domain events.
+/// This adapter acts as a **pure transactional router**: it opens a transaction,
+/// dispatches the command to the appropriate handler module, commits, executes
+/// any Saga post-commit steps, and publishes domain events. It intentionally
+/// contains no SQL queries or business rules itself.
 pub struct SqliteAssetLedger {
     pool: SqlitePool,
     event_bus: Arc<dyn AppEventBus>,
@@ -35,157 +37,8 @@ impl SqliteAssetLedger {
     ///
     /// * `pool` - The database connection pool.
     /// * `event_bus` - The event bus for publishing domain events.
-    ///
-    /// # Returns
-    ///
-    /// A new instance of `SqliteAssetLedger`.
     pub fn new(pool: SqlitePool, event_bus: Arc<dyn AppEventBus>) -> Self {
         Self { pool, event_bus }
-    }
-
-    /// Records an operation in the audit log.
-    ///
-    /// # Arguments
-    ///
-    /// * `tx` - The database transaction.
-    /// * `operation_type` - The type of operation.
-    /// * `asset_id` - The ID of the asset.
-    /// * `payload` - The payload of the operation.
-    /// * `status` - The status of the operation.
-    /// * `error_note` - The error note of the operation.
-    ///
-    /// # Returns
-    ///
-    /// A `Result` indicating success or failure.
-    pub(crate) async fn log_operation(
-        tx: &mut Transaction<'_, Sqlite>,
-        operation_type: &str,
-        asset_id: &str,
-        payload: serde_json::Value,
-        status: &str,
-        error_note: Option<&str>,
-    ) -> AppResult<()> {
-        let op_id = Uuid::new_v4().to_string();
-        let now = Utc::now();
-
-        sqlx::query!(
-            r#"
-            INSERT INTO asset_operations_log (id, operation_type, asset_id, payload, status, error_note, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            "#,
-            op_id,
-            operation_type,
-            asset_id,
-            payload,
-            status,
-            error_note,
-            now
-        )
-        .execute(&mut **tx)
-        .await?;
-
-        Ok(())
-    }
-
-    pub(crate) async fn fetch_asset_by_id(
-        tx: &mut Transaction<'_, Sqlite>,
-        asset_id: &str,
-    ) -> AppResult<Asset> {
-        let row = sqlx::query!(
-            r#"
-            SELECT
-                a.id as "id!", a.name as "name!", a.path as "path!", a.state as "state!",
-                a.format_type as "format_type!", a.family as "family!", a.file_size as "file_size!",
-                a.created_at as "created_at: DateTime<Utc>",
-                a.modified_at as "modified_at: DateTime<Utc>",
-                a.added_at as "added_at: DateTime<Utc>",
-                a.updated_at as "updated_at: DateTime<Utc>",
-                a.folder_id as "folder_id?",
-                a.thumbnail_path as "thumbnail_path?",
-                a.rating as "rating: i64",
-                a.notes as "notes?",
-                ame.width as "width: i64",
-                ame.height as "height: i64",
-                ame.duration_secs as "duration_secs: f64",
-                ame.technical_payload as "technical_payload: serde_json::Value",
-                ame.semantic_payload as "semantic_payload: serde_json::Value",
-                a.dominant_color as "dominant_color: serde_json::Value"
-            FROM assets a
-            LEFT JOIN asset_metadata_envelope ame ON a.id = ame.asset_id
-            WHERE a.id = ?
-            "#,
-            asset_id
-        )
-        .fetch_optional(&mut **tx)
-        .await?
-        .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
-
-        let asset_db = crate::infra::database::models::AssetDb {
-            id: row.id,
-            name: row.name,
-            path: row.path,
-            state: row.state,
-            format_type: row.format_type,
-            family: row.family,
-            file_size: row.file_size,
-            created_at: row.created_at,
-            modified_at: row.modified_at,
-            added_at: row.added_at,
-            updated_at: row.updated_at,
-            folder_id: row.folder_id,
-            thumbnail_path: row.thumbnail_path,
-            rating: row.rating,
-            notes: row.notes,
-            width: row.width,
-            height: row.height,
-            duration_secs: row.duration_secs,
-            technical_payload: row.technical_payload,
-            semantic_payload: row.semantic_payload,
-            dominant_color: row.dominant_color,
-        };
-
-        Ok(asset_db.into())
-    }
-
-    async fn handle_reextract_colors(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
-        asset_id: &str,
-    ) -> AppResult<Asset> {
-        // 1. Get thumbnail path
-        let asset_row = sqlx::query!(
-            r#"SELECT thumbnail_path as "thumbnail_path?", format_type as "format_type!" FROM assets WHERE id = ?"#,
-            asset_id
-        )
-        .fetch_optional(&mut **tx)
-        .await?
-        .ok_or_else(|| AppError::NotFound(asset_id.to_string()))?;
-
-        if let Some(path) = asset_row.thumbnail_path {
-            // 2. Clear existing colors
-            sqlx::query!("DELETE FROM asset_colors WHERE asset_id = ?", asset_id)
-                .execute(&mut **tx)
-                .await?;
-
-            // 3. Emit event (this will be handled by ColorWorker)
-            self.event_bus.publish(DomainEvent::ThumbnailGenerated {
-                asset_id: asset_id.to_string(),
-                path,
-                format: asset_row.format_type,
-            })?;
-        }
-
-        Self::log_operation(
-            tx,
-            "REEXTRACT_COLORS",
-            asset_id,
-            serde_json::json!({}),
-            "COMPLETED",
-            None,
-        )
-        .await?;
-
-        Self::fetch_asset_by_id(tx, asset_id).await
     }
 }
 
@@ -449,416 +302,113 @@ impl SqliteAssetLedger {
         Ok(())
     }
 
-    /// Optimized single command execution within an existing transaction.
+    /// Pure dispatch table: routes each `LedgerCommand` variant to the
+    /// appropriate handler module. Contains no SQL or business logic.
     async fn execute_single(
         &self,
-        tx: &mut Transaction<'_, Sqlite>,
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
         command: LedgerCommand,
     ) -> AppResult<Asset> {
+        use crate::infra::database::handlers::{
+            asset_handler, folder_handler, metadata_handler, smart_folder_handler, tags_handler,
+            thumbnail_handler,
+        };
+
         match command {
             LedgerCommand::CreateAsset(payload) => {
-                crate::infra::database::handlers::asset_handler::handle_create(tx, payload).await
+                asset_handler::handle_create(tx, payload).await
             }
             LedgerCommand::BatchCreate(payloads) => {
-                crate::infra::database::handlers::asset_handler::handle_batch_create(tx, payloads).await
-            }
-            LedgerCommand::UpdateTags(payload) => {
-                crate::infra::database::handlers::tags_handler::handle_update_tags(tx, payload).await
+                asset_handler::handle_batch_create(tx, payloads).await
             }
             LedgerCommand::UpdateAsset(payload) => {
-                let now = Utc::now();
-                let old_path_string = payload
-                    .old_path
-                    .as_ref()
-                    .map(|path_reference| path_reference.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "None".to_string());
-                let new_path_string = payload.new_path.to_string_lossy().to_string();
-
-                tracing::info!("Ledger: UpdateAsset START. old: {}, new: {}", old_path_string, new_path_string);
-
-                // 1. Resolve Asset ID (Using robust fallback for macOS Unicode consistency)
-                let asset_id: String = match (&payload.asset_id, &payload.old_path) {
-                    (Some(id), _) => {
-                        tracing::info!("Ledger: UpdateAsset resolved by ID: {}", id);
-                        id.clone()
-                    }
-                    (None, Some(old_path)) => {
-                        match Self::resolve_asset_id_robust(tx, old_path).await? {
-                            Some(id) => {
-                                tracing::info!(
-                                    "Ledger: UpdateAsset resolved old_path '{}' to ID: {}",
-                                    old_path.display(),
-                                    id
-                                );
-                                id
-                            }
-                            None => {
-                                tracing::warn!("Ledger: UpdateAsset IGNORED - old_path '{}' not found in DB (even after robust fallback)", old_path.display());
-                                return Err(AppError::NotFound(format!(
-                                    "Asset not found at path: {}",
-                                    old_path.display()
-                                )));
-                            }
-                        }
-                    }
-                    _ => {
-                        tracing::error!("Ledger: UpdateAsset FAILED - missing both ID and old_path");
-                        return Err(AppError::ValidationFailed(
-                            "UpdateAsset requires either asset_id or old_path".to_string(),
-                        ));
-                    }
-                };
-
-                let new_name = payload
-                    .new_path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .ok_or_else(|| {
-                        AppError::ValidationFailed("Invalid new file path".to_string())
-                    })?;
-                let new_path_str = payload.new_path.to_string_lossy().to_string();
-
-                // 2. Safety DELETE (Avoid Unique Constraint Violation on Rename)
-                info!(
-                    "Ledger: UpdateAsset safety DELETE checking for '{}' (collision prevention)",
-                    new_path_str
-                );
-                let delete_res = sqlx::query!(
-                    "DELETE FROM assets WHERE path = ? AND id != ?",
-                    new_path_str,
-                    asset_id
-                )
-                .execute(&mut **tx)
-                .await?;
-
-                if delete_res.rows_affected() > 0 {
-                    info!(
-                        "Ledger: UpdateAsset collision DETECTED. Pruned {} record(s) for '{}'",
-                        delete_res.rows_affected(),
-                        new_path_str
-                    );
-                }
-
-                // 3. Update Asset
-                info!(
-                    "Ledger: UpdateAsset executing UPDATE for ID {} to NEW path '{}'",
-                    asset_id, new_path_str
-                );
-                sqlx::query!(
-                    "UPDATE assets SET path = ?, name = ?, updated_at = ? WHERE id = ?",
-                    new_path_str,
-                    new_name,
-                    now,
-                    asset_id
-                )
-                .execute(&mut **tx)
-                .await?;
-
-                // 3. Audit Log
-                let op_payload = serde_json::to_value(&payload).map_err(|e| {
-                    AppError::Internal(format!("Failed to serialize payload: {}", e))
-                })?;
-
-                Self::log_operation(tx, "UPDATE_ASSET", &asset_id, op_payload, "COMPLETED", None)
-                    .await?;
-
-                info!("Ledger: UpdateAsset SUCCESS for ID {}", asset_id);
-                Self::fetch_asset_by_id(tx, &asset_id).await
+                asset_handler::handle_update_asset(tx, payload).await
             }
             LedgerCommand::MarkAsStale { asset_id } => {
-                let now = Utc::now();
-                let state_stale = AssetState::Stale.to_string();
-
-                sqlx::query!(
-                    "UPDATE assets SET state = ?, updated_at = ? WHERE id = ?",
-                    state_stale,
-                    now,
-                    asset_id
-                )
-                .execute(&mut **tx)
-                .await?;
-
-                Self::log_operation(
-                    tx,
-                    "MARK_STALE",
-                    &asset_id,
-                    serde_json::json!({}),
-                    "COMPLETED",
-                    None,
-                )
-                .await?;
-
-                Self::fetch_asset_by_id(tx, &asset_id).await
+                asset_handler::handle_mark_as_stale(tx, &asset_id).await
             }
             LedgerCommand::DeleteAsset {
                 asset_id,
                 path,
                 physical_delete,
             } => {
-                crate::infra::database::handlers::asset_handler::handle_delete_asset(
-                    tx,
-                    asset_id,
-                    path,
-                    physical_delete,
-                ).await
-            }
-            LedgerCommand::CreateFolder(payload) => {
-                crate::infra::database::handlers::folder_handler::handle_create_folder(tx, payload).await
-            }
-            LedgerCommand::RemoveFolder(payload) => {
-                crate::infra::database::handlers::folder_handler::handle_remove_folder(tx, payload).await
+                asset_handler::handle_delete_asset(tx, asset_id, path, physical_delete).await
             }
             LedgerCommand::SetAssetFolder {
                 asset_id,
                 folder_id,
             } => {
-                let now = Utc::now();
-
-                sqlx::query!(
-                    "UPDATE assets SET folder_id = ?, updated_at = ? WHERE id = ?",
-                    folder_id,
-                    now,
-                    asset_id
-                )
-                .execute(&mut **tx)
-                .await?;
-
-                Self::log_operation(
-                    tx,
-                    "SET_ASSET_FOLDER",
-                    &asset_id,
-                    serde_json::json!({ "folder_id": folder_id }),
-                    "COMPLETED",
-                    None,
-                )
-                .await?;
-
-                Self::fetch_asset_by_id(tx, &asset_id).await
+                asset_handler::handle_set_asset_folder(tx, &asset_id, folder_id.as_deref()).await
+            }
+            LedgerCommand::UpdateTags(payload) => {
+                tags_handler::handle_update_tags(tx, payload).await
+            }
+            LedgerCommand::CreateTag(payload) => {
+                tags_handler::handle_create_tag(tx, payload).await
+            }
+            LedgerCommand::UpdateTag(payload) => {
+                tags_handler::handle_update_tag(tx, payload).await
+            }
+            LedgerCommand::DeleteTag { id } => {
+                tags_handler::handle_delete_tag(tx, id).await
+            }
+            LedgerCommand::AddTagsToAssetsBatch(payload) => {
+                tags_handler::handle_add_tags_to_assets_batch(tx, payload).await
+            }
+            LedgerCommand::RemoveTagsFromAssetsBatch(payload) => {
+                tags_handler::handle_remove_tags_from_assets_batch(tx, payload).await
+            }
+            LedgerCommand::ReplaceTagsForAssetsBatch(payload) => {
+                tags_handler::handle_replace_tags_for_assets_batch(tx, payload).await
+            }
+            LedgerCommand::CreateFolder(payload) => {
+                folder_handler::handle_create_folder(tx, payload).await
+            }
+            LedgerCommand::RemoveFolder(payload) => {
+                folder_handler::handle_remove_folder(tx, payload).await
+            }
+            LedgerCommand::RenameFolder(payload) => {
+                folder_handler::handle_rename_folder(tx, payload).await
             }
             LedgerCommand::UpdateThumbnail {
                 asset_id,
                 thumbnail_path,
             } => {
-                crate::infra::database::handlers::thumbnail_handler::handle_update_thumbnail(tx, &asset_id, &thumbnail_path).await
-            }
-            LedgerCommand::UpdateAssetColors(payload) => {
-                crate::infra::database::handlers::metadata_handler::handle_update_asset_colors(tx, payload).await
-            }
-            LedgerCommand::UpdateAssetRating(payload) => {
-                crate::infra::database::handlers::metadata_handler::handle_update_rating(tx, payload).await
-            }
-            LedgerCommand::UpdateAssetNotes(payload) => {
-                crate::infra::database::handlers::metadata_handler::handle_update_notes(tx, payload).await
-            }
-            LedgerCommand::ReextractColors { asset_id } => {
-                self.handle_reextract_colors(tx, &asset_id).await
-            }
-            LedgerCommand::UpdateTechnicalMetadata(payload) => {
-                crate::infra::database::handlers::metadata_handler::handle_update_technical_metadata(tx, payload).await
-            }
-            LedgerCommand::UpdateFormat { asset_id, format } => {
-                crate::infra::database::handlers::metadata_handler::handle_update_format(tx, &asset_id, &format).await
-            }
-
-            // ── Tag CRUD Handlers ──────────────────────────────────────────
-            LedgerCommand::CreateTag(payload) => {
-                crate::infra::database::handlers::tags_handler::handle_create_tag(tx, payload).await
-            }
-            LedgerCommand::UpdateTag(payload) => {
-                crate::infra::database::handlers::tags_handler::handle_update_tag(tx, payload).await
-            }
-            LedgerCommand::DeleteTag { id } => {
-                crate::infra::database::handlers::tags_handler::handle_delete_tag(tx, id).await
-            }
-            LedgerCommand::AddTagsToAssetsBatch(payload) => {
-                crate::infra::database::handlers::tags_handler::handle_add_tags_to_assets_batch(tx, payload).await
-            }
-            LedgerCommand::RemoveTagsFromAssetsBatch(payload) => {
-                crate::infra::database::handlers::tags_handler::handle_remove_tags_from_assets_batch(tx, payload).await
-            }
-            LedgerCommand::ReplaceTagsForAssetsBatch(payload) => {
-                crate::infra::database::handlers::tags_handler::handle_replace_tags_for_assets_batch(tx, payload).await
-            }
-            LedgerCommand::CreateSmartFolder(payload) => {
-                crate::infra::database::handlers::smart_folder_handler::handle_create_smart_folder(tx, payload).await
-            }
-            LedgerCommand::UpdateSmartFolder(payload) => {
-                crate::infra::database::handlers::smart_folder_handler::handle_update_smart_folder(tx, payload).await
-            }
-            LedgerCommand::DeleteSmartFolder(payload) => {
-                crate::infra::database::handlers::smart_folder_handler::handle_delete_smart_folder(tx, payload).await
+                thumbnail_handler::handle_update_thumbnail(tx, &asset_id, &thumbnail_path).await
             }
             LedgerCommand::RegenerateThumbnail { asset_id } => {
-                crate::infra::database::handlers::thumbnail_handler::handle_regenerate_thumbnail(tx, &asset_id).await
+                thumbnail_handler::handle_regenerate_thumbnail(tx, &asset_id).await
+            }
+            LedgerCommand::UpdateAssetColors(payload) => {
+                metadata_handler::handle_update_asset_colors(tx, payload).await
+            }
+            LedgerCommand::UpdateAssetRating(payload) => {
+                metadata_handler::handle_update_rating(tx, payload).await
+            }
+            LedgerCommand::UpdateAssetNotes(payload) => {
+                metadata_handler::handle_update_notes(tx, payload).await
+            }
+            LedgerCommand::UpdateFormat { asset_id, format } => {
+                metadata_handler::handle_update_format(tx, &asset_id, &format).await
+            }
+            LedgerCommand::UpdateTechnicalMetadata(payload) => {
+                metadata_handler::handle_update_technical_metadata(tx, payload).await
+            }
+            LedgerCommand::ReextractColors { asset_id } => {
+                metadata_handler::handle_reextract_colors(tx, &asset_id).await
+            }
+            LedgerCommand::CreateSmartFolder(payload) => {
+                smart_folder_handler::handle_create_smart_folder(tx, payload).await
+            }
+            LedgerCommand::UpdateSmartFolder(payload) => {
+                smart_folder_handler::handle_update_smart_folder(tx, payload).await
+            }
+            LedgerCommand::DeleteSmartFolder(payload) => {
+                smart_folder_handler::handle_delete_smart_folder(tx, payload).await
             }
             LedgerCommand::Batch(_) => Err(AppError::Internal(
                 "Nested Batch commands are not supported".to_string(),
             )),
-            LedgerCommand::RenameFolder(payload) => {
-                crate::infra::database::handlers::folder_handler::handle_rename_folder(tx, payload).await
-            }
         }
-    }
-
-    /// Robustly resolves an asset ID from a path.
-    pub(crate) async fn resolve_asset_id_robust(
-        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
-        path: &std::path::Path,
-    ) -> AppResult<Option<String>> {
-        let path_str = path.to_string_lossy().to_string();
-
-        // 1. Direct Match (NFC/NFD sensitive)
-        let row = sqlx::query!(
-            r#"SELECT id as "id!" FROM assets WHERE path = ? COLLATE NOCASE"#,
-            path_str
-        )
-        .fetch_optional(&mut **tx)
-        .await?;
-
-        if let Some(r) = row {
-            return Ok(Some(r.id));
-        }
-
-        info!("Ledger: Direct path match FAILED for '{}'. Attempting robust folder+name resolution...", path_str);
-
-        // 2. Fallback: Resolve Folder first, then Name
-        if let (Some(parent_path), Some(name)) = (path.parent(), path.file_name()) {
-            let name_str = name.to_string_lossy().to_string();
-
-            if let Some(folder_id) = Self::resolve_folder_id_robust(tx, parent_path).await? {
-                // Now find the asset by name in this folder
-                let asset_row = sqlx::query!(
-                    r#"SELECT id as "id!" FROM assets WHERE folder_id = ? AND name = ? COLLATE NOCASE"#,
-                    folder_id,
-                    name_str
-                )
-                .fetch_optional(&mut **tx)
-                .await?;
-
-                if let Some(a) = asset_row {
-                    info!("Ledger: Robust resolution SUCCESS. Found asset ID {} via folder {} + name '{}'", a.id, folder_id, name_str);
-                    return Ok(Some(a.id));
-                } else {
-                    warn!("Ledger: Robust resolution FAILED: Asset '{}' not found in folder ID {} (Normalization mismatch?)", name_str, folder_id);
-                }
-            } else {
-                warn!(
-                    "Ledger: Robust resolution FAILED: Could not resolve folder ID for path '{}'",
-                    parent_path.display()
-                );
-            }
-        }
-
-        Ok(None)
-    }
-
-    /// Robustly resolves a folder ID by path, handling normalization issues.
-    pub(crate) async fn resolve_folder_id_robust(
-        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
-        path: &std::path::Path,
-    ) -> AppResult<Option<String>> {
-        let path_str = path.to_string_lossy().to_string();
-
-        // 1. Direct match
-        let row = sqlx::query!(
-            r#"SELECT id as "id!" FROM folders WHERE path = ? COLLATE NOCASE"#,
-            path_str
-        )
-        .fetch_optional(&mut **tx)
-        .await?;
-
-        if let Some(r) = row {
-            return Ok(Some(r.id));
-        }
-
-        // 2. Fallback: Parent ID + Name match
-        if let (Some(parent_p), Some(name)) = (path.parent(), path.file_name()) {
-            let name_str = name.to_string_lossy().to_string();
-
-            // Recurse to find parent ID
-            if let Some(parent_id) = Box::pin(Self::resolve_folder_id_robust(tx, parent_p)).await? {
-                let folder_row = sqlx::query!(
-                    r#"SELECT id as "id!" FROM folders WHERE parent_id = ? AND name = ? COLLATE NOCASE"#,
-                    parent_id,
-                    name_str
-                )
-                .fetch_optional(&mut **tx)
-                .await?;
-
-                if let Some(f) = folder_row {
-                    info!(
-                        "Ledger: Robust folder resolution SUCCESS. Resolved '{}' -> ID {}",
-                        path_str, f.id
-                    );
-                    return Ok(Some(f.id));
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
-    /// Performs a one-time database-wide path normalization to NFC.
-    /// This resolves legacy "ghost records" on macOS where paths were stored in NFD.
-    pub async fn normalize_database_paths(&self) -> AppResult<()> {
-        let mut tx = self.pool.begin().await?;
-        let now = Utc::now();
-
-        info!("Ledger: Starting database path normalization (NFC)...");
-
-        // 1. Normalize Assets
-        let asset_rows = sqlx::query!(r#"SELECT id, path FROM assets"#)
-            .fetch_all(&mut *tx)
-            .await?;
-
-        let mut asset_fix_count = 0;
-        for row in asset_rows {
-            let nfc_path = row.path.nfc().collect::<String>();
-            if nfc_path != row.path {
-                sqlx::query!(
-                    "UPDATE assets SET path = ?, updated_at = ? WHERE id = ?",
-                    nfc_path,
-                    now,
-                    row.id
-                )
-                .execute(&mut *tx)
-                .await?;
-                asset_fix_count += 1;
-            }
-        }
-
-        // 2. Normalize Folders
-        let folder_rows = sqlx::query!(r#"SELECT id, path FROM folders"#)
-            .fetch_all(&mut *tx)
-            .await?;
-
-        let mut folder_fix_count = 0;
-        for row in folder_rows {
-            let nfc_path = row.path.nfc().collect::<String>();
-            if nfc_path != row.path {
-                sqlx::query!(
-                    "UPDATE folders SET path = ?, updated_at = ? WHERE id = ?",
-                    nfc_path,
-                    now,
-                    row.id
-                )
-                .execute(&mut *tx)
-                .await?;
-                folder_fix_count += 1;
-            }
-        }
-
-        tx.commit().await?;
-
-        if asset_fix_count > 0 || folder_fix_count > 0 {
-            info!(
-                "Ledger: Path normalization COMPLETED. Fixed {} assets and {} folders.",
-                asset_fix_count, folder_fix_count
-            );
-        } else {
-            info!("Ledger: Database is already normalized.");
-        }
-
-        Ok(())
     }
 }

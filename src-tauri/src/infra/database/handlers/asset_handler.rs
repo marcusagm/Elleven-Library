@@ -1,15 +1,17 @@
 //! Asset lifecycle command handlers.
 //!
 //! Handles SQL mutations for asset creation (single and batch),
-//! move-detection recovery, and physical/logical deletion via the Outbox pattern.
+//! move-detection recovery, logical/physical deletion via the Outbox pattern,
+//! path/name updates, state transitions, and folder assignment.
 use crate::core::error::{AppError, AppResult};
-use crate::core::ledger::command::CreateAssetPayload;
-use crate::core::models::asset::Asset;
-use crate::infra::database::ledger::SqliteAssetLedger;
+use crate::core::ledger::command::{CreateAssetPayload, UpdateAssetPayload};
+use crate::core::models::asset::{Asset, AssetState};
 use chrono::Utc;
 use sqlx::{Sqlite, Transaction};
-
+use tracing::info;
 use uuid::Uuid;
+
+use super::shared;
 
 /// Handles the creation of a new asset.
 ///
@@ -17,14 +19,14 @@ use uuid::Uuid;
 ///
 /// # Arguments
 ///
-/// * `tx` - The database transaction.
+/// * `transaction` - The database transaction.
 /// * `payload` - The payload containing the asset details.
 ///
 /// # Errors
 ///
 /// Returns `AppError` if validation fails or the database query encounters an error.
 pub async fn handle_create(
-    tx: &mut Transaction<'_, Sqlite>,
+    transaction: &mut Transaction<'_, Sqlite>,
     payload: CreateAssetPayload,
 ) -> AppResult<Asset> {
     let asset_id = Uuid::new_v4().to_string();
@@ -42,18 +44,13 @@ pub async fn handle_create(
     let modified_at_val = payload.modified_at.unwrap_or(now);
     let added_at_val = now;
 
-    // ─── V1 Signature-Based Move Recovery ────────────────────────
-    // Before inserting, check if an existing asset with the same
-    // file_size + created_at has a stale path (file no longer on disk).
-    // If found, UPDATE that record instead of creating a duplicate.
-    // This preserves tags, rating, notes, thumbnail, and colors.
     if let Some(filesystem_created_at) = payload.created_at {
         let move_candidates: Vec<(String, String, String)> = sqlx::query_as(
             "SELECT id, folder_id, path FROM assets WHERE file_size = ? AND created_at = ?",
         )
         .bind(file_size_i64)
         .bind(filesystem_created_at)
-        .fetch_all(&mut **tx)
+        .fetch_all(&mut **transaction)
         .await?;
 
         for (existing_asset_id, _old_folder_id, old_path_string) in &move_candidates {
@@ -76,11 +73,11 @@ pub async fn handle_create(
                     state_string,
                     existing_asset_id
                 )
-                .execute(&mut **tx)
+                .execute(&mut **transaction)
                 .await?;
 
-                SqliteAssetLedger::log_operation(
-                    tx,
+                shared::log_operation(
+                    transaction,
                     "CREATE_ASSET_MOVE_RECOVERY",
                     existing_asset_id,
                     serde_json::json!({
@@ -93,11 +90,10 @@ pub async fn handle_create(
                 )
                 .await?;
 
-                return SqliteAssetLedger::fetch_asset_by_id(tx, existing_asset_id).await;
+                return shared::fetch_asset_by_id(transaction, existing_asset_id).await;
             }
         }
     }
-    // ─── End Move Recovery ────────────────────────────────────────
 
     let path_reference = &path_string;
     let state_reference = &state_string;
@@ -130,20 +126,19 @@ pub async fn handle_create(
         now,
         folder_id_reference
     )
-    .fetch_one(&mut **tx)
+    .fetch_one(&mut **transaction)
     .await?;
 
     let asset_id_final = row.id.to_string();
 
-    // 2. Audit Log
-    let op_payload = serde_json::to_value(&payload)
-        .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
+    let operation_payload = serde_json::to_value(&payload)
+        .map_err(|error| AppError::Internal(format!("Failed to serialize payload: {}", error)))?;
 
-    SqliteAssetLedger::log_operation(
-        tx,
+    shared::log_operation(
+        transaction,
         "CREATE_ASSET",
         &asset_id_final,
-        op_payload,
+        operation_payload,
         "COMPLETED",
         None,
     )
@@ -182,14 +177,14 @@ pub async fn handle_create(
 ///
 /// # Arguments
 ///
-/// * `tx` - The database transaction.
+/// * `transaction` - The database transaction.
 /// * `payloads` - A vector of create payloads.
 ///
 /// # Errors
 ///
 /// Returns `AppError` if validation fails or the database query encounters an error.
 pub async fn handle_batch_create(
-    tx: &mut Transaction<'_, Sqlite>,
+    transaction: &mut Transaction<'_, Sqlite>,
     payloads: Vec<CreateAssetPayload>,
 ) -> AppResult<Asset> {
     let mut created_assets = Vec::new();
@@ -217,7 +212,6 @@ pub async fn handle_batch_create(
         let folder_id_reference = payload.folder_id.as_deref();
         let asset_id_reference = &asset_id;
 
-        // 1. Insert Asset (Upsert)
         let row = sqlx::query!(
             r#"
             INSERT INTO assets (
@@ -242,20 +236,20 @@ pub async fn handle_batch_create(
             now,
             folder_id_reference
         )
-        .fetch_one(&mut **tx)
+        .fetch_one(&mut **transaction)
         .await?;
 
         let asset_id = row.id;
 
-        // 2. Audit Log
-        let op_payload = serde_json::to_value(&payload)
-            .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
+        let operation_payload = serde_json::to_value(&payload).map_err(|error| {
+            AppError::Internal(format!("Failed to serialize payload: {}", error))
+        })?;
 
-        SqliteAssetLedger::log_operation(
-            tx,
+        shared::log_operation(
+            transaction,
             "CREATE_ASSET_BATCH_MEMBER",
             &asset_id,
-            op_payload,
+            operation_payload,
             "COMPLETED",
             None,
         )
@@ -298,7 +292,7 @@ pub async fn handle_batch_create(
 ///
 /// # Arguments
 ///
-/// * `tx` - The database transaction.
+/// * `transaction` - The database transaction.
 /// * `asset_id` - The optional ID of the asset.
 /// * `path` - The optional file path of the asset.
 /// * `physical_delete` - Whether to physically delete the file on disk.
@@ -307,7 +301,7 @@ pub async fn handle_batch_create(
 ///
 /// Returns `AppError` if the asset is not found or database constraints fail.
 pub async fn handle_delete_asset(
-    tx: &mut Transaction<'_, Sqlite>,
+    transaction: &mut Transaction<'_, Sqlite>,
     asset_id: Option<String>,
     path: Option<std::path::PathBuf>,
     physical_delete: bool,
@@ -322,14 +316,13 @@ pub async fn handle_delete_asset(
         path_string
     );
 
-    // 1. Resolve Asset ID (Using robust fallback for macOS Unicode consistency)
     let resolved_id: String = match (asset_id, path.clone()) {
         (Some(id), _) => {
             tracing::info!("Ledger: DeleteAsset resolved by ID: {}", id);
             id.clone()
         }
         (None, Some(path_reference)) => {
-            match SqliteAssetLedger::resolve_asset_id_robust(tx, &path_reference).await? {
+            match shared::resolve_asset_id_robust(transaction, &path_reference).await? {
                 Some(id) => {
                     tracing::info!(
                         "Ledger: DeleteAsset resolved path '{}' to ID: {}",
@@ -355,12 +348,11 @@ pub async fn handle_delete_asset(
         }
     };
 
-    // 2. Capture pre-deletion metadata for domain event enrichment
     let pre_delete_row = sqlx::query!(
         r#"SELECT folder_id as "folder_id?", name as "name!" FROM assets WHERE id = ?"#,
         resolved_id
     )
-    .fetch_optional(&mut **tx)
+    .fetch_optional(&mut **transaction)
     .await?;
 
     let pre_delete_folder_id = pre_delete_row
@@ -371,38 +363,35 @@ pub async fn handle_delete_asset(
         .map(|row| row.name.clone())
         .unwrap_or_else(|| "deleted".to_string());
 
-    // 3. Perform Delete
     tracing::info!(
         "Ledger: DeleteAsset executing DELETE for ID {}",
         resolved_id
     );
     sqlx::query!("DELETE FROM assets WHERE id = ?", resolved_id)
-        .execute(&mut **tx)
+        .execute(&mut **transaction)
         .await?;
 
-    // 4. Audit Log - Use Outbox pattern (PENDING if physical, COMPLETED otherwise)
     let status = if physical_delete {
         "PENDING"
     } else {
         "COMPLETED"
     };
-    SqliteAssetLedger::log_operation(
-        tx,
+    shared::log_operation(
+        transaction,
         "DELETE_ASSET",
         &resolved_id,
-        serde_json::json!({"physical": physical_delete, "path": path.map(|p| p.to_string_lossy().to_string())}),
+        serde_json::json!({"physical": physical_delete, "path": path.map(|path_buf| path_buf.to_string_lossy().to_string())}),
         status,
         None,
     )
     .await?;
 
     tracing::info!("Ledger: DeleteAsset SUCCESS for ID {}", resolved_id);
-    // 5. Return Tombstone (with original folder_id for event enrichment)
     Ok(Asset {
         id: resolved_id,
         name: pre_delete_name,
         path: std::path::PathBuf::new(),
-        state: crate::core::models::asset::AssetState::Offline,
+        state: AssetState::Offline,
         format_type: "".to_string(),
         family: "".to_string(),
         file_size: 0,
@@ -421,4 +410,210 @@ pub async fn handle_delete_asset(
         rating: None,
         notes: None,
     })
+}
+
+/// Handles updating an asset's path and name after a rename or move operation.
+///
+/// Performs robust asset ID resolution via both direct path match and the
+/// NFC/NFD-aware fallback strategy. Includes a safety DELETE to prevent
+/// UNIQUE constraint violations when the new path already exists as a
+/// different record (stale ghost from a previous incomplete operation).
+///
+/// # Arguments
+///
+/// * `transaction` - The active database transaction.
+/// * `payload` - Contains the optional asset ID, old path, and new path.
+///
+/// # Errors
+///
+/// Returns `AppError::NotFound` if the asset cannot be resolved by ID or path.
+/// Returns `AppError::ValidationFailed` if neither `asset_id` nor `old_path` is provided.
+pub async fn handle_update_asset(
+    transaction: &mut Transaction<'_, Sqlite>,
+    payload: UpdateAssetPayload,
+) -> AppResult<Asset> {
+    let now = Utc::now();
+    let old_path_string = payload
+        .old_path
+        .as_ref()
+        .map(|path_reference| path_reference.to_string_lossy().to_string())
+        .unwrap_or_else(|| "None".to_string());
+    let new_path_string = payload.new_path.to_string_lossy().to_string();
+
+    tracing::info!(
+        "Ledger: UpdateAsset START. old: {}, new: {}",
+        old_path_string,
+        new_path_string
+    );
+
+    let asset_id: String = match (&payload.asset_id, &payload.old_path) {
+        (Some(id), _) => {
+            tracing::info!("Ledger: UpdateAsset resolved by ID: {}", id);
+            id.clone()
+        }
+        (None, Some(old_path)) => {
+            match shared::resolve_asset_id_robust(transaction, old_path).await? {
+                Some(id) => {
+                    tracing::info!(
+                        "Ledger: UpdateAsset resolved old_path '{}' to ID: {}",
+                        old_path.display(),
+                        id
+                    );
+                    id
+                }
+                None => {
+                    tracing::warn!("Ledger: UpdateAsset IGNORED - old_path '{}' not found in DB (even after robust fallback)", old_path.display());
+                    return Err(AppError::NotFound(format!(
+                        "Asset not found at path: {}",
+                        old_path.display()
+                    )));
+                }
+            }
+        }
+        _ => {
+            tracing::error!("Ledger: UpdateAsset FAILED - missing both ID and old_path");
+            return Err(AppError::ValidationFailed(
+                "UpdateAsset requires either asset_id or old_path".to_string(),
+            ));
+        }
+    };
+
+    let new_name = payload
+        .new_path
+        .file_name()
+        .and_then(|name_os_str| name_os_str.to_str())
+        .ok_or_else(|| AppError::ValidationFailed("Invalid new file path".to_string()))?;
+    let new_path_str = payload.new_path.to_string_lossy().to_string();
+
+    info!(
+        "Ledger: UpdateAsset safety DELETE checking for '{}' (collision prevention)",
+        new_path_str
+    );
+    let delete_result = sqlx::query!(
+        "DELETE FROM assets WHERE path = ? AND id != ?",
+        new_path_str,
+        asset_id
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    if delete_result.rows_affected() > 0 {
+        info!(
+            "Ledger: UpdateAsset collision DETECTED. Pruned {} record(s) for '{}'",
+            delete_result.rows_affected(),
+            new_path_str
+        );
+    }
+
+    info!(
+        "Ledger: UpdateAsset executing UPDATE for ID {} to NEW path '{}'",
+        asset_id, new_path_str
+    );
+    sqlx::query!(
+        "UPDATE assets SET path = ?, name = ?, updated_at = ? WHERE id = ?",
+        new_path_str,
+        new_name,
+        now,
+        asset_id
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    let operation_payload = serde_json::to_value(&payload)
+        .map_err(|error| AppError::Internal(format!("Failed to serialize payload: {}", error)))?;
+
+    shared::log_operation(
+        transaction,
+        "UPDATE_ASSET",
+        &asset_id,
+        operation_payload,
+        "COMPLETED",
+        None,
+    )
+    .await?;
+
+    info!("Ledger: UpdateAsset SUCCESS for ID {}", asset_id);
+    shared::fetch_asset_by_id(transaction, &asset_id).await
+}
+
+/// Marks an asset as stale, indicating it needs re-probing by the extraction pipeline.
+///
+/// This is typically triggered when the filesystem watcher detects that a file
+/// has been modified in-place without a rename.
+///
+/// # Arguments
+///
+/// * `transaction` - The active database transaction.
+/// * `asset_id` - The unique identifier of the asset to mark.
+///
+/// # Errors
+///
+/// Returns `AppError` if the database update fails or the asset is not found.
+pub async fn handle_mark_as_stale(
+    transaction: &mut Transaction<'_, Sqlite>,
+    asset_id: &str,
+) -> AppResult<Asset> {
+    let now = Utc::now();
+    let state_stale = AssetState::Stale.to_string();
+
+    sqlx::query!(
+        "UPDATE assets SET state = ?, updated_at = ? WHERE id = ?",
+        state_stale,
+        now,
+        asset_id
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    shared::log_operation(
+        transaction,
+        "MARK_STALE",
+        asset_id,
+        serde_json::json!({}),
+        "COMPLETED",
+        None,
+    )
+    .await?;
+
+    shared::fetch_asset_by_id(transaction, asset_id).await
+}
+
+/// Assigns an asset to a folder (or unassigns it by passing `None`).
+///
+/// # Arguments
+///
+/// * `transaction` - The active database transaction.
+/// * `asset_id` - The unique identifier of the asset.
+/// * `folder_id` - The target folder ID, or `None` to unassign.
+///
+/// # Errors
+///
+/// Returns `AppError` if the database update fails or the asset is not found.
+pub async fn handle_set_asset_folder(
+    transaction: &mut Transaction<'_, Sqlite>,
+    asset_id: &str,
+    folder_id: Option<&str>,
+) -> AppResult<Asset> {
+    let now = Utc::now();
+
+    sqlx::query!(
+        "UPDATE assets SET folder_id = ?, updated_at = ? WHERE id = ?",
+        folder_id,
+        now,
+        asset_id
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    shared::log_operation(
+        transaction,
+        "SET_ASSET_FOLDER",
+        asset_id,
+        serde_json::json!({ "folder_id": folder_id }),
+        "COMPLETED",
+        None,
+    )
+    .await?;
+
+    shared::fetch_asset_by_id(transaction, asset_id).await
 }

@@ -49,10 +49,10 @@ pub async fn init(app: &AppHandle) -> Result<(), String> {
     ));
 
     // Run database path normalization cleanup (one-time logic)
-    let ledger_for_cleanup = asset_ledger_impl.clone();
+    let normalization_pool = db_manager.pool().clone();
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = ledger_for_cleanup.normalize_database_paths().await {
-            tracing::error!("Failed to normalize database paths: {}", e);
+        if let Err(error) = crate::infra::database::handlers::shared::normalize_database_paths(&normalization_pool).await {
+            tracing::error!("Failed to normalize database paths: {}", error);
         }
     });
 

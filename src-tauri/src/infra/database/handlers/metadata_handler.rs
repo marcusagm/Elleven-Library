@@ -8,7 +8,7 @@ use crate::core::ledger::command::{
     UpdateTechnicalMetadataPayload,
 };
 use crate::core::models::asset::Asset;
-use crate::infra::database::ledger::SqliteAssetLedger;
+use super::shared;
 use chrono::Utc;
 use sqlx::{Sqlite, Transaction};
 
@@ -77,7 +77,7 @@ pub async fn handle_update_asset_colors(
         ))
     })?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "UPDATE_ASSET_COLORS",
         asset_id_reference,
@@ -87,7 +87,7 @@ pub async fn handle_update_asset_colors(
     )
     .await?;
 
-    SqliteAssetLedger::fetch_asset_by_id(tx, &payload.asset_id).await
+    shared::fetch_asset_by_id(tx, &payload.asset_id).await
 }
 
 /// Updates an asset's star rating.
@@ -114,7 +114,7 @@ pub async fn handle_update_rating(
     .execute(&mut **tx)
     .await?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "UPDATE_ASSET_RATING",
         &payload.asset_id,
@@ -124,7 +124,7 @@ pub async fn handle_update_rating(
     )
     .await?;
 
-    SqliteAssetLedger::fetch_asset_by_id(tx, &payload.asset_id).await
+    shared::fetch_asset_by_id(tx, &payload.asset_id).await
 }
 
 /// Updates the freeform text notes for an asset.
@@ -151,7 +151,7 @@ pub async fn handle_update_notes(
     .execute(&mut **tx)
     .await?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "UPDATE_ASSET_NOTES",
         &payload.asset_id,
@@ -161,7 +161,7 @@ pub async fn handle_update_notes(
     )
     .await?;
 
-    SqliteAssetLedger::fetch_asset_by_id(tx, &payload.asset_id).await
+    shared::fetch_asset_by_id(tx, &payload.asset_id).await
 }
 
 /// Corrects the stored format type of an asset.
@@ -193,7 +193,7 @@ pub async fn handle_update_format(
     .execute(&mut **tx)
     .await?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "UPDATE_FORMAT",
         asset_id,
@@ -203,7 +203,7 @@ pub async fn handle_update_format(
     )
     .await?;
 
-    SqliteAssetLedger::fetch_asset_by_id(tx, asset_id).await
+    shared::fetch_asset_by_id(tx, asset_id).await
 }
 
 /// Upserts technical metadata (dimensions, duration, JSON payloads) into the envelope table.
@@ -261,7 +261,7 @@ pub async fn handle_update_technical_metadata(
     .execute(&mut **tx)
     .await?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "UPDATE_TECHNICAL_METADATA",
         &payload.asset_id,
@@ -271,5 +271,41 @@ pub async fn handle_update_technical_metadata(
     )
     .await?;
 
-    SqliteAssetLedger::fetch_asset_by_id(tx, &payload.asset_id).await
+    shared::fetch_asset_by_id(tx, &payload.asset_id).await
+}
+
+/// Clears existing colors for an asset and records the intent to re-extract.
+///
+/// The actual color re-extraction is triggered by the `ReextractAssetColors`
+/// domain event emitted by the Ledger after this handler's transaction commits.
+/// This handler is deliberately stateless (no access to EventBus) to maintain
+/// the pure-function contract of all handlers.
+///
+/// # Arguments
+///
+/// * `transaction` - The active database transaction.
+/// * `asset_id` - The unique identifier of the asset.
+///
+/// # Errors
+///
+/// Returns `AppError::NotFound` if the asset does not exist.
+pub async fn handle_reextract_colors(
+    transaction: &mut Transaction<'_, Sqlite>,
+    asset_id: &str,
+) -> AppResult<Asset> {
+    sqlx::query!("DELETE FROM asset_colors WHERE asset_id = ?", asset_id)
+        .execute(&mut **transaction)
+        .await?;
+
+    shared::log_operation(
+        transaction,
+        "REEXTRACT_COLORS",
+        asset_id,
+        serde_json::json!({}),
+        "COMPLETED",
+        None,
+    )
+    .await?;
+
+    shared::fetch_asset_by_id(transaction, asset_id).await
 }

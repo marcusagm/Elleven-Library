@@ -5,7 +5,7 @@
 use crate::core::error::{AppError, AppResult};
 use crate::core::ledger::command::{CreateFolderPayload, RemoveFolderPayload, RenameFolderPayload};
 use crate::core::models::asset::{Asset, AssetState};
-use crate::infra::database::ledger::SqliteAssetLedger;
+use super::shared;
 use chrono::Utc;
 use sqlx::{Sqlite, Transaction};
 use uuid::Uuid;
@@ -61,7 +61,7 @@ pub async fn handle_create_folder(
     let op_payload = serde_json::to_value(&payload)
         .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "CREATE_FOLDER",
         &actual_id,
@@ -144,7 +144,7 @@ pub async fn handle_remove_folder(
     let op_payload = serde_json::to_value(&payload)
         .map_err(|e| AppError::Internal(format!("Failed to serialize payload: {}", e)))?;
 
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "REMOVE_FOLDER",
         folder_id_ref,
@@ -239,7 +239,7 @@ pub async fn handle_rename_folder(
     .await?;
 
     // 4. Audit Log
-    SqliteAssetLedger::log_operation(
+    shared::log_operation(
         tx,
         "RENAME_FOLDER",
         &payload.folder_id,
