@@ -17,7 +17,7 @@ pub fn locate_soundfont(app_handle: Option<&tauri::AppHandle>) -> Option<PathBuf
             if let Ok(entries) = std::fs::read_dir(&sf_dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.is_file() && path.extension().map_or(false, |e| e == "sf2") {
+                    if path.is_file() && path.extension().is_some_and(|e| e == "sf2") {
                         return Some(path);
                     }
                 }
@@ -30,7 +30,7 @@ pub fn locate_soundfont(app_handle: Option<&tauri::AppHandle>) -> Option<PathBuf
     if let Ok(entries) = std::fs::read_dir(local_resources) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_file() && path.extension().map_or(false, |e| e == "sf2") {
+            if path.is_file() && path.extension().is_some_and(|e| e == "sf2") {
                 return Some(path);
             }
         }

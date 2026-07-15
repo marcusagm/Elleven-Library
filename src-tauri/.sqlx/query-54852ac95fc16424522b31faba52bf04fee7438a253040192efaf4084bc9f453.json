@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT \n                (SELECT COUNT(*) FROM assets) as \"total_assets!: i64\",\n                (SELECT COUNT(*) FROM folders) as \"total_folders!: i64\",\n                (SELECT COUNT(*) FROM tags) as \"total_tags!: i64\",\n                (SELECT COALESCE(SUM(file_size), 0) FROM assets) as \"total_size_bytes!: i64\",\n                (SELECT COUNT(*) FROM assets WHERE id NOT IN (SELECT asset_id FROM asset_tags)) as \"untagged_assets!: i64\"\n            ",
+  "query": "\n        SELECT \n            (SELECT COUNT(*) FROM assets) as \"total_assets!: i64\",\n            (SELECT COUNT(*) FROM folders) as \"total_folders!: i64\",\n            (SELECT COUNT(*) FROM tags) as \"total_tags!: i64\",\n            (SELECT COALESCE(SUM(file_size), 0) FROM assets) as \"total_size_bytes!: i64\",\n            (SELECT COUNT(*) FROM assets WHERE id NOT IN (SELECT asset_id FROM asset_tags)) as \"untagged_assets!: i64\"\n        ",
   "describe": {
     "columns": [
       {
@@ -40,5 +40,5 @@
       false
     ]
   },
-  "hash": "51d479a45f061d95a80117e43739dd2c2073ac49e5b9e38cf6ccbe35e39eee9c"
+  "hash": "54852ac95fc16424522b31faba52bf04fee7438a253040192efaf4084bc9f453"
 }

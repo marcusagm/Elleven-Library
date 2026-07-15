@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT\n                a.id as \"id!\", a.name as \"name!\", a.path as \"path!\", a.state as \"state!\",\n                a.format_type as \"format_type!\", a.family as \"family!\", a.file_size as \"file_size!\",\n                a.created_at as \"created_at: DateTime<Utc>\",\n                a.modified_at as \"modified_at: DateTime<Utc>\",\n                a.added_at as \"added_at: DateTime<Utc>\",\n                a.updated_at as \"updated_at: DateTime<Utc>\",\n                a.folder_id as \"folder_id?\",\n                a.thumbnail_path as \"thumbnail_path?\",\n                m.width as \"width: i64\",\n                m.height as \"height: i64\",\n                a.rating as \"rating: i64\",\n                a.notes as \"notes?\",\n                m.duration_secs as \"duration_secs: f64\",\n                m.technical_payload as \"technical_payload: serde_json::Value\",\n                m.semantic_payload as \"semantic_payload: serde_json::Value\",\n                a.dominant_color as \"dominant_color: serde_json::Value\"\n            FROM assets a\n            LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id\n            ",
+  "query": "\n        SELECT\n            a.id as \"id!\", a.name as \"name!\", a.path as \"path!\", a.state as \"state!\",\n            a.format_type as \"format_type!\", a.family as \"family!\", a.file_size as \"file_size!\",\n            a.created_at as \"created_at: DateTime<Utc>\",\n            a.modified_at as \"modified_at: DateTime<Utc>\",\n            a.added_at as \"added_at: DateTime<Utc>\",\n            a.updated_at as \"updated_at: DateTime<Utc>\",\n            a.folder_id as \"folder_id?\",\n            a.thumbnail_path as \"thumbnail_path?\",\n            a.rating as \"rating: i64\",\n            a.notes as \"notes?\",\n            m.width as \"width: i64\",\n            m.height as \"height: i64\",\n            m.duration_secs as \"duration_secs: f64\",\n            m.technical_payload as \"technical_payload: serde_json::Value\",\n            m.semantic_payload as \"semantic_payload: serde_json::Value\",\n            a.dominant_color as \"dominant_color: serde_json::Value\"\n        FROM assets a\n        LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id\n        WHERE a.format_type = 'unknown' OR a.thumbnail_path IS NULL\n        ",
   "describe": {
     "columns": [
       {
@@ -69,24 +69,24 @@
         "type_info": "Text"
       },
       {
-        "name": "width: i64",
+        "name": "rating: i64",
         "ordinal": 13,
         "type_info": "Integer"
       },
       {
-        "name": "height: i64",
+        "name": "notes?",
         "ordinal": 14,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
-        "name": "rating: i64",
+        "name": "width: i64",
         "ordinal": 15,
         "type_info": "Integer"
       },
       {
-        "name": "notes?",
+        "name": "height: i64",
         "ordinal": 16,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
         "name": "duration_secs: f64",
@@ -136,5 +136,5 @@
       true
     ]
   },
-  "hash": "4b5245656736f003e39fb3674565eb762ce939f6ad06126aefa1a6c9381ee339"
+  "hash": "1bcff6a670ac19704a5b6d56943ffb7d73ff09600a3f58df8269ed7db2fba828"
 }

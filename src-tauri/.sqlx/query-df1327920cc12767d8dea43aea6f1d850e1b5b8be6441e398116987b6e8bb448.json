@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        WITH RECURSIVE family AS (\n            SELECT id FROM folders WHERE id = ?\n            UNION ALL\n            SELECT f.id FROM folders f JOIN family ON f.parent_id = family.id\n        )\n        SELECT thumbnail_path as \"thumbnail_path!\" FROM assets\n        WHERE folder_id IN family AND thumbnail_path IS NOT NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "thumbnail_path!",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "df1327920cc12767d8dea43aea6f1d850e1b5b8be6441e398116987b6e8bb448"
+}

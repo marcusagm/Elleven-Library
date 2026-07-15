@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT tag_id, COUNT(asset_id) as \"count!: i64\"\n            FROM asset_tags\n            GROUP BY tag_id\n            ",
+  "query": "\n        SELECT tag_id, COUNT(asset_id) as \"count!: i64\"\n        FROM asset_tags\n        GROUP BY tag_id\n        ",
   "describe": {
     "columns": [
       {
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "100db2d0c0c0b6a3052cd2883d94e5b50fb3807662bb3589329ebeeb6116fcdd"
+  "hash": "5a61dabb32889e9aa2e3422159e71c49e91bd60261c56c5a647df1e316a26d5b"
 }

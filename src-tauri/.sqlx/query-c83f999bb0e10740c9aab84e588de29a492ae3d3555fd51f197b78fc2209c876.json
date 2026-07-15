@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT id as \"id!\", hex_color, lab_lightness, lab_green_red, lab_blue_yellow, percentage, rank\n            FROM asset_colors\n            WHERE asset_id = ?\n            ORDER BY rank ASC\n            ",
+  "query": "\n        SELECT id as \"id!\", hex_color, lab_lightness, lab_green_red, lab_blue_yellow, percentage, rank\n        FROM asset_colors\n        WHERE asset_id = ?\n        ORDER BY rank ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -52,5 +52,5 @@
       false
     ]
   },
-  "hash": "edbd57d7ce56e78da0f7c4f080ec14efc11f260cbe7537c13a9a8f902ef19eee"
+  "hash": "c83f999bb0e10740c9aab84e588de29a492ae3d3555fd51f197b78fc2209c876"
 }

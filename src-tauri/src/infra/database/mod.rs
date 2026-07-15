@@ -53,5 +53,6 @@ pub mod ledger;
 pub mod manager;
 pub mod models;
 pub mod queries;
+pub mod query_handlers;
 pub mod saga_recovery;
 pub mod search_builder;

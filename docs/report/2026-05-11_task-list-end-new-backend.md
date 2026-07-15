@@ -30,7 +30,7 @@
 - [ ] Adicionar atalho para buscar por cores diretamente pela paleta de cores selecionada.
 - [x] Persistência de paineis abertos ou colapsados, por exemplo se o painel general info for aberto, deve permacer aberto até o usuário fecha-lo.
 
-## Seacrh
+## Search
 
 - [x] Verificar fuzzy search, pois parece não estar funcionando bem.
 > **Limite de Relevância Fixo (500)**: Atualmente o limite de busca difusa é hard-coded para os 500 melhores resultados (`LIMIT 500`). Isso atende a grande maioria dos casos mas, para bibliotecas com centenas de milhares de assets, o usuário pode sentir falta de algum registro marginal que não obteve um score suficiente no BM25 para entrar no top 500. Pode-se tornar esse limite configurável nas configurações globais da aplicação.
@@ -133,7 +133,7 @@
 ## Infra
 
 - [x] Testar todos os comandas e encontar uma forma melhor de organização da pasta `src-tauri/src/infra/database/`.
-- [ ] Verificar melhorias na implementação do ledger com o Saga Pattern citadas no relatório `docs/report/backend-architeture/definition/plans/2026-06-13-ledger-saga-pattern.md`.
+- [x] Verificar melhorias na implementação do ledger com o Saga Pattern citadas no relatório `docs/report/backend-architeture/definition/plans/2026-06-13-ledger-saga-pattern.md`.
 
 ## Processing
 

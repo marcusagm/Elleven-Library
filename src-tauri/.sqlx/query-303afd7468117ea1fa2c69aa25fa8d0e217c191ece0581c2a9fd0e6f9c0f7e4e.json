@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE asset_operations_log SET status = ?, error_note = ? WHERE asset_id = ? AND status = 'PENDING' AND operation_type = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "303afd7468117ea1fa2c69aa25fa8d0e217c191ece0581c2a9fd0e6f9c0f7e4e"
+}
