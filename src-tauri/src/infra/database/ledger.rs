@@ -79,58 +79,60 @@ impl TransactionalAssetLedger for SqliteAssetLedger {
 
         // 2.5 Post-commit Saga Execution (Filesystem Operations)
         for (asset, command_item) in &results {
-            match command_item {
-                LedgerCommand::DeleteAsset {
+            if let LedgerCommand::DeleteAsset {
                     physical_delete: true,
                     path: Some(path_reference),
                     ..
-                } => {
-                    // Execute physical deletion
-                    let filesystem_result = tokio::fs::remove_file(path_reference).await;
-                    match filesystem_result {
-                        Ok(_) => {
-                            tracing::info!(
-                                "Ledger: Physical delete SUCCESS for {}",
-                                path_reference.display()
-                            );
-                            // Mark Saga as COMPLETED
-                            let _ = sqlx::query!(
-                                "UPDATE asset_operations_log SET status = 'COMPLETED' WHERE asset_id = ? AND status = 'PENDING' AND operation_type = 'DELETE_ASSET'",
-                                asset.id
-                            )
-                            .execute(&self.pool)
-                            .await;
-                        }
-                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                            tracing::info!(
-                                "Ledger: Physical file already missing for {}",
-                                path_reference.display()
-                            );
-                            let _ = sqlx::query!(
-                                "UPDATE asset_operations_log SET status = 'COMPLETED' WHERE asset_id = ? AND status = 'PENDING' AND operation_type = 'DELETE_ASSET'",
-                                asset.id
-                            )
-                            .execute(&self.pool)
-                            .await;
-                        }
-                        Err(error) => {
-                            tracing::warn!(
-                                "Ledger: Physical delete FAILED for {}: {}",
-                                path_reference.display(),
-                                error
-                            );
-                            let error_message = error.to_string();
-                            let _ = sqlx::query!(
-                                "UPDATE asset_operations_log SET status = 'FAILED', error_note = ? WHERE asset_id = ? AND status = 'PENDING' AND operation_type = 'DELETE_ASSET'",
-                                error_message,
-                                asset.id
-                            )
-                            .execute(&self.pool)
-                            .await;
-                        }
+                } = command_item {
+                // Execute physical deletion
+                let filesystem_result = tokio::fs::remove_file(path_reference).await;
+                match filesystem_result {
+                    Ok(_) => {
+                        tracing::info!(
+                            "Ledger: Physical delete SUCCESS for {}",
+                            path_reference.display()
+                        );
+                        // Mark Saga as COMPLETED
+                        let _ = crate::infra::database::handlers::shared::update_operation_status(
+                            &self.pool,
+                            &asset.id,
+                            "DELETE_ASSET",
+                            "COMPLETED",
+                            None,
+                        )
+                        .await;
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                        tracing::info!(
+                            "Ledger: Physical file already missing for {}",
+                            path_reference.display()
+                        );
+                        let _ = crate::infra::database::handlers::shared::update_operation_status(
+                            &self.pool,
+                            &asset.id,
+                            "DELETE_ASSET",
+                            "COMPLETED",
+                            None,
+                        )
+                        .await;
+                    }
+                    Err(error) => {
+                        tracing::warn!(
+                            "Ledger: Physical delete FAILED for {}: {}",
+                            path_reference.display(),
+                            error
+                        );
+                        let error_message = error.to_string();
+                        let _ = crate::infra::database::handlers::shared::update_operation_status(
+                            &self.pool,
+                            &asset.id,
+                            "DELETE_ASSET",
+                            "FAILED",
+                            Some(&error_message),
+                        )
+                        .await;
                     }
                 }
-                _ => {}
             }
         }
 

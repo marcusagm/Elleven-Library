@@ -62,6 +62,38 @@ pub async fn log_operation(
     Ok(())
 }
 
+/// Updates the status and error note of an existing operation in the `asset_operations_log`.
+///
+/// This is used by the post-commit Saga step to transition an operation from `PENDING`
+/// to either `COMPLETED` or `FAILED`.
+///
+/// # Arguments
+///
+/// * `pool` - The database connection pool (executes outside the main transaction).
+/// * `asset_id` - The asset associated with the operation.
+/// * `operation_type` - The type of operation (e.g. `DELETE_ASSET`).
+/// * `status` - The new status (`COMPLETED` or `FAILED`).
+/// * `error_note` - Optional error message if the status is `FAILED`.
+pub async fn update_operation_status(
+    pool: &sqlx::SqlitePool,
+    asset_id: &str,
+    operation_type: &str,
+    status: &str,
+    error_note: Option<&str>,
+) -> AppResult<()> {
+    sqlx::query!(
+        "UPDATE asset_operations_log SET status = ?, error_note = ? WHERE asset_id = ? AND status = 'PENDING' AND operation_type = ?",
+        status,
+        error_note,
+        asset_id,
+        operation_type
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 /// Fetches a complete `Asset` entity by its unique ID within the current transaction.
 ///
 /// Performs a LEFT JOIN with `asset_metadata_envelope` to include technical metadata
