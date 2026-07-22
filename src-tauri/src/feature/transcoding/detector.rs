@@ -72,14 +72,21 @@ pub fn get_output_extension(registry: &FormatRegistry, path: &Path) -> &'static 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::formats::build_format_registry;
     use std::path::Path;
+
+    /// Builds a fully-populated `FormatRegistry` for test scenarios.
+    fn build_test_registry() -> FormatRegistry {
+        use crate::processing::media::providers;
+
+        let mut registry = FormatRegistry::new();
+        registry.register_batch(providers::collect_all_providers());
+        registry.register_fallback(providers::fallback_provider());
+        registry
+    }
 
     #[test]
     fn test_detection_logic() {
-        let registry = build_format_registry();
-
-        // These tests depend on definitions in build_format_registry
+        let registry = build_test_registry();
         // Assuming .mp4 is native and .mkv is HLS
         assert!(!needs_transcoding(&registry, Path::new("video.mp4")));
         assert!(needs_transcoding(&registry, Path::new("video.mkv")));

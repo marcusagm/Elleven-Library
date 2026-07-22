@@ -125,7 +125,7 @@
 
 ## Core
 
-- [ ] Melhorar a forma de registro de formatos em `src-tauri/src/core/formats/registry.rs` e `mod.rs`.
+- [x] Melhorar a forma de registro de formatos em `src-tauri/src/core/formats/registry.rs` e `mod.rs`.
 - [ ] Verificar o funcionamento do core/repository e sua interação com o ledgerer
 - [ ] Verificar o funcionamento do core/settings e sua interação com o ledgerer
 - [ ] Analisar a pasta core/workflows e verificar se existe algo que podemos retirar ou organizar melhor.

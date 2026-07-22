@@ -60,3 +60,62 @@ pub mod sony;
 pub mod tga;
 pub mod tiff;
 pub mod webp;
+
+use crate::core::formats::provider::FormatProvider;
+use std::sync::Arc;
+
+/// Collects all image format providers into a single vector.
+///
+/// This function is the single point of registration for all image providers.
+/// New image formats should add their provider instance here after declaring
+/// the corresponding submodule above.
+///
+/// # Returns
+///
+/// All image format providers, ordered by specificity: standard raster first,
+/// then HDR/VFX, modern codecs, and finally RAW photography providers.
+pub fn collect_providers() -> Vec<Arc<dyn FormatProvider>> {
+    vec![
+        // Standard Raster
+        Arc::new(bmp::BmpFormatProvider::new()),
+        Arc::new(cur::CurFormatProvider::new()),
+        Arc::new(dds::DdsFormatProvider::new()),
+        Arc::new(gif::GifFormatProvider::new()),
+        Arc::new(hdr::HdrFormatProvider::new()),
+        Arc::new(ico::IcoFormatProvider::new()),
+        Arc::new(icns::IcnsFormatProvider::new()),
+        Arc::new(jpeg::JpegFormatProvider::new()),
+        Arc::new(netpbm::NetpbmFormatProvider::new()),
+        Arc::new(png::PngFormatProvider::new()),
+        Arc::new(tga::TgaFormatProvider::new()),
+        Arc::new(tiff::TiffFormatProvider::new()),
+        Arc::new(webp::WebpFormatProvider::new()),
+        // HDR / VFX
+        Arc::new(exr::ExrFormatProvider::new()),
+        // Modern
+        Arc::new(avif::AvifFormatProvider::new()),
+        Arc::new(heic::HeicFormatProvider::new()),
+        Arc::new(jxl::JxlFormatProvider::new()),
+        // RAW Photography
+        Arc::new(canon::CanonRawFormatProvider::new()),
+        Arc::new(dng::DngFormatProvider::new()),
+        Arc::new(epson::EpsonRawFormatProvider::new()),
+        Arc::new(fujifilm::FujifilmRawFormatProvider::new()),
+        Arc::new(generic_raw::GenericRawFormatProvider::new()),
+        Arc::new(gopro::GoproRawFormatProvider::new()),
+        Arc::new(hasselblad::HasselbladRawFormatProvider::new()),
+        Arc::new(kodak::KodakRawFormatProvider::new()),
+        Arc::new(leaf::LeafRawFormatProvider::new()),
+        Arc::new(leica::LeicaRawFormatProvider::new()),
+        Arc::new(mamiya::MamiyaRawFormatProvider::new()),
+        Arc::new(minolta::MinoltaRawFormatProvider::new()),
+        Arc::new(nikon::NikonRawFormatProvider::new()),
+        Arc::new(olympus::OlympusRawFormatProvider::new()),
+        Arc::new(panasonic::PanasonicRawFormatProvider::new()),
+        Arc::new(pentax::PentaxRawFormatProvider::new()),
+        Arc::new(phaseone::PhaseOneRawFormatProvider::new()),
+        Arc::new(samsung::SamsungRawFormatProvider::new()),
+        Arc::new(sigma::SigmaRawFormatProvider::new()),
+        Arc::new(sony::SonyRawFormatProvider::new()),
+    ]
+}

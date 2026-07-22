@@ -367,6 +367,16 @@ mod tests {
     use crate::core::models::search::{LogicalOperator, SearchCriterion, SearchGroup, SearchItem};
     use serde_json::json;
 
+    /// Builds a fully-populated `FormatRegistry` for test scenarios.
+    fn build_test_registry() -> crate::core::formats::registry::FormatRegistry {
+        use crate::processing::media::providers;
+
+        let mut registry = crate::core::formats::registry::FormatRegistry::new();
+        registry.register_batch(providers::collect_all_providers());
+        registry.register_fallback(providers::fallback_provider());
+        registry
+    }
+
     /// Tests the build_simple_where_clause function.
     #[test]
     fn test_build_simple_where_clause() {
@@ -385,7 +395,7 @@ mod tests {
 
         let mut query_builder: QueryBuilder<Sqlite> =
             QueryBuilder::new("SELECT * FROM assets WHERE ");
-        let registry = crate::core::formats::build_format_registry();
+        let registry = build_test_registry();
         build_search_where_clause(&group, &mut query_builder, &registry);
 
         let sql = query_builder.into_sql();
@@ -422,7 +432,7 @@ mod tests {
 
         let mut query_builder: QueryBuilder<Sqlite> =
             QueryBuilder::new("SELECT * FROM assets WHERE ");
-        let registry = crate::core::formats::build_format_registry();
+        let registry = build_test_registry();
         build_search_where_clause(&root_group, &mut query_builder, &registry);
 
         let sql = query_builder.into_sql();
@@ -449,7 +459,7 @@ mod tests {
 
         let mut query_builder: QueryBuilder<Sqlite> =
             QueryBuilder::new("SELECT * FROM assets WHERE ");
-        let registry = crate::core::formats::build_format_registry();
+        let registry = build_test_registry();
         build_search_where_clause(&group, &mut query_builder, &registry);
 
         let sql = query_builder.into_sql();

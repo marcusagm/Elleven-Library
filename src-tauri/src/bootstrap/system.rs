@@ -175,9 +175,20 @@ pub fn init_lifecycle(app: &AppHandle) {
 
 /// Initializes the format registry and manages it in the application state.
 ///
+/// Assembles the `FormatRegistry` by collecting all providers from each media
+/// category and registering them. The generic fallback provider is always
+/// registered last to ensure it only matches when no specific provider could
+/// identify the file.
+///
 /// # Arguments
 /// * `app` - Reference to the Tauri AppHandle.
 pub fn init_formats(app: &AppHandle) {
-    let format_registry = std::sync::Arc::new(crate::core::formats::build_format_registry());
-    app.manage(format_registry);
+    use crate::core::formats::FormatRegistry;
+    use crate::processing::media::providers;
+
+    let mut format_registry = FormatRegistry::new();
+    format_registry.register_batch(providers::collect_all_providers());
+    format_registry.register_fallback(providers::fallback_provider());
+
+    app.manage(std::sync::Arc::new(format_registry));
 }

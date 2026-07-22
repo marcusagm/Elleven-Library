@@ -37,3 +37,41 @@ pub mod speex;
 pub mod wav;
 pub mod wavpack;
 pub mod windows_media_audio;
+
+use crate::core::formats::provider::FormatProvider;
+use std::sync::Arc;
+
+/// Collects all audio format providers into a single vector.
+///
+/// This function is the single point of registration for all audio providers.
+/// New audio formats should add their provider instance here after declaring
+/// the corresponding submodule above.
+///
+/// # Returns
+///
+/// All audio format providers, ordered with native-playback formats first,
+/// followed by formats requiring HLS transcoding.
+pub fn collect_providers() -> Vec<Arc<dyn FormatProvider>> {
+    vec![
+        Arc::new(mp3::Mp3AudioProvider::new()),
+        Arc::new(wav::WavAudioProvider::new()),
+        Arc::new(flac::FlacAudioProvider::new()),
+        Arc::new(ogg_audio::OggAudioProvider::new()),
+        Arc::new(mpeg4_audio::Mpeg4AudioProvider::new()),
+        Arc::new(aiff::AiffAudioProvider::new()),
+        Arc::new(windows_media_audio::WindowsMediaAudioProvider::new()),
+        Arc::new(opus::OpusAudioProvider::new()),
+        Arc::new(midi::MidiAudioProvider::new()),
+        Arc::new(matroska_audio::MatroskaAudioProvider::new()),
+        Arc::new(speex::SpeexAudioProvider::new()),
+        Arc::new(monkeys_audio::MonkeysAudioProvider::new()),
+        Arc::new(wavpack::WavpackAudioProvider::new()),
+        Arc::new(dolby_digital::DolbyDigitalAudioProvider::new()),
+        Arc::new(dts::DtsAudioProvider::new()),
+        Arc::new(amr::AmrAudioProvider::new()),
+        Arc::new(apple_core_audio::AppleCoreAudioProvider::new()),
+        Arc::new(audible::AudibleAudioProvider::new()),
+        Arc::new(realaudio::RealaudioProvider::new()),
+        Arc::new(musepack::MusepackAudioProvider::new()),
+    ]
+}

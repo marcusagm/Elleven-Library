@@ -3,7 +3,11 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 
-/// The central "Cartório" (Registry) for all supported file formats.
+/// The central registry for all supported file formats.
+///
+/// Routes file identification requests through a two-tier resolution strategy:
+/// O(1) extension-based lookup for the common case, with an O(N) magic-byte
+/// fallback for extensionless or misidentified files.
 #[derive(Clone)]
 pub struct FormatRegistry {
     /// Instant routing (O(1)) for 99% of cases using normalized extensions.
@@ -29,14 +33,65 @@ impl FormatRegistry {
     ///
     /// This will automatically index the provider by its supported extensions
     /// and add it to the deep checker fallback list.
+    ///
+    /// # Arguments
+    ///
+    /// * `provider` - The format provider to register.
+    ///
+    /// # Duplicate Detection
+    ///
+    /// If a provider is registered for an extension that is already claimed by
+    /// another provider, a warning is emitted via `tracing::warn!`. The new
+    /// provider overwrites the previous one for that extension.
     pub fn register(&mut self, provider: Arc<dyn FormatProvider>) {
         for extension in provider.supported_extensions() {
-            let ext_lower = extension.to_lowercase();
+            let extension_lower = extension.to_lowercase();
+            if let Some(existing_provider) = self.by_extension.get(&extension_lower) {
+                tracing::warn!(
+                    extension = %extension_lower,
+                    existing_provider = %existing_provider.name(),
+                    new_provider = %provider.name(),
+                    "Extension conflict: overwriting existing provider registration"
+                );
+            }
             self.by_extension
-                .insert(ext_lower.clone(), provider.clone());
-            self.supported_extensions.insert(ext_lower);
+                .insert(extension_lower.clone(), provider.clone());
+            self.supported_extensions.insert(extension_lower);
         }
         self.deep_checkers.push(provider);
+    }
+
+    /// Registers a batch of providers in the registry.
+    ///
+    /// This is a convenience method for registering all providers collected
+    /// from a category module's `collect_providers()` function. Providers are
+    /// registered in the order they appear in the iterator.
+    ///
+    /// # Arguments
+    ///
+    /// * `providers` - An iterable of providers to register.
+    pub fn register_batch(
+        &mut self,
+        providers: impl IntoIterator<Item = Arc<dyn FormatProvider>>,
+    ) {
+        for provider in providers {
+            self.register(provider);
+        }
+    }
+
+    /// Registers a fallback provider that will be checked last during
+    /// magic-byte resolution.
+    ///
+    /// This method exists for semantic clarity at the call site, ensuring
+    /// that the fallback provider is always the last resort in the deep
+    /// checker chain.
+    ///
+    /// # Arguments
+    ///
+    /// * `fallback_provider` - The fallback provider to register as the
+    ///   final deep checker.
+    pub fn register_fallback(&mut self, fallback_provider: Arc<dyn FormatProvider>) {
+        self.register(fallback_provider);
     }
 
     /// Resolves the most appropriate format provider for a given file.
@@ -238,5 +293,31 @@ mod tests {
         let path = Path::new("test.unknown");
         let resolved = registry.resolve(path, b"RANDOM");
         assert!(resolved.is_none());
+    }
+
+    /// Tests batch registration of multiple providers.
+    #[test]
+    fn test_register_batch() {
+        let mut registry = FormatRegistry::new();
+        let providers: Vec<Arc<dyn FormatProvider>> = vec![Arc::new(MockProvider)];
+        registry.register_batch(providers);
+
+        let path = Path::new("test.mock");
+        let resolved = registry.resolve(path, &[]);
+        assert!(resolved.is_some());
+        assert_eq!(resolved.unwrap().name(), "MOCK");
+    }
+
+    /// Tests that register_fallback works identically to register.
+    #[test]
+    fn test_register_fallback() {
+        let mut registry = FormatRegistry::new();
+        let provider = Arc::new(MockProvider);
+        registry.register_fallback(provider);
+
+        let path = Path::new("test.mock");
+        let resolved = registry.resolve(path, &[]);
+        assert!(resolved.is_some());
+        assert_eq!(resolved.unwrap().name(), "MOCK");
     }
 }
