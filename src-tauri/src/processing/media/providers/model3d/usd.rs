@@ -5,42 +5,66 @@ use async_trait::async_trait;
 use std::path::Path;
 use tracing::instrument;
 
-/// Provider for Universal Scene Description (USD) formats.
+/// Provider for Universal Scene Description files (.usd, .usda, .usdc, .usdz).
+///
+/// USD is Pixar's interchange format for 3D scenes and assets. Currently
+/// provides format recognition and basic metadata support. Preview/thumbnail
+/// capabilities are pending.
+///
+/// # Technical Details
+///
+/// - **File Format**: USD (binary), USDA (ASCII), USDC (crate), USDZ (zipped)
+/// - **Thumbnail**: Not yet implemented
+/// - **Preview**: Not yet implemented
+///
+/// # Examples
+///
+/// ```no_run
+/// use mundam_lib::processing::media::providers::model3d::usd::UsdFormatProvider;
+///
+/// let provider = UsdFormatProvider::new();
+/// let extensions = provider.supported_extensions();
+/// assert!(extensions.contains(&"usd"));
+/// assert!(extensions.contains(&"usdz"));
+/// ```
 #[derive(Default)]
 pub struct UsdFormatProvider;
 
-/// Implementação do provedor de formato de imagem.
 impl UsdFormatProvider {
-    /// Cria um novo provedor de formato de imagem.
+    /// Creates a new instance of `UsdFormatProvider`.
     ///
     /// # Returns
     ///
-    /// `UsdFormatProvider` - Novo provedor de formato de imagem.
+    /// `UsdFormatProvider` - A new instance of the provider.
     pub fn new() -> Self {
         Self
     }
 }
 
-/// Implementação do provedor de formato de imagem.
 impl FormatProvider for UsdFormatProvider {
-    /// Nome do provedor.
+    /// Returns the unique identifier for this provider.
     ///
     /// # Returns
     ///
-    /// `&'static str` - Nome do provedor.
+    /// `&'static str` - The unique name for this provider.
     fn name(&self) -> &'static str {
-        "USD_PROVIDER"
+        "USD_FORMAT_PROVIDER"
     }
 
-    /// Extensões de arquivos suportadas para USD.
+    /// Returns the file extensions supported by this provider.
     ///
     /// # Returns
     ///
-    /// `Vec<&'static str>` - Vetor de extensões suportadas.
+    /// `Vec<&'static str>` - The file extensions supported by this provider.
     fn supported_extensions(&self) -> Vec<&'static str> {
         vec!["usd", "usda", "usdc", "usdz"]
     }
 
+    /// Returns the detailed format definitions supported by this provider.
+    ///
+    /// # Returns
+    ///
+    /// `Vec<SupportedFormat>` - List of supported formats with metadata.
     fn supported_formats(&self) -> Vec<SupportedFormat> {
         use crate::core::formats::types::{
             MediaType, PlaybackStrategy, PreviewStrategy, ThumbnailStrategy,
@@ -77,57 +101,56 @@ impl FormatProvider for UsdFormatProvider {
         ]
     }
 
-    /// Verifica se o provedor suporta magic bytes específicos.
+    /// Validates USD magic bytes for ASCII (`#usda`), binary (`PXR-USDC`), and USDZ (ZIP header).
     ///
     /// # Arguments
     ///
-    /// `header_bytes` - Bytes do cabeçalho do arquivo.
+    /// * `header_bytes` - The first bytes of the file.
     ///
     /// # Returns
     ///
-    /// `bool` - True se o provedor suporta os magic bytes, false caso contrário.
+    /// `bool` - `true` if the header matches any known USD signature.
     fn supports_magic_bytes(&self, header_bytes: &[u8]) -> bool {
         header_bytes.starts_with(b"#usda")
             || header_bytes.starts_with(b"PXR-USDC")
-            || header_bytes.starts_with(b"PK\x03\x04") // USDZ is ZIP
+            || header_bytes.starts_with(b"PK\x03\x04")
     }
 
-    /// Retorna o provedor de metadados.
+    /// Returns the metadata extraction capability.
     ///
     /// # Returns
     ///
-    /// `Option<&dyn MetadataCapability>` - Provedor de metadados.
+    /// `Option<&dyn MetadataCapability>` - The metadata extraction capability.
     fn metadata(&self) -> Option<&dyn MetadataCapability> {
         Some(self)
     }
 }
 
-/// Implementação da capacidade de metadados.
 #[async_trait]
 impl MetadataCapability for UsdFormatProvider {
-    /// Extrai metadados técnicos do arquivo.
+    /// Returns empty technical metadata (not yet implemented for USD).
     ///
     /// # Arguments
     ///
-    /// `path` - Caminho do arquivo.
+    /// * `_path` - Path to the USD file (unused).
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// `AppResult<serde_json::Value>` - Metadados técnicos do arquivo.
+    /// This function always returns `Ok` with an empty JSON object.
     #[instrument(skip(self, _path))]
     async fn extract_technical(&self, _path: &Path) -> AppResult<serde_json::Value> {
         Ok(serde_json::json!({}))
     }
 
-    /// Extrai metadados semânticos do arquivo.
+    /// Returns empty semantic metadata (not yet implemented for USD).
     ///
     /// # Arguments
     ///
-    /// `path` - Caminho do arquivo.
+    /// * `_path` - Path to the USD file (unused).
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// `AppResult<serde_json::Value>` - Metadados semânticos do arquivo.
+    /// This function always returns `Ok` with an empty JSON object.
     async fn extract_semantic(&self, _path: &Path) -> AppResult<serde_json::Value> {
         Ok(serde_json::json!({}))
     }

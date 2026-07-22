@@ -31,9 +31,8 @@ use std::sync::Arc;
 
 /// Collects all format providers from every category into a single vector.
 ///
-/// Legacy providers that have not yet been migrated into subcategory folders
-/// are also included here. Providers are returned in registration order:
-/// specific categories first, generic fallback last.
+/// Providers are returned in registration order: specific categories first,
+/// generic fallback last (handled separately by `fallback_provider()`).
 ///
 /// # Returns
 ///
@@ -42,27 +41,11 @@ use std::sync::Arc;
 pub fn collect_all_providers() -> Vec<Arc<dyn FormatProvider>> {
     let mut all_providers: Vec<Arc<dyn FormatProvider>> = Vec::new();
 
-    // Legacy providers (not yet migrated to subcategory folders)
-    all_providers.push(Arc::new(
-        crate::processing::media::archive_format::ArchiveFormatProvider::new(),
-    ));
-    all_providers.push(Arc::new(
-        crate::processing::media::text_format::TextFormatProvider::new(),
-    ));
-    all_providers.push(Arc::new(
-        crate::processing::media::model3d_format::Model3dFormatProvider::new(),
-    ));
-    all_providers.push(Arc::new(
-        crate::processing::media::usd_format::UsdFormatProvider::new(),
-    ));
-    all_providers.push(Arc::new(
-        crate::processing::media::cad_format::CadFormatProvider::new(),
-    ));
-
-    // Category collectors
+    all_providers.extend(archive::collect_providers());
     all_providers.extend(document::collect_providers());
     all_providers.extend(font::collect_providers());
     all_providers.extend(image::collect_providers());
+    all_providers.extend(model3d::collect_providers());
     all_providers.extend(project::collect_providers());
     all_providers.extend(vector::collect_providers());
     all_providers.extend(video::collect_providers());

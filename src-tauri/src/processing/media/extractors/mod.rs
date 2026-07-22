@@ -1,6 +1,7 @@
 //! Extractors for media files
 
 pub mod ai;
+pub mod archive;
 pub mod aseprite;
 pub mod audio;
 pub mod binary_jpeg;
@@ -16,6 +17,7 @@ pub mod jxl;
 pub mod kdc;
 pub mod mdp;
 pub mod midi_renderer;
+pub mod model3d;
 pub mod pdf;
 pub mod penpot;
 pub mod rebelle;
@@ -28,6 +30,7 @@ pub mod xcf;
 
 // Convenience re-exports
 pub use ai::{extract_ai_metadata, extract_ai_preview};
+pub use archive::extract_zip_thumbnail;
 pub use aseprite::extract_aseprite_preview;
 pub use audio::extract_audio_technical_metadata;
 pub use binary_jpeg::extract_any_embedded;
@@ -51,6 +54,7 @@ pub use image::{
 pub use jxl::{extract_jxl_metadata, extract_jxl_preview, generate_jxl_thumbnail};
 pub use kdc::{extract_kdc_metadata, extract_kdc_preview, generate_kdc_thumbnail};
 pub use mdp::{extract_mdp_metadata, extract_mdp_preview};
+pub use model3d::{convert_to_glb_with_assimp, extract_blender_thumbnail};
 pub use pdf::{extract_pdf_metadata, render_pdf_to_png};
 pub use penpot::{extract_penpot_metadata, extract_penpot_preview};
 pub use rebelle::extract_rebelle_preview;
