@@ -41,9 +41,14 @@ impl ThumbnailPriorityState {
         }
 
         if let Ok(mut deque) = self.priority_ids.lock() {
-            // To maintain LIFO for the batch, we push them in order.
-            // The last one pushed to front will be the first one popped.
-            for id in ids {
+            // To maintain LIFO for the batch, we push them in reverse order.
+            // If the UI sends [A, B, C] (where A is top of viewport),
+            // pushing reversed (C, then B, then A) puts A at the very front of the queue,
+            // so pop_front will yield A, then B, then C.
+            for id in ids.into_iter().rev() {
+                // If it's already in the queue, we can leave it to be skipped,
+                // but for performance, we just push to the front. 
+                // Deduplication happens at pop_batch time.
                 deque.push_front(id);
             }
 

@@ -76,157 +76,121 @@ impl ThumbnailWorker {
         tauri::async_runtime::spawn(async move {
             info!("ThumbnailWorker: Orchestrator loop started");
             let worker_arc = Arc::new(self);
+            
+            // Limit concurrent processing slots based on logical cores.
+            // Provides enough concurrency without starving the OS or database.
+            let max_concurrent = std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(4)
+                .clamp(2, 8);
+                
+            let semaphore = Arc::new(tokio::sync::Semaphore::new(max_concurrent));
 
             loop {
                 if token.is_cancelled() {
                     info!("ThumbnailWorker: Shutdown requested");
                     break;
                 }
+                
+                // 1. Acquire permit FIRST. 
+                // This ensures we only pull from the queue when a slot is free,
+                // fetching the absolutely freshest priority items from the UI.
+                let permit = match semaphore.clone().acquire_owned().await {
+                    Ok(p) => p,
+                    Err(_) => break, // Semaphore closed
+                };
 
-                match worker_arc.process_batch().await {
-                    Ok(processed_count) => {
-                        if processed_count == 0 {
-                            // Empty queues: wait before next poll
-                            tokio::select! {
-                                _ = token.cancelled() => break,
-                                _ = sleep(Duration::from_millis(500)) => continue,
-                            }
-                        }
+                // 2. Poll for work
+                let mut next_id = worker_arc.priority_state.pop_batch(1).into_iter().next();
+                let mut is_priority = true;
+
+                if next_id.is_none() {
+                    if let Ok(mut ids) = worker_arc.query_handler.get_assets_needing_thumbnails(1).await {
+                        next_id = ids.pop();
                     }
-                    Err(e) => {
-                        error!("ThumbnailWorker: Batch process error: {}", e);
-                        sleep(Duration::from_millis(1000)).await;
+                    is_priority = false;
+                }
+
+                // 3. Dispatch work or wait
+                if let Some(id) = next_id {
+                    let worker_clone = worker_arc.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = worker_clone.process_single(id, is_priority).await {
+                            error!("ThumbnailWorker: Process error: {}", e);
+                        }
+                        // Permit is returned when dropped here
+                        drop(permit);
+                    });
+                } else {
+                    // No work found. Drop permit instantly so it's available.
+                    drop(permit);
+                    tokio::select! {
+                        _ = token.cancelled() => break,
+                        _ = sleep(Duration::from_millis(500)) => continue,
                     }
                 }
             }
         })
     }
 
-    /// Processes a single batch of work, prioritizing LIFO over FIFO.
+    /// Processes a single asset and commits its result immediately.
     ///
-    /// # Returns
-    ///
-    /// A `Result` containing the number of processed assets or an error.
-    #[instrument(skip_all)]
-    async fn process_batch(&self) -> AppResult<usize> {
-        // 1. Fetch Priority Items (LIFO)
-        let mut asset_ids = self.priority_state.pop_batch(10);
-        let is_priority = !asset_ids.is_empty();
+    /// # Arguments
+    /// * `id` - The ID of the asset to process.
+    /// * `is_priority` - Whether this item came from the priority queue.
+    #[instrument(skip_all, fields(asset_id = %id, priority = %is_priority))]
+    async fn process_single(&self, id: String, is_priority: bool) -> AppResult<()> {
+        let asset = match self.query_handler.get_asset_by_id(&id).await {
+            Ok(a) => a,
+            Err(_) => return Ok(()),
+        };
 
-        // 2. Fallback to Background Items (FIFO)
-        if asset_ids.is_empty() {
-            asset_ids = self.query_handler.get_assets_needing_thumbnails(10).await?;
+        // Skip if already has thumbnail
+        if asset.thumbnail_path.is_some() {
+            debug!("WORKER: Skipping thumbnail for asset {} (already exists)", id);
+            return Ok(());
         }
 
-        if asset_ids.is_empty() {
-            return Ok(0);
-        }
-
-        debug!(
-            "ThumbnailWorker: Processing batch of {} (priority: {})",
-            asset_ids.len(),
-            is_priority
-        );
-
-        // 3. Resolve Assets
-        let mut tasks = Vec::new();
-        let mut batch_commands = Vec::new();
-
-        for id in asset_ids {
-            if let Ok(asset) = self.query_handler.get_asset_by_id(&id).await {
-                // Skip if thumbnail already exists (unless we add a "force" flag later)
-                if asset.thumbnail_path.is_some() {
-                    debug!(
-                        "WORKER: Skipping thumbnail for asset {} (already exists)",
-                        id
-                    );
-                    continue;
-                }
-
-                if let Some(format_provider) = self.format_registry.resolve(&asset.path, &[]) {
-                    tasks.push((asset, format_provider));
-                } else {
-                    debug!("WORKER: No provider found for asset {}. Marking as processed without thumbnail.", id);
-                    batch_commands.push(LedgerCommand::UpdateThumbnail {
+        let provider = match self.format_registry.resolve(&asset.path, &[]) {
+            Some(p) => p,
+            None => {
+                debug!("WORKER: No provider found for asset {}. Marking as processed.", id);
+                self.ledger
+                    .execute(LedgerCommand::UpdateThumbnail {
                         asset_id: id.clone(),
                         thumbnail_path: "".to_string(),
-                    });
-                }
+                    })
+                    .await?;
+                return Ok(());
+            }
+        };
+
+        let mut commands = Vec::new();
+        let path = asset.path.clone();
+
+        // 1. Technical Metadata Extraction
+        if let Some(meta_cap) = provider.metadata() {
+            if let Ok(tech_meta) = meta_cap.extract_technical(&path).await {
+                let width = tech_meta.get("width").and_then(|v| v.as_i64());
+                let height = tech_meta.get("height").and_then(|v| v.as_i64());
+                let duration_secs = tech_meta.get("duration_secs").and_then(|v| v.as_f64());
+
+                commands.push(LedgerCommand::UpdateTechnicalMetadata(
+                    crate::core::ledger::command::UpdateTechnicalMetadataPayload {
+                        asset_id: id.clone(),
+                        width,
+                        height,
+                        duration_secs,
+                        technical_payload: Some(tech_meta),
+                        semantic_payload: None,
+                    },
+                ));
             }
         }
 
-        let processed_count = tasks.len();
-
-        // 4. Parallel Generation & Extraction
-        let mut join_set = tokio::task::JoinSet::new();
-
-        for (asset, provider) in tasks {
-            let id = asset.id.clone();
-            let path = asset.path.clone();
-            let provider = provider.clone();
-
-            join_set.spawn(async move {
-                // 4a. Technical Metadata Extraction
-                let tech_meta_cmd = if let Some(meta_cap) = provider.metadata() {
-                    if let Ok(tech_meta) = meta_cap.extract_technical(&path).await {
-                        let width = tech_meta.get("width").and_then(|v| v.as_i64());
-                        let height = tech_meta.get("height").and_then(|v| v.as_i64());
-                        let duration = tech_meta.get("duration_secs").and_then(|v| v.as_f64());
-
-                        Some(LedgerCommand::UpdateTechnicalMetadata(
-                            crate::core::ledger::command::UpdateTechnicalMetadataPayload {
-                                asset_id: id.clone(),
-                                width,
-                                height,
-                                duration_secs: duration,
-                                technical_payload: Some(tech_meta),
-                                semantic_payload: None,
-                            },
-                        ))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
-
-                // 4b. Thumbnail & Preview Generation
-                let thumb_res = if let Some(thumb_cap) = provider.thumbnail() {
-                    thumb_cap.generate(&path, &id, 300).await
-                } else {
-                    // Graceful skip for formats without thumbnail support (e.g. legacy audio)
-                    Ok(Vec::new())
-                };
-
-                let preview_res = if let Some(preview_cap) = provider.preview() {
-                    Some(preview_cap.generate_preview(&path, &id).await)
-                } else {
-                    None
-                };
-
-                (id, tech_meta_cmd, thumb_res, preview_res)
-            });
-        }
-
-        // 5. Commit Results
-        let thumbnails_dir = self.thumbnails_dir.clone();
-
-        while let Some(join_res) = join_set.join_next().await {
-            let (id, tech_meta_cmd, thumb_res, preview_res) = match join_res {
-                Ok(r) => r,
-                Err(e) => {
-                    error!("ThumbnailWorker: Task panicked: {}", e);
-                    continue;
-                }
-            };
-
-            // 5a. Collect tech meta command
-            if let Some(cmd) = tech_meta_cmd {
-                batch_commands.push(cmd);
-            }
-
-            // 5b. Save Preview
-            if let Some(Ok((preview_bytes, mime))) = preview_res {
+        // 2. Generate Preview
+        if let Some(preview_cap) = provider.preview() {
+            if let Ok((preview_bytes, mime)) = preview_cap.generate_preview(&path, &id).await {
                 let extension = match mime.as_str() {
                     "model/gltf-binary" => "glb",
                     "model/gltf+json" => "gltf",
@@ -236,35 +200,27 @@ impl ThumbnailWorker {
                     _ => "bin",
                 };
                 let preview_filename = format!("{}.{}", id, extension);
-                let preview_path = thumbnails_dir.join(&preview_filename);
+                let preview_path = self.thumbnails_dir.join(&preview_filename);
 
                 if let Err(e) = std::fs::write(&preview_path, preview_bytes) {
                     error!("ThumbnailWorker: Failed to write preview for {}: {}", id, e);
                 }
             }
+        }
 
-            // 5c. Handle Thumbnail result
-            match thumb_res {
+        // 3. Generate Thumbnail
+        let mut final_thumb_path = "".to_string();
+
+        if let Some(thumb_cap) = provider.thumbnail() {
+            match thumb_cap.generate(&path, &id, 300).await {
                 Ok(bytes) if !bytes.is_empty() => {
-                    // VALIDATION: Ensure the provider returned actual image bytes
                     let detected_format = image_utils::detect_image_format(&bytes);
                     if detected_format.is_none() {
-                        error!("ThumbnailWorker: Provider for {} returned invalid image bytes (Header error)", id);
-                        batch_commands.push(LedgerCommand::UpdateThumbnail {
-                            asset_id: id.clone(),
-                            thumbnail_path: "".to_string(),
-                        });
-                        continue;
-                    }
-
-                    let id_for_io = id.clone();
-                    let output_path = thumbnails_dir.join(format!("{}.webp", id));
-
-                    // OPTIMIZATION: If already WebP and correctly sized, skip transcoding
-                    let should_transcode =
-                        if detected_format == Some(image_utils::ImageFormat::Webp) {
+                        error!("ThumbnailWorker: Provider for {} returned invalid image bytes", id);
+                    } else {
+                        let id_for_io = id.clone();
+                        let should_transcode = if detected_format == Some(image_utils::ImageFormat::Webp) {
                             if let Some((w, h)) = image_utils::get_image_dimensions(&bytes) {
-                                // If it's already a thumbnail-sized WebP (e.g. within 10% of 300px), skip
                                 !(270..=330).contains(&w) || !(w == h || (270..=330).contains(&h))
                             } else {
                                 true
@@ -273,98 +229,60 @@ impl ThumbnailWorker {
                             true
                         };
 
-                    let final_bytes = if should_transcode {
-                        // CPU-Bound Transcoding to consistent WebP
-                        let final_bytes_res = tokio::task::spawn_blocking(move || {
-                            let img = image::load_from_memory(&bytes).map_err(|e| {
-                                AppError::Internal(format!(
-                                    "Failed to load thumbnail for {}: {}",
-                                    id_for_io, e
-                                ))
-                            })?;
+                        let final_bytes_result = if should_transcode {
+                            tokio::task::spawn_blocking(move || {
+                                let img = image::load_from_memory(&bytes).map_err(|e| {
+                                    AppError::Internal(format!("Failed to load thumbnail for {}: {}", id_for_io, e))
+                                })?;
+                                let encoder = webp::Encoder::from_image(&img).map_err(|e| {
+                                    AppError::Internal(format!("Failed to create WebP encoder: {}", e))
+                                })?;
+                                Ok::<Vec<u8>, AppError>(encoder.encode(75.0).to_vec())
+                            })
+                            .await
+                        } else {
+                            Ok(Ok(bytes))
+                        };
 
-                            let encoder = webp::Encoder::from_image(&img).map_err(|e| {
-                                AppError::Internal(format!("Failed to create WebP encoder: {}", e))
-                            })?;
-
-                            Ok::<Vec<u8>, AppError>(encoder.encode(75.0).to_vec())
-                        })
-                        .await;
-
-                        match final_bytes_res {
-                            Ok(Ok(b)) => b,
+                        match final_bytes_result {
+                            Ok(Ok(final_bytes)) => {
+                                let filename = format!("{}.webp", id);
+                                let output_path = self.thumbnails_dir.join(&filename);
+                                if let Err(e) = std::fs::write(&output_path, final_bytes) {
+                                    error!("ThumbnailWorker: Failed to write thumbnail for {}: {}", id, e);
+                                } else {
+                                    final_thumb_path = filename;
+                                }
+                            }
                             Ok(Err(e)) => {
                                 error!("ThumbnailWorker: Transcoding failed for {}: {}", id, e);
-                                batch_commands.push(LedgerCommand::UpdateThumbnail {
-                                    asset_id: id.clone(),
-                                    thumbnail_path: "".to_string(),
-                                });
-                                continue;
                             }
                             Err(e) => {
-                                error!(
-                                    "ThumbnailWorker: Transcoding task joined with error for {}: {}",
-                                    id, e
-                                );
-                                batch_commands.push(LedgerCommand::UpdateThumbnail {
-                                    asset_id: id.clone(),
-                                    thumbnail_path: "".to_string(),
-                                });
-                                continue;
+                                error!("ThumbnailWorker: Transcoding task joined with error for {}: {}", id, e);
                             }
                         }
-                    } else {
-                        debug!("ThumbnailWorker: Bypassing redundant transcoding for existing WebP thumbnail {}", id);
-                        bytes
-                    };
-
-                    let filename = format!("{}.webp", id);
-                    if let Err(e) = std::fs::write(&output_path, final_bytes) {
-                        error!(
-                            "ThumbnailWorker: Failed to write thumbnail for {}: {}",
-                            id, e
-                        );
-                        batch_commands.push(LedgerCommand::UpdateThumbnail {
-                            asset_id: id.clone(),
-                            thumbnail_path: "".to_string(),
-                        });
-                        continue;
                     }
-
-                    batch_commands.push(LedgerCommand::UpdateThumbnail {
-                        asset_id: id.clone(),
-                        thumbnail_path: filename,
-                    });
                 }
                 Ok(_) => {
-                    // Empty bytes means processed but no thumbnail
-                    debug!("ThumbnailWorker: Format for {} does not support thumbnails, skipping database update", id);
-                    batch_commands.push(LedgerCommand::UpdateThumbnail {
-                        asset_id: id.clone(),
-                        thumbnail_path: "".to_string(), // Empty path means processed but no thumbnail
-                    });
+                    debug!("ThumbnailWorker: Provider for {} generated empty thumbnail (skip).", id);
                 }
                 Err(e) => {
                     error!("ThumbnailWorker: Generation failed for {}: {}", id, e);
-                    batch_commands.push(LedgerCommand::UpdateThumbnail {
-                        asset_id: id.clone(),
-                        thumbnail_path: "".to_string(),
-                    });
                 }
             }
         }
 
-        // 6. Execute Batch Commit
-        if !batch_commands.is_empty() {
-            if let Err(e) = self
-                .ledger
-                .execute(LedgerCommand::Batch(batch_commands))
-                .await
-            {
-                error!("ThumbnailWorker: Batch ledger commit failed: {}", e);
-            }
+        // Add the thumbnail update command
+        commands.push(LedgerCommand::UpdateThumbnail {
+            asset_id: id.clone(),
+            thumbnail_path: final_thumb_path,
+        });
+
+        // 4. Commit Results Individually
+        if let Err(e) = self.ledger.execute(LedgerCommand::Batch(commands)).await {
+            error!("ThumbnailWorker: Ledger commit failed for {}: {}", id, e);
         }
 
-        Ok(processed_count)
+        Ok(())
     }
 }
