@@ -168,6 +168,12 @@ async fn transcode_segment(
     }
 
     let output = child.wait_with_output().await?;
+    
+    {
+        let mut pm = process_manager.write().await;
+        pm.remove(segment_key);
+    }
+    
     let status = output.status;
     let output_data = output.stdout;
 

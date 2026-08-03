@@ -120,6 +120,14 @@
 - [x] A geração de thumbnails deve sempre priorizar os assets que estão visiveis na tela. Atualmente na V2 a prioridade de geração de thumbnails parece não funcionar.
 - [x] A extração de informação de cores tambem deve priorizar os assets visiveis ou selecionados.
 - [x] Ao mover uma pasta e todo seu conteúdo para outra pasta indexada, a hieraquia não foi refeita e a alteração do path não foi refletida corretamente no banco de dados.
+- [x] Erros de timeout (Process execution timed out after 30s) na geração de waveforms e streaming HLS.
+      **Solução:** O problema ocorria pois processos do FFmpeg e FFprobe ficavam pendurados esperando por stdin.
+      **Fix:** Adicionado `cmd.stdin(std::process::Stdio::null())` para fechar a entrada explicitamente, evitando que o FFmpeg bloqueasse, e substituída leitura sequencial de stdout/stderr por `wait_with_output()` para evitar deadlocks de buffer em pipes.
+      **Arquivos:** `src-tauri/src/delivery/streaming/segment.rs`, `probe.rs`, `linear_manager.rs`, `transcoding/mod.rs`
+- [x] Warnings de "Cleaning up stale process" constantes no log.
+      **Solução:** Processos concluídos com sucesso não estavam sendo desregistrados do `ProcessManager`, fazendo com que ele tentasse matá-los novamente após o timeout de 30 segundos.
+      **Fix:** Implementada a função `remove` em `ProcessManager` e chamada no fim do sucesso de `segment.rs`.
+      **Arquivos:** `src-tauri/src/delivery/streaming/process_manager.rs`, `src-tauri/src/delivery/streaming/segment.rs`
 
 # Códigos
 

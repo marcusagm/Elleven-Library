@@ -52,7 +52,17 @@ While the `asset://` protocol is intrinsically secure within the app IPC, the HT
 
 ---
 
-## 3. Caching Strategy
+## 3. Subprocess & Timeout Policies
+
+The backend orchestrates FFmpeg/FFprobe processes. To guarantee system stability and prevent deadlocks during streaming:
+
+1. **Standard I/O Configuration**: All non-interactive processes (like FFmpeg transcodes and FFprobe extractions) must explicitly set `stdin(Stdio::null())`. This prevents processes from hanging indefinitely while waiting for user input.
+2. **Buffer Management**: Processes must not use sequential piped reading for `stdout` and `stderr` on long streams. The system uses `.wait_with_output()` to safely consume pipes and avoid buffer-fill deadlocks.
+3. **Stale Process Cleanup**: The `ProcessManager` tracks all active segments. A process is considered stale and forcefully cancelled if it exceeds the `timeout_secs` limit (default 30s). Upon successful completion, processes are cleanly unregistered to prevent ghost warnings.
+
+---
+
+## 4. Caching Strategy
 
 The HLS pipeline generates numerous transport stream (`.ts`) segments.
 
@@ -65,7 +75,7 @@ The HLS pipeline generates numerous transport stream (`.ts`) segments.
 
 ---
 
-## 4. Frontend Integration (`stream-utils.ts`)
+## 5. Frontend Integration (`stream-utils.ts`)
 
 The frontend abstracts URL resolution using `stream-utils.ts`. The UI should **never** manually construct these URLs.
 

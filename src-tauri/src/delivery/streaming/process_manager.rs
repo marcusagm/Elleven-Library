@@ -65,6 +65,11 @@ impl ProcessManager {
         }
     }
 
+    /// Remove a process from tracking without killing it (e.g. after successful completion)
+    pub fn remove(&mut self, key: &str) {
+        self.processes.remove(key);
+    }
+
     /// Check if a segment is currently being processed
     pub fn is_processing(&self, key: &str) -> bool {
         self.processes.contains_key(key)

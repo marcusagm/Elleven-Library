@@ -400,6 +400,7 @@ Para se aproximar de DAMs e asset managers modernos, o Mundam precisa consolidar
 - [x] Documentar contrato definitivo de URLs e streaming. (Concluído: `streaming-contracts.md`)
 - [x] Registrar todos os workers/listeners no lifecycle. (Concluído)
 - [x] Extrair bootstrap de `lib.rs`.
+- [x] Correção de deadlocks, stale processes e timeouts em streaming de mídia e HLS (FFmpeg/FFprobe). (Concluído)
 - [ ] Criar testes de integração para:
     - [ ] scan inicial;
     - [ ] rename;
