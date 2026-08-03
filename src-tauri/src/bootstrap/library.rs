@@ -63,10 +63,11 @@ pub async fn init(app: &AppHandle) {
     );
     app.manage(indexer.clone());
 
-    indexer
+    let indexer_token = lifecycle.child_token();
+    let indexer_handle = indexer
         .clone()
-        .start_event_listener(event_bus.clone())
-        .await;
+        .start_event_listener(event_bus.clone(), indexer_token.clone());
+    lifecycle.register("indexer_event_listener".to_string(), indexer_token, indexer_handle);
 
     // Initialize Watcher Service
     let watcher = Arc::new(crate::processing::watcher::WatcherService::new(
@@ -103,8 +104,14 @@ pub async fn init(app: &AppHandle) {
                 .map(|folder| (std::path::PathBuf::from(&folder.path), folder.id.clone()))
                 .collect();
 
-            tokio::spawn(async move {
+            let boot_scan_token = lifecycle.child_token();
+            let token_clone = boot_scan_token.clone();
+            let boot_scan_handle = tauri::async_runtime::spawn(async move {
                 for (root_path, folder_id) in roots_for_boot {
+                    if token_clone.is_cancelled() {
+                        tracing::info!("Boot scan cancelled");
+                        break;
+                    }
                     tracing::info!("Boot scan starting for: {}", root_path.display());
                     if let Err(e) = indexer_for_boot
                         .scan_directory(root_path.clone(), Some(folder_id))
@@ -114,6 +121,7 @@ pub async fn init(app: &AppHandle) {
                     }
                 }
             });
+            lifecycle.register("boot_scan".to_string(), boot_scan_token, boot_scan_handle);
         }
     }
 }

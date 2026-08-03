@@ -70,98 +70,123 @@ pub fn init_events(app: &AppHandle) {
     // Bridge Event Bus to Frontend
     let mut rx = event_bus.subscribe();
     let app_handle = app.clone();
-    tauri::async_runtime::spawn(async move {
-        while let Ok(event) = rx.recv().await {
-            use crate::core::events::DomainEvent;
-            // Standard Domain Event Bridge
-            if let Err(e) = app_handle.emit("mundam://domain-event", &event) {
-                tracing::error!("Failed to emit domain event to frontend: {}", e);
-            }
+    let lifecycle = app.state::<Arc<LifecycleRegistry>>().inner().clone();
+    let bridge_token = lifecycle.child_token();
+    let token_clone = bridge_token.clone();
 
-            match event {
-                // ── Targeted Asset Deletion (instant UI removal) ──────
-                DomainEvent::AssetDeleted {
-                    asset_id,
-                    folder_id,
-                } => {
-                    let _ = app_handle.emit(
-                        "library:batch-change",
-                        serde_json::json!({
-                            "added": [],
-                            "removed": [{
-                                "id": asset_id,
-                                "folder_id": folder_id.unwrap_or_default(),
-                                "tag_ids": []
-                            }],
-                            "updated": [],
-                            "needs_refresh": false
-                        }),
-                    );
-                }
+    let bridge_handle = tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::select! {
+                recv_result = rx.recv() => {
+                    match recv_result {
+                        Ok(event) => {
+                            use crate::core::events::DomainEvent;
+                            // Standard Domain Event Bridge
+                            if let Err(e) = app_handle.emit("mundam://domain-event", &event) {
+                                tracing::error!("Failed to emit domain event to frontend: {}", e);
+                            }
 
-                // ── Events requiring a full library refresh ──────────
-                DomainEvent::AssetCreated { .. }
-                | DomainEvent::AssetFolderChanged { .. }
-                | DomainEvent::FolderMetadataUpdated { .. }
-                | DomainEvent::FolderRemoved { .. }
-                | DomainEvent::FsDirectoryDeleted { .. }
-                | DomainEvent::FsPathRenamed { .. } => {
-                    let _ = app_handle.emit(
-                        "library:batch-change",
-                        serde_json::json!({
-                            "added": [],
-                            "removed": [],
-                            "updated": [],
-                            "needs_refresh": true
-                        }),
-                    );
-                }
-                DomainEvent::ScanProgress {
-                    total,
-                    processed,
-                    current_file,
-                } => {
-                    let _ = app_handle.emit(
-                        "indexer:progress",
-                        serde_json::json!({
-                            "total": total,
-                            "processed": processed,
-                            "current_file": current_file,
-                        }),
-                    );
-                }
-                DomainEvent::ScanCompleted { .. } => {
-                    let _ = app_handle.emit("indexer:complete", 0);
-                }
-                DomainEvent::ThumbnailGenerated { asset_id, path, .. } => {
-                    let _ = app_handle.emit(
-                        "thumbnail:ready",
-                        serde_json::json!({
-                            "id": asset_id,
-                            "path": path,
-                        }),
-                    );
-                }
-                DomainEvent::AssetMetadataUpdated { asset_id } => {
-                    let _ = app_handle.emit(
-                        "metadata:ready",
-                        serde_json::json!({
-                            "id": asset_id,
-                        }),
-                    );
-                }
-                DomainEvent::ExtractionCompleted {
-                    asset_id,
-                    capability,
-                } => {
-                    if capability == "COLORS" {
-                        let _ = app_handle.emit("extraction:completed", asset_id);
+                            match event {
+                                // ── Targeted Asset Deletion (instant UI removal) ──────
+                                DomainEvent::AssetDeleted {
+                                    asset_id,
+                                    folder_id,
+                                } => {
+                                    let _ = app_handle.emit(
+                                        "library:batch-change",
+                                        serde_json::json!({
+                                            "added": [],
+                                            "removed": [{
+                                                "id": asset_id,
+                                                "folder_id": folder_id.unwrap_or_default(),
+                                                "tag_ids": []
+                                            }],
+                                            "updated": [],
+                                            "needs_refresh": false
+                                        }),
+                                    );
+                                }
+
+                                // ── Events requiring a full library refresh ──────────
+                                DomainEvent::AssetCreated { .. }
+                                | DomainEvent::AssetFolderChanged { .. }
+                                | DomainEvent::FolderMetadataUpdated { .. }
+                                | DomainEvent::FolderRemoved { .. }
+                                | DomainEvent::FsDirectoryDeleted { .. }
+                                | DomainEvent::FsPathRenamed { .. } => {
+                                    let _ = app_handle.emit(
+                                        "library:batch-change",
+                                        serde_json::json!({
+                                            "added": [],
+                                            "removed": [],
+                                            "updated": [],
+                                            "needs_refresh": true
+                                        }),
+                                    );
+                                }
+                                DomainEvent::ScanProgress {
+                                    total,
+                                    processed,
+                                    current_file,
+                                } => {
+                                    let _ = app_handle.emit(
+                                        "indexer:progress",
+                                        serde_json::json!({
+                                            "total": total,
+                                            "processed": processed,
+                                            "current_file": current_file,
+                                        }),
+                                    );
+                                }
+                                DomainEvent::ScanCompleted { .. } => {
+                                    let _ = app_handle.emit("indexer:complete", 0);
+                                }
+                                DomainEvent::ThumbnailGenerated { asset_id, path, .. } => {
+                                    let _ = app_handle.emit(
+                                        "thumbnail:ready",
+                                        serde_json::json!({
+                                            "id": asset_id,
+                                            "path": path,
+                                        }),
+                                    );
+                                }
+                                DomainEvent::AssetMetadataUpdated { asset_id } => {
+                                    let _ = app_handle.emit(
+                                        "metadata:ready",
+                                        serde_json::json!({
+                                            "id": asset_id,
+                                        }),
+                                    );
+                                }
+                                DomainEvent::ExtractionCompleted {
+                                    asset_id,
+                                    capability,
+                                } => {
+                                    if capability == "COLORS" {
+                                        let _ = app_handle.emit("extraction:completed", asset_id);
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                            tracing::warn!("Event bridge lagged by {} events", n);
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                            tracing::info!("Event bridge channel closed");
+                            break;
+                        }
                     }
                 }
-                _ => {}
+                _ = token_clone.cancelled() => {
+                    tracing::info!("Domain Event Bridge cancelled. Exiting.");
+                    break;
+                }
             }
         }
     });
+
+    lifecycle.register("event_bridge_frontend".to_string(), bridge_token, bridge_handle);
 }
 
 /// Initializes the lifecycle registry and manages it in the application state.

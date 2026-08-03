@@ -36,9 +36,9 @@ pub fn run() {
             let app_handle = app.handle();
 
             crate::bootstrap::system::init_directories(app_handle);
+            crate::bootstrap::system::init_lifecycle(app_handle);
             crate::bootstrap::system::init_settings(app_handle);
             crate::bootstrap::system::init_events(app_handle);
-            crate::bootstrap::system::init_lifecycle(app_handle);
             crate::bootstrap::system::init_formats(app_handle);
 
             let handle = app_handle.clone();

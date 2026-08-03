@@ -33,9 +33,8 @@ pub async fn init(app: &AppHandle) {
 
     let manager = hls_manager.clone();
     let hls_token = lifecycle.child_token();
-    tauri::async_runtime::spawn(async move {
-        manager.start_cleanup_worker(hls_token, 90).await;
-    });
+    let hls_handle = manager.start_cleanup_worker(hls_token.clone(), 90);
+    lifecycle.register("hls_cleanup_worker".to_string(), hls_token, hls_handle);
 
     // Generate a session token for streaming server authentication
     let session_token = uuid::Uuid::new_v4().to_string();

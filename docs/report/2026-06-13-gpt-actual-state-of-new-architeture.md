@@ -138,7 +138,7 @@ O arquivo `src-tauri/src/lib.rs` está acumulando:
 
 **Risco:** o composition root está correto como conceito, mas muito denso. Isso dificulta testes de bootstrap, troca de subsistemas e diagnóstico de falhas de inicialização.
 
-**Refinamento recomendado:** extrair builders/modularizadores:
+**Refinamento recomendado:** extrair builders/modularizadores: **(Concluído: extração realizada para a pasta `src-tauri/src/bootstrap/` com `database.rs`, `workers.rs`, etc.)**
 
 - `bootstrap::init_settings`
 - `bootstrap::init_events`
@@ -190,7 +190,7 @@ O `SqliteAssetLedger` tem pontos fortes, mas concentra muita lógica concreta:
 
 **Risco:** com crescimento do número de comandos, o arquivo tende a virar um “god adapter”. Isso dificulta testes unitários por comando e torna regressões mais prováveis.
 
-**Refinamento recomendado:** manter o `SqliteAssetLedger` como orquestrador transacional, mas extrair handlers internos por comando:
+**Refinamento recomendado:** manter o `SqliteAssetLedger` como orquestrador transacional, mas extrair handlers internos por comando: **(Concluído: os handlers foram extraídos para `src-tauri/src/infra/database/handlers/` separando a lógica de `asset_handler.rs`, `folder_handler.rs`, etc.)**
 
 - `asset_create_handler.rs`
 - `asset_update_handler.rs`
@@ -209,7 +209,7 @@ Porém, pelo trecho analisado, muitas operações são transacionais no banco, m
 
 **Risco:** comandos como move, delete físico, rename, geração de thumbnails e atualização de metadata podem deixar resíduos se uma etapa de disco falhar após commit ou vice-versa.
 
-**Refinamento recomendado:** adotar padrão de **saga local / outbox**:
+**Refinamento recomendado:** adotar padrão de **saga local / outbox**: **(Concluído: `saga_recovery.rs` implementado em `infra/database/`)**
 
 - registrar intenção no banco;
 - executar operação de filesystem;
@@ -396,47 +396,47 @@ Para se aproximar de DAMs e asset managers modernos, o Mundam precisa consolidar
 
 ### Fase 1 — estabilização da refatoração
 
-- Corrigir/atualizar testes de `stream-utils`.
-- Documentar contrato definitivo de URLs e streaming.
-- Registrar todos os workers/listeners no lifecycle.
-- Extrair bootstrap de `lib.rs`.
-- Criar testes de integração para:
-    - scan inicial;
-    - rename;
-    - move;
-    - delete;
-    - thumbnail generation;
-    - eventos emitidos.
+- [x] Corrigir/atualizar testes de `stream-utils`. (Concluído)
+- [x] Documentar contrato definitivo de URLs e streaming. (Concluído: `streaming-contracts.md`)
+- [x] Registrar todos os workers/listeners no lifecycle. (Concluído)
+- [x] Extrair bootstrap de `lib.rs`.
+- [ ] Criar testes de integração para:
+    - [ ] scan inicial;
+    - [ ] rename;
+    - [ ] move;
+    - [ ] delete;
+    - [ ] thumbnail generation;
+    - [ ] eventos emitidos.
 
 ### Fase 2 — robustez operacional
 
-- Criar tabela de jobs persistente.
-- Migrar thumbnail/color/metadata/transcode para jobs duráveis.
-- Introduzir retry/backoff/cancelamento.
-- Implementar outbox para eventos críticos.
-- Implementar fingerprint em camadas.
+- [ ] Criar tabela de jobs persistente.
+- [ ] Migrar thumbnail/color/metadata/transcode para jobs duráveis.
+- [ ] Introduzir retry/backoff/cancelamento.
+- [x] Implementar outbox para eventos críticos.
+- [ ] Implementar fingerprint em camadas.
 
 ### Fase 3 — performance em bibliotecas grandes
 
-- Trocar scan “coleta tudo antes” por streaming pipeline.
-- Adicionar benchmarks com bibliotecas sintéticas:
-    - 10k assets;
-    - 100k assets;
-    - 1M paths;
-    - árvore profunda;
-    - muitos arquivos pequenos.
-- Medir tempo de boot scan, memory peak, locks SQLite e throughput.
+- [ ] Trocar scan “coleta tudo antes” por streaming pipeline.
+- [ ] Adicionar benchmarks com bibliotecas sintéticas:
+    - [ ] 10k assets;
+    - [ ] 100k assets;
+    - [ ] 1M paths;
+    - [ ] árvore profunda;
+    - [ ] muitos arquivos pequenos.
+- [ ] Medir tempo de boot scan, memory peak, locks SQLite e throughput.
 
 ### Fase 4 — estado da arte em DAM
 
-- FTS5/Tantivy para busca textual.
-- Índice facetado para filtros.
-- Busca por similaridade visual.
-- Detecção de duplicados.
-- OCR.
-- Tags automáticas.
-- Provider SDK para novos formatos.
-- Painel de jobs e saúde da biblioteca.
+- [ ] FTS5/Tantivy para busca textual.
+- [ ] Índice facetado para filtros.
+- [ ] Busca por similaridade visual.
+- [ ] Detecção de duplicados.
+- [ ] OCR.
+- [ ] Tags automáticas.
+- [ ] Provider SDK para novos formatos.
+- [ ] Painel de jobs e saúde da biblioteca.
 
 ## 7. Conclusão executiva
 

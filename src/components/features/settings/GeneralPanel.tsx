@@ -8,19 +8,7 @@ import { transcodeState, transcodeActions } from '../../../core/store/transcodeS
 import { type TranscodeQuality } from '../../../lib/stream-utils';
 import './general-panel.css';
 
-/**
- * Formats a given number of bytes into a human-readable string (e.g., KB, MB, GB).
- *
- * @param {number} bytes - The number of bytes to format.
- * @returns {string} The formatted memory string.
- */
-function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+import { formatFileSize } from '../../../utils/format';
 
 export const GeneralPanel: Component = () => {
     const system = useSystem();
@@ -188,7 +176,7 @@ export const GeneralPanel: Component = () => {
                     <div class="cache-stat-item">
                         <span class="cache-stat-label">Size:</span>
                         <span class="cache-stat-value">
-                            {formatBytes(settings.cacheStats().size_bytes)}
+                            {formatFileSize(settings.cacheStats().size_bytes)}
                         </span>
                     </div>
                 </div>

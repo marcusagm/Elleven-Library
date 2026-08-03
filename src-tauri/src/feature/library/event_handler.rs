@@ -23,29 +23,41 @@ impl LibraryIndexer {
     ///
     /// This mirrors the V1 behavior where each event (add, rename, delete)
     /// was processed as a single, targeted operation — NOT a full re-scan.
-    pub async fn start_event_listener(self: Arc<Self>, event_bus: Arc<dyn AppEventBus>) {
+    pub fn start_event_listener(
+        self: Arc<Self>,
+        event_bus: Arc<dyn AppEventBus>,
+        token: tokio_util::sync::CancellationToken,
+    ) -> tauri::async_runtime::JoinHandle<()> {
         let mut receiver = event_bus.subscribe();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             info!("IndexerEventListener: started and listening for filesystem events");
 
             loop {
-                match receiver.recv().await {
-                    Ok(event) => {
-                        self.handle_single_event(event).await;
+                tokio::select! {
+                    recv_result = receiver.recv() => {
+                        match recv_result {
+                            Ok(event) => {
+                                self.handle_single_event(event).await;
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped_count)) => {
+                                warn!(
+                                    "IndexerEventListener: lagged behind {} events, continuing",
+                                    skipped_count
+                                );
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                                info!("IndexerEventListener: channel closed, shutting down");
+                                break;
+                            }
+                        }
                     }
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped_count)) => {
-                        warn!(
-                            "IndexerEventListener: lagged behind {} events, continuing",
-                            skipped_count
-                        );
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                        info!("IndexerEventListener: channel closed, shutting down");
+                    _ = token.cancelled() => {
+                        info!("IndexerEventListener: cancelled, shutting down");
                         break;
                     }
                 }
             }
-        });
+        })
     }
 
     /// Handle a single DomainEvent with a targeted ledger operation.

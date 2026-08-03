@@ -35,7 +35,7 @@ describe('stream-utils URL generation', () => {
             const path = '/Movies/test_video.mkv';
             const assetId = '12345';
             const url = getVideoUrl(assetId, path, 'standard');
-            expect(url).toContain('/playlist/%2FMovies%2Ftest_video.mkv');
+            expect(url).toContain(`/playlist/${assetId}/playlist.m3u8`);
         });
 
         it('should return linear HLS URL for live transcoding videos (SWF)', () => {
@@ -49,16 +49,18 @@ describe('stream-utils URL generation', () => {
     });
 
     describe('getAudioUrl', () => {
-        it('should return audio:// URL for native audio', () => {
+        it('should return asset:// URL for native audio', () => {
             const path = '/Music/test_audio.mp3';
-            const url = getAudioUrl(path, 'standard');
-            expect(url).toBe('audio://localhost/%2FMusic%2Ftest_audio.mp3');
+            const assetId = '12345';
+            const url = getAudioUrl(assetId, path, 'standard');
+            expect(url).toBe(`asset://localhost/${assetId}`);
         });
 
-        it('should return audio-stream:// URL for transcoded audio', () => {
+        it('should return HLS URL for transcoded audio', () => {
             const path = '/Music/test_audio.flac';
-            const url = getAudioUrl(path, 'standard');
-            expect(url).toContain('audio-stream://localhost/');
+            const assetId = '12345';
+            const url = getAudioUrl(assetId, path, 'standard');
+            expect(url).toContain(`/playlist/${assetId}/playlist.m3u8`);
             expect(url).toContain('quality=standard');
         });
     });

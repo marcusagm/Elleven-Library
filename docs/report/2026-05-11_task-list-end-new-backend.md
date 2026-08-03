@@ -137,20 +137,20 @@
 
 ## Processing
 
-- [ ] O ideal é que cada formato junto com seus alias, tenho um arquivo exclusivo em 
+- [x] O ideal é que cada formato junto com seus alias, tenho um arquivo exclusivo em 
       `src-tauri/src/processing/media` assim como é feito para arquivos `affinity_format`,
       `ai_format`, `aseprite_format`, `pdf_format`, entre outros, e funções comuns fiquem 
       agrupadas em "helpers" e em "extractors" se forem especificas para determinado formato. 
       Isso permitirá o tratamento exclusivo por formato definindo extração e inclusive 
       fallbacks diferentes para cada formato de arquivo, isso tambem deixará claro como é 
       o registro de cada formato, sem precisar ficar procurando em arquivos genericos como 
-      "cad_format", "image_format" ou "audio_format".
-- [ ] Organização dos formatos e extratores de arquivos
+      "cad_format", "image_format" ou "audio_format". (Concluído: Todos os formatos foram refatorados e agrupados em diretórios específicos dentro de `providers/`)
+- [x] Organização dos formatos e extratores de arquivos (Concluído: em `providers/archive`)
 - [x] Organização dos formatos e extratores de audio
-- [ ] Organização dos formatos e extratores de documentos
+- [x] Organização dos formatos e extratores de documentos (Concluído: em `providers/document`)
 - [x] Organização dos formatos e extratores de imagens
 - [x] Organização dos formatos e extratores de fontes
-- [ ] Organização dos formatos e extratores de modelos 3D
+- [x] Organização dos formatos e extratores de modelos 3D (Concluído: em `providers/model3d`)
 - [x] Organização dos formatos e extratores de projetos
 - [x] Organização dos formatos e extratores de vetores
 - [x] Organização dos formatos e extratores de video

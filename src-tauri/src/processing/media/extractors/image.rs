@@ -406,10 +406,7 @@ fn ensure_jpeg_bytes(raw_bytes: Vec<u8>) -> AppResult<Vec<u8>> {
 
 /// Generates a WebP thumbnail from a RAW photography file using a hybrid strategy.
 ///
-/// **Tier 0**: quickraw high-fidelity extraction.
-/// **Tier 1**: LibRaw embedded preview extraction (fastest, best quality).
-/// **Tier 2**: Brute-force JPEG scan (scans the first 30 MB for `FF D8 FF` markers).
-/// **Tier 3**: FFmpeg conversion fallback (for formats without embedded JPEG previews).
+/// Uses a multi-tier fallback pipeline (LibRaw → brute-force JPEG scan → FFmpeg).
 ///
 /// # Arguments
 ///
@@ -420,23 +417,6 @@ fn ensure_jpeg_bytes(raw_bytes: Vec<u8>) -> AppResult<Vec<u8>> {
 ///
 /// * `AppError::Generic` - If all extraction tiers fail.
 pub fn generate_raw_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u8>> {
-    // Tier 0: quickraw high-fidelity extraction
-    let path_clone = path.to_path_buf();
-    let quickraw_result = std::panic::catch_unwind(|| {
-        if let Ok(raw_data) = std::fs::read(&path_clone) {
-            return quickraw::Export::export_thumbnail_data(&raw_data)
-                .map(|(data, _)| data.to_vec())
-                .ok();
-        }
-        None
-    });
-
-    if let Ok(Some(thumbnail_data)) = quickraw_result {
-        if let Ok(decoded_preview) = image::load_from_memory(&thumbnail_data) {
-            return process_and_encode_webp(decoded_preview, size_hint);
-        }
-    }
-
     // Tier 1: LibRaw embedded preview
     if let Ok(embedded_preview_bytes) = extract_libraw_preview(path) {
         if let Ok(decoded_preview) = image::load_from_memory(&embedded_preview_bytes) {
@@ -465,25 +445,6 @@ pub fn generate_raw_thumbnail(path: &Path, size_hint: u32) -> AppResult<Vec<u8>>
 /// Extracts a high-quality embedded JPEG preview from a RAW file for previewing.
 /// It returns the raw bytes directly without WebP re-encoding to preserve quality and speed.
 pub fn extract_raw_preview(path: &Path) -> AppResult<Vec<u8>> {
-    // Tier 0: quickraw high-fidelity extraction
-    let path_clone = path.to_path_buf();
-    let quickraw_result = std::panic::catch_unwind(|| {
-        if let Ok(raw_data) = std::fs::read(&path_clone) {
-            return quickraw::Export::export_thumbnail_data(&raw_data)
-                .map(|(data, _)| data.to_vec())
-                .ok();
-        }
-        None
-    });
-
-    if let Ok(Some(thumbnail_data)) = quickraw_result {
-        if let Ok(jpeg_bytes) = ensure_jpeg_bytes(thumbnail_data) {
-            if jpeg_bytes.len() > 50_000 {
-                return Ok(jpeg_bytes);
-            }
-        }
-    }
-
     // Tier 1: LibRaw embedded preview
     if let Ok(embedded_preview_bytes) = extract_libraw_preview(path) {
         if let Ok(jpeg_bytes) = ensure_jpeg_bytes(embedded_preview_bytes) {

@@ -144,6 +144,7 @@ pub fn run_command_with_timeout(
     timeout_seconds: u64,
 ) -> AppResult<std::process::Output> {
     let mut child_process = command
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()

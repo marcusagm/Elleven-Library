@@ -2,6 +2,7 @@ use crate::core::error::AppResult;
 use sqlx::sqlite::{
     SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteSynchronous,
 };
+use sqlx::ConnectOptions;
 use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
@@ -28,7 +29,8 @@ impl DbManager {
             .create_if_missing(true)
             .journal_mode(SqliteJournalMode::Wal)
             .synchronous(SqliteSynchronous::Normal)
-            .busy_timeout(Duration::from_secs(30));
+            .busy_timeout(Duration::from_secs(30))
+            .log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(10));
         // PRAGMA default_cache_size is usually set via SQL query if needed,
         // but many are covered by SQLx options.
 

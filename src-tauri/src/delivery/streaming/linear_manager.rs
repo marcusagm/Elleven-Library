@@ -169,6 +169,7 @@ impl LinearManager {
         ]);
 
         cmd.current_dir(&temp_dir);
+        cmd.stdin(std::process::Stdio::null());
         cmd.stdout(std::process::Stdio::null());
         cmd.stderr(std::process::Stdio::null());
 

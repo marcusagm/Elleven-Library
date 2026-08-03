@@ -77,6 +77,7 @@ pub async fn get_video_info(
             "-show_streams",
             &path.to_string_lossy(),
         ])
+        .stdin(std::process::Stdio::null())
         .output()?;
 
     if !output.status.success() {

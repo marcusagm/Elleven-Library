@@ -89,7 +89,8 @@ export function needsLinearAudio(path: string): boolean {
  * Check if a file extension requires Standard HLS for audio
  */
 export function needsStandardHlsAudio(path: string): boolean {
-    return formatActions.getPlaybackStrategy(getExtension(path)) === 'audioHls';
+    const strategy = formatActions.getPlaybackStrategy(getExtension(path));
+    return strategy === 'audioHls' || strategy === 'audioTranscode';
 }
 
 /**

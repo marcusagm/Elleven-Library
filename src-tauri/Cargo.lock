@@ -1694,16 +1694,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fn-util"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "009f3d3b8f0d30fdb4b8498a7a0113baf580d7153fbc39ece702804fb044cfab"
-dependencies = [
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3375,9 +3365,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.29"
+version = "0.4.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
+checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
 name = "loop9"
@@ -3626,6 +3616,7 @@ dependencies = [
  "jxl-oxide",
  "kmeans_colors",
  "libc",
+ "log",
  "memmap2",
  "midly",
  "mime_guess",
@@ -3635,7 +3626,6 @@ dependencies = [
  "percent-encoding",
  "psd",
  "quick-xml 0.37.5",
- "quickraw",
  "rayon",
  "resvg",
  "rexif",
@@ -4755,28 +4745,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdcc8dd4e2f670d309a5f0e83fe36dfdc05af317008fea29144da1a2ac858e5e"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "quickexif"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00e1f8545279eb259ab276ce0f98580972dfc3a4cb90b4e57e601fb33254318d"
-dependencies = [
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "quickraw"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54cca3f40f418914880075ffb248b44254185e441b026130c5607d396c91e8b8"
-dependencies = [
- "fn-util",
- "once_cell",
- "phf 0.10.1",
- "quickexif",
- "thiserror 1.0.69",
 ]
 
 [[package]]

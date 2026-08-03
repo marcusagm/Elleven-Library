@@ -6,7 +6,6 @@
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
-use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio::sync::RwLock;
 use tracing::info;
@@ -157,27 +156,23 @@ async fn transcode_segment(
 
     cmd.args(["-f", "mpegts", "-"]);
 
+    cmd.stdin(Stdio::null());
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
-    let mut child = cmd.spawn()?;
+    let child = cmd.spawn()?;
 
     if let Some(id) = child.id() {
         let mut pm = process_manager.write().await;
         pm.register(segment_key.to_string(), id);
     }
 
-    let mut stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
-    let mut stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
-
-    let mut output_data = Vec::new();
-    stdout.read_to_end(&mut output_data).await?;
-
-    let status = child.wait().await?;
+    let output = child.wait_with_output().await?;
+    let status = output.status;
+    let output_data = output.stdout;
 
     if !status.success() {
-        let mut err_output = String::new();
-        stderr.read_to_string(&mut err_output).await.ok();
+        let err_output = String::from_utf8_lossy(&output.stderr);
         info!("FFmpeg failed (segment {}): {}", segment_index, err_output);
         return Err(format!("FFmpeg failed (segment {}): {}", segment_index, err_output).into());
     }

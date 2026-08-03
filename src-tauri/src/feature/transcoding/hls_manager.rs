@@ -150,9 +150,9 @@ impl HlsManager {
     /// # Returns
     ///
     /// Ok(()) if the cleanup worker was started successfully.
-    pub async fn start_cleanup_worker(&self, token: CancellationToken, timeout_secs: u64) {
+    pub fn start_cleanup_worker(&self, token: CancellationToken, timeout_secs: u64) -> tauri::async_runtime::JoinHandle<()> {
         let sessions = self.sessions.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
             loop {
                 tokio::select! {
@@ -190,6 +190,6 @@ impl HlsManager {
                     }
                 }
             }
-        });
+        })
     }
 }

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, instrument};
+use tauri::Manager;
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::formats::FormatRegistry;
@@ -72,17 +73,20 @@ impl ThumbnailWorker {
     /// # Returns
     ///
     /// A `JoinHandle` for the background task.
-    pub fn start(self, token: CancellationToken) -> tauri::async_runtime::JoinHandle<()> {
+    pub fn start(self, token: CancellationToken, app_handle: tauri::AppHandle) -> tauri::async_runtime::JoinHandle<()> {
         tauri::async_runtime::spawn(async move {
             info!("ThumbnailWorker: Orchestrator loop started");
             let worker_arc = Arc::new(self);
             
-            // Limit concurrent processing slots based on logical cores.
-            // Provides enough concurrency without starving the OS or database.
-            let max_concurrent = std::thread::available_parallelism()
-                .map(|n| n.get())
-                .unwrap_or(4)
-                .clamp(2, 8);
+            // Resolve maximum concurrency via user settings
+            let settings_service = app_handle.state::<crate::feature::settings::SettingsService>();
+            let max_concurrent = match settings_service.get_settings().await {
+                Ok(settings) if settings.thumbnail_threads > 0 => settings.thumbnail_threads,
+                _ => std::thread::available_parallelism()
+                        .map(|n| n.get())
+                        .unwrap_or(4)
+                        .clamp(2, 8),
+            };
                 
             let semaphore = Arc::new(tokio::sync::Semaphore::new(max_concurrent));
 

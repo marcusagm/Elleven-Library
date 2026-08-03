@@ -50,7 +50,7 @@ pub fn init(app: &AppHandle) {
         priority_state,
         dirs.thumbnails_dir.clone(),
     );
-    let thumbnail_handle = thumbnail_worker.start(thumbnail_token.clone());
+    let thumbnail_handle = thumbnail_worker.start(thumbnail_token.clone(), app.clone());
     lifecycle.register(
         "thumbnail_worker".to_string(),
         thumbnail_token,
@@ -58,11 +58,13 @@ pub fn init(app: &AppHandle) {
     );
 
     // Start Color Worker (Reactive to Thumbnails)
+    let color_worker_token = lifecycle.child_token();
     let color_worker = crate::processing::workers::color_worker::ColorWorker::new(
         asset_ledger.clone(),
         event_bus.clone(),
         format_registry.clone(),
         dirs.thumbnails_dir.to_path_buf(),
     );
-    color_worker.start();
+    let color_handle = color_worker.start(color_worker_token.clone());
+    lifecycle.register("color_worker".to_string(), color_worker_token, color_handle);
 }
