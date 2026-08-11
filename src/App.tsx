@@ -1,4 +1,4 @@
-import { onMount, onCleanup, Show, createEffect, createMemo } from 'solid-js';
+import { onMount, onCleanup, Show, createEffect, createSignal, Switch, Match } from 'solid-js';
 import {
     useSystem,
     useNotification,
@@ -6,12 +6,9 @@ import {
     useLibrary,
     useMetadataNotifications
 } from './core/hooks';
-import { AppShell } from './layouts/AppShell';
-import { LibrarySidebar } from './components/layout/LibrarySidebar';
-import { FileInspector } from './components/layout/FileInspector';
-import { GlobalStatusbar } from './components/layout/GlobalStatusbar';
-import { Viewport } from './components/layout/Viewport';
-import { open } from '@tauri-apps/plugin-dialog';
+import { WelcomeView, HomeView, GalleryView, DuplicateFinderView } from './views';
+import { TitleBar, type ApplicationView } from './components/layout/TitleBar';
+// Dialog removed (moved to WelcomeView)
 import { listen } from '@tauri-apps/api/event';
 // Native DnD
 import {
@@ -26,9 +23,7 @@ import { Loader } from './components/ui/Loader';
 import { SettingsModal } from './components/features/settings';
 // Input System
 import { InputProvider, useShortcuts } from './core/input';
-import logoColor from './assets/logo-color.svg';
-import logoWhite from './assets/logo-white.svg';
-import { appearance } from './core/store/appearanceStore';
+// Removed logos (moved to WelcomeView)
 
 /**
  * Main application component.
@@ -42,16 +37,11 @@ function App() {
     const selection = useSelection();
     const lib = useLibrary();
 
+    const [activeApplicationView, setActiveApplicationView] =
+        createSignal<ApplicationView>('gallery');
+
     // Start background sync notifications
     useMetadataNotifications();
-
-    const effectiveLogo = createMemo(() => {
-        let mode = appearance().mode;
-        if (mode === 'system') {
-            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        return mode === 'dark' ? logoWhite : logoColor;
-    });
 
     // Global shortcuts via Input Service
     useShortcuts([
@@ -119,54 +109,28 @@ function App() {
         window.dispatchEvent(new CustomEvent('app-ready'));
     });
 
-    const handleSelectFolder = async () => {
-        try {
-            const selected = await open({
-                directory: true,
-                multiple: false,
-                title: 'Select Reference Library Folder'
-            });
-
-            if (selected) {
-                const path = typeof selected === 'string' ? selected : String(selected);
-                if (path) {
-                    notification.info(
-                        'Indexing Started',
-                        `Processing folder: ${path.split(/[\\/]/).pop()}`
-                    );
-                    await system.setRootLocation(path);
-                }
-            }
-        } catch (err) {
-            console.error('Failed to select folder:', err);
-        }
-    };
+    const renderTitleBar = () => (
+        <TitleBar activeView={activeApplicationView()} onViewChange={setActiveApplicationView} />
+    );
 
     return (
         <Show
             when={!system.loading()}
             fallback={<Loader isFullscreen text="Initializing Mundam..." />}
         >
-            <Show
-                when={system.rootPath()}
-                fallback={
-                    <div class="welcome-screen">
-                        <img src={effectiveLogo()} alt="Mundam Logo" class="welcome-logo" />
-                        {/* <h1>Mundam</h1> */}
-                        <p>Start by choosing a folder to monitor for visual references.</p>
-                        <button class="primary-btn" onClick={handleSelectFolder}>
-                            Initialize Library
-                        </button>
-                    </div>
-                }
-            >
-                <AppShell
-                    sidebar={<LibrarySidebar />}
-                    inspector={<FileInspector />}
-                    statusbar={<GlobalStatusbar />}
-                >
-                    <Viewport />
-                </AppShell>
+            <Show when={system.rootPath()} fallback={<WelcomeView header={renderTitleBar()} />}>
+                <Switch fallback={<GalleryView header={renderTitleBar()} />}>
+                    <Match when={activeApplicationView() === 'home'}>
+                        <HomeView header={renderTitleBar()} />
+                    </Match>
+                    <Match when={activeApplicationView() === 'gallery'}>
+                        <GalleryView header={renderTitleBar()} />
+                    </Match>
+                    <Match when={activeApplicationView() === 'duplicates'}>
+                        <DuplicateFinderView header={renderTitleBar()} />
+                    </Match>
+                </Switch>
+
                 <Sonner position="bottom-right" useRichColors />
                 <SettingsModal
                     isOpen={system.isSettingsOpen()}

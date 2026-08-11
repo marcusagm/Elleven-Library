@@ -1,0 +1,124 @@
+/* --- Title Bar Layout --- */
+.titlebar {
+    display: flex;
+    align-items: center;
+    height: var(--titlebar-height, 38px);
+    /* background-color: var(--bg-header); */
+    border-bottom: 1px solid var(--border-subtle);
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+    z-index: 100;
+    flex-shrink: 0;
+}
+
+/* macOS: reserve space for native traffic lights */
+.titlebar--macos {
+    padding-left: 78px;
+}
+
+/* --- Platform Area (Window Controls) --- */
+.titlebar-platform-area {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* --- Window Controls (Windows / Linux only) --- */
+.titlebar-window-controls {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.titlebar-window-control-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-out),
+                color var(--duration-fast) var(--ease-out);
+    padding: 0;
+}
+
+.titlebar-window-control-button:hover {
+    background-color: var(--bg-surface-3);
+    color: var(--text-primary);
+}
+
+.titlebar-window-control-close:hover {
+    background-color: var(--p-error-500);
+    color: var(--p-neutral-0);
+}
+
+/* --- Navigation (Tabs) --- */
+.titlebar-navigation {
+    display: flex;
+    align-items: flex-end; /* Align tabs to the bottom */
+    /* gap: var(--p-space-xxs); */
+    padding: 0 var(--p-space-s);
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.titlebar-navigation-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 30px; /* Slightly taller to sit flush */
+    background: transparent;
+    border: 1px solid;
+    border-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0),
+      var(--border-default)
+    ) 1 100%;
+    border-top: 0;
+    border-bottom: none;
+    /* border-radius: var(--radius-m) var(--radius-m) 0 0; */
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    transition: all var(--duration-fast) var(--ease-out)
+}
+
+.titlebar-navigation-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+.titlebar-navigation-button:hover:not(.titlebar-navigation-button--active) {
+    background: linear-gradient(180deg, var(--bg-page) 0%, var(--bg-surface-2) 100%);
+    color: var(--text-primary);
+}
+
+.titlebar-navigation-button--active {
+    background: linear-gradient(180deg, var(--bg-page) 0%, var(--bg-surface-active) 100%);
+    border-color: transparent;
+    border-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0),
+      var(--border-active)
+    ) 1 100%;
+    border-bottom: 1px solid var(--bg-subtle); /* Cover the titlebar bottom border */
+    color: var(--text-primary);
+    margin-bottom: -1px; /* Pull down over the border */
+    padding-bottom: 1px;
+}
+
+.titlebar-navigation-button--active:hover {
+    color: var(--text-primary);
+}
+
+/* --- Drag Region --- */
+.titlebar-drag-region {
+    flex: 1;
+    height: 100%;
+    min-width: 0;
+}

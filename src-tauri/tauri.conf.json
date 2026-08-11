@@ -10,6 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Mundam",
@@ -17,7 +18,15 @@
         "height": 800,
         "minHeight": 800,
         "minWidth": 1200,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "titleBarStyle": "Overlay",
+        "transparent": true,
+        "hiddenTitle": true,
+        "shadow": true,
+        "trafficLightPosition": {
+          "x": 16,
+          "y": 16
+        }
       }
     ],
     "security": {

@@ -24,9 +24,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  
-  background-color: var(--border-default);
-  
+
+  background-color: var(--border-subtle);
+
   transition: background-color var(--transition-fast);
 }
 

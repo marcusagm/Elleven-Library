@@ -120,6 +120,12 @@
 
 body {
     background-color: var(--bg-page);
+    /* background-color: var(--bg-backdrop);
+    backdrop-filter: var(--bg-backdrop-filter);
+    -webkit-backdrop-filter: var(--bg-backdrop-filter);
+    -moz-backdrop-filter: var(--bg-backdrop-filter);
+    -ms-backdrop-filter: var(--bg-backdrop-filter); */
+
     color: var(--text-primary);
     font-family: var(--font-main);
     font-size: var(--p-font-size-s);
@@ -198,8 +204,16 @@ textarea:focus {
     flex-direction: column;
 }
 
+.welcome-screen-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
 .welcome-screen {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;

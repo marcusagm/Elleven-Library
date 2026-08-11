@@ -144,6 +144,9 @@ export const AppShell: Component<AppShellProperties> = props => {
 
     return (
         <div class="app-shell">
+            {/* Title Bar / Header */}
+            {props.header && <header class="shell-header">{props.header}</header>}
+
             <ResizablePanelGroup
                 direction="horizontal"
                 class="shell-body"
