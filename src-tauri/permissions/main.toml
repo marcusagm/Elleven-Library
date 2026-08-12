@@ -331,3 +331,23 @@ commands.allow = ["copy_files_to_clipboard"]
 identifier = "allow-rename-file"
 description = "Enables rename_file"
 commands.allow = ["rename_file"]
+
+[[permission]]
+identifier = "allow-toggle-favorite"
+description = "Enables toggle_favorite"
+commands.allow = ["toggle_favorite"]
+
+[[permission]]
+identifier = "allow-move-to-trash"
+description = "Enables move_to_trash"
+commands.allow = ["move_to_trash"]
+
+[[permission]]
+identifier = "allow-restore-from-trash"
+description = "Enables restore_from_trash"
+commands.allow = ["restore_from_trash"]
+
+[[permission]]
+identifier = "allow-empty-trash"
+description = "Enables empty_trash"
+commands.allow = ["empty_trash"]

@@ -78,6 +78,10 @@ pub struct Asset {
     pub rating: Option<i32>,
     /// Free-text personal notes
     pub notes: Option<String>,
+    /// Is favorite
+    pub is_favorite: bool,
+    /// Timestamp of when the asset was sent to trash
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 /// A Domain entity representing a single color extracted from an asset's palette.
@@ -171,6 +175,10 @@ pub struct AssetSummaryDto {
     pub rating: i32,
     /// Free-text personal notes
     pub notes: Option<String>,
+    /// Is favorite
+    pub is_favorite: bool,
+    /// Timestamp of when the asset was sent to trash
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 /// A wrapper for paginated asset summaries including total count.
@@ -209,6 +217,12 @@ pub struct LibraryStats {
     pub total_size_bytes: i64,
     /// Number of assets that have no tags assigned.
     pub untagged_assets: i64,
+    /// Number of assets that have at least one tag.
+    pub has_tags_assets: i64,
+    /// Number of assets marked as favorite.
+    pub favorite_assets: i64,
+    /// Number of assets in the trash.
+    pub trash_assets: i64,
     /// Distribution of assets across tags.
     pub tag_counts: Vec<TagCount>,
     /// Direct asset counts per folder.
@@ -236,6 +250,12 @@ pub struct AssetFilter {
     pub tags: Option<Vec<String>>,
     /// Filter to only get assets without any tags
     pub untagged: Option<bool>,
+    /// Filter to only get assets with tags
+    pub has_tags: Option<bool>,
+    /// Filter to only get favorite assets
+    pub favorites_only: Option<bool>,
+    /// Filter to only get trashed assets
+    pub trash_only: Option<bool>,
     /// Whether to include assets from subfolders recursively
     pub recursive: Option<bool>,
     /// Field to sort by (e.g., "filename", "size", "created_at")

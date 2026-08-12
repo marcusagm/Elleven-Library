@@ -633,19 +633,19 @@ pub fn copy_files_to_clipboard(paths: Vec<String>) -> Result<(), String> {
             return Ok(());
         }
         let script = String::from("ObjC.import('AppKit');\nvar pb = $.NSPasteboard.generalPasteboard;\npb.clearContents;\nfunction run(argv) {\nvar urls = $.NSMutableArray.alloc.init;\nfor (var i = 0; i < argv.length; i++) {\nurls.addObject($.NSURL.fileURLWithPath(argv[i]));\n}\npb.writeObjects(urls);\n}");
-        
+
         let mut cmd = std::process::Command::new("osascript");
         cmd.arg("-l").arg("JavaScript").arg("-e").arg(&script);
         for path in paths.iter() {
             cmd.arg(path);
         }
-        
+
         cmd.output().map_err(|e| e.to_string())?;
     }
-    
+
     // For Windows/Linux, copying actual files to clipboard natively requires extra crates like `arboard`.
     // We just do MacOS as Mundam is primarily MacOS currently.
-    
+
     Ok(())
 }
 
@@ -656,4 +656,138 @@ pub async fn rename_file(old_path: String, new_path: String) -> Result<(), Strin
     tokio::fs::rename(old_path, new_path)
         .await
         .map_err(|e| e.to_string())
+}
+
+/// RPC Command to toggle the favorite status of an asset.
+///
+/// # Arguments
+///
+/// * `ledger` - The asset ledger.
+/// * `asset_id` - The ID of the asset.
+///
+/// # Returns
+///
+/// The updated asset as an Asset placeholder.
+#[tauri::command]
+pub async fn toggle_favorite(
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    asset_id: String,
+) -> AppResult<Asset> {
+    ledger
+        .execute(LedgerCommand::ToggleFavorite(
+            crate::core::ledger::command::ToggleFavoritePayload { asset_id },
+        ))
+        .await
+}
+
+/// RPC Command to move an asset to the trash.
+///
+/// This moves the physical file to the local app data trash folder,
+/// and updates the database record with a deleted_at timestamp.
+///
+/// # Arguments
+///
+/// * `app_handle` - The Tauri app handle.
+/// * `ledger` - The asset ledger.
+/// * `queries` - The query service to fetch current asset paths.
+/// * `asset_id` - The ID of the asset to trash.
+///
+/// # Returns
+///
+/// The updated asset as an Asset placeholder.
+#[tauri::command]
+pub async fn move_to_trash(
+    _app_handle: tauri::AppHandle,
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    _queries: State<'_, AssetQueryService>,
+    asset_id: String,
+) -> AppResult<Asset> {
+
+    let updated = ledger
+        .execute(LedgerCommand::MoveToTrash(
+            crate::core::ledger::command::MoveToTrashPayload {
+                asset_id: asset_id.clone(),
+            },
+        ))
+        .await?;
+
+    Ok(updated)
+}
+
+/// RPC Command to restore an asset from the trash.
+///
+/// This moves the physical file back to its original location
+/// and clears the deleted_at timestamp in the database.
+///
+/// # Arguments
+///
+/// * `app_handle` - The Tauri app handle.
+/// * `ledger` - The asset ledger.
+/// * `queries` - The query service.
+/// * `asset_id` - The ID of the asset to restore.
+///
+/// # Returns
+///
+/// The updated asset as an Asset placeholder.
+#[tauri::command]
+pub async fn restore_from_trash(
+    _app_handle: tauri::AppHandle,
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    _queries: State<'_, AssetQueryService>,
+    asset_id: String,
+) -> AppResult<Asset> {
+
+    let updated = ledger
+        .execute(LedgerCommand::RestoreFromTrash(
+            crate::core::ledger::command::RestoreFromTrashPayload {
+                asset_id: asset_id.clone(),
+            },
+        ))
+        .await?;
+
+    Ok(updated)
+}
+
+/// RPC Command to permanently delete all items in the trash.
+///
+/// Physical files in the trash folder are removed, and logical
+/// records are physically deleted from the database.
+///
+/// # Arguments
+///
+/// * `app_handle` - The Tauri app handle.
+/// * `ledger` - The asset ledger.
+/// * `pool_manager` - The database connection pool manager.
+///
+/// # Returns
+///
+/// The number of items successfully deleted.
+#[tauri::command]
+pub async fn empty_trash(
+    _app_handle: tauri::AppHandle,
+    ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
+    pool_manager: State<'_, Arc<crate::infra::database::manager::DbManager>>,
+) -> AppResult<usize> {
+    let pool = pool_manager.pool();
+
+    // Get all trashed assets
+    let trashed = sqlx::query!("SELECT id as \"id!\", path as \"path!\" FROM assets WHERE deleted_at IS NOT NULL")
+        .fetch_all(pool)
+        .await
+        .map_err(|e| crate::core::error::AppError::Database(e))?;
+
+    let mut deleted_count = 0;
+
+    for record in trashed {
+        let path = std::path::PathBuf::from(&record.path);
+
+        let _ = ledger.execute(LedgerCommand::DeleteAsset {
+            asset_id: Some(record.id.clone()),
+            path: Some(path.clone()),
+            physical_delete: true
+        }).await;
+        deleted_count += 1;
+    }
+
+    Ok(deleted_count)
 }

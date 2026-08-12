@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            a.id as \"id!\", a.name as \"name!\", a.path as \"path!\", a.state as \"state!\",\n            a.format_type as \"format_type!\", a.family as \"family!\", a.file_size as \"file_size!\",\n            a.created_at as \"created_at: DateTime<Utc>\",\n            a.modified_at as \"modified_at: DateTime<Utc>\",\n            a.added_at as \"added_at: DateTime<Utc>\",\n            a.updated_at as \"updated_at: DateTime<Utc>\",\n            a.folder_id as \"folder_id?\",\n            a.thumbnail_path as \"thumbnail_path?\",\n            m.width as \"width: i64\",\n            m.height as \"height: i64\",\n            a.rating as \"rating: i64\",\n            a.notes as \"notes?\",\n            m.duration_secs as \"duration_secs: f64\",\n            m.technical_payload as \"technical_payload: serde_json::Value\",\n            m.semantic_payload as \"semantic_payload: serde_json::Value\",\n            a.dominant_color as \"dominant_color: serde_json::Value\"\n        FROM assets a\n        LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id\n        ",
+  "query": "\n        SELECT\n            a.id as \"id!\", a.name as \"name!\", a.path as \"path!\", a.state as \"state!\",\n            a.format_type as \"format_type!\", a.family as \"family!\", a.file_size as \"file_size!\",\n            a.created_at as \"created_at: DateTime<Utc>\",\n            a.modified_at as \"modified_at: DateTime<Utc>\",\n            a.added_at as \"added_at: DateTime<Utc>\",\n            a.updated_at as \"updated_at: DateTime<Utc>\",\n            a.folder_id as \"folder_id?\",\n            a.thumbnail_path as \"thumbnail_path?\",\n            a.rating as \"rating: i64\",\n            a.notes as \"notes?\",\n            a.is_favorite as \"is_favorite: bool\",\n            a.deleted_at as \"deleted_at: DateTime<Utc>\",\n            m.width as \"width: i64\",\n            m.height as \"height: i64\",\n            m.duration_secs as \"duration_secs: f64\",\n            m.technical_payload as \"technical_payload: serde_json::Value\",\n            m.semantic_payload as \"semantic_payload: serde_json::Value\",\n            a.dominant_color as \"dominant_color: serde_json::Value\"\n        FROM assets a\n        LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id\n        WHERE a.id = ?\n        ",
   "describe": {
     "columns": [
       {
@@ -69,48 +69,58 @@
         "type_info": "Text"
       },
       {
-        "name": "width: i64",
+        "name": "rating: i64",
         "ordinal": 13,
         "type_info": "Integer"
       },
       {
-        "name": "height: i64",
-        "ordinal": 14,
-        "type_info": "Integer"
-      },
-      {
-        "name": "rating: i64",
-        "ordinal": 15,
-        "type_info": "Integer"
-      },
-      {
         "name": "notes?",
-        "ordinal": 16,
+        "ordinal": 14,
         "type_info": "Text"
       },
       {
-        "name": "duration_secs: f64",
+        "name": "is_favorite: bool",
+        "ordinal": 15,
+        "type_info": "Bool"
+      },
+      {
+        "name": "deleted_at: DateTime<Utc>",
+        "ordinal": 16,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "width: i64",
         "ordinal": 17,
+        "type_info": "Integer"
+      },
+      {
+        "name": "height: i64",
+        "ordinal": 18,
+        "type_info": "Integer"
+      },
+      {
+        "name": "duration_secs: f64",
+        "ordinal": 19,
         "type_info": "Float"
       },
       {
         "name": "technical_payload: serde_json::Value",
-        "ordinal": 18,
+        "ordinal": 20,
         "type_info": "Text"
       },
       {
         "name": "semantic_payload: serde_json::Value",
-        "ordinal": 19,
+        "ordinal": 21,
         "type_info": "Text"
       },
       {
         "name": "dominant_color: serde_json::Value",
-        "ordinal": 20,
+        "ordinal": 22,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -128,6 +138,8 @@
       true,
       true,
       true,
+      false,
+      true,
       true,
       true,
       true,
@@ -136,5 +148,5 @@
       true
     ]
   },
-  "hash": "6a286f57db6b71e58fd023b8231254b03f990a985d14fcb96d7771143ee6c505"
+  "hash": "350af90071c39cada3f1c068938c9465e6afd1fd553798391188c2f45bd2c128"
 }

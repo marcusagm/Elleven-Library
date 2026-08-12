@@ -1,5 +1,6 @@
 import { Component, JSX, Show } from 'solid-js';
 import { Thumbnail } from './Thumbnail';
+import { Heart, CheckCircle2 } from 'lucide-solid';
 import { AssetItemContainer } from './AssetItemContainer';
 import { AssetCardOverlay } from './AssetCardOverlay';
 import { AssetCardStacked } from './AssetCardStacked';
@@ -84,17 +85,8 @@ export const AssetCard: Component<AssetCardProps> = (props: AssetCardProps): JSX
             getItemInfo={props.getItemInfo}
         >
             {() => (
-                <div
-                    class="asset-card-content"
-                    style={{
-                        width: '100%',
-                        height: '100%',
-                        'pointer-events': 'none',
-                        display: 'flex',
-                        'flex-direction': 'column'
-                    }}
-                >
-                    <div style={{ position: 'relative', 'flex-grow': 1, 'min-height': 0 }}>
+                <div class="asset-card-content">
+                    <div class="asset-card-media-wrapper">
                         <Thumbnail
                             id={props.item.id}
                             src={props.item.path}
@@ -105,6 +97,36 @@ export const AssetCard: Component<AssetCardProps> = (props: AssetCardProps): JSX
                             mediaType={props.item.media_type}
                             state={props.item.state}
                         />
+
+                        {/* Top Right Overlay for Selection and Favorites */}
+                        <div class="asset-card-actions">
+                            <Show when={props.isSelected}>
+                                <div class="asset-card-selection-icon">
+                                    <CheckCircle2
+                                        size={20}
+                                        fill="currentColor"
+                                        color="var(--bg-secondary)"
+                                    />
+                                </div>
+                            </Show>
+                            <div
+                                class={`asset-card-favorite-icon ${props.item.is_favorite ? 'is-favorite' : ''}`}
+                                onClick={event => {
+                                    event.stopPropagation();
+                                    const itemId = props.item.id;
+                                    import('../../../../core/store/library/itemActions').then(
+                                        ({ itemActions }) => {
+                                            itemActions.toggleItemFavorite(itemId);
+                                        }
+                                    );
+                                }}
+                            >
+                                <Heart
+                                    size={20}
+                                    fill={props.item.is_favorite ? 'currentColor' : 'none'}
+                                />
+                            </div>
+                        </div>
 
                         {/* Metadata Overlay Component */}
                         <Show when={preferences.metadataPosition === 'overlay'}>

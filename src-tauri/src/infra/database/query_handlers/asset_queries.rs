@@ -28,6 +28,8 @@ pub async fn find_all(pool: &SqlitePool, _registry: &crate::core::formats::regis
             m.height as "height: i64",
             a.rating as "rating: i64",
             a.notes as "notes?",
+            a.is_favorite as "is_favorite: bool",
+            a.deleted_at as "deleted_at: DateTime<Utc>",
             m.duration_secs as "duration_secs: f64",
             m.technical_payload as "technical_payload: serde_json::Value",
             m.semantic_payload as "semantic_payload: serde_json::Value",
@@ -57,6 +59,8 @@ pub async fn find_all(pool: &SqlitePool, _registry: &crate::core::formats::regis
             thumbnail_path: r.thumbnail_path,
             rating: r.rating,
             notes: r.notes,
+            is_favorite: r.is_favorite,
+            deleted_at: r.deleted_at,
             width: r.width,
             height: r.height,
             duration_secs: r.duration_secs,
@@ -92,6 +96,8 @@ pub async fn get_by_id(pool: &SqlitePool, _registry: &crate::core::formats::regi
             a.thumbnail_path as "thumbnail_path?",
             a.rating as "rating: i64",
             a.notes as "notes?",
+            a.is_favorite as "is_favorite: bool",
+            a.deleted_at as "deleted_at: DateTime<Utc>",
             m.width as "width: i64",
             m.height as "height: i64",
             m.duration_secs as "duration_secs: f64",
@@ -124,6 +130,8 @@ pub async fn get_by_id(pool: &SqlitePool, _registry: &crate::core::formats::regi
             thumbnail_path: r.thumbnail_path,
             rating: r.rating,
             notes: r.notes,
+            is_favorite: r.is_favorite,
+            deleted_at: r.deleted_at,
             width: r.width,
             height: r.height,
             duration_secs: r.duration_secs,
@@ -163,7 +171,7 @@ pub async fn list_paginated(
             a.folder_id as folder_id, a.thumbnail_path as thumbnail_path, 
             a.file_size as file_size, 
             m.width as width, m.height as height, 
-            a.rating as rating, a.notes as notes 
+            a.rating as rating, a.notes as notes, a.is_favorite as is_favorite, a.deleted_at as deleted_at 
         FROM assets a
         LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id
         WHERE 1=1 
@@ -238,6 +246,21 @@ pub async fn list_paginated(
             query_builder.push(" AND a.id NOT IN (SELECT asset_id FROM asset_tags)");
         }
     }
+
+    if let Some(true) = filter.trash_only {
+        query_builder.push(" AND a.deleted_at IS NOT NULL");
+    } else {
+        query_builder.push(" AND a.deleted_at IS NULL");
+    }
+
+    if let Some(true) = filter.favorites_only {
+        query_builder.push(" AND a.is_favorite = 1");
+    }
+
+    if let Some(true) = filter.has_tags {
+        query_builder.push(" AND a.id IN (SELECT asset_id FROM asset_tags)");
+    }
+
 
     // --- Sorting Logic ---
     let allowed_cols = [
@@ -327,6 +350,8 @@ pub async fn get_asset_by_id(pool: &SqlitePool, _registry: &crate::core::formats
             a.thumbnail_path as "thumbnail_path?",
             a.rating as "rating: i64",
             a.notes as "notes?",
+            a.is_favorite as "is_favorite: bool",
+            a.deleted_at as "deleted_at: DateTime<Utc>",
             m.width as "width: i64",
             m.height as "height: i64",
             m.duration_secs as "duration_secs: f64",
@@ -359,6 +384,8 @@ pub async fn get_asset_by_id(pool: &SqlitePool, _registry: &crate::core::formats
         thumbnail_path: row.thumbnail_path,
         rating: row.rating,
         notes: row.notes,
+        is_favorite: row.is_favorite,
+        deleted_at: row.deleted_at,
         width: row.width,
         height: row.height,
         duration_secs: row.duration_secs,
@@ -384,6 +411,8 @@ pub async fn find_asset_by_path(pool: &SqlitePool, _registry: &crate::core::form
             a.thumbnail_path as "thumbnail_path?",
             a.rating as "rating: i64",
             a.notes as "notes?",
+            a.is_favorite as "is_favorite: bool",
+            a.deleted_at as "deleted_at: DateTime<Utc>",
             m.width as "width: i64",
             m.height as "height: i64",
             m.duration_secs as "duration_secs: f64",
@@ -416,6 +445,8 @@ pub async fn find_asset_by_path(pool: &SqlitePool, _registry: &crate::core::form
             thumbnail_path: r.thumbnail_path,
             rating: r.rating,
             notes: r.notes,
+            is_favorite: r.is_favorite,
+            deleted_at: r.deleted_at,
             width: r.width,
             height: r.height,
             duration_secs: r.duration_secs,
@@ -446,6 +477,8 @@ pub async fn find_assets_by_size(
             a.updated_at as "updated_at: DateTime<Utc>", 
             a.folder_id as "folder_id?", a.thumbnail_path as "thumbnail_path?", 
             a.rating as "rating?", a.notes as "notes?", 
+            a.is_favorite as "is_favorite: bool",
+            a.deleted_at as "deleted_at: DateTime<Utc>", 
             m.width as "width?", m.height as "height?", 
             m.duration_secs as "duration_secs: f64",
             m.technical_payload as "technical_payload: serde_json::Value",
@@ -481,6 +514,8 @@ pub async fn find_assets_by_size(
             thumbnail_path: r.thumbnail_path,
             rating: r.rating,
             notes: r.notes,
+            is_favorite: r.is_favorite,
+            deleted_at: r.deleted_at,
             width: r.width,
             height: r.height,
             duration_secs: r.duration_secs,
@@ -574,6 +609,21 @@ pub async fn get_asset_count(pool: &SqlitePool, _registry: &crate::core::formats
         }
     }
 
+    if let Some(true) = filter.trash_only {
+        query_builder.push(" AND deleted_at IS NOT NULL");
+    } else {
+        query_builder.push(" AND deleted_at IS NULL");
+    }
+
+    if let Some(true) = filter.favorites_only {
+        query_builder.push(" AND is_favorite = 1");
+    }
+
+    if let Some(true) = filter.has_tags {
+        query_builder.push(" AND id IN (SELECT asset_id FROM asset_tags)");
+    }
+
+
     let row = query_builder.build().fetch_one(pool).await?;
     let count: i64 = sqlx::Row::get(&row, 0);
 
@@ -594,6 +644,8 @@ pub async fn get_assets_needing_repair(pool: &SqlitePool, _registry: &crate::cor
             a.thumbnail_path as "thumbnail_path?",
             a.rating as "rating: i64",
             a.notes as "notes?",
+            a.is_favorite as "is_favorite: bool",
+            a.deleted_at as "deleted_at: DateTime<Utc>",
             m.width as "width: i64",
             m.height as "height: i64",
             m.duration_secs as "duration_secs: f64",
@@ -626,6 +678,8 @@ pub async fn get_assets_needing_repair(pool: &SqlitePool, _registry: &crate::cor
             thumbnail_path: r.thumbnail_path,
             rating: r.rating,
             notes: r.notes,
+            is_favorite: r.is_favorite,
+            deleted_at: r.deleted_at,
             width: r.width,
             height: r.height,
             duration_secs: r.duration_secs,

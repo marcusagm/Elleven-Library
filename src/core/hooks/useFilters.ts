@@ -28,6 +28,15 @@ export const useFilters = () => {
         get filterUntagged() {
             return filterState.filterUntagged;
         },
+        get filterHasTags() {
+            return filterState.filterHasTags;
+        },
+        get filterFavorites() {
+            return filterState.filterFavorites;
+        },
+        get filterTrash() {
+            return filterState.filterTrash;
+        },
         /** Current text search query */
         get searchQuery() {
             return filterState.searchQuery;
@@ -62,6 +71,12 @@ export const useFilters = () => {
         toggleTag: withRefresh(filterActions.toggleTag),
         setUntagged: withRefresh(filterActions.setUntagged),
         toggleUntagged: withRefresh(filterActions.toggleUntagged),
+        setHasTags: withRefresh(filterActions.setHasTags),
+        toggleHasTags: withRefresh(filterActions.toggleHasTags),
+        setFavorites: withRefresh(filterActions.setFavorites),
+        toggleFavorites: withRefresh(filterActions.toggleFavorites),
+        setTrash: withRefresh(filterActions.setTrash),
+        toggleTrash: withRefresh(filterActions.toggleTrash),
         setFolder: withRefresh(filterActions.setFolder),
         setFolderRecursiveView: withRefresh(filterActions.setFolderRecursiveView),
         /** Updates the text search query */

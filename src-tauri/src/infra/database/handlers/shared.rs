@@ -130,7 +130,9 @@ pub async fn fetch_asset_by_id(
             ame.duration_secs as "duration_secs: f64",
             ame.technical_payload as "technical_payload: serde_json::Value",
             ame.semantic_payload as "semantic_payload: serde_json::Value",
-            a.dominant_color as "dominant_color: serde_json::Value"
+            a.dominant_color as "dominant_color: serde_json::Value",
+            a.is_favorite as "is_favorite: bool",
+            a.deleted_at as "deleted_at: DateTime<Utc>"
         FROM assets a
         LEFT JOIN asset_metadata_envelope ame ON a.id = ame.asset_id
         WHERE a.id = ?
@@ -157,6 +159,8 @@ pub async fn fetch_asset_by_id(
         thumbnail_path: row.thumbnail_path,
         rating: row.rating,
         notes: row.notes,
+        is_favorite: row.is_favorite,
+        deleted_at: row.deleted_at,
         width: row.width,
         height: row.height,
         duration_secs: row.duration_secs,

@@ -1,9 +1,10 @@
 import { Component, createSignal, createEffect, untrack } from 'solid-js';
-import { Info, FileText, Calendar, HardDrive } from 'lucide-solid';
-import { AccordionItem, AccordionHeader, AccordionContent } from '../../../ui';
+import { Info, FileText, Calendar, HardDrive, Heart } from 'lucide-solid';
+import { AccordionItem, AccordionHeader, AccordionContent, Toggle } from '../../../ui';
 import { Input } from '../../../ui/Input';
 import { StarRating } from './StarRating.tsx';
 import { useLibrary } from '../../../../core/hooks';
+import { itemActions } from '../../../../core/store/library/itemActions';
 import { type AssetItem } from '../../../../types';
 import { formatFileSize, formatToDisplay } from '../../../../utils/format';
 import './CommonMetadata.css';
@@ -40,6 +41,7 @@ interface CommonMetadataProps {
  * />
  * ```
  */
+// eslint-disable-next-line complexity
 export const CommonMetadata: Component<CommonMetadataProps> = props => {
     /**
      * Creates a signal for the notes.
@@ -51,7 +53,7 @@ export const CommonMetadata: Component<CommonMetadataProps> = props => {
      * Gets the library instance.
      * @returns The library instance.
      */
-    const lib = useLibrary();
+    const library = useLibrary();
 
     /**
      * Creates an effect to update the notes when the item changes.
@@ -62,12 +64,12 @@ export const CommonMetadata: Component<CommonMetadataProps> = props => {
 
     /**
      * Handles the notes change event.
-     * @param val - The new notes value.
+     * @param value - The new notes value.
      */
-    const handleNotesChange = (val: string) => {
-        setNotes(val);
+    const handleNotesChange = (value: string) => {
+        setNotes(value);
         if (props.item) {
-            lib.updateItemNotes(props.item.id, val);
+            library.updateItemNotes(props.item.id, value);
         }
     };
 
@@ -77,7 +79,7 @@ export const CommonMetadata: Component<CommonMetadataProps> = props => {
      */
     const handleRatingChange = (rating: number) => {
         if (props.item) {
-            lib.updateItemRating(props.item.id, rating);
+            library.updateItemRating(props.item.id, rating);
         }
     };
 
@@ -94,13 +96,35 @@ export const CommonMetadata: Component<CommonMetadataProps> = props => {
                     <Input value={props.item?.filename || ''} disabled />
                 </div>
 
-                <div class="inspector-field-group">
-                    <label class="inspector-label">Rating</label>
-                    <div class="inspector-rating-container">
-                        <StarRating
-                            rating={props.item?.rating || 0}
-                            onChange={handleRatingChange}
-                        />
+                <div class="inspector-grid">
+                    <div class="inspector-field-group">
+                        <label class="inspector-label">Favorite</label>
+                        <Toggle
+                            pressed={props.item?.is_favorite || false}
+                            onPressedChange={() =>
+                                props.item && itemActions.toggleItemFavorite(props.item.id)
+                            }
+                            variant="outline"
+                            size="sm"
+                            class="inspector-favorite-toggle"
+                        >
+                            <Heart
+                                size={16}
+                                fill={props.item?.is_favorite ? 'currentColor' : 'none'}
+                                class={props.item?.is_favorite ? 'favorite-active-icon' : ''}
+                            />
+                            {props.item?.is_favorite ? 'Favorited' : 'Favorite'}
+                        </Toggle>
+                    </div>
+
+                    <div class="inspector-field-group">
+                        <label class="inspector-label">Rating</label>
+                        <div class="inspector-rating-container">
+                            <StarRating
+                                rating={props.item?.rating || 0}
+                                onChange={handleRatingChange}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -140,7 +164,7 @@ export const CommonMetadata: Component<CommonMetadataProps> = props => {
                     <textarea
                         class="inspector-notes-input"
                         value={notes()}
-                        onInput={e => handleNotesChange(e.currentTarget.value)}
+                        onInput={event => handleNotesChange(event.currentTarget.value)}
                         placeholder="Add observations..."
                         rows={3}
                     />

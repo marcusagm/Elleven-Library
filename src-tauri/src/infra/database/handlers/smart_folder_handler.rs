@@ -66,6 +66,8 @@ pub async fn handle_create_smart_folder(
         thumbnail_path: None,
         rating: None,
         notes: None,
+    is_favorite: false,
+    deleted_at: None,
     })
 }
 
@@ -120,6 +122,8 @@ pub async fn handle_update_smart_folder(
         thumbnail_path: None,
         rating: None,
         notes: None,
+    is_favorite: false,
+    deleted_at: None,
     })
 }
 
@@ -166,5 +170,7 @@ pub async fn handle_delete_smart_folder(
         thumbnail_path: None,
         rating: None,
         notes: None,
+    is_favorite: false,
+    deleted_at: None,
     })
 }

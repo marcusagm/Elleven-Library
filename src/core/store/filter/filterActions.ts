@@ -51,6 +51,37 @@ export const filterActions = {
         filterActions.setUntagged(!filterState.filterUntagged);
     },
 
+    setHasTags: (isActive: boolean) => {
+        setFilterState('filterHasTags', isActive);
+        if (isActive) {
+            setFilterState('selectedTags', []);
+            setFilterState('filterUntagged', false);
+        }
+        historyActions.pushHistory();
+    },
+
+    toggleHasTags: () => {
+        filterActions.setHasTags(!filterState.filterHasTags);
+    },
+
+    setFavorites: (isActive: boolean) => {
+        setFilterState('filterFavorites', isActive);
+        historyActions.pushHistory();
+    },
+
+    toggleFavorites: () => {
+        filterActions.setFavorites(!filterState.filterFavorites);
+    },
+
+    setTrash: (isActive: boolean) => {
+        setFilterState('filterTrash', isActive);
+        historyActions.pushHistory();
+    },
+
+    toggleTrash: () => {
+        filterActions.setTrash(!filterState.filterTrash);
+    },
+
     setFolder: (folderId: string | null) => {
         setFilterState('selectedFolderId', folderId);
         historyActions.pushHistory();
@@ -212,6 +243,9 @@ export const filterActions = {
             selectedTags: [],
             selectedFolderId: null,
             filterUntagged: false,
+            filterHasTags: false,
+            filterFavorites: false,
+            filterTrash: false,
             searchQuery: '',
             searchFuzzy: false,
             advancedSearch: null
@@ -223,6 +257,9 @@ export const filterActions = {
         return (
             filterState.selectedTags.length > 0 ||
             filterState.filterUntagged ||
+            filterState.filterHasTags ||
+            filterState.filterFavorites ||
+            filterState.filterTrash ||
             filterState.selectedFolderId !== null ||
             filterState.searchQuery !== '' ||
             filterState.advancedSearch !== null

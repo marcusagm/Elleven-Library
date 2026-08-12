@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT folder_id as \"folder_id: String\", COUNT(id) as \"count!: i64\"\n        FROM assets\n        WHERE folder_id IS NOT NULL\n        GROUP BY folder_id\n        ",
+  "query": "\n        SELECT folder_id as \"folder_id: String\", COUNT(id) as \"count!: i64\"\n        FROM assets\n        WHERE folder_id IS NOT NULL AND deleted_at IS NULL\n        GROUP BY folder_id\n        ",
   "describe": {
     "columns": [
       {
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "fad2383ae880133a9893155a0818aba4edd7cc3df60feb86f4cbcf41e4639071"
+  "hash": "723d3778bfef5af943312961530e8194a037628542fa862e70bd24190e0d254f"
 }

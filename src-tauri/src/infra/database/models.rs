@@ -37,6 +37,10 @@ pub struct AssetDb {
     pub rating: Option<i64>,
     /// Free-text personal notes
     pub notes: Option<String>,
+    /// Is favorite
+    pub is_favorite: bool,
+    /// Deleted at
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
 
     /// Width of the asset
     pub width: Option<i64>,
@@ -89,6 +93,10 @@ pub struct AssetSummaryDb {
     pub rating: Option<i64>,
     /// Free-text personal notes
     pub notes: Option<String>,
+    /// Is favorite
+    pub is_favorite: bool,
+    /// Deleted at
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// Dynamic metadata envelope for specific format capabilities.
@@ -210,6 +218,8 @@ impl From<AssetDb> for crate::core::models::Asset {
             thumbnail_path: row.thumbnail_path,
             rating: row.rating.map(|v| v as i32),
             notes: row.notes,
+            is_favorite: row.is_favorite,
+            deleted_at: row.deleted_at,
         }
     }
 }
@@ -236,6 +246,8 @@ impl From<AssetSummaryDb> for crate::core::models::AssetSummaryDto {
             height: row.height.map(|v| v as i32),
             rating: row.rating.unwrap_or(0) as i32,
             notes: row.notes,
+            is_favorite: row.is_favorite,
+            deleted_at: row.deleted_at,
         }
     }
 }

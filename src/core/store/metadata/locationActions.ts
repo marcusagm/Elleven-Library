@@ -55,6 +55,9 @@ export const locationActions = {
             setMetadataState('libraryStats', {
                 total_assets: stats.total_assets,
                 untagged_assets: stats.untagged_assets,
+                has_tags_assets: stats.has_tags_assets,
+                favorite_assets: stats.favorite_assets,
+                trash_assets: stats.trash_assets,
                 tag_counts: tagMap,
                 folder_counts: folderMap,
                 folder_counts_recursive: folderRecursiveMap

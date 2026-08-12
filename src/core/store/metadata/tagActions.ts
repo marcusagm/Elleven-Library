@@ -20,15 +20,15 @@ export const tagActions = {
 
         setMetadataState('tagUpdateVersion', version => version + 1);
 
-        if (stats) {
-            locationRefs.loadStats();
-        }
+        if (stats) locationRefs.loadStats();
 
         // Check if we need to refresh the library
         if (assets) {
             import('../filter').then(({ filterState }) => {
                 const isFilteringByTags =
-                    filterState.filterUntagged || filterState.selectedTags.length > 0;
+                    filterState.filterUntagged ||
+                    filterState.filterHasTags ||
+                    filterState.selectedTags.length > 0;
                 if (isFilteringByTags) {
                     import('../library').then(({ libraryActions }) => {
                         libraryActions.refreshAssets(false);
@@ -133,7 +133,6 @@ export const tagActions = {
         if (name !== null && name !== undefined) tagUpdates.name = name;
         if (color !== null && color !== undefined) tagUpdates.color = color;
         if (orderIndex !== null && orderIndex !== undefined) tagUpdates.order_index = orderIndex;
-
         if (parentId !== undefined) {
             tagUpdates.parent_id = parentId === null ? null : String(parentId);
         }
@@ -179,7 +178,6 @@ export const tagActions = {
                     }
                 }
             }
-
             // Delete in chunks or parallel? Sequential for now to ensure consistency
             // if DB has constraints, though usually it's fine.
             for (const tagId of toDelete) await tagService.deleteTag(tagId);

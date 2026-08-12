@@ -71,3 +71,17 @@
     align-items: center;
     height: var(--p-space-l);
 }
+
+.inspector-favorite-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+.inspector-favorite-toggle svg {
+    margin-right: var(--p-space-s);
+}
+
+.favorite-active-icon {
+    color: var(--color-primary-500);
+}

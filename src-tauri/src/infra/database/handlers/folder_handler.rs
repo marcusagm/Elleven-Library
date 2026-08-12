@@ -94,6 +94,8 @@ pub async fn handle_create_folder(
         thumbnail_path: None,
         rating: None,
         notes: None,
+    is_favorite: false,
+    deleted_at: None,
     })
 }
 
@@ -177,6 +179,8 @@ pub async fn handle_remove_folder(
         thumbnail_path: None,
         rating: None,
         notes: None,
+    is_favorite: false,
+    deleted_at: None,
     })
 }
 
@@ -271,5 +275,7 @@ pub async fn handle_rename_folder(
         thumbnail_path: None,
         rating: None,
         notes: None,
+    is_favorite: false,
+    deleted_at: None,
     })
 }

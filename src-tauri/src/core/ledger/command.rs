@@ -103,6 +103,30 @@ pub struct UpdateAssetNotesPayload {
     pub notes: String,
 }
 
+/// Payload for toggling an asset's favorite status.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToggleFavoritePayload {
+    /// The unique identifier of the target asset.
+    pub asset_id: String,
+}
+
+/// Payload for moving an asset to the trash.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MoveToTrashPayload {
+    /// The unique identifier of the target asset.
+    pub asset_id: String,
+}
+
+/// Payload for restoring an asset from the trash.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreFromTrashPayload {
+    /// The unique identifier of the target asset.
+    pub asset_id: String,
+}
+
 /// Payload for updating an asset's technical metadata (dimensions, etc).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -226,6 +250,12 @@ pub enum LedgerCommand {
     UpdateAssetRating(UpdateAssetRatingPayload),
     /// Update an asset's notes.
     UpdateAssetNotes(UpdateAssetNotesPayload),
+    /// Toggle an asset's favorite status.
+    ToggleFavorite(ToggleFavoritePayload),
+    /// Move an asset to trash.
+    MoveToTrash(MoveToTrashPayload),
+    /// Restore an asset from trash.
+    RestoreFromTrash(RestoreFromTrashPayload),
     /// Re-trigger color extraction for an asset.
     ReextractColors { asset_id: String },
     /// Regenerate thumbnails for an asset.

@@ -183,7 +183,7 @@ export const AppShell: Component<AppShellProperties> = props => {
                 <ResizablePanel
                     id="shell-inspector"
                     defaultSize={inspectorInitialSize}
-                    minSize={15}
+                    minSize={22}
                     maxSize={40}
                     class="shell-inspector"
                     isCollapsed={!isInspectorOpen()}

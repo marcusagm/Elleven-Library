@@ -164,6 +164,42 @@ pub async fn handle_update_notes(
     shared::fetch_asset_by_id(tx, &payload.asset_id).await
 }
 
+/// Toggles the favorite status for an asset.
+///
+/// # Arguments
+///
+/// * `tx` - The active database transaction.
+/// * `payload` - Contains the asset ID.
+///
+/// # Errors
+///
+/// Returns `AppError` if the database update fails.
+pub async fn handle_toggle_favorite(
+    tx: &mut Transaction<'_, Sqlite>,
+    payload: crate::core::ledger::command::ToggleFavoritePayload,
+) -> AppResult<Asset> {
+    let now = Utc::now();
+    sqlx::query!(
+        "UPDATE assets SET is_favorite = NOT is_favorite, updated_at = ? WHERE id = ?",
+        now,
+        payload.asset_id
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    shared::log_operation(
+        tx,
+        "TOGGLE_FAVORITE",
+        &payload.asset_id,
+        serde_json::json!({}),
+        "COMPLETED",
+        None,
+    )
+    .await?;
+
+    shared::fetch_asset_by_id(tx, &payload.asset_id).await
+}
+
 /// Corrects the stored format type of an asset.
 ///
 /// Used when the initial indexer guesses an incorrect format and a deeper

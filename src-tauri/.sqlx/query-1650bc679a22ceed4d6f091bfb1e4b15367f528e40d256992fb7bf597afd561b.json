@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE assets SET is_favorite = NOT is_favorite, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "1650bc679a22ceed4d6f091bfb1e4b15367f528e40d256992fb7bf597afd561b"
+}

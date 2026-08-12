@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            a.id as \"id!\", a.name as \"name!\", a.path as \"path!\", a.state as \"state!\",\n            a.format_type as \"format_type!\", a.family as \"family!\", a.file_size as \"file_size!\",\n            a.created_at as \"created_at: DateTime<Utc>\",\n            a.modified_at as \"modified_at: DateTime<Utc>\",\n            a.added_at as \"added_at: DateTime<Utc>\",\n            a.updated_at as \"updated_at: DateTime<Utc>\",\n            a.folder_id as \"folder_id?\",\n            a.thumbnail_path as \"thumbnail_path?\",\n            a.rating as \"rating: i64\",\n            a.notes as \"notes?\",\n            m.width as \"width: i64\",\n            m.height as \"height: i64\",\n            m.duration_secs as \"duration_secs: f64\",\n            m.technical_payload as \"technical_payload: serde_json::Value\",\n            m.semantic_payload as \"semantic_payload: serde_json::Value\",\n            a.dominant_color as \"dominant_color: serde_json::Value\"\n        FROM assets a\n        LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id\n        WHERE a.id = ?\n        ",
+  "query": "\n        SELECT\n            a.id as \"id!\", a.name as \"name!\", a.path as \"path!\", a.state as \"state!\",\n            a.format_type as \"format_type!\", a.family as \"family!\", a.file_size as \"file_size!\",\n            a.created_at as \"created_at: DateTime<Utc>\",\n            a.modified_at as \"modified_at: DateTime<Utc>\",\n            a.added_at as \"added_at: DateTime<Utc>\",\n            a.updated_at as \"updated_at: DateTime<Utc>\",\n            a.folder_id as \"folder_id?\",\n            a.thumbnail_path as \"thumbnail_path?\",\n            m.width as \"width: i64\",\n            m.height as \"height: i64\",\n            a.rating as \"rating: i64\",\n            a.notes as \"notes?\",\n            a.is_favorite as \"is_favorite: bool\",\n            a.deleted_at as \"deleted_at: DateTime<Utc>\",\n            m.duration_secs as \"duration_secs: f64\",\n            m.technical_payload as \"technical_payload: serde_json::Value\",\n            m.semantic_payload as \"semantic_payload: serde_json::Value\",\n            a.dominant_color as \"dominant_color: serde_json::Value\"\n        FROM assets a\n        LEFT JOIN asset_metadata_envelope m ON a.id = m.asset_id\n        ",
   "describe": {
     "columns": [
       {
@@ -69,48 +69,58 @@
         "type_info": "Text"
       },
       {
-        "name": "rating: i64",
+        "name": "width: i64",
         "ordinal": 13,
         "type_info": "Integer"
       },
       {
-        "name": "notes?",
+        "name": "height: i64",
         "ordinal": 14,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "width: i64",
+        "name": "rating: i64",
         "ordinal": 15,
         "type_info": "Integer"
       },
       {
-        "name": "height: i64",
+        "name": "notes?",
         "ordinal": 16,
-        "type_info": "Integer"
+        "type_info": "Text"
+      },
+      {
+        "name": "is_favorite: bool",
+        "ordinal": 17,
+        "type_info": "Bool"
+      },
+      {
+        "name": "deleted_at: DateTime<Utc>",
+        "ordinal": 18,
+        "type_info": "Datetime"
       },
       {
         "name": "duration_secs: f64",
-        "ordinal": 17,
+        "ordinal": 19,
         "type_info": "Float"
       },
       {
         "name": "technical_payload: serde_json::Value",
-        "ordinal": 18,
+        "ordinal": 20,
         "type_info": "Text"
       },
       {
         "name": "semantic_payload: serde_json::Value",
-        "ordinal": 19,
+        "ordinal": 21,
         "type_info": "Text"
       },
       {
         "name": "dominant_color: serde_json::Value",
-        "ordinal": 20,
+        "ordinal": 22,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
@@ -130,11 +140,13 @@
       true,
       true,
       true,
+      false,
+      true,
       true,
       true,
       true,
       true
     ]
   },
-  "hash": "44301c1c8f9b2a82e7bd410c9ee2f62e7ec141406a000ae3cc124cd18e0c9938"
+  "hash": "eee2d180dbe530ba7f250a26ab9245627dfd7fcb8c5fdaa2dfcecd6890dec4bd"
 }

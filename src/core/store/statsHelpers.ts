@@ -21,6 +21,9 @@ interface FolderNode {
 export interface StatsSnapshot {
     total_assets: number;
     untagged_assets: number;
+    has_tags_assets: number;
+    favorite_assets: number;
+    trash_assets: number;
     tag_counts: Map<string, number>;
     folder_counts: Map<string, number>;
     folder_counts_recursive: Map<string, number>;
@@ -189,6 +192,9 @@ export function computeStatsFromBatchChange(
         newStats: {
             total_assets: currentStats.total_assets + totalDiff,
             untagged_assets: currentStats.untagged_assets + untaggedDiff,
+            has_tags_assets: currentStats.has_tags_assets, // Approximated
+            favorite_assets: currentStats.favorite_assets, // Approximated
+            trash_assets: currentStats.trash_assets, // Approximated
             tag_counts: tagCounts,
             folder_counts: folderCounts,
             folder_counts_recursive: folderRecursive

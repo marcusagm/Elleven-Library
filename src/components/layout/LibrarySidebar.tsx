@@ -34,9 +34,9 @@ export const LibrarySidebar: Component = () => {
     const persistedLayout = getPersistedLayout();
 
     // Initial sizes for the vertical panels
-    const libraryPanelSize = persistedLayout?.[0] ?? 15;
-    const foldersPanelSize = persistedLayout?.[1] ?? 35;
-    const tagsPanelSize = persistedLayout?.[2] ?? 30;
+    const libraryPanelSize = persistedLayout?.[0] ?? 28;
+    const foldersPanelSize = persistedLayout?.[1] ?? 22;
+    const tagsPanelSize = persistedLayout?.[2] ?? 20;
     const smartFoldersPanelSize = persistedLayout?.[3] ?? 20;
 
     /**
@@ -54,7 +54,7 @@ export const LibrarySidebar: Component = () => {
                 <ResizablePanel
                     id="sidebar-library"
                     defaultSize={libraryPanelSize}
-                    minSize={10}
+                    minSize={28}
                     class="panel-lib"
                 >
                     <LibrarySidebarPanel />
@@ -65,7 +65,7 @@ export const LibrarySidebar: Component = () => {
                 <ResizablePanel
                     id="sidebar-folders"
                     defaultSize={foldersPanelSize}
-                    minSize={15}
+                    minSize={20}
                     class="panel-folders"
                 >
                     <FolderTreeSidebarPanel />
@@ -76,7 +76,7 @@ export const LibrarySidebar: Component = () => {
                 <ResizablePanel
                     id="sidebar-tags"
                     defaultSize={tagsPanelSize}
-                    minSize={15}
+                    minSize={20}
                     class="panel-tags"
                 >
                     <TagTreeSidebarPanel />
@@ -87,7 +87,7 @@ export const LibrarySidebar: Component = () => {
                 <ResizablePanel
                     id="sidebar-smart"
                     defaultSize={smartFoldersPanelSize}
-                    minSize={10}
+                    minSize={20}
                     class="panel-smart"
                 >
                     <SmartFoldersSidebarPanel />

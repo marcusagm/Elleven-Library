@@ -120,6 +120,20 @@ export interface AssetItem {
      * @type {string | null}
      */
     dominant_color: string | null;
+
+    /**
+     * Is favorite
+     *
+     * @type {boolean}
+     */
+    is_favorite: boolean;
+
+    /**
+     * Deleted at timestamp
+     *
+     * @type {string | null}
+     */
+    deleted_at: string | null;
 }
 
 /**
@@ -182,6 +196,9 @@ export interface AssetFilter {
     recursive?: boolean;
     tags?: string[];
     untagged?: boolean;
+    hasTags?: boolean;
+    favoritesOnly?: boolean;
+    trashOnly?: boolean;
     sortBy?: string;
     sortOrder?: string;
 }

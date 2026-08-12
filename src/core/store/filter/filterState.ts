@@ -18,6 +18,9 @@ export interface FilterSnapshot {
     selectedFolderId: string | null;
     folderRecursiveView: boolean;
     filterUntagged: boolean;
+    filterHasTags: boolean;
+    filterFavorites: boolean;
+    filterTrash: boolean;
     searchQuery: string;
     /** Whether to use fuzzy matching for the search query */
     searchFuzzy: boolean;
@@ -43,6 +46,9 @@ export const defaultSnapshot: FilterSnapshot = {
     selectedFolderId: null,
     folderRecursiveView: false,
     filterUntagged: false,
+    filterHasTags: false,
+    filterFavorites: false,
+    filterTrash: false,
     searchQuery: '',
     searchFuzzy: false,
     advancedSearch: null,
@@ -77,6 +83,9 @@ export const [filterState, setFilterState] = createStore<FilterState>({
     selectedTags: [],
     selectedFolderId: null,
     filterUntagged: false,
+    filterHasTags: false,
+    filterFavorites: false,
+    filterTrash: false,
     searchQuery: '',
     searchFuzzy: false,
     advancedSearch: null,

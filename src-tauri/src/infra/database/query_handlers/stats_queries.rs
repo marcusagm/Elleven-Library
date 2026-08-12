@@ -11,11 +11,14 @@ pub async fn get_library_stats(pool: &SqlitePool, _registry: &crate::core::forma
     let stats_row = sqlx::query!(
         r#"
         SELECT 
-            (SELECT COUNT(*) FROM assets) as "total_assets!: i64",
+            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL) as "total_assets!: i64",
             (SELECT COUNT(*) FROM folders) as "total_folders!: i64",
             (SELECT COUNT(*) FROM tags) as "total_tags!: i64",
-            (SELECT COALESCE(SUM(file_size), 0) FROM assets) as "total_size_bytes!: i64",
-            (SELECT COUNT(*) FROM assets WHERE id NOT IN (SELECT asset_id FROM asset_tags)) as "untagged_assets!: i64"
+            (SELECT COALESCE(SUM(file_size), 0) FROM assets WHERE deleted_at IS NULL) as "total_size_bytes!: i64",
+            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL AND id NOT IN (SELECT asset_id FROM asset_tags)) as "untagged_assets!: i64",
+            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL AND id IN (SELECT asset_id FROM asset_tags)) as "has_tags_assets!: i64",
+            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL AND is_favorite = 1) as "favorite_assets!: i64",
+            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NOT NULL) as "trash_assets!: i64"
         "#
     )
     .fetch_one(pool)
@@ -25,6 +28,7 @@ pub async fn get_library_stats(pool: &SqlitePool, _registry: &crate::core::forma
         r#"
         SELECT tag_id, COUNT(asset_id) as "count!: i64"
         FROM asset_tags
+        WHERE asset_id IN (SELECT id FROM assets WHERE deleted_at IS NULL)
         GROUP BY tag_id
         "#
     )
@@ -43,7 +47,7 @@ pub async fn get_library_stats(pool: &SqlitePool, _registry: &crate::core::forma
         r#"
         SELECT folder_id as "folder_id: String", COUNT(id) as "count!: i64"
         FROM assets
-        WHERE folder_id IS NOT NULL
+        WHERE folder_id IS NOT NULL AND deleted_at IS NULL
         GROUP BY folder_id
         "#
     )
@@ -97,6 +101,9 @@ pub async fn get_library_stats(pool: &SqlitePool, _registry: &crate::core::forma
         total_tags: stats_row.total_tags,
         total_size_bytes: stats_row.total_size_bytes,
         untagged_assets: stats_row.untagged_assets,
+        has_tags_assets: stats_row.has_tags_assets,
+        favorite_assets: stats_row.favorite_assets,
+        trash_assets: stats_row.trash_assets,
         tag_counts,
         folder_counts,
         folder_counts_recursive: Some(folder_counts_recursive),

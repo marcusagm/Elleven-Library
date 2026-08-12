@@ -24,6 +24,71 @@ export const itemActions = {
         }
     },
 
+    toggleItemFavorite: async (id: string) => {
+        try {
+            // Optimistic update
+            setLibraryState(
+                'items',
+                i => i.id === id,
+                'is_favorite',
+                (prev: boolean | undefined) => !prev
+            );
+            await invoke('toggle_favorite', { assetId: id });
+
+            import('../filter').then(({ filterState }) => {
+                if (filterState.filterFavorites) {
+                    import('./libraryActions').then(({ libraryActions }) => {
+                        libraryActions.refreshAssets(false);
+                    });
+                }
+            });
+            import('../metadata').then(({ metadataActions }) => {
+                metadataActions.loadStats();
+            });
+        } catch (err) {
+            console.error(`Failed to toggle favorite for ${id}:`, err);
+            // Revert optimistic update
+            setLibraryState(
+                'items',
+                i => i.id === id,
+                'is_favorite',
+                (prev: boolean | undefined) => !prev
+            );
+        }
+    },
+
+    moveToTrashAssets: async (ids: string[]) => {
+        for (const assetId of ids) {
+            try {
+                await invoke('move_to_trash', { assetId });
+            } catch (err) {
+                console.error(`Failed to move to trash ${assetId}:`, err);
+            }
+        }
+        import('./libraryActions').then(({ libraryActions }) => {
+            libraryActions.refreshAssets(false);
+        });
+        import('../metadata').then(({ metadataActions }) => {
+            metadataActions.loadStats();
+        });
+    },
+
+    restoreFromTrashAssets: async (ids: string[]) => {
+        for (const assetId of ids) {
+            try {
+                await invoke('restore_from_trash', { assetId });
+            } catch (err) {
+                console.error(`Failed to restore ${assetId}:`, err);
+            }
+        }
+        import('./libraryActions').then(({ libraryActions }) => {
+            libraryActions.refreshAssets(false);
+        });
+        import('../metadata').then(({ metadataActions }) => {
+            metadataActions.loadStats();
+        });
+    },
+
     updateThumbnail: (id: string, path: string) => {
         setLibraryState('items', item => item.id === id, 'thumbnail_path', path);
     },

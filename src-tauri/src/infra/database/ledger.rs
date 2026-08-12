@@ -267,6 +267,21 @@ impl SqliteAssetLedger {
                     asset_id: p.asset_id.clone(),
                 })?;
             }
+            LedgerCommand::ToggleFavorite(p) => {
+                self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
+                    asset_id: p.asset_id.clone(),
+                })?;
+            }
+            LedgerCommand::MoveToTrash(p) => {
+                self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
+                    asset_id: p.asset_id.clone(),
+                })?;
+            }
+            LedgerCommand::RestoreFromTrash(p) => {
+                self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
+                    asset_id: p.asset_id.clone(),
+                })?;
+            }
             LedgerCommand::UpdateFormat { asset_id, .. } => {
                 self.event_bus.publish(DomainEvent::AssetMetadataUpdated {
                     asset_id: asset_id.clone(),
@@ -389,6 +404,15 @@ impl SqliteAssetLedger {
             }
             LedgerCommand::UpdateAssetNotes(payload) => {
                 metadata_handler::handle_update_notes(tx, payload).await
+            }
+            LedgerCommand::ToggleFavorite(payload) => {
+                metadata_handler::handle_toggle_favorite(tx, payload).await
+            }
+            LedgerCommand::MoveToTrash(payload) => {
+                asset_handler::handle_move_to_trash(tx, payload).await
+            }
+            LedgerCommand::RestoreFromTrash(payload) => {
+                asset_handler::handle_restore_from_trash(tx, payload).await
             }
             LedgerCommand::UpdateFormat { asset_id, format } => {
                 metadata_handler::handle_update_format(tx, &asset_id, &format).await

@@ -105,7 +105,7 @@ pub async fn handle_create(
     let row = sqlx::query!(
         r#"
         INSERT INTO assets (
-            id, name, path, state, format_type, family, file_size, 
+            id, name, path, state, format_type, family, file_size,
             created_at, modified_at, added_at, updated_at, folder_id
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -166,6 +166,8 @@ pub async fn handle_create(
         thumbnail_path: None,
         rating: None,
         notes: None,
+        is_favorite: false,
+        deleted_at: None,
     };
 
     Ok(asset)
@@ -215,7 +217,7 @@ pub async fn handle_batch_create(
         let row = sqlx::query!(
             r#"
             INSERT INTO assets (
-                id, name, path, state, format_type, family, file_size, 
+                id, name, path, state, format_type, family, file_size,
                 created_at, modified_at, added_at, updated_at, folder_id
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -277,6 +279,8 @@ pub async fn handle_batch_create(
             thumbnail_path: None,
             rating: None,
             notes: None,
+            is_favorite: false,
+            deleted_at: None,
         });
     }
 
@@ -409,6 +413,8 @@ pub async fn handle_delete_asset(
         thumbnail_path: None,
         rating: None,
         notes: None,
+        is_favorite: false,
+        deleted_at: None,
     })
 }
 
@@ -616,4 +622,81 @@ pub async fn handle_set_asset_folder(
     .await?;
 
     shared::fetch_asset_by_id(transaction, asset_id).await
+}
+
+/// Moves an asset to the trash by setting deleted_at.
+/// 
+/// This creates a soft delete record without immediately removing the file.
+/// 
+/// # Arguments
+/// 
+/// * `tx` - The active database transaction.
+/// * `payload` - The payload containing the target asset_id.
+/// 
+/// # Errors
+/// 
+/// Returns `AppError` if the database update fails or the asset is not found.
+pub async fn handle_move_to_trash(
+    tx: &mut Transaction<'_, Sqlite>,
+    payload: crate::core::ledger::command::MoveToTrashPayload,
+) -> AppResult<Asset> {
+    let now = chrono::Utc::now();
+    sqlx::query!(
+        "UPDATE assets SET deleted_at = ?, updated_at = ? WHERE id = ?",
+        now,
+        now,
+        payload.asset_id
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    shared::log_operation(
+        tx,
+        "MOVE_TO_TRASH",
+        &payload.asset_id,
+        serde_json::json!({}),
+        "COMPLETED",
+        None,
+    )
+    .await?;
+
+    shared::fetch_asset_by_id(tx, &payload.asset_id).await
+}
+
+/// Restores an asset from the trash by clearing deleted_at.
+/// 
+/// Re-activates a soft deleted item, bringing it back to the library view.
+/// 
+/// # Arguments
+/// 
+/// * `tx` - The active database transaction.
+/// * `payload` - The payload containing the target asset_id.
+/// 
+/// # Errors
+/// 
+/// Returns `AppError` if the database update fails or the asset is not found.
+pub async fn handle_restore_from_trash(
+    tx: &mut Transaction<'_, Sqlite>,
+    payload: crate::core::ledger::command::RestoreFromTrashPayload,
+) -> AppResult<Asset> {
+    let now = chrono::Utc::now();
+    sqlx::query!(
+        "UPDATE assets SET deleted_at = NULL, updated_at = ? WHERE id = ?",
+        now,
+        payload.asset_id
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    shared::log_operation(
+        tx,
+        "RESTORE_FROM_TRASH",
+        &payload.asset_id,
+        serde_json::json!({}),
+        "COMPLETED",
+        None,
+    )
+    .await?;
+
+    shared::fetch_asset_by_id(tx, &payload.asset_id).await
 }

@@ -1,11 +1,21 @@
 import { Component, createMemo, createSignal, Show } from 'solid-js';
-import { ExternalLink, FolderOpen, Copy, Edit2, CopyPlus } from 'lucide-solid';
+import {
+    ExternalLink,
+    FolderOpen,
+    Copy,
+    Edit2,
+    CopyPlus,
+    Trash2,
+    ArchiveRestore
+} from 'lucide-solid';
 import { ContextMenu, ContextMenuItem } from '../../../ui/ContextMenu';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import { invokeCommand } from '../../../../lib/api';
 import { AssetItem } from '../../../../types';
 import { selectionState } from '../../../../core/store/selectionStore';
 import { useLibrary } from '../../../../core/hooks/useLibrary';
+import { useNotification } from '../../../../core/hooks/useNotification';
+import { useFilters } from '../../../../core/hooks/useFilters';
 import { PromptModal } from '../../../ui/Modal/PromptModal';
 
 /**
@@ -33,7 +43,9 @@ export interface AssetContextMenuProps {
  * @returns {JSX.Element} - Component AssetContextMenu.
  */
 export const AssetContextMenu: Component<AssetContextMenuProps> = props => {
-    const { items: allItems } = useLibrary();
+    const { items: allItems, moveToTrashAssets, restoreFromTrashAssets } = useLibrary();
+    const notify = useNotification();
+    const filters = useFilters();
 
     const [isRenameModalOpen, setIsRenameModalOpen] = createSignal(false);
 
@@ -61,6 +73,84 @@ export const AssetContextMenu: Component<AssetContextMenuProps> = props => {
         return [props.asset];
     };
 
+    const handleRestoreAssets = async (assets: AssetItem[], isMulti: boolean) => {
+        const ids = assets.map(a => a.id);
+        await restoreFromTrashAssets(ids);
+
+        notify.success(
+            isMulti ? `${assets.length} items restored` : 'Item restored',
+            'Restored items have been moved back to their original locations'
+        );
+        props.onClose();
+    };
+
+    const handleMoveToTrashAssets = async (assets: AssetItem[], isMulti: boolean) => {
+        const ids = assets.map(a => a.id);
+        await moveToTrashAssets(ids);
+
+        notify.success(
+            isMulti ? `${assets.length} items moved to trash` : 'Item moved to trash',
+            undefined,
+            {
+                label: 'Undo',
+                onClick: async () => {
+                    const ids = assets.map(a => a.id);
+                    await restoreFromTrashAssets(ids);
+                    notify.success('Action undone', 'Items have been restored');
+                }
+            }
+        );
+        props.onClose();
+    };
+
+    const handleOpenAssets = async (assets: AssetItem[]) => {
+        for (const asset of assets) {
+            try {
+                if (asset.path) {
+                    await openPath(asset.path);
+                }
+            } catch (error) {
+                console.error(`Failed to open file ${asset.path}:`, error);
+            }
+        }
+        props.onClose();
+    };
+
+    const handleRevealAsset = async (asset: AssetItem) => {
+        try {
+            if (asset.path) {
+                await revealItemInDir(asset.path);
+            }
+        } catch (error) {
+            console.error('Failed to reveal file:', error);
+        }
+        props.onClose();
+    };
+
+    const handleCopyFiles = async (assets: AssetItem[]) => {
+        try {
+            const paths = assets.map(a => a.path).filter(Boolean) as string[];
+            await invokeCommand('copy_files_to_clipboard', { paths });
+        } catch (error) {
+            console.error('Failed to copy files to clipboard:', error);
+        }
+        props.onClose();
+    };
+
+    const handleCopyPaths = async (assets: AssetItem[]) => {
+        try {
+            const paths = assets
+                .map(a => a.path)
+                .filter(Boolean)
+                .join('\n');
+            await navigator.clipboard.writeText(paths);
+        } catch (error) {
+            console.error('Failed to copy paths:', error);
+        }
+        props.onClose();
+    };
+
+    // eslint-disable-next-line complexity
     const items = createMemo<ContextMenuItem[]>(() => {
         const assets = getTargetAssets();
         if (assets.length === 0) return [];
@@ -72,18 +162,7 @@ export const AssetContextMenu: Component<AssetContextMenuProps> = props => {
                 type: 'item',
                 label: isMulti ? 'Open files' : 'Open file',
                 icon: ExternalLink,
-                action: async () => {
-                    for (const asset of assets) {
-                        try {
-                            if (asset.path) {
-                                await openPath(asset.path);
-                            }
-                        } catch (error) {
-                            console.error(`Failed to open file ${asset.path}:`, error);
-                        }
-                    }
-                    props.onClose();
-                }
+                action: () => handleOpenAssets(assets)
             }
         ];
 
@@ -93,16 +172,7 @@ export const AssetContextMenu: Component<AssetContextMenuProps> = props => {
                 type: 'item',
                 label: 'Reveal in OS',
                 icon: FolderOpen,
-                action: async () => {
-                    try {
-                        if (assets[0].path) {
-                            await revealItemInDir(assets[0].path);
-                        }
-                    } catch (error) {
-                        console.error('Failed to reveal file:', error);
-                    }
-                    props.onClose();
-                }
+                action: () => handleRevealAsset(assets[0])
             });
         }
 
@@ -115,15 +185,7 @@ export const AssetContextMenu: Component<AssetContextMenuProps> = props => {
             type: 'item',
             label: isMulti ? 'Copy Files' : 'Copy File',
             icon: CopyPlus,
-            action: async () => {
-                try {
-                    const paths = assets.map(a => a.path).filter(Boolean) as string[];
-                    await invokeCommand('copy_files_to_clipboard', { paths });
-                } catch (error) {
-                    console.error('Failed to copy files to clipboard:', error);
-                }
-                props.onClose();
-            }
+            action: () => handleCopyFiles(assets)
         });
 
         // Copy paths as text
@@ -131,19 +193,28 @@ export const AssetContextMenu: Component<AssetContextMenuProps> = props => {
             type: 'item',
             label: isMulti ? 'Copy Paths' : 'Copy Path',
             icon: Copy,
-            action: async () => {
-                try {
-                    const paths = assets
-                        .map(a => a.path)
-                        .filter(Boolean)
-                        .join('\n');
-                    await navigator.clipboard.writeText(paths);
-                } catch (error) {
-                    console.error('Failed to copy paths:', error);
-                }
-                props.onClose();
-            }
+            action: () => handleCopyPaths(assets)
         });
+
+        menuItems.push({
+            type: 'separator'
+        });
+
+        if (filters.filterTrash) {
+            menuItems.push({
+                type: 'item',
+                label: isMulti ? 'Restore Files' : 'Restore File',
+                icon: ArchiveRestore,
+                action: () => handleRestoreAssets(assets, isMulti)
+            });
+        } else {
+            menuItems.push({
+                type: 'item',
+                label: isMulti ? 'Move to Trash' : 'Move to Trash',
+                icon: Trash2,
+                action: () => handleMoveToTrashAssets(assets, isMulti)
+            });
+        }
 
         // Rename option is only available for single selection
         if (!isMulti && assets[0].path) {

@@ -1,6 +1,6 @@
 import { Button } from '../../ui';
 import { Component, createMemo, createSignal, untrack } from 'solid-js';
-import { Tag as TagIcon, Plus } from 'lucide-solid';
+import { Bookmark, Plus } from 'lucide-solid';
 import {
     useMetadata,
     useFilters,
@@ -73,7 +73,7 @@ export const TagTreeSidebarPanel: Component = () => {
                     },
                     children: [],
                     data: tag,
-                    icon: TagIcon,
+                    icon: Bookmark,
                     get iconColor() {
                         const current = metadata.tags.find(t => t.id === tagId);
                         return current?.color || undefined;

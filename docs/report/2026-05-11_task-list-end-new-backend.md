@@ -21,8 +21,9 @@
 
 ## Library
 
-- [ ] Adicionar lixeira
-- [ ] Adicionar arquivos favoritos
+- [x] Adicionar lixeira
+- [x] Adicionar arquivos favoritos
+- [x] Adicionar filtro para assets com tags
 
 ## Item Inspector
 
@@ -58,7 +59,7 @@
 
 - [x] Abrir arquivo no editor padrão do sistema operacional.
 - [x] Abrir pasta onde se encontra o arquivo.
-- [ ] Adicionar asset como favorito.
+- [x] Adicionar asset como favorito.
 - [ ] Converter arquivo para outros formatos.
 - [ ] Verificar duplicidade de arquivos.
 - [ ] Adicionar asset arrastando para a janela do Mundam.

@@ -17,6 +17,9 @@ export interface Tag {
 export interface LibraryStats {
     total_assets: number;
     untagged_assets: number;
+    has_tags_assets: number;
+    favorite_assets: number;
+    trash_assets: number;
     tag_counts: { tag_id: string; count: number }[];
     folder_counts: { folder_id: string; count: number }[];
     folder_counts_recursive: { folder_id: string; count: number }[];
