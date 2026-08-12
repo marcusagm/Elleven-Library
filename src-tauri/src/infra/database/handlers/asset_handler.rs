@@ -353,11 +353,18 @@ pub async fn handle_delete_asset(
     };
 
     let pre_delete_row = sqlx::query!(
-        r#"SELECT folder_id as "folder_id?", name as "name!" FROM assets WHERE id = ?"#,
+        r#"SELECT folder_id as "folder_id?", name as "name!", deleted_at as "deleted_at?: chrono::DateTime<chrono::Utc>" FROM assets WHERE id = ?"#,
         resolved_id
     )
     .fetch_optional(&mut **transaction)
     .await?;
+
+    if let Some(row) = &pre_delete_row {
+        if row.deleted_at.is_some() && !physical_delete {
+            tracing::info!("Ledger: DeleteAsset IGNORED - Asset {} is already in trash", resolved_id);
+            return Err(AppError::NotFound(format!("Asset {} is already in trash", resolved_id)));
+        }
+    }
 
     let pre_delete_folder_id = pre_delete_row
         .as_ref()

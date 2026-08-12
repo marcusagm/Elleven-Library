@@ -27,6 +27,7 @@ export const AudioInspector: Component<AudioInspectorProps> = props => {
                 <AudioPlayer
                     src={audioUrl()}
                     filePath={props.item.path}
+                    assetId={props.item.id}
                     variant="compact"
                     class="inspector-audio-player"
                 />

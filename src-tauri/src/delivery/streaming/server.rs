@@ -294,6 +294,27 @@ async fn validate_path_scope(
     Ok(())
 }
 
+/// Resolves the physical path for streaming and validates the scope.
+/// Bypasses scope validation if the asset is in the internal trash.
+async fn resolve_and_validate_path(
+    asset: &crate::core::models::asset::Asset,
+    state: &AppState,
+) -> Result<std::path::PathBuf, StreamError> {
+    if asset.deleted_at.is_some() {
+        if let Ok(dir) = state.app_handle.path().app_local_data_dir() {
+            if let Some(file_name) = asset.path.file_name() {
+                return Ok(dir.join("trash").join(format!("{}_{}", asset.id, file_name.to_string_lossy())));
+            }
+        }
+    }
+    
+    validate_path_scope(&state.asset_query_handler, &asset.path)
+        .await
+        .map_err(forbidden_response)?;
+        
+    Ok(asset.path.clone())
+}
+
 async fn health_handler() -> &'static str {
     "OK"
 }
@@ -312,12 +333,7 @@ async fn probe_handler(
         .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
-    let file_path = asset.path;
-
-    // Validate path is within authorized library folders
-    validate_path_scope(&state.asset_query_handler, &file_path)
-        .await
-        .map_err(forbidden_response)?;
+    let file_path = resolve_and_validate_path(&asset, &state).await?;
 
     match probe::get_video_info(&state.app_handle, &state.registry, &file_path).await {
         Ok(info) => {
@@ -351,13 +367,10 @@ async fn stream_handler(
         .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
-    // Validate path scope
-    validate_path_scope(&state.asset_query_handler, &asset.path)
-        .await
-        .map_err(forbidden_response)?;
+    let file_path = resolve_and_validate_path(&asset, &state).await?;
 
     let range = headers.get(header::RANGE).cloned();
-    serve_file(&asset.path, range)
+    serve_file(&file_path, range)
         .await
         .map_err(|s| StreamError(AppError::Generic(format!("Serve error: {}", s))))
 }
@@ -385,12 +398,7 @@ async fn playlist_handler(
         .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
-    let file_path = asset.path;
-
-    // Validate path is within authorized library folders
-    validate_path_scope(&state.asset_query_handler, &file_path)
-        .await
-        .map_err(forbidden_response)?;
+    let file_path = resolve_and_validate_path(&asset, &state).await?;
 
     let quality = params
         .get("quality")
@@ -461,12 +469,7 @@ async fn segment_handler(
         .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
-    let file_path = asset.path;
-
-    // Validate path is within authorized library folders
-    validate_path_scope(&state.asset_query_handler, &file_path)
-        .await
-        .map_err(forbidden_response)?;
+    let file_path = resolve_and_validate_path(&asset, &state).await?;
 
     match segment::get_segment(
         &state.app_handle,
@@ -523,12 +526,7 @@ async fn linear_hls_handler(
         .map_err(|e| StreamError(AppError::Generic(format!("DB error: {}", e))))?
         .ok_or_else(|| StreamError(AppError::NotFound(asset_id)))?;
 
-    let file_path = asset.path;
-
-    // Validate path is within authorized library folders
-    validate_path_scope(&state.asset_query_handler, &file_path)
-        .await
-        .map_err(forbidden_response)?;
+    let file_path = resolve_and_validate_path(&asset, &state).await?;
 
     // 2. Handle Playlist Request
     if path.ends_with("/index.m3u8") {

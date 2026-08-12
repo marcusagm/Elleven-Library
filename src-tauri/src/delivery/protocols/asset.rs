@@ -85,8 +85,18 @@ pub fn handler<R: tauri::Runtime>(
         }
     };
 
-    // 3. Resolve physical path based on type
+    // 3. Resolve physical path based on type and trash state
     let mut physical_path = asset.path.clone();
+
+    if asset.deleted_at.is_some() {
+        if let Ok(dir) = app_handle.path().app_local_data_dir() {
+            if let Some(file_name) = asset.path.file_name() {
+                physical_path = dir
+                    .join("trash")
+                    .join(format!("{}_{}", asset.id, file_name.to_string_lossy()));
+            }
+        }
+    }
 
     if is_thumb {
         let app_data = match app_handle.path().app_local_data_dir() {

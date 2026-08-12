@@ -76,7 +76,7 @@ export function useAudioPlayer(props: AudioPlayerProps) {
                 });
 
                 const data = await Promise.race([
-                    invoke<number[]>('get_audio_waveform_data', { path }),
+                    invoke<number[]>('get_audio_waveform_data', { path, assetId: props.assetId }),
                     timeoutPromise
                 ]);
 

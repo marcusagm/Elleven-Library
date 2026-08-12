@@ -265,6 +265,7 @@ pub async fn get_asset_colors(
 /// * `Err(AppError)` if the query fails.
 #[tauri::command]
 pub async fn get_asset_exif(
+    app_handle: tauri::AppHandle,
     service: State<'_, AssetQueryService>,
     registry: State<'_, Arc<FormatRegistry>>,
     asset_id: Option<String>,
@@ -274,7 +275,21 @@ pub async fn get_asset_exif(
         let asset: Asset = service.get_asset(&id).await?.ok_or_else(|| {
             crate::core::error::AppError::NotFound(format!("Asset {} not found", id))
         })?;
-        asset.path
+        if asset.deleted_at.is_some() {
+            if let Ok(app_data_directory) = app_handle.path().app_local_data_dir() {
+                if let Some(file_name) = asset.path.file_name() {
+                    app_data_directory
+                        .join("trash")
+                        .join(format!("{}_{}", asset.id, file_name.to_string_lossy()))
+                } else {
+                    asset.path
+                }
+            } else {
+                asset.path
+            }
+        } else {
+            asset.path
+        }
     } else if let Some(p) = path {
         std::path::PathBuf::from(p)
     } else {
@@ -359,11 +374,41 @@ pub fn get_library_supported_formats(
 }
 
 /// RPC Command to get audio waveform data for a file.
+///
+/// If `asset_id` is provided the command will look up the asset record and,
+/// when the asset is in the Mundam trash (`deleted_at IS NOT NULL`), it
+/// resolves the physical path to the internal `app_data/trash/` directory
+/// instead of using the original (now missing) library path.
 #[tauri::command]
 pub async fn get_audio_waveform_data(
     app_handle: tauri::AppHandle,
+    service: State<'_, AssetQueryService>,
+    asset_id: Option<String>,
     path: String,
 ) -> AppResult<Vec<f32>> {
-    let path_buf = std::path::PathBuf::from(path);
-    crate::feature::media::waveform::extract_audio_waveform(&path_buf, &app_handle).await
+    let resolved_path = if let Some(ref id) = asset_id {
+        if let Ok(Some(asset)) = service.get_asset(id).await {
+            if asset.deleted_at.is_some() {
+                if let Ok(app_data_directory) = app_handle.path().app_local_data_dir() {
+                    if let Some(file_name) = asset.path.file_name() {
+                        app_data_directory
+                            .join("trash")
+                            .join(format!("{}_{}", asset.id, file_name.to_string_lossy()))
+                    } else {
+                        asset.path.clone()
+                    }
+                } else {
+                    asset.path.clone()
+                }
+            } else {
+                asset.path.clone()
+            }
+        } else {
+            std::path::PathBuf::from(&path)
+        }
+    } else {
+        std::path::PathBuf::from(&path)
+    };
+
+    crate::feature::media::waveform::extract_audio_waveform(&resolved_path, &app_handle).await
 }

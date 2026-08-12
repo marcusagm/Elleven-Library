@@ -29,6 +29,7 @@ export const AudioRenderer: Component<AudioRendererProps> = props => {
             <UIAudioPlayer
                 src={audioUrl()}
                 filePath={props.path}
+                assetId={props.assetId}
                 variant="full"
                 title={item()?.filename}
                 subtitle={item()?.format}

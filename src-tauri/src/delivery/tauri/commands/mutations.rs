@@ -697,11 +697,13 @@ pub async fn toggle_favorite(
 /// The updated asset as an Asset placeholder.
 #[tauri::command]
 pub async fn move_to_trash(
-    _app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle,
     ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
-    _queries: State<'_, AssetQueryService>,
+    queries: State<'_, AssetQueryService>,
     asset_id: String,
 ) -> AppResult<Asset> {
+    use tauri::Manager;
+    let asset = queries.get_asset(&asset_id).await?.ok_or_else(|| crate::core::error::AppError::NotFound(asset_id.clone()))?;
 
     let updated = ledger
         .execute(LedgerCommand::MoveToTrash(
@@ -710,6 +712,19 @@ pub async fn move_to_trash(
             },
         ))
         .await?;
+
+    let dirs = app_handle.state::<crate::bootstrap::AppDirectories>();
+    let trash_dir = dirs.app_data.join("trash");
+    if !trash_dir.exists() {
+        std::fs::create_dir_all(&trash_dir).ok();
+    }
+
+    if let Some(file_name) = asset.path.file_name() {
+        let trash_path = trash_dir.join(format!("{}_{}", asset_id, file_name.to_string_lossy()));
+        if asset.path.exists() {
+            let _ = tokio::fs::rename(&asset.path, &trash_path).await;
+        }
+    }
 
     Ok(updated)
 }
@@ -731,11 +746,13 @@ pub async fn move_to_trash(
 /// The updated asset as an Asset placeholder.
 #[tauri::command]
 pub async fn restore_from_trash(
-    _app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle,
     ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
-    _queries: State<'_, AssetQueryService>,
+    queries: State<'_, AssetQueryService>,
     asset_id: String,
 ) -> AppResult<Asset> {
+    use tauri::Manager;
+    let asset = queries.get_asset(&asset_id).await?.ok_or_else(|| crate::core::error::AppError::NotFound(asset_id.clone()))?;
 
     let updated = ledger
         .execute(LedgerCommand::RestoreFromTrash(
@@ -744,6 +761,16 @@ pub async fn restore_from_trash(
             },
         ))
         .await?;
+
+    let dirs = app_handle.state::<crate::bootstrap::AppDirectories>();
+    let trash_dir = dirs.app_data.join("trash");
+
+    if let Some(file_name) = asset.path.file_name() {
+        let trash_path = trash_dir.join(format!("{}_{}", asset_id, file_name.to_string_lossy()));
+        if trash_path.exists() {
+            let _ = tokio::fs::rename(&trash_path, &asset.path).await;
+        }
+    }
 
     Ok(updated)
 }
@@ -764,10 +791,11 @@ pub async fn restore_from_trash(
 /// The number of items successfully deleted.
 #[tauri::command]
 pub async fn empty_trash(
-    _app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle,
     ledger: State<'_, Arc<dyn TransactionalAssetLedger>>,
     pool_manager: State<'_, Arc<crate::infra::database::manager::DbManager>>,
 ) -> AppResult<usize> {
+    use tauri::Manager;
     let pool = pool_manager.pool();
 
     // Get all trashed assets
@@ -776,10 +804,17 @@ pub async fn empty_trash(
         .await
         .map_err(|e| crate::core::error::AppError::Database(e))?;
 
+    let dirs = app_handle.state::<crate::bootstrap::AppDirectories>();
+    let trash_dir = dirs.app_data.join("trash");
     let mut deleted_count = 0;
 
     for record in trashed {
         let path = std::path::PathBuf::from(&record.path);
+        
+        if let Some(file_name) = path.file_name() {
+            let trash_path = trash_dir.join(format!("{}_{}", record.id, file_name.to_string_lossy()));
+            let _ = tokio::fs::remove_file(&trash_path).await;
+        }
 
         let _ = ledger.execute(LedgerCommand::DeleteAsset {
             asset_id: Some(record.id.clone()),
