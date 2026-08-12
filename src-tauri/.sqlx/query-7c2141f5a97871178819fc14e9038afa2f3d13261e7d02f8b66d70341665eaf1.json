@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT folder_id as \"folder_id?\", name as \"name!\", deleted_at as \"deleted_at?: chrono::DateTime<chrono::Utc>\" FROM assets WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "folder_id?",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted_at?: chrono::DateTime<chrono::Utc>",
+        "ordinal": 2,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "7c2141f5a97871178819fc14e9038afa2f3d13261e7d02f8b66d70341665eaf1"
+}
