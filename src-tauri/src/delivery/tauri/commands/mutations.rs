@@ -714,15 +714,18 @@ pub async fn move_to_trash(
         .await?;
 
     let dirs = app_handle.state::<crate::bootstrap::AppDirectories>();
-    let trash_dir = dirs.app_data.join("trash");
+    let trash_dir = crate::core::trash::trash_directory(&dirs.app_data);
     if !trash_dir.exists() {
         std::fs::create_dir_all(&trash_dir).ok();
     }
 
-    if let Some(file_name) = asset.path.file_name() {
-        let trash_path = trash_dir.join(format!("{}_{}", asset_id, file_name.to_string_lossy()));
-        if asset.path.exists() {
-            let _ = tokio::fs::rename(&asset.path, &trash_path).await;
+    if let Some(deleted_at) = updated.deleted_at {
+        if let Some(trash_path) = crate::core::trash::build_trash_path(
+            &dirs.app_data, &asset_id, &asset.path, &deleted_at,
+        ) {
+            if asset.path.exists() {
+                let _ = tokio::fs::rename(&asset.path, &trash_path).await;
+            }
         }
     }
 
@@ -754,6 +757,9 @@ pub async fn restore_from_trash(
     use tauri::Manager;
     let asset = queries.get_asset(&asset_id).await?.ok_or_else(|| crate::core::error::AppError::NotFound(asset_id.clone()))?;
 
+    let dirs = app_handle.state::<crate::bootstrap::AppDirectories>();
+    let trash_path = crate::core::trash::resolve_physical_path(&asset, &dirs.app_data);
+
     let updated = ledger
         .execute(LedgerCommand::RestoreFromTrash(
             crate::core::ledger::command::RestoreFromTrashPayload {
@@ -762,14 +768,8 @@ pub async fn restore_from_trash(
         ))
         .await?;
 
-    let dirs = app_handle.state::<crate::bootstrap::AppDirectories>();
-    let trash_dir = dirs.app_data.join("trash");
-
-    if let Some(file_name) = asset.path.file_name() {
-        let trash_path = trash_dir.join(format!("{}_{}", asset_id, file_name.to_string_lossy()));
-        if trash_path.exists() {
-            let _ = tokio::fs::rename(&trash_path, &asset.path).await;
-        }
+    if trash_path.exists() && trash_path != asset.path {
+        let _ = tokio::fs::rename(&trash_path, &asset.path).await;
     }
 
     Ok(updated)
@@ -798,22 +798,33 @@ pub async fn empty_trash(
     use tauri::Manager;
     let pool = pool_manager.pool();
 
-    // Get all trashed assets
-    let trashed = sqlx::query!("SELECT id as \"id!\", path as \"path!\" FROM assets WHERE deleted_at IS NOT NULL")
-        .fetch_all(pool)
-        .await
-        .map_err(|e| crate::core::error::AppError::Database(e))?;
+    // Get all trashed assets with full record for trash path resolution
+    let trashed = sqlx::query!(
+        r#"SELECT id as "id!", path as "path!", deleted_at as "deleted_at?: chrono::DateTime<chrono::Utc>" FROM assets WHERE deleted_at IS NOT NULL"#
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| crate::core::error::AppError::Database(e))?;
 
     let dirs = app_handle.state::<crate::bootstrap::AppDirectories>();
-    let trash_dir = dirs.app_data.join("trash");
     let mut deleted_count = 0;
 
     for record in trashed {
         let path = std::path::PathBuf::from(&record.path);
-        
+
+        // Try timestamped path first, fallback to legacy format
+        if let Some(ref deleted_at) = record.deleted_at {
+            if let Some(trash_path) = crate::core::trash::build_trash_path(
+                &dirs.app_data, &record.id, &path, deleted_at,
+            ) {
+                let _ = tokio::fs::remove_file(&trash_path).await;
+            }
+        }
+        // Also try legacy format cleanup
         if let Some(file_name) = path.file_name() {
-            let trash_path = trash_dir.join(format!("{}_{}", record.id, file_name.to_string_lossy()));
-            let _ = tokio::fs::remove_file(&trash_path).await;
+            let legacy_path = crate::core::trash::trash_directory(&dirs.app_data)
+                .join(format!("{}_{}", record.id, file_name.to_string_lossy()));
+            let _ = tokio::fs::remove_file(&legacy_path).await;
         }
 
         let _ = ledger.execute(LedgerCommand::DeleteAsset {

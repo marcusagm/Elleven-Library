@@ -506,68 +506,111 @@ const filters = useFilters();
 
 ---
 
-## 9. Possíveis Melhorias Futuras
+## 9. Melhorias Implementadas (2026-08-20)
 
-### 9.1. Centralização da Resolução de Caminho Trash-Aware
+As melhorias listadas na versão original deste relatório como "possíveis melhorias futuras" foram implementadas em 2026-08-20. Esta seção documenta o que foi feito e o estado final de cada item.
 
-Atualmente a lógica de resolução `if deleted_at.is_some() → app_data/trash/...` está duplicada em 5 locais diferentes. Seria ideal extrair uma função utilitária centralizada:
+### 9.1. ✅ Centralização da Resolução de Caminho Trash-Aware
 
-```rust
-// Proposta: src-tauri/src/core/utils/trash_path.rs
-pub fn resolve_physical_path(
-    asset: &Asset, 
-    app_data_dir: &Path
-) -> PathBuf {
-    if asset.deleted_at.is_some() {
-        if let Some(file_name) = asset.path.file_name() {
-            return app_data_dir
-                .join("trash")
-                .join(format!("{}_{}", asset.id, file_name.to_string_lossy()));
-        }
-    }
-    asset.path.clone()
-}
+**Implementado em:** `src-tauri/src/core/trash.rs`
+
+Criado um módulo utilitário centralizado que eliminou a duplicação de lógica de resolução de caminho em 5 locais diferentes. O módulo expõe três funções públicas:
+
+| Função | Responsabilidade |
+|--------|-----------------|
+| `trash_directory(app_data_dir)` | Retorna o caminho do diretório trash |
+| `build_trash_path(app_data_dir, asset_id, path, deleted_at)` | Constrói o caminho completo do arquivo na trash |
+| `resolve_physical_path(asset, app_data_dir)` | Ponto de entrada principal — retorna trash path ou original |
+
+**Arquivos atualizados para usar a utility centralizada:**
+- `delivery/protocols/asset.rs` — Protocol handler
+- `delivery/streaming/server.rs` — HLS streaming server
+- `delivery/tauri/commands/queries.rs` — Waveform + EXIF
+- `delivery/tauri/commands/mutations.rs` — Move/Restore/Empty trash
+
+### 9.2. ✅ Tratamento de Colisão de Nomes na Trash
+
+**Implementado em:** `src-tauri/src/core/trash.rs` (integrado na utility centralizada)
+
+O formato de nomeação na trash foi atualizado de `{asset_id}_{filename}` para:
+
+```
+{asset_id}_{epoch_seconds}_{filename}
 ```
 
-### 9.2. Tratamento de Colisão de Nomes na Trash
+Onde `epoch_seconds` é o Unix timestamp do campo `deleted_at`, garantindo unicidade mesmo em cenários de re-deleção após restauração. A função `resolve_physical_path` implementa fallback automático para o formato legacy (`{asset_id}_{filename}`) para compatibilidade retroativa.
 
-Embora o prefixo `{asset_id}_` garanta unicidade, em cenários extremos de corrupção de dados ou IDs duplicados, pode haver colisão. Uma melhoria seria adicionar um timestamp ou hash adicional:
+### 9.3. ✅ Confirmação Visual ao Esvaziar a Lixeira
 
-```
-{asset_id}_{timestamp}_{filename}
-```
+**Implementado em:**
+- `src/components/features/settings/TrashEmptyModal.tsx`
+- `src/components/features/settings/trash-empty-modal.css`
 
-### 9.3. Confirmação Visual ao Esvaziar a Lixeira
-
-Atualmente `empty_trash` executa imediatamente. Seria prudente adicionar um modal de confirmação no frontend informando:
+Modal de confirmação usando o componente `ConfirmModal` existente, seguindo o mesmo padrão de `TagDeleteModal` e `FolderDeleteModal`. Exibe:
 - Quantidade de itens que serão excluídos permanentemente
-- Espaço em disco que será liberado
+- Aviso explícito de que a ação não pode ser desfeita
 
-### 9.4. Auto-Esvaziamento Programado
+O botão "Empty Trash" no `GeneralPanel` agora mostra a contagem de itens e fica desabilitado quando a lixeira está vazia.
 
-Adicionar uma configuração de auto-esvaziamento (e.g., "Esvaziar automaticamente após 30 dias") com um job background periódico que checa `deleted_at` e apaga itens expirados.
+### 9.4. ✅ Auto-Esvaziamento Programado
 
-### 9.5. Indicador Visual de Asset na Lixeira
+**Implementado em:**
+- **Backend:** `src-tauri/src/feature/trash/auto_empty_worker.rs`
+- **Frontend:** `src/components/features/settings/TrashSettingsSection.tsx`
+- **Boot:** `src-tauri/src/bootstrap/workers.rs`
 
-No viewport, assets que estão na lixeira poderiam ter um indicador visual sutil (overlay, badge ou opacidade reduzida) para distingui-los visualmente.
+#### Backend Worker
+O `AutoEmptyTrashWorker` segue o mesmo padrão de lifecycle dos outros workers (thumbnail, color):
+- Registrado com `CancellationToken` para shutdown gracioso
+- Polling a cada 1 hora (`POLL_INTERVAL_SECONDS = 3600`)
+- Lê configuração das settings em cada ciclo (sem necessidade de restart)
+- Consulta assets com `deleted_at < cutoff` e remove fisicamente + logicamente
 
-### 9.6. Undo para Ações de Lixeira
+#### Frontend Settings
+Seção "Trash" no `GeneralPanel` extraída para `TrashSettingsSection` (para manter o componente principal sob 300 linhas). Oferece:
+- **Toggle Auto-empty:** Enabled/Disabled
+- **Período de retenção:** 7 / 14 / 30 / 60 / 90 dias (select condicional, só aparece quando enabled)
 
-Implementar um sistema de "Undo" (toast com botão) para a ação de mover para lixeira, permitindo desfazer rapidamente sem navegar até o filtro Trash.
+As configurações são armazenadas via chaves extras no `settings.json`:
+- `trash_auto_empty_enabled`: `"true"` | `"false"`
+- `trash_auto_empty_days`: `"7"` | `"14"` | `"30"` | `"60"` | `"90"`
 
-### 9.7. Migração de Assets já Soft-Deleted
+### 9.5. ✅ Botão de Restauração Rápida no Asset Card
 
-Assets que foram soft-deleted antes desta implementação (apenas `deleted_at` setado, sem movimentação física) ficarão em estado inconsistente — o arquivo existe no local original mas está marcado como deletado. Um script de migração poderia:
-1. Listar todos os assets com `deleted_at IS NOT NULL`
-2. Verificar se o arquivo ainda existe no path original
-3. Se sim, movê-lo para `app_data/trash/`
+**Implementado em:**
+- `src/components/features/viewport/assets/AssetCard.tsx`
+- `src/components/features/viewport/assets/asset-card.css`
 
-### 9.8. Testes Automatizados
+Adicionado ícone `ArchiveRestore` (lucide) ao overlay de ações do `AssetCard`, visível apenas quando o filtro Trash está ativo (`filterState.filterTrash`). O botão:
+- Aparece ao lado do ícone de favorito
+- Restaura o item com um clique (usa `itemActions.restoreFromTrashAssets`)
+- Tem hover verde (`--color-success`) para diferenciação visual
 
-Dada a criticidade do fluxo (risco de perda de dados), seria essencial adicionar:
-- Testes unitários para `handle_delete_asset` com escudo
-- Testes de integração simulando o ciclo completo: move → indexer detect → shield → restore
-- Testes E2E com o File Watcher real
+### 9.6. ❌ Undo para Ações de Lixeira — Descartado
+
+Não implementado. Funcionalidade considerada desnecessária no momento dado que o fluxo de restauração via filtro Trash + botão de restauração rápida (9.5) já cobre o caso de uso.
+
+### 9.7. ❌ Migração de Assets já Soft-Deleted — Descartado
+
+Não implementado. A aplicação ainda não foi lançada e não possui usuários, portanto não existem assets em estado inconsistente que necessitem migração.
+
+### 9.8. ✅ Testes Automatizados
+
+**Implementado em:** `src-tauri/src/core/trash.rs` (módulo `#[cfg(test)]`)
+
+9 testes unitários cobrindo:
+
+| Teste | Cobertura |
+|-------|-----------|
+| `test_build_trash_path_creates_correct_format` | Formato `{id}_{epoch}_{filename}` |
+| `test_build_trash_path_returns_none_for_empty_filename` | Edge case: path sem filename |
+| `test_trash_directory_path` | Construção do diretório trash |
+| `test_resolve_physical_path_returns_original_when_not_trashed` | Asset sem `deleted_at` |
+| `test_resolve_physical_path_returns_trash_path_when_deleted` | Asset com `deleted_at` |
+| `test_different_timestamps_produce_different_paths` | Garantia de unicidade temporal |
+| `test_different_asset_ids_produce_different_paths` | Garantia de unicidade por ID |
+| `test_trash_path_preserves_file_extension` | Preservação da extensão original |
+| `test_trash_directory_name_constant` | Constante `TRASH_DIRECTORY_NAME` |
 
 ---
 
@@ -580,3 +623,4 @@ Dada a criticidade do fluxo (risco de perda de dados), seria essencial adicionar
 > ```bash
 > ls -la ~/Library/Application\ Support/com.mundam.app/trash/
 > ```
+

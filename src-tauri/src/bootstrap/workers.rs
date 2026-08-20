@@ -67,4 +67,26 @@ pub fn init(app: &AppHandle) {
     );
     let color_handle = color_worker.start(color_worker_token.clone());
     lifecycle.register("color_worker".to_string(), color_worker_token, color_handle);
+
+    // Start Auto-Empty Trash Worker (Periodic Cleanup)
+    let trash_worker_token = lifecycle.child_token();
+    let settings_adapter = std::sync::Arc::new(
+        crate::infra::config::json_adapter::JsonSettingsAdapter::new(dirs.settings_path.clone()),
+    );
+    let trash_settings_service =
+        crate::feature::settings::SettingsService::new(settings_adapter);
+    let trash_worker = crate::feature::trash::auto_empty_worker::AutoEmptyTrashWorker::new(
+        asset_ledger.clone(),
+        app.state::<Arc<crate::infra::database::manager::DbManager>>()
+            .inner()
+            .clone(),
+        trash_settings_service,
+        dirs.app_data.to_path_buf(),
+    );
+    let trash_handle = trash_worker.start(trash_worker_token.clone());
+    lifecycle.register(
+        "auto_empty_trash_worker".to_string(),
+        trash_worker_token,
+        trash_handle,
+    );
 }

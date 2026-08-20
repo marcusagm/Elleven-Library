@@ -1,11 +1,12 @@
 import { Component, JSX, Show } from 'solid-js';
 import { Thumbnail } from './Thumbnail';
-import { Heart, CheckCircle2 } from 'lucide-solid';
+import { Heart, CheckCircle2, ArchiveRestore } from 'lucide-solid';
 import { AssetItemContainer } from './AssetItemContainer';
 import { AssetCardOverlay } from './AssetCardOverlay';
 import { AssetCardStacked } from './AssetCardStacked';
 import { AssetItem } from '../../../../types';
 import { useViewportPreferences } from '../../../../core/hooks/useViewportPreferences';
+import { filterState } from '../../../../core/store/filter';
 import './asset-card.css';
 
 /**
@@ -107,6 +108,23 @@ export const AssetCard: Component<AssetCardProps> = (props: AssetCardProps): JSX
                                         fill="currentColor"
                                         color="var(--bg-secondary)"
                                     />
+                                </div>
+                            </Show>
+                            <Show when={filterState.filterTrash}>
+                                <div
+                                    class="asset-card-restore-icon"
+                                    onClick={event => {
+                                        event.stopPropagation();
+                                        const itemId = props.item.id;
+                                        import('../../../../core/store/library/itemActions').then(
+                                            ({ itemActions }) => {
+                                                itemActions.restoreFromTrashAssets([itemId]);
+                                            }
+                                        );
+                                    }}
+                                    title="Restore from trash"
+                                >
+                                    <ArchiveRestore size={20} />
                                 </div>
                             </Show>
                             <div

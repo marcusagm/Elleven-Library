@@ -302,9 +302,7 @@ async fn resolve_and_validate_path(
 ) -> Result<std::path::PathBuf, StreamError> {
     if asset.deleted_at.is_some() {
         if let Ok(dir) = state.app_handle.path().app_local_data_dir() {
-            if let Some(file_name) = asset.path.file_name() {
-                return Ok(dir.join("trash").join(format!("{}_{}", asset.id, file_name.to_string_lossy())));
-            }
+            return Ok(crate::core::trash::resolve_physical_path(asset, &dir));
         }
     }
     

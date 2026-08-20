@@ -1,0 +1,10 @@
+.trash-empty-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.trash-empty-warning {
+    color: var(--text-destructive);
+    font-weight: 500;
+}

@@ -3,6 +3,13 @@
 ## Atalhos
 
 - [ ] Adicionar atalho para omitir as sidebars com a tecla "tab" como padrão.
+- [ ] Corrigir seleção de assets shift+space não está adicionando o item com foco na seleção.
+- [ ] Ctrl+a não está selecionando todos os assets mostrados no viewport
+- [ ] Na tela de configurações de atalhos, em search, possuem next and previous result o que seria o mesmo que os atalhos para mover entre assets na viewport.
+- [ ] Em global possui os atalhos select all e deselect all, mas deveriam estar apenas em viewport
+- [ ] Adicionar atalho para enviar um item para a lixeira (delete)
+- [ ] A seleção de filtros deve ter o padrão de selecionar apenas um filtro, caso o usuário selecione um filtro segurando ctrl, ele deve adicionar o filtro aos filtro ativos.
+- [ ] A seleção utilizando o mouse como shift+click e crtl_click não está sendo listada na tela de configurações de atalhos.
 
 ## Acessibilidade
 
@@ -54,6 +61,7 @@
 - [ ] Adicionar visualização por icones.
 - [ ] Implementar a funcionalidade de clicar e arrastar no vazio para selecionar múltiplos itens na Grid e no mansory.
 - [ ] A listagem de tabelas mostra colunas diferentes da configurada no painel de ordenação na área de busca. Uma idea é remover as opções de exibição quando a visualização de tabela estiver ativa, ou substituir as opções pelas mesmas opções de colunas exibidas ao clicar com o direito sobre o cabeçalho.
+- [ ] Na listagem de tabelas os iceons de audio e video não estão aparecendo. Talvez esteja com problemas para todos os assets que não possuem thumbail.
 
 ## Assets
 
@@ -77,6 +85,7 @@
 - [ ] Adicionar nome do arquivo acima da toolbar.
 - [ ] Ao carregar o arquivo, mostrar um loader de forma que não trave a interface do usuário, permitindo que ele possa sair do itemview quando quiser, cancelando o processo se necessário.
 - [ ] Permitir acesso a detalhes do arquivo na item view.
+- [ ] Agora com a barra de título personalizada, é necessário resolver o problema de não conseguir mover a janela quando um item está sendo visualizado.
 
 ### Imagens
 
@@ -86,7 +95,8 @@
 
 ### Áudio
 
-- [ ] No lugar onde está atualmente um icone estático, mostrar Espectro de Frequência.
+- [ ] No lugar onde está atualmente um icone estático, mostrar o waveform.
+- [ ] Salvar em cache as informações de waveform em um arquivo compacto seja binário ou json, ou mesmo diretamente no banco de dados nos metadados do arquivo.
 - [ ] Adicionar sistema de notas atribuidas a um tempo determinado no áudio.
 
 ### Vídeos
@@ -135,9 +145,9 @@
 ## Core
 
 - [x] Melhorar a forma de registro de formatos em `src-tauri/src/core/formats/registry.rs` e `mod.rs`.
-- [ ] Verificar o funcionamento do core/repository e sua interação com o ledgerer
-- [ ] Verificar o funcionamento do core/settings e sua interação com o ledgerer
-- [ ] Analisar a pasta core/workflows e verificar se existe algo que podemos retirar ou organizar melhor.
+- [x] Verificar o funcionamento do core/repository e sua interação com o ledgerer
+- [x] Verificar o funcionamento do core/settings e sua interação com o ledgerer
+- [x] Analisar a pasta core/workflows e verificar se existe algo que podemos retirar ou organizar melhor.
 
 ## Infra
 

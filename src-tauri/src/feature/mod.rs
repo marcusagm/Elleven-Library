@@ -14,3 +14,5 @@ pub mod search;
 pub mod settings;
 /// Module for transcoding functionality.
 pub mod transcoding;
+/// Module for trash management.
+pub mod trash;

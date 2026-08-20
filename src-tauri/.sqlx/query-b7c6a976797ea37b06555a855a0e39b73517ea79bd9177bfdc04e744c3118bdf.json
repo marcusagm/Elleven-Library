@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!\", path as \"path!\", deleted_at as \"deleted_at?: chrono::DateTime<chrono::Utc>\"\n               FROM assets\n               WHERE deleted_at IS NOT NULL AND deleted_at < ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "path!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted_at?: chrono::DateTime<chrono::Utc>",
+        "ordinal": 2,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "b7c6a976797ea37b06555a855a0e39b73517ea79bd9177bfdc04e744c3118bdf"
+}

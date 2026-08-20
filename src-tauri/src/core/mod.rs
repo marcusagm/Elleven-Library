@@ -11,6 +11,7 @@ pub mod ledger;
 pub mod models;
 pub mod repository;
 pub mod settings;
+pub mod trash;
 pub mod workflows;
 
 pub use ledger::{LedgerCommand, TransactionalAssetLedger};

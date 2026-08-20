@@ -275,18 +275,8 @@ pub async fn get_asset_exif(
         let asset: Asset = service.get_asset(&id).await?.ok_or_else(|| {
             crate::core::error::AppError::NotFound(format!("Asset {} not found", id))
         })?;
-        if asset.deleted_at.is_some() {
-            if let Ok(app_data_directory) = app_handle.path().app_local_data_dir() {
-                if let Some(file_name) = asset.path.file_name() {
-                    app_data_directory
-                        .join("trash")
-                        .join(format!("{}_{}", asset.id, file_name.to_string_lossy()))
-                } else {
-                    asset.path
-                }
-            } else {
-                asset.path
-            }
+        if let Ok(app_data_directory) = app_handle.path().app_local_data_dir() {
+            crate::core::trash::resolve_physical_path(&asset, &app_data_directory)
         } else {
             asset.path
         }
@@ -388,18 +378,8 @@ pub async fn get_audio_waveform_data(
 ) -> AppResult<Vec<f32>> {
     let resolved_path = if let Some(ref id) = asset_id {
         if let Ok(Some(asset)) = service.get_asset(id).await {
-            if asset.deleted_at.is_some() {
-                if let Ok(app_data_directory) = app_handle.path().app_local_data_dir() {
-                    if let Some(file_name) = asset.path.file_name() {
-                        app_data_directory
-                            .join("trash")
-                            .join(format!("{}_{}", asset.id, file_name.to_string_lossy()))
-                    } else {
-                        asset.path.clone()
-                    }
-                } else {
-                    asset.path.clone()
-                }
+            if let Ok(app_data_directory) = app_handle.path().app_local_data_dir() {
+                crate::core::trash::resolve_physical_path(&asset, &app_data_directory)
             } else {
                 asset.path.clone()
             }

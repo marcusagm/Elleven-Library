@@ -6,10 +6,10 @@ import { useSystem, useSettings, useNotification } from '../../../core/hooks';
 import { filterState, filterActions } from '../../../core/store/filter';
 import { transcodeState, transcodeActions } from '../../../core/store/transcodeStore';
 import { type TranscodeQuality } from '../../../lib/stream-utils';
+import { TrashSettingsSection } from './TrashSettingsSection';
 import './general-panel.css';
 
 import { formatFileSize } from '../../../utils/format';
-import { invokeCommand } from '../../../lib/api';
 
 export const GeneralPanel: Component = () => {
     const system = useSystem();
@@ -82,17 +82,6 @@ export const GeneralPanel: Component = () => {
             console.error(error);
         } finally {
             setClearingCache(false);
-        }
-    };
-
-    const handleEmptyTrash = async () => {
-        notification.info('Emptying trash...');
-        try {
-            const count = await invokeCommand('empty_trash');
-            notification.success(`Emptied ${count} items from trash.`);
-        } catch (error) {
-            notification.error('Failed to empty trash.');
-            console.error(error);
         }
     };
 
@@ -250,16 +239,7 @@ export const GeneralPanel: Component = () => {
                 </div>
             </SectionGroup>
 
-            <SectionGroup
-                title="Trash"
-                description="Manage deleted items. Items in the trash can be restored or permanently deleted."
-            >
-                <div class="setting-action-row">
-                    <Button onClick={handleEmptyTrash} variant="destructive">
-                        Empty Trash
-                    </Button>
-                </div>
-            </SectionGroup>
+            <TrashSettingsSection />
 
             <SectionGroup
                 title="Library Maintenance"

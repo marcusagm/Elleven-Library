@@ -85,3 +85,13 @@
 .asset-card-favorite-icon.is-favorite {
     color: var(--color-primary-500);
 }
+
+.asset-card-restore-icon {
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: color var(--transition-fast);
+}
+
+.asset-card-restore-icon:hover {
+    color: var(--color-success, #22c55e);
+}
