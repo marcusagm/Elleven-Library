@@ -1,0 +1,38 @@
+.duplicate-finder {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--bg-page);
+  color: var(--text-primary);
+}
+
+.duplicate-finder-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.duplicate-finder-sidebar {
+  background-color: var(--bg-sidebar);
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.duplicate-finder-content {
+  background-color: var(--bg-page);
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.duplicate-finder-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+}

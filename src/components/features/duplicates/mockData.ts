@@ -1,0 +1,76 @@
+import { DuplicateGroup } from './types';
+
+export const mockGroups: DuplicateGroup[] = [
+    {
+        id: 'group-1',
+        type: 'exact',
+        confidence: 1.0,
+        candidates: [
+            {
+                id: 'candidate-1',
+                name: 'DSC001.jpg',
+                size: '2.4 MB',
+                dimensions: '4000x3000',
+                score: 1.0,
+                path: '/Volumes/Photos/2023/DSC001.jpg',
+                format: 'JPEG',
+                createdAt: '2023-05-12T10:30:00Z',
+                updatedAt: '2023-05-12T10:30:00Z',
+                tags: ['vacation', 'beach'],
+                notes: 'Original photo',
+                isFavorite: true,
+                mediaType: 'Image'
+            },
+            {
+                id: 'candidate-2',
+                name: 'DSC001_copy.jpg',
+                size: '2.4 MB',
+                dimensions: '4000x3000',
+                score: 1.0,
+                path: '/Users/marcus/Downloads/DSC001_copy.jpg',
+                format: 'JPEG',
+                createdAt: '2023-06-01T14:20:00Z',
+                updatedAt: '2023-06-01T14:20:00Z',
+                tags: [],
+                isFavorite: false,
+                mediaType: 'Image'
+            }
+        ]
+    },
+    {
+        id: 'group-2',
+        type: 'visual',
+        confidence: 0.94,
+        candidates: [
+            {
+                id: 'candidate-3',
+                name: 'Profile.png',
+                size: '1.1 MB',
+                dimensions: '1080x1080',
+                score: 1.0,
+                path: '/Users/marcus/Pictures/Profile.png',
+                format: 'PNG',
+                createdAt: '2024-01-15T09:00:00Z',
+                updatedAt: '2024-01-15T09:00:00Z',
+                tags: ['profile', 'work'],
+                notes: 'High res profile picture',
+                isFavorite: true,
+                mediaType: 'Image'
+            },
+            {
+                id: 'candidate-4',
+                name: 'Profile_web.jpg',
+                size: '300 KB',
+                dimensions: '1080x1080',
+                score: 0.94,
+                path: '/Users/marcus/Projects/website/assets/Profile_web.jpg',
+                format: 'JPEG',
+                createdAt: '2024-01-15T09:15:00Z',
+                updatedAt: '2024-01-15T09:15:00Z',
+                tags: ['web'],
+                isFavorite: false,
+                mediaType: 'Image'
+            }
+        ]
+    }
+];
