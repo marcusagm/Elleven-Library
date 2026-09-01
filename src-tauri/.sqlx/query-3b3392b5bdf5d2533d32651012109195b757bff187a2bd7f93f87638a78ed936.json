@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT \n                group_id as \"group_id!\", asset_id as \"asset_id!\", score as \"score: f64\", reasons as \"reasons!\", is_selected as \"is_selected: bool\"\n            FROM duplicate_candidates\n            WHERE group_id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "group_id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "asset_id!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "score: f64",
+        "ordinal": 2,
+        "type_info": "Float"
+      },
+      {
+        "name": "reasons!",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_selected: bool",
+        "ordinal": 4,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3b3392b5bdf5d2533d32651012109195b757bff187a2bd7f93f87638a78ed936"
+}

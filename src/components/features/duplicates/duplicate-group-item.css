@@ -1,0 +1,60 @@
+/* ===================================================
+   DuplicateGroupItem — Deck preview + ignored styling
+   =================================================== */
+
+/* --- Ignored state --- */
+.group-list-item.is-ignored {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+  background: var(--bg-surface-1);
+}
+
+.group-list-item.is-ignored:hover {
+  opacity: 0.75;
+  filter: grayscale(0.3);
+}
+
+.group-list-item-badges {
+  display: flex;
+  gap: var(--p-space-xs);
+  align-items: center;
+}
+
+/* --- Deck preview (based on MultiInspector deck) --- */
+.group-deck-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.group-deck-wrapper {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+
+.group-deck-card {
+  position: absolute;
+  background: var(--bg-surface-2);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-s);
+  overflow: hidden;
+}
+
+.group-deck-badge {
+  position: absolute;
+  z-index: 10;
+  top: -6px;
+  right: -6px;
+  background: var(--action-primary-bg);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-s);
+  border: 1.5px solid var(--bg-sidebar);
+  line-height: 1.4;
+}

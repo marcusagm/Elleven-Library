@@ -351,3 +351,23 @@ commands.allow = ["restore_from_trash"]
 identifier = "allow-empty-trash"
 description = "Enables empty_trash"
 commands.allow = ["empty_trash"]
+
+[[permission]]
+identifier = "allow-get-duplicate-groups"
+description = "Enables get_duplicate_groups"
+commands.allow = ["get_duplicate_groups"]
+
+[[permission]]
+identifier = "allow-get-duplicate-candidates"
+description = "Enables get_duplicate_candidates"
+commands.allow = ["get_duplicate_candidates"]
+
+[[permission]]
+identifier = "allow-resolve-duplicate-group"
+description = "Enables resolve_duplicate_group"
+commands.allow = ["resolve_duplicate_group"]
+
+[[permission]]
+identifier = "allow-start-duplicate-scan"
+description = "Enables start_duplicate_scan"
+commands.allow = ["start_duplicate_scan"]

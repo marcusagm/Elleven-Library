@@ -282,16 +282,26 @@ impl LibraryIndexer {
         if to_path.is_dir() {
             self.handle_directory_rename(from_path, to_path).await;
         } else {
-            let _ = self
+            let update_result = self
                 .ledger
                 .execute(LedgerCommand::UpdateAsset(
                     crate::core::ledger::command::UpdateAssetPayload {
                         asset_id: None,
-                        old_path: Some(from_path),
-                        new_path: to_path,
+                        old_path: Some(from_path.clone()),
+                        new_path: to_path.clone(),
                     },
                 ))
                 .await;
+
+            if let Err(crate::core::error::AppError::NotFound(_)) = update_result {
+                info!(
+                    "Indexer: Rename source '{}' not in DB — treating as new file creation for '{}'",
+                    from_path.display(),
+                    to_path.display()
+                );
+                self.handle_file_discovered(to_path.to_string_lossy().to_string())
+                    .await;
+            }
         }
     }
 

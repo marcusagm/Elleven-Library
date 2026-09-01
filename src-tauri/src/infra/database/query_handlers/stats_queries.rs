@@ -18,7 +18,9 @@ pub async fn get_library_stats(pool: &SqlitePool, _registry: &crate::core::forma
             (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL AND id NOT IN (SELECT asset_id FROM asset_tags)) as "untagged_assets!: i64",
             (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL AND id IN (SELECT asset_id FROM asset_tags)) as "has_tags_assets!: i64",
             (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL AND is_favorite = 1) as "favorite_assets!: i64",
-            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NOT NULL) as "trash_assets!: i64"
+            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NOT NULL) as "trash_assets!: i64",
+            (SELECT COUNT(*) FROM smart_folders) as "smart_folders!: i64",
+            (SELECT COUNT(*) FROM duplicate_candidates c JOIN duplicate_groups g ON c.group_id = g.id WHERE g.status = 'open') as "duplicate_assets!: i64"
         "#
     )
     .fetch_one(pool)
@@ -104,9 +106,10 @@ pub async fn get_library_stats(pool: &SqlitePool, _registry: &crate::core::forma
         has_tags_assets: stats_row.has_tags_assets,
         favorite_assets: stats_row.favorite_assets,
         trash_assets: stats_row.trash_assets,
+        smart_folders: stats_row.smart_folders,
+        duplicate_assets: stats_row.duplicate_assets,
         tag_counts,
         folder_counts,
         folder_counts_recursive: Some(folder_counts_recursive),
     })
 }
-

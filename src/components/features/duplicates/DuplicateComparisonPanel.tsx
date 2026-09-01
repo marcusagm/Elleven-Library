@@ -4,13 +4,16 @@ import { CheckCircle2 } from 'lucide-solid';
 import { Thumbnail } from '../viewport/assets/Thumbnail';
 import { DuplicateGroup } from './types';
 import './duplicate-comparison-panel.css';
-
 export interface DuplicateComparisonPanelProperties {
+    /** The duplicate group to display and resolve */
     group: DuplicateGroup;
+    /** Callback triggered when the group has been resolved */
+    onResolve: (groupId: string, action: string, keptAssetIds?: string[]) => Promise<void>;
 }
 
 export const DuplicateComparisonPanel: Component<DuplicateComparisonPanelProperties> = props => {
     const [selectedCandidates, setSelectedCandidates] = createSignal<Set<string>>(new Set());
+    const [processing, setProcessing] = createSignal(false);
 
     const toggleCandidate = (id: string) => {
         const newSet = new Set(selectedCandidates());
@@ -20,6 +23,42 @@ export const DuplicateComparisonPanel: Component<DuplicateComparisonPanelPropert
             newSet.add(id);
         }
         setSelectedCandidates(newSet);
+    };
+
+    const handleIgnoreGroup = async () => {
+        setProcessing(true);
+        try {
+            await props.onResolve(props.group.id, 'ignore_group');
+        } catch (error) {
+            console.error('Failed to ignore group:', error);
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleKeepSelected = async () => {
+        if (selectedCandidates().size === 0) return;
+
+        setProcessing(true);
+        try {
+            const keptIds = Array.from(selectedCandidates());
+            await props.onResolve(props.group.id, 'custom_selection', keptIds);
+        } catch (error) {
+            console.error('Failed to keep selected candidates:', error);
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleKeepOnlyThis = async (candidateId: string) => {
+        setProcessing(true);
+        try {
+            await props.onResolve(props.group.id, 'custom_selection', [candidateId]);
+        } catch (error) {
+            console.error('Failed to keep candidate:', error);
+        } finally {
+            setProcessing(false);
+        }
     };
 
     return (
@@ -35,8 +74,15 @@ export const DuplicateComparisonPanel: Component<DuplicateComparisonPanelPropert
                     </div>
                 </div>
                 <div class="comparison-actions">
-                    <Button variant="secondary">Ignore Group</Button>
-                    <Button disabled={selectedCandidates().size === 0}>Keep Selected</Button>
+                    <Button variant="secondary" onClick={handleIgnoreGroup} disabled={processing()}>
+                        Ignore Group
+                    </Button>
+                    <Button
+                        disabled={selectedCandidates().size === 0 || processing()}
+                        onClick={handleKeepSelected}
+                    >
+                        Keep Selected
+                    </Button>
                 </div>
             </div>
 
@@ -61,13 +107,7 @@ export const DuplicateComparisonPanel: Component<DuplicateComparisonPanelPropert
                                         <h3 class="candidate-name">{candidate.name}</h3>
                                         <div class="candidate-badges">
                                             <Show when={isSelected()}>
-                                                <div
-                                                    style={{
-                                                        color: 'var(--color-primary-500)',
-                                                        display: 'flex',
-                                                        'align-items': 'center'
-                                                    }}
-                                                >
+                                                <div class="candidate-selected-icon">
                                                     <CheckCircle2
                                                         size={20}
                                                         fill="currentColor"
@@ -91,6 +131,7 @@ export const DuplicateComparisonPanel: Component<DuplicateComparisonPanelPropert
                                             thumbnail={candidate.thumbnailUrl || null}
                                             alt={candidate.name}
                                             mediaType={candidate.mediaType}
+                                            state={candidate.state}
                                         />
                                     </div>
 
@@ -151,7 +192,13 @@ export const DuplicateComparisonPanel: Component<DuplicateComparisonPanelPropert
                                 </div>
 
                                 <div class="candidate-actions">
-                                    <Button class="candidate-button">Keep Only This</Button>
+                                    <Button
+                                        class="candidate-button"
+                                        disabled={processing()}
+                                        onClick={() => handleKeepOnlyThis(candidate.id)}
+                                    >
+                                        Keep Only This
+                                    </Button>
                                 </div>
                             </div>
                         );

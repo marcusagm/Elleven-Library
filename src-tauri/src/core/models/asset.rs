@@ -223,6 +223,10 @@ pub struct LibraryStats {
     pub favorite_assets: i64,
     /// Number of assets in the trash.
     pub trash_assets: i64,
+    /// Number of smart folders.
+    pub smart_folders: i64,
+    /// Number of duplicate assets identified (or candidate assets).
+    pub duplicate_assets: i64,
     /// Distribution of assets across tags.
     pub tag_counts: Vec<TagCount>,
     /// Direct asset counts per folder.

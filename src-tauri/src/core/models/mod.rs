@@ -1,8 +1,14 @@
 //! Core domain models for the application.
 
 pub mod asset;
+pub mod duplicates;
 pub mod search;
 pub mod smart_folder;
+
+pub use duplicates::{
+    DuplicateCandidate, DuplicateFingerprint, DuplicateGroup, DuplicateGroupStatus,
+    DuplicateGroupType, DuplicateResolution, DuplicateResolutionAction, DuplicateRuleSet,
+};
 
 pub use asset::{
     Asset, AssetColor, AssetFilter, AssetState, AssetSummaryDto, Folder, FolderCount, LibraryStats,

@@ -115,6 +115,10 @@
     "allow-cleanup-cache-streaming",
     "allow-clear-cache-streaming",
     "allow-verify-thumbnails",
+    "allow-get-duplicate-groups",
+    "allow-get-duplicate-candidates",
+    "allow-resolve-duplicate-group",
+    "allow-start-duplicate-scan",
     {
       "identifier": "http:default",
       "allow": [

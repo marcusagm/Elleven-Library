@@ -5,12 +5,13 @@ import { Modal } from '../../ui';
  */
 
 import { Component, createSignal, For, Show } from 'solid-js';
-import { Keyboard, Palette, Settings, Info } from 'lucide-solid';
+import { Keyboard, Palette, Settings, Info, Copy } from 'lucide-solid';
 import { cn } from '../../../lib/utils';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 import { GeneralPanel } from './GeneralPanel';
 import { AppearancePanel } from './AppearancePanel';
 import { FoldersPanel } from './FoldersPanel';
+import { DuplicatesPanel } from './DuplicatesPanel';
 import { AboutPanel } from './AboutPanel';
 import './settings-modal.css';
 import { Modal } from '../../ui';
@@ -18,7 +19,13 @@ import { Modal } from '../../ui';
 /**
  * Valid settings tabs.
  */
-export type SettingsTab = 'general' | 'appearance' | 'keyboard-shortcuts' | 'folders' | 'about';
+export type SettingsTab =
+    | 'general'
+    | 'appearance'
+    | 'keyboard-shortcuts'
+    | 'folders'
+    | 'duplicates'
+    | 'about';
 
 /**
  * Definition structure for a settings tab.
@@ -39,6 +46,7 @@ const SETTINGS_TABS: SettingsTabDefinition[] = [
     { identifier: 'general', label: 'General', icon: Settings },
     { identifier: 'appearance', label: 'Appearance', icon: Palette },
     { identifier: 'keyboard-shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
+    { identifier: 'duplicates', label: 'Duplicates', icon: Copy },
     { identifier: 'about', label: 'About', icon: Info }
 ];
 
@@ -114,6 +122,9 @@ export const SettingsModal: Component<SettingsModalProperties> = componentProper
                     </Show>
                     <Show when={activeTab() === 'folders'}>
                         <FoldersPanel />
+                    </Show>
+                    <Show when={activeTab() === 'duplicates'}>
+                        <DuplicatesPanel />
                     </Show>
                     <Show when={activeTab() === 'about'}>
                         <AboutPanel />

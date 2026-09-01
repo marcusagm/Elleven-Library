@@ -7,9 +7,9 @@
   flex-direction: column;
 }
 
-.appearance-panel .section-group {
+/* .appearance-panel .section-group {
     margin-bottom: var(--p-space-l);
-}
+} */
 
 .appearance-setting-row {
   display: flex;

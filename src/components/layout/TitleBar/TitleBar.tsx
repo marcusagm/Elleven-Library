@@ -2,6 +2,7 @@ import { Component, For } from 'solid-js';
 import { House, GalleryVerticalEnd, FileStack } from 'lucide-solid';
 import { Dynamic } from 'solid-js/web';
 import { Tooltip } from '../../ui';
+import { useMetadata } from '../../../core/hooks';
 import { detectPlatform } from '../../../core/input/utils/platform';
 import { WindowControls } from './WindowControls';
 import type { TitleBarProperties, TitleBarNavigationItem, ApplicationView } from './types';
@@ -49,6 +50,7 @@ function buildNavigationItems(): TitleBarNavigationItem[] {
  */
 export const TitleBar: Component<TitleBarProperties> = properties => {
     const platform = detectPlatform();
+    const metadata = useMetadata();
     const navigationItems = buildNavigationItems();
 
     /**
@@ -88,6 +90,12 @@ export const TitleBar: Component<TitleBarProperties> = properties => {
                                 onClick={() => handleNavigationClick(navigationItem.view)}
                             >
                                 <Dynamic component={navigationItem.icon} />
+                                {navigationItem.view === 'duplicates' &&
+                                    metadata.stats.duplicate_assets > 0 && (
+                                        <span class="titlebar-navigation-badge">
+                                            {metadata.stats.duplicate_assets}
+                                        </span>
+                                    )}
                             </button>
                         </Tooltip>
                     )}

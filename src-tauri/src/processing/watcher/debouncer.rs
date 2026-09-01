@@ -467,11 +467,20 @@ fn path_exists_exact(path: &std::path::Path) -> bool {
         return false;
     }
 
-    if let Some(file_name) = path.file_name() {
+    use unicode_normalization::UnicodeNormalization;
+
+    if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+        let file_name_nfc: String = file_name.nfc().collect();
         if let Some(parent) = path.parent() {
             if let Ok(mut entries) = std::fs::read_dir(parent) {
                 while let Some(Ok(entry)) = entries.next() {
-                    if entry.file_name() == file_name {
+                    if let Some(entry_name) = entry.file_name().to_str() {
+                        let entry_nfc: String = entry_name.nfc().collect();
+                        if entry_nfc == file_name_nfc {
+                            return true;
+                        }
+                    } else if entry.file_name() == path.file_name().unwrap() {
+                        // Fallback for non-UTF8 filenames
                         return true;
                     }
                 }

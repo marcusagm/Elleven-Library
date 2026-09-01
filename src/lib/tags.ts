@@ -20,6 +20,8 @@ export interface LibraryStats {
     has_tags_assets: number;
     favorite_assets: number;
     trash_assets: number;
+    smart_folders: number;
+    duplicate_assets: number;
     tag_counts: { tag_id: string; count: number }[];
     folder_counts: { folder_id: string; count: number }[];
     folder_counts_recursive: { folder_id: string; count: number }[];

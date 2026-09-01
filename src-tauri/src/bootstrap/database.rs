@@ -78,5 +78,22 @@ pub async fn init(app: &AppHandle) -> Result<(), String> {
         crate::feature::search::SearchQueryHandler::new(asset_query_handler.clone());
     app.manage(search_query_handler);
 
+    // Initialize Duplicates Services
+    let duplicates_repo: Arc<dyn crate::core::repository::DuplicatesRepository> = 
+        Arc::new(crate::infra::sqlite::SqliteDuplicatesRepository::new(db_manager.pool().clone()));
+    app.manage(duplicates_repo.clone());
+
+    let duplicates_query_service =
+        crate::feature::duplicates::queries::DuplicateQueryService::new(duplicates_repo.clone());
+    app.manage(duplicates_query_service);
+
+    let duplicates_command_service =
+        crate::feature::duplicates::commands::DuplicateCommandService::new(
+            duplicates_repo.clone(),
+            asset_ledger.clone(),
+            event_bus.clone()
+        );
+    app.manage(duplicates_command_service);
+
     Ok(())
 }

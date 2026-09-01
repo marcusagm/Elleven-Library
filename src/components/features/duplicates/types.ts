@@ -13,11 +13,15 @@ export interface DuplicateCandidate {
     isFavorite: boolean;
     thumbnailUrl?: string;
     mediaType?: string;
+    state?: string;
 }
 
 export interface DuplicateGroup {
     id: string;
     type: 'exact' | 'visual' | 'derived';
+    status: 'open' | 'ignored' | 'resolved';
     confidence: number;
+    candidateCount: number;
     candidates: DuplicateCandidate[];
+    candidatesLoaded?: boolean;
 }

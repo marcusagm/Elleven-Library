@@ -156,4 +156,36 @@ pub enum DomainEvent {
         component: String,
         message: String,
     },
+    
+    // ├─ Duplicates Originated
+    /// A duplicate group was created.
+    DuplicateGroupCreated {
+        group_id: String,
+        group_type: String,
+        confidence: f64,
+        canonical_asset_id: Option<String>,
+        candidate_count: i32,
+        rule_set_id: String,
+    },
+    /// A duplicate group was updated.
+    DuplicateGroupUpdated {
+        group_id: String,
+        status: String,
+        candidate_count: i32,
+    },
+    /// A duplicate group was resolved by the user.
+    DuplicateGroupResolved {
+        group_id: String,
+        action: String,
+    },
+    /// Progress of a duplicate scan.
+    DuplicateScanProgressed {
+        processed: usize,
+        matched: usize,
+        groups_created: usize,
+    },
+    /// A duplicate scan finished.
+    DuplicateScanFinished {
+        groups_created: usize,
+    },
 }

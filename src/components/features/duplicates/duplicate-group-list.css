@@ -63,14 +63,18 @@
 .group-list-item-preview {
   display: flex;
   align-items: center;
-  gap: var(--p-space-s);
+  gap: var(--p-space-m);
   margin-bottom: var(--p-space-s);
 }
 
-.group-list-item-thumbnail {
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
+.group-list-item-thumbnail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--p-space-m) 0;
+  color: var(--text-tertiary);
+  font-size: var(--p-font-size-s);
 }
 
 .group-list-item-name {
@@ -81,4 +85,6 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  flex: 1;
+  min-width: 0;
 }

@@ -38,6 +38,10 @@
 - [ ] Adicionar atalho para buscar por cores diretamente pela paleta de cores selecionada.
 - [x] Persistência de paineis abertos ou colapsados, por exemplo se o painel general info for aberto, deve permacer aberto até o usuário fecha-lo.
 
+## Indexer
+
+- [x] Ao copiar e colar um arquivo na mesma pasta craindo uma duplicata, o novo arquivo não é indexado, provavelmente está sendo ignorado por algum conflito com o evento de renomeação de arquivo.
+
 ## Search
 
 - [x] Verificar fuzzy search, pois parece não estar funcionando bem.
@@ -69,7 +73,7 @@
 - [x] Abrir pasta onde se encontra o arquivo.
 - [x] Adicionar asset como favorito.
 - [ ] Converter arquivo para outros formatos.
-- [ ] Verificar duplicidade de arquivos.
+- [x] Verificar duplicidade de arquivos.
 - [ ] Adicionar asset arrastando para a janela do Mundam.
 - [ ] Adicionar recurso de virar imagem automaticamente de acordo com o metadado EXIF orientation.
 - [-] Copiar Imagem Real para Área de Transferência: Copiar o arquivo diretamente para o clipboard do sistema (para colar em um chat, Photoshop ou Figma, por exemplo).

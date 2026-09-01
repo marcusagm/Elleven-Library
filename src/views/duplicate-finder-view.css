@@ -36,3 +36,22 @@
   height: 100%;
   color: var(--text-secondary);
 }
+
+.duplicate-finder-toolbar {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.duplicate-finder-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  gap: 12px;
+  color: var(--text-secondary);
+  height: 100%;
+}

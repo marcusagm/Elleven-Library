@@ -43,7 +43,26 @@
     cursor: pointer;
     transition: background-color var(--duration-fast) var(--ease-out),
                 color var(--duration-fast) var(--ease-out);
-    padding: 0;
+    padding: 6px;
+    position: relative;
+}
+
+.titlebar-navigation-badge {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0 4px;
+    min-width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
 }
 
 .titlebar-window-control-button:hover {

@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT \n            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL) as \"total_assets!: i64\",\n            (SELECT COUNT(*) FROM folders) as \"total_folders!: i64\",\n            (SELECT COUNT(*) FROM tags) as \"total_tags!: i64\",\n            (SELECT COALESCE(SUM(file_size), 0) FROM assets WHERE deleted_at IS NULL) as \"total_size_bytes!: i64\",\n            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL AND id NOT IN (SELECT asset_id FROM asset_tags)) as \"untagged_assets!: i64\",\n            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL AND id IN (SELECT asset_id FROM asset_tags)) as \"has_tags_assets!: i64\",\n            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL AND is_favorite = 1) as \"favorite_assets!: i64\",\n            (SELECT COUNT(*) FROM assets WHERE deleted_at IS NOT NULL) as \"trash_assets!: i64\",\n            (SELECT COUNT(*) FROM smart_folders) as \"smart_folders!: i64\",\n            (SELECT COUNT(*) FROM duplicate_candidates c JOIN duplicate_groups g ON c.group_id = g.id WHERE g.status = 'open') as \"duplicate_assets!: i64\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "total_assets!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "total_folders!: i64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "total_tags!: i64",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "total_size_bytes!: i64",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "untagged_assets!: i64",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "has_tags_assets!: i64",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "favorite_assets!: i64",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "trash_assets!: i64",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "smart_folders!: i64",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "duplicate_assets!: i64",
+        "ordinal": 9,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1f2d3ab3bd02d014a413460978df5652cb0176b5fb2acd727c94b595a7514b6b"
+}

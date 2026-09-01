@@ -7,9 +7,9 @@
   flex-direction: column;
 }
 
-.general-panel .section-group {
+/* .general-panel .section-group {
     margin-bottom: var(--p-space-l);
-}
+} */
 
 .general-setting-row {
   display: flex;

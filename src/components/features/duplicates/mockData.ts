@@ -4,7 +4,9 @@ export const mockGroups: DuplicateGroup[] = [
     {
         id: 'group-1',
         type: 'exact',
+        status: 'open',
         confidence: 1.0,
+        candidateCount: 2,
         candidates: [
             {
                 id: 'candidate-1',
@@ -40,7 +42,9 @@ export const mockGroups: DuplicateGroup[] = [
     {
         id: 'group-2',
         type: 'visual',
+        status: 'open',
         confidence: 0.94,
+        candidateCount: 2,
         candidates: [
             {
                 id: 'candidate-3',

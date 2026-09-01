@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT \n                asset_id as \"asset_id!\", content_hash, perceptual_hash, block_hash, thumb_hash,\n                width as \"width: i32\", height as \"height: i32\", file_size as \"file_size: i64\", \n                mime_type, format_family, color_profile, orientation as \"orientation: i32\", \n                fingerprint_version as \"fingerprint_version: i32\", \n                updated_at as \"updated_at: chrono::DateTime<chrono::Utc>\"\n            FROM duplicate_fingerprints\n            WHERE asset_id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "asset_id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "content_hash",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "perceptual_hash",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "block_hash",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "thumb_hash",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "width: i32",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "height: i32",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "file_size: i64",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "mime_type",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "format_family",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "color_profile",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "orientation: i32",
+        "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "fingerprint_version: i32",
+        "ordinal": 12,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at: chrono::DateTime<chrono::Utc>",
+        "ordinal": 13,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5d48a2542d3f0528903b23b1f87f63fb6b19e9ad676a5ac01df1817faf3037e9"
+}

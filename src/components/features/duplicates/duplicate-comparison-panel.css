@@ -43,13 +43,14 @@
 }
 
 .comparison-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: start;
-  align-content: start;
   gap: var(--p-space-xl);
   padding: var(--p-space-xl);
   flex: 1;
+  overflow-x: auto;
   overflow-y: auto;
   min-height: 0;
 }
@@ -64,6 +65,8 @@
   transition: var(--transition-fast);
   position: relative;
   cursor: pointer;
+  flex: 0 0 320px;
+  max-width: 320px;
 }
 
 .candidate-card:hover {
@@ -167,4 +170,10 @@
 
 .candidate-button {
   width: 100%;
+}
+
+.candidate-selected-icon {
+  color: var(--color-primary-500);
+  display: flex;
+  align-items: center;
 }

@@ -26,6 +26,8 @@ export interface MetadataState {
         has_tags_assets: number;
         favorite_assets: number;
         trash_assets: number;
+        smart_folders: number;
+        duplicate_assets: number;
         tag_counts: Map<string, number>;
         folder_counts: Map<string, number>;
         folder_counts_recursive: Map<string, number>;
@@ -43,6 +45,8 @@ export const [metadataState, setMetadataState] = createStore<MetadataState>({
         has_tags_assets: 0,
         favorite_assets: 0,
         trash_assets: 0,
+        smart_folders: 0,
+        duplicate_assets: 0,
         tag_counts: new Map(),
         folder_counts: new Map(),
         folder_counts_recursive: new Map()

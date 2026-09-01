@@ -58,6 +58,8 @@ export const locationActions = {
                 has_tags_assets: stats.has_tags_assets,
                 favorite_assets: stats.favorite_assets,
                 trash_assets: stats.trash_assets,
+                smart_folders: stats.smart_folders,
+                duplicate_assets: stats.duplicate_assets,
                 tag_counts: tagMap,
                 folder_counts: folderMap,
                 folder_counts_recursive: folderRecursiveMap

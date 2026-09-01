@@ -89,4 +89,22 @@ pub fn init(app: &AppHandle) {
         trash_worker_token,
         trash_handle,
     );
+
+    // Start Duplicate Worker
+    let duplicates_repo = app
+        .state::<Arc<dyn crate::core::repository::DuplicatesRepository>>()
+        .inner()
+        .clone();
+        
+    let duplicate_worker_token = lifecycle.child_token();
+    let duplicate_worker = crate::feature::duplicates::events::DuplicateWorker::new(
+        duplicates_repo.clone(),
+        event_bus.clone(),
+    );
+    let duplicate_handle = std::sync::Arc::new(duplicate_worker).start(duplicate_worker_token.clone());
+    lifecycle.register(
+        "duplicate_worker".to_string(),
+        duplicate_worker_token,
+        duplicate_handle,
+    );
 }
